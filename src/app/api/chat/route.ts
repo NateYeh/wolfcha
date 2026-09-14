@@ -42,6 +42,32 @@ const DASHSCOPE_CHAT_COMPLETIONS_URL = `${DASHSCOPE_API_BASE_URL}/chat/completio
 const API_TIMEOUT_MS = 60000;
 const MAX_BATCH_REQUESTS = 12;
 
+// 部分上游（例如自架 gpt-load 閘道器）的推理模型，會把 thinking 產生的 token
+// 一併計入 max_tokens。若只依內容需求給預算，模型會在思考階段就把額度用完，
+// 導致 content 被截斷（JSON 解析失敗）。這裡額外保留一段思考預算。
+// 只放大上限、不改變模型實際輸出長度，因此不會讓回應變慢。
+// 預設 0 = 不啟用，維持原本行為。
+const DEFAULT_THINKING_TOKEN_RESERVE = 0;
+
+function thinkingTokenReserve(): number {
+  const raw = process.env.WOLFCHA_THINKING_TOKEN_RESERVE;
+  if (raw === undefined || raw.trim() === "") return DEFAULT_THINKING_TOKEN_RESERVE;
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    console.warn(
+      `[chat] WOLFCHA_THINKING_TOKEN_RESERVE 設定無效（${raw}），改用預設值 ${DEFAULT_THINKING_TOKEN_RESERVE}`,
+    );
+    return DEFAULT_THINKING_TOKEN_RESERVE;
+  }
+  return parsed;
+}
+
+/** 在內容預算之外加上思考預算，避免推理模型把額度耗在 thinking 上。 */
+function withThinkingReserve(maxTokens: number): number {
+  return Math.max(16, Math.floor(maxTokens)) + thinkingTokenReserve();
+}
+
 const REQUEST_ID_HEADER = "X-Request-ID";
 const ATTEMPT_ID_HEADER = "X-Attempt-ID";
 const ATTEMPT_HEADER = "X-Attempt";
@@ -623,7 +649,7 @@ async function runBatchItem(
     };
 
     if (typeof max_tokens === "number" && Number.isFinite(max_tokens)) {
-      requestBody.max_tokens = Math.max(16, Math.floor(max_tokens));
+      requestBody.max_tokens = withThinkingReserve(max_tokens);
     }
 
     // GLM-4.7 / Kimi K2.5 默认开启思考，API 参数可关闭（已实测有效）
@@ -1095,7 +1121,7 @@ export async function POST(request: NextRequest) {
       };
 
       if (typeof max_tokens === "number" && Number.isFinite(max_tokens)) {
-        requestBody.max_tokens = Math.max(16, Math.floor(max_tokens));
+        requestBody.max_tokens = withThinkingReserve(max_tokens);
       }
 
       if (stream) {
