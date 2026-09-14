@@ -307,7 +307,8 @@ export const MODEL_IDS = {
     minimaxM27: "minimax-m2.7",
     deepseekV4Pro: "deepseek-v4-pro",
     deepseekV4Flash0731: "deepseek-v4-flash-0731",
-    deepseekV41Flash: "deepseek-v4.1-flash",
+    // [LOCAL DEV PATCH] 指向本地 gpt-load2 閘道器實際註冊的模型名稱
+    deepseekV41Flash: "deepseek-v4.1-flash:cloud",
     glm53Flash: "glm-5.3-flash",
     qwen3Max: "qwen3-max",
     glm5: "glm-5",
@@ -323,7 +324,8 @@ const BUILTIN_DEEPSEEK_V41_FLASH_MODEL: ModelRef = {
 };
 
 export const DEFAULT_MODEL_CONFIG = {
-  generator: MODEL_IDS.zenmux.geminiFlashLite,
+  // [LOCAL DEV PATCH] 本地實驗統一使用 tokendance(自架閘道器) 模型，避免依賴 ZenMux Key
+  generator: MODEL_IDS.tokendance.deepseekV41Flash,
   summary: BUILTIN_DEEPSEEK_V41_FLASH_MODEL.model,
   review: BUILTIN_DEEPSEEK_V41_FLASH_MODEL.model,
   validation: {

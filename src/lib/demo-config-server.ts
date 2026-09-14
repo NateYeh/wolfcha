@@ -83,6 +83,19 @@ async function loadDemoConfigRow() {
 export async function getDemoModeConfigServer(): Promise<DemoModePublicConfigSnapshot> {
   const now = new Date();
 
+  // [LOCAL DEV PATCH] 本地沒有 Supabase 時，用環境變數強制開啟 Demo Mode，
+  // 讓訪客（X-Guest-Id）可通過驗證並跳過點數檢查。
+  if (process.env.WOLFCHA_LOCAL_DEMO_MODE === "1") {
+    return {
+      source: "database",
+      enabled: true,
+      active: true,
+      startsAt: null,
+      expiresAt: null,
+      serverNow: now.toISOString(),
+    };
+  }
+
   try {
     ensureAdminClient();
   } catch (error) {
