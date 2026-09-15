@@ -1084,7 +1084,7 @@
       "option": "{seat}号({name})",
       "signup": {
         "base": "【身份】\n你是 {seat}号「{name}」\n身份: {role}\n\n{winCondition}\n\n{persona}",
-        "task": "【警徽竞选说明】\n警长拥有 1.5 票投票权，死亡时可移交警徽给信任的玩家。警长负责归票和引导讨论方向。\n\n【任务】\n现在是警徽竞选报名环节。请根据当前局势决定是否报名竞选警长。\n\n【输出格式】\n严格返回 JSON 对象，不要代码块，不要解释，不要多余文字：\n报名：{\"signup\":true}\n不报名：{\"signup\":false}",
+        "task": "【警徽竞选说明】\n警长拥有 1.5 票投票权，死亡时可移交警徽给信任的玩家。警长负责归票和引导讨论方向。\n\n【任务】\n现在是警徽竞选报名环节。请根据当前局势决定是否报名竞选警长。\n\n【输出格式】\n严格返回 JSON 对象，不要代码块，不要解释，不要多余文字：\n报名：'{\"signup\":true}'\n不报名：'{\"signup\":false}'",
         "user": "{context}\n\n【本日讨论记录】\n{todayTranscript}\n\n是否报名竞选警长？",
         "noTranscript": "（无）"
       },
@@ -1985,8 +1985,8 @@
     "invalidSeat": "（座位无效）",
     "tooManyRequests": "（请求过于频繁，稍后再试）",
     "badgeSignup": {
-      "systemPrompt": "你是狼人杀游戏的决策助手。根据每位玩家的角色、性格以及夜间行动等上下文，自行判断是否上警。\n\n【随机性要求】\n- 不要把某一种选择当作固定答案。\n- 收益接近时，可以做出不同选择，但不要违背阵营目标。\n- 让不同性格的玩家体现出不同倾向。\n\n【重要】只返回简单的 JSON 对象，格式严格为：\n{\"座位号\": true或false, ...}\n\n例如：{\"2\": true, \"3\": false, \"4\": true}\n\n不要返回任何其他字段（如player_name、reason等），只需要座位号和布尔值。",
-      "userPrompt": "玩家信息：\n{playerDescriptions}\n\n座位号：{seatList}\n\n只返回 JSON：{\"座位号\": true/false, ...}",
+      "systemPrompt": "你是狼人杀游戏的决策助手。根据每位玩家的角色、性格以及夜间行动等上下文，自行判断是否上警。\n\n【随机性要求】\n- 不要把某一种选择当作固定答案。\n- 收益接近时，可以做出不同选择，但不要违背阵营目标。\n- 让不同性格的玩家体现出不同倾向。\n\n【重要】只返回简单的 JSON 对象，格式严格为：\n'{\"座位号\": true或false, ...}'\n\n例如：'{\"2\": true, \"3\": false, \"4\": true}'\n\n不要返回任何其他字段（如player_name、reason等），只需要座位号和布尔值。",
+      "userPrompt": "玩家信息：\n{playerDescriptions}\n\n座位号：{seatList}\n\n只返回 JSON：'{\"座位号\": true/false, ...}'",
       "playerDesc": "- {seat}号位 {name}（{role}）：{personality}",
       "nightActionSuffix": "。昨晚行动：{action}",
       "noPersonality": "普通性格",

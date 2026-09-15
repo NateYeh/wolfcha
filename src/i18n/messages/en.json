@@ -1079,7 +1079,7 @@
       "option": "Seat {seat} ({name})",
       "signup": {
         "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{winCondition}\n\n{persona}",
-        "task": "【Sheriff Badge】\nThe sheriff has 1.5 votes and can transfer the badge upon death. The sheriff leads discussions and consolidates votes.\n\n【Task】\nThis is the sheriff signup phase. Decide whether to run for sheriff.\n\n【Output format】\nReturn exactly one JSON object with no markdown, explanation, or extra text:\nRun: {\"signup\":true}\nSkip: {\"signup\":false}",
+        "task": "【Sheriff Badge】\nThe sheriff has 1.5 votes and can transfer the badge upon death. The sheriff leads discussions and consolidates votes.\n\n【Task】\nThis is the sheriff signup phase. Decide whether to run for sheriff.\n\n【Output format】\nReturn exactly one JSON object with no markdown, explanation, or extra text:\nRun: '{\"signup\":true}'\nSkip: '{\"signup\":false}'",
         "user": "{context}\n\n【Today's discussion】\n{todayTranscript}\n\nDo you want to run for sheriff?",
         "noTranscript": "(None)"
       },
@@ -1903,8 +1903,8 @@
     "invalidSeat": "(invalid seat)",
     "tooManyRequests": "Too many requests, please try again later.",
     "badgeSignup": {
-      "systemPrompt": "Werewolf game assistant. Decide if each player runs for sheriff based on their role, personality, and any night-action context.\n\n【Randomness Requirements】\n- Do not treat any single choice as a fixed answer.\n- When outcomes are close, allow different choices while still respecting the player's team goal.\n- Let different personalities produce different tendencies.\n\nIMPORTANT: Return ONLY simple JSON:\n{\"seat_number\": true or false, ...}\n\nExample: {\"2\": true, \"3\": false, \"4\": true}\n\nNo other fields (no player_name, reason, etc). Only seat numbers and booleans.",
-      "userPrompt": "Players:\n{playerDescriptions}\n\nSeats: {seatList}\n\nReturn only JSON: {\"seat\": true/false, ...}",
+      "systemPrompt": "Werewolf game assistant. Decide if each player runs for sheriff based on their role, personality, and any night-action context.\n\n【Randomness Requirements】\n- Do not treat any single choice as a fixed answer.\n- When outcomes are close, allow different choices while still respecting the player's team goal.\n- Let different personalities produce different tendencies.\n\nIMPORTANT: Return ONLY simple JSON:\n'{\"seat_number\": true or false, ...}'\n\nExample: '{\"2\": true, \"3\": false, \"4\": true}'\n\nNo other fields (no player_name, reason, etc). Only seat numbers and booleans.",
+      "userPrompt": "Players:\n{playerDescriptions}\n\nSeats: {seatList}\n\nReturn only JSON: '{\"seat\": true/false, ...}'",
       "playerDesc": "- Seat {seat} {name} ({role}): {personality}",
       "nightActionSuffix": ". Last night action: {action}",
       "noPersonality": "Normal personality",
