@@ -886,6 +886,8 @@ alive_count: ${alivePlayers.length}
   // 死者票无效力＋无对跳不放逐唯一预言家：都是白天推理守则，夜间不拼入。
   const deadVoteNoCollusionNote = isDayPhase ? t("promptUtils.gameContext.deadVoteNoCollusionNote") : "";
   const loneSeerProtectionNote = isDayPhase ? t("promptUtils.gameContext.loneSeerProtectionNote") : "";
+  // 查杀未证伪＋毒杀印证＋报查验时机：狼队反打真预言家的标准话术防线，仅白天拼入。
+  const unverifiedCheckNote = isDayPhase ? t("promptUtils.gameContext.unverifiedCheckNote") : "";
   
   // Check if guard exists in this game
   const hasGuard = state.players.some(p => p.role === "Guard");
@@ -925,6 +927,9 @@ alive_count: ${alivePlayers.length}
   }
   if (loneSeerProtectionNote) {
     rulesText += `\n${loneSeerProtectionNote}`;
+  }
+  if (unverifiedCheckNote) {
+    rulesText += `\n${unverifiedCheckNote}`;
   }
   
   if (rulesText) {

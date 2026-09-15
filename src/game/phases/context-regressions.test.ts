@@ -319,6 +319,10 @@ test("白天规则：死者票无效力＋无对跳保护唯一预言家；夜�
   // 无对跳时唯一跳预言家大概率真，放逐他＝销毁信息源
   assert.match(dayPrompt.user, /无对跳守则/);
   assert.match(dayPrompt.user, /几乎必然是好人自杀/);
+  // 查杀未证伪：女巫毒杀同目标＝相互印证；报查验时机／发挥失误非否定理由（本局真预言家被「毒杀解释死亡」反打投出）
+  assert.match(dayPrompt.user, /查杀未证伪守则/);
+  assert.match(dayPrompt.user, /属于相互印证/);
+  assert.match(dayPrompt.user, /是水平问题不是身份证据/);
   // 夜间 prompt（狼出刀）不受这两条污染
   const nightState = fresh("NIGHT_WOLF_ACTION");
   const nightWolf = nightState.players.find((p) => p.role === "Werewolf")!;
@@ -326,4 +330,5 @@ test("白天规则：死者票无效力＋无对跳保护唯一预言家；夜�
   const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, nightWolf)!;
   assert.doesNotMatch(nightPrompt.user, /死者票提示/);
   assert.doesNotMatch(nightPrompt.user, /无对跳守则/);
+  assert.doesNotMatch(nightPrompt.user, /查杀未证伪守则/);
 });
