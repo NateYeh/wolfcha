@@ -10,6 +10,7 @@ import {
   buildSystemTextFromParts,
 } from "@/lib/prompt-utils";
 import { getI18n } from "@/i18n/translator";
+import { isWolfRole } from "@/types/game";
 
 export class BadgePhase extends GamePhase {
   async onEnter(): Promise<void> {
@@ -53,12 +54,16 @@ export class BadgePhase extends GamePhase {
       role: getRoleText(player.role),
       winCondition: getWinCondition(player.role),
     });
-    const dynamicContent = t("prompts.badge.election.task", {
-      options: alivePlayers
-        .map((p) => t("prompts.badge.option", { seat: p.seat + 1, name: p.displayName }))
-        .join(t("promptUtils.gameContext.listSeparator")),
-      jsonFormat: JSON.stringify({ seat: exampleSeat }),
-    });
+    const dynamicContent =
+      t("prompts.badge.election.task", {
+        options: alivePlayers
+          .map((p) => t("prompts.badge.option", { seat: p.seat + 1, name: p.displayName }))
+          .join(t("promptUtils.gameContext.listSeparator")),
+        jsonFormat: JSON.stringify({ seat: exampleSeat }),
+      }) +
+      // 警徽票纪律：仅狼人可见。无对跳时警徽票默认投唯一跳预言家的人，
+      // 不投需有能公开说出口的理由，否则复盘时「警徽票没投预言家」会直接暴露。
+      (isWolfRole(player.role) ? t("prompts.badge.election.wolfBadgeVoteDiscipline") : "");
     const systemParts: SystemPromptPart[] = [
       { text: cacheableContent, cacheable: true, ttl: "1h" },
       { text: dynamicContent },

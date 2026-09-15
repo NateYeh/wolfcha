@@ -1088,6 +1088,7 @@
       "election": {
         "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{winCondition}",
         "task": "【Sheriff Badge】\nThe sheriff has 1.5 votes and can transfer the badge upon death.\n\n【Task】\nSheriff election: choose one candidate to receive the badge.\n\nOptions: {options}\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text.\nExample: {jsonFormat}",
+        "wolfBadgeVoteDiscipline": "【Badge-vote discipline (wolves only)】\n- Badge votes are fully public and get reviewed afterwards; they are the easiest place for the wolf team to be exposed.\n- When nobody counter-claims seer, the sole seer claimant is almost certainly the real seer (you know none of your teammates jumped). In that case voting your badge for the claimant is the standard play and keeps your ballot inconspicuous.\n- Not voting for them requires a solid reason you could say out loud (e.g. their check story contradicts night facts you know). Without such a reason, do not vote elsewhere: \"badge vote didn't go to the seer\" is a common tell good players use to call out wolves.\n- If a wolf teammate has already counter-claimed seer, prioritize voting your badge for that teammate.",
         "contextHeader": "Day {day} Sheriff election",
         "contextWolves": "Wolf teammates: {list}",
         "contextRecent": "Badge speeches:\n{text}",

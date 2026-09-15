@@ -61,6 +61,27 @@ test("猎人开枪提示必须包含开枪守则，且排在遗言之后（可�
   assert.ok(lastWordsIdx >= 0 && rulesIdx > lastWordsIdx, "开枪守则应排在遗言之后");
 });
 
+test("警徽评选：狼人可见警徽票纪律，好人不可见", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_BADGE_ELECTION");
+  state.badge.candidates = [0, 1];
+  const wolf = state.players.find((p) => p.role === "Werewolf")!;
+  state.currentSpeakerSeat = wolf.seat;
+  const wolfPrompt = new PhaseManager().getPrompt("DAY_BADGE_ELECTION", { state }, wolf)!;
+  assert.match(wolfPrompt.system, /【警徽票纪律（仅狼人可见）】/);
+  // 无对跳时：唯一跳预言家的人大概率真，默认投他是标准操作
+  assert.match(wolfPrompt.system, /唯一跳预言家的人大概率是真预言家/);
+  // 不投需充足理由，否则复盘时暴露
+  assert.match(wolfPrompt.system, /警徽票没投预言家」是好人点狼的常用证据/);
+  // 队友已对跳则优先投队友
+  assert.match(wolfPrompt.system, /优先把警徽票投给对跳的队友/);
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  state.currentSpeakerSeat = villager.seat;
+  const villagerPrompt = new PhaseManager().getPrompt("DAY_BADGE_ELECTION", { state }, villager)!;
+  assert.doesNotMatch(villagerPrompt.system, /警徽票纪律/);
+});
+
 const decisions: Phase[] = ["DAY_BADGE_SIGNUP", "DAY_BADGE_ELECTION", "BADGE_TRANSFER", "DAY_VOTE", "HUNTER_SHOOT", "WHITE_WOLF_KING_BOOM", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"];
 for (const phase of decisions) {
   test(`阶段矩阵：${phase} 必须包含已公开的当天证据`, async () => {
