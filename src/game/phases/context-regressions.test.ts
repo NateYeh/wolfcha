@@ -241,5 +241,7 @@ test("最后发言者得到明确收尾约束，投票输入末尾保留本人�
   state.phase = "DAY_VOTE";
   const vote = manager.getPrompt("DAY_VOTE", { state }, actor)!.user;
   assert.match(vote.split("<my_public_position>")[1], /我今天不投6号，我的最终选择是10号/);
-  assert.match(vote, /没有新证据就延续自己的公开结论/);
+  // 新判断（本人本轮已公开的分析）优先于旧立场，但仍保留「无新证据就别翻供」的默认。
+  assert.match(vote, /投票必须跟这个新判断走/);
+  assert.match(vote, /确实没有任何新发言或新事件时，才延续自己的公开结论/);
 });

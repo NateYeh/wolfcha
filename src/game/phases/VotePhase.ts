@@ -174,7 +174,7 @@ export class VotePhase extends GamePhase {
       todayTranscript: todayTranscript || t("prompts.vote.userNoTranscript"),
       selfSpeech: selfSpeechContext || t("prompts.vote.userNoSelfSpeech"),
       voteJsonFormat: JSON.stringify({ seat: exampleSeat }),
-    }) + `\n\n${buildDecisionGrounding(state, player)}\n<my_public_position>\n${selfSpeech || "本日没有本人公开发言"}\n</my_public_position>\n投票前核对自己最后明确支持或排除的目标。改变立场必须依据在那句话之后真正出现的新发言或新事件，并在 reason 中说明；没有新证据就延续自己的公开结论，不要编造尚未发生的回应。只输出 {"seat":座位号,"reason":"本次投票依据"}。`;
+    }) + `\n\n${buildDecisionGrounding(state, player)}\n<my_public_position>\n${selfSpeech || "本日没有本人公开发言"}\n</my_public_position>\n投票前核对自己最后明确支持或排除的目标。如果你在本轮发言中已经指出某人的新矛盾、新问题，或已经改了对某人的判断，投票必须跟这个新判断走，不要用维持旧立场去否定自己刚说出口的分析。改变立场只需在 reason 里写明依据；确实没有任何新发言或新事件时，才延续自己的公开结论，不要编造尚未发生的回应。只输出 {"seat":座位号,"reason":"本次投票依据"}。`;
 
     return { system, user, systemParts };
   }
