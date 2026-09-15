@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { isDemoModeActiveServer } from "@/lib/demo-config-server";
 import { isGuestUser } from "@/lib/demo-mode";
@@ -53,6 +54,14 @@ function canTransitionLifecycle(
   return false;
 }
 
+/**
+ * [LOCAL DEV PATCH] 本機開發環境是否強制開啟 Demo Mode。
+ * 開啟時不連 Supabase，改由本機產生會話 ID。
+ */
+function isLocalDemoMode(): boolean {
+  return process.env.WOLFCHA_LOCAL_DEMO_MODE === "1";
+}
+
 function isGuestUserIdSchemaError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
 
@@ -95,6 +104,22 @@ export async function POST(request: Request) {
     payload = (await request.json()) as GameSessionPayload;
   } catch {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+
+  // [LOCAL DEV PATCH] 本機沒有 Supabase 實例：不寫資料庫，直接回傳本機產生的會話 ID。
+  // 這讓前端的 gameSessionId 能建立（存檔與重整恢復才有效），也避免每個回合
+  // 同步進度時都拿到 500 並在 console 留下錯誤。僅在 WOLFCHA_LOCAL_DEMO_MODE=1 時生效。
+  if (isLocalDemoMode()) {
+    if (payload.action === "create") {
+      return NextResponse.json({ success: true, sessionId: randomUUID() });
+    }
+    if (payload.action === "update") {
+      if (!isLifecycleStatus(payload.lifecycleStatus)) {
+        return NextResponse.json({ error: "Invalid lifecycle status" }, { status: 400 });
+      }
+      return NextResponse.json({ success: true });
+    }
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }
 
   const bodyToken = payload.action === "update" ? payload.accessToken : undefined;
