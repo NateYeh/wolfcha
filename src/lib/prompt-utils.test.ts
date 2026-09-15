@@ -159,12 +159,20 @@ test("票型不能当铁证：白天对所有阵营提示狼可投队友，夜�
     // 票型不能当铁证，但票型集中仍是狼队线索（两个方向都要写清楚）。
     assert.match(rules, /同一批人反复把票集中给同一个人/);
     assert.match(rules, /不要因为“狼不会这么明显”就排除这种可能/);
+    // 自爆/夜刀情报与夜刀嫁祸：同样只在白天拼入。
+    assert.match(rules, /白狼王自爆带走的目标/);
+    assert.match(rules, /不能因为发言者已经出局就把他的查杀当废话/);
+    assert.match(rules, /不要用“查杀来得太快、太顺、收益太高”这类听感理由/);
+    assert.match(rules, /狼队也会故意刀掉质疑某人最凶的好人，用来嫁祸那个人/);
+    assert.match(rules, /不能当成定罪的唯一依据/);
   }
 
   const nightState: GameState = { ...makeState(), phase: "NIGHT_WOLF_ACTION" };
   const nightRules = buildGameContext(nightState, wolf).match(/<rules>[\s\S]*?<\/rules>/)?.[0];
   assert.ok(nightRules);
   assert.doesNotMatch(nightRules, /狼人也可以在警徽选举或放逐投票中投队友/);
+  assert.doesNotMatch(nightRules, /白狼王自爆带走的目标/);
+  assert.doesNotMatch(nightRules, /狼队也会故意刀掉质疑某人最凶的好人/);
 });
 
 test("警徽竞选期间明确死亡结果未公布，不能从空死亡列表推断平安夜", () => {

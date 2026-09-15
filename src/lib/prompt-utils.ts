@@ -874,11 +874,15 @@ alive_count: ${alivePlayers.length}
     state.phase.includes("DAY")
       ? t("promptUtils.gameContext.noSameDayCausalityNote")
       : "";
+  const isDayPhase = state.phase.includes("DAY");
   // 票型不能当铁证：狼人也可以投队友做局，因此白天凡是涉及投票的环节都要提示。
   // 夜间没有投票，不拼入以免干扰出刀判断。
-  const wolfVoteTeammateNote = state.phase.includes("DAY")
+  const wolfVoteTeammateNote = isDayPhase
     ? t("promptUtils.gameContext.wolfVoteTeammateNote")
     : "";
+  // 自爆/夜刀目标是狼队认定的威胁，以及夜刀嫁祸：都是白天推理用的情报，夜间不拼入。
+  const wolfBoomThreatNote = isDayPhase ? t("promptUtils.gameContext.wolfBoomThreatNote") : "";
+  const wolfNightKillFramingNote = isDayPhase ? t("promptUtils.gameContext.wolfNightKillFramingNote") : "";
   
   // Check if guard exists in this game
   const hasGuard = state.players.some(p => p.role === "Guard");
@@ -906,6 +910,12 @@ alive_count: ${alivePlayers.length}
   }
   if (wolfVoteTeammateNote) {
     rulesText += `\n${wolfVoteTeammateNote}`;
+  }
+  if (wolfBoomThreatNote) {
+    rulesText += `\n${wolfBoomThreatNote}`;
+  }
+  if (wolfNightKillFramingNote) {
+    rulesText += `\n${wolfNightKillFramingNote}`;
   }
   
   if (rulesText) {
