@@ -40,6 +40,27 @@ test("狼人夜晚出刀提示必须包含守卫博弈推断（守卫可能守�
   assert.match(prompt.user, /避开第 1 条里守卫今晚最可能守的座位/);
 });
 
+test("猎人开枪提示必须包含开枪守则，且排在遗言之后（可推翻遗言目标）", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("HUNTER_SHOOT");
+  const actor = state.players.find((p) => p.role === "Hunter")!;
+  state.currentSpeakerSeat = actor.seat;
+  // 模拟遗言里预告开枪目标的锚点
+  state.messages = [message(state, "我这一枪就打3号", "DAY_LAST_WORDS", actor.seat)];
+  const prompt = new PhaseManager().getPrompt("HUNTER_SHOOT", { state }, actor)!;
+  // 硬认证目标禁射
+  assert.match(prompt.system, /【开枪守则】/);
+  assert.match(prompt.system, /这些目标绝不能射/);
+  // 被预言家阵营放逐时：先核实查验链，禁止射金水/认证对象
+  assert.match(prompt.system, /绝不能射他的金水或认证对象/);
+  // 遗言目标可推翻，且守则必须排在遗言之后（recency 压过锚点）
+  assert.match(prompt.system, /必须推翻遗言，重新按守则决定/);
+  const lastWordsIdx = prompt.system.indexOf("【已经发生的公开记录：你的遗言】");
+  const rulesIdx = prompt.system.indexOf("【开枪守则】");
+  assert.ok(lastWordsIdx >= 0 && rulesIdx > lastWordsIdx, "开枪守则应排在遗言之后");
+});
+
 const decisions: Phase[] = ["DAY_BADGE_SIGNUP", "DAY_BADGE_ELECTION", "BADGE_TRANSFER", "DAY_VOTE", "HUNTER_SHOOT", "WHITE_WOLF_KING_BOOM", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"];
 for (const phase of decisions) {
   test(`阶段矩阵：${phase} 必须包含已公开的当天证据`, async () => {

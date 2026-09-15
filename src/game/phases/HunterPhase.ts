@@ -59,8 +59,10 @@ export class HunterPhase extends GamePhase {
     const lastWordsSection = lastWords
       ? t("prompts.hunter.lastWordsContext", { lastWords })
       : "";
-    
-    const dynamicContent = t("prompts.hunter.task", { options }) + lastWordsSection;
+    // 开枪守则：禁止射硬认证好人；放逐后先核实预言家查验链；遗言目标与守则冲突时以守则为准。
+    const shootingRules = t("prompts.hunter.shootingRules");
+    const dynamicContent =
+      t("prompts.hunter.task", { options }) + lastWordsSection + shootingRules;
     const systemParts: SystemPromptPart[] = [
       { text: cacheableContent, cacheable: true, ttl: "1h" },
       { text: dynamicContent },
