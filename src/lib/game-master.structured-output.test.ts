@@ -49,6 +49,7 @@ test("不支持严格 Schema 的玩家模型降级为 json_object，非法动作
   };
   const originalFetch = globalThis.fetch;
   const requestBodies: Array<{
+    model?: string;
     response_format?: { type?: string };
     messages?: Array<{ role?: string; content?: string | unknown[] }>;
   }> = [];
@@ -93,6 +94,7 @@ test("空日总结不会保存原始 JSON，也不会触发第二次模型调用
 
   const originalFetch = globalThis.fetch;
   const requestBodies: Array<{
+    model?: string;
     response_format?: { type?: string };
     messages?: Array<{ role?: string; content?: string | unknown[] }>;
   }> = [];
@@ -107,7 +109,9 @@ test("空日总结不会保存原始 JSON，也不会触发第二次模型调用
   try {
     const result = await generateDailySummary(state);
     assert.equal(requestBodies.length, 1);
-    assert.equal(requestBodies[0].response_format?.type, "json_schema");
+    // 只有 deepseek 系模型支援嚴格 json_schema；專案模型可換成 glm/gemma，那時會退回 json_object。
+    const wantsStrictSchema = String(requestBodies[0].model ?? "").toLowerCase().startsWith("deepseek");
+    assert.equal(requestBodies[0].response_format?.type, wantsStrictSchema ? "json_schema" : "json_object");
     const systemPrompt = requestBodies[0].messages?.find((message) => message.role === "system")?.content;
     assert.equal(typeof systemPrompt, "string");
     assert.match(String(systemPrompt), /当天未竞选就只写‘当天无警长竞选’/);

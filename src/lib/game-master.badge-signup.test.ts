@@ -86,6 +86,7 @@ test("警徽报名批处理为每个玩家建立独立 Prompt，并按返回顺�
   const originalFetch = globalThis.fetch;
   let requestBody: {
     requests: Array<{
+      model?: string;
       messages: Array<{ content: string | unknown[] }>;
       response_format?: { type?: string; json_schema?: { strict?: boolean } };
     }>;
@@ -100,6 +101,7 @@ test("警徽报名批处理为每个玩家建立独立 Prompt，并按返回顺�
     }
     const body = JSON.parse(String(init.body)) as {
       requests: Array<{
+        model?: string;
         messages: Array<{ content: string | unknown[] }>;
         response_format?: { type?: string; json_schema?: { strict?: boolean } };
       }>;
@@ -127,8 +129,12 @@ test("警徽报名批处理为每个玩家建立独立 Prompt，并按返回顺�
     assert.equal(requests.length, players.length);
     assert.deepEqual(result, { seer: true, guard: false });
     for (const request of requests) {
-      assert.equal(request.response_format?.type, "json_schema");
-      assert.equal(request.response_format?.json_schema?.strict, true);
+      // 只有 deepseek 系模型支援嚴格 json_schema；專案模型可換成 glm/gemma，那時會退回 json_object。
+      const wantsStrictSchema = String(request.model ?? "").toLowerCase().startsWith("deepseek");
+      assert.equal(request.response_format?.type, wantsStrictSchema ? "json_schema" : "json_object");
+      if (wantsStrictSchema) {
+        assert.equal(request.response_format?.json_schema?.strict, true);
+      }
     }
 
     const seerPrompt = requestText(requests[0]);

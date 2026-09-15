@@ -308,6 +308,7 @@ export const MODEL_IDS = {
     deepseekV4Pro: "deepseek-v4-pro",
     deepseekV4Flash0731: "deepseek-v4-flash-0731",
     // [LOCAL DEV PATCH] 指向本地 gpt-load2 閘道器實際註冊的模型名稱
+    // deepseekV41Flash 已停用：思考過久，常觸發 60 秒逾時（僅保留名稱供參考）。
     deepseekV41Flash: "deepseek-v4.1-flash:cloud",
     glm53Flash: "glm-5.3-flash:cloud",
     gemma431b: "gemma4:31b-cloud",
@@ -318,13 +319,6 @@ export const MODEL_IDS = {
   },
 } as const;
 
-const BUILTIN_DEEPSEEK_V41_FLASH_MODEL: ModelRef = {
-  provider: "tokendance",
-  model: MODEL_IDS.tokendance.deepseekV41Flash,
-  reasoning: { enabled: false },
-};
-
-// [LOCAL DEV PATCH] 本地閘道器上可用的另兩顆模型，讓 AI 玩家能混用不同模型
 const BUILTIN_GLM53_FLASH_MODEL: ModelRef = {
   provider: "tokendance",
   model: MODEL_IDS.tokendance.glm53Flash,
@@ -339,9 +333,10 @@ const BUILTIN_GEMMA4_31B_MODEL: ModelRef = {
 
 export const DEFAULT_MODEL_CONFIG = {
   // [LOCAL DEV PATCH] 本地實驗統一使用 tokendance(自架閘道器) 模型，避免依賴 ZenMux Key
-  generator: MODEL_IDS.tokendance.deepseekV41Flash,
-  summary: BUILTIN_DEEPSEEK_V41_FLASH_MODEL.model,
-  review: BUILTIN_DEEPSEEK_V41_FLASH_MODEL.model,
+  // 產生／摘要／覆盤原本走 deepseek-v4.1-flash:cloud，因思考過久已改用 glm-5.3-flash:cloud
+  generator: MODEL_IDS.tokendance.glm53Flash,
+  summary: BUILTIN_GLM53_FLASH_MODEL.model,
+  review: BUILTIN_GLM53_FLASH_MODEL.model,
   validation: {
     zenmux: MODEL_IDS.zenmux.geminiFlashLite,
     dashscope: MODEL_IDS.dashscope.deepseek,
@@ -357,16 +352,17 @@ export const ZENMUX_VALIDATION_MODEL = DEFAULT_MODEL_CONFIG.validation.zenmux;
 export const DASHSCOPE_VALIDATION_MODEL = DEFAULT_MODEL_CONFIG.validation.dashscope;
 export const TOKENDANCE_VALIDATION_MODEL = DEFAULT_MODEL_CONFIG.validation.tokendance;
 
+// [LOCAL DEV PATCH] 只保留 glm-5.3-flash:cloud 與 gemma4:31b-cloud；deepseek-v4.1-flash:cloud
+// 因為思考過久（常見 60 秒超時、發言被迫走逾時兜底）已從所有可用池移除。
 export const BUILTIN_PLAYER_MODELS: ModelRef[] = [
-  BUILTIN_DEEPSEEK_V41_FLASH_MODEL,
   BUILTIN_GLM53_FLASH_MODEL,
   BUILTIN_GEMMA4_31B_MODEL,
 ];
 
 // Default built-in models exposed to the app when custom key is not enabled.
 // This list includes system defaults plus the small built-in player pool.
+// 順序有意義：api-keys.ts 在 tokenpay 路徑取 AVAILABLE_MODELS[0] 當產生／摘要／覆盤模型。
 export const AVAILABLE_MODELS: ModelRef[] = [
-  BUILTIN_DEEPSEEK_V41_FLASH_MODEL,
   BUILTIN_GLM53_FLASH_MODEL,
   BUILTIN_GEMMA4_31B_MODEL,
 ];
@@ -397,7 +393,6 @@ export const ALL_MODELS: ModelRef[] = [
   { provider: "tokendance", model: MODEL_IDS.tokendance.minimaxM27, temperature: 1, reasoning: { enabled: false } },
   { provider: "tokendance", model: MODEL_IDS.tokendance.deepseekV4Pro, reasoning: { enabled: false } },
   { provider: "tokendance", model: MODEL_IDS.tokendance.deepseekV4Flash0731, reasoning: { enabled: false } },
-  BUILTIN_DEEPSEEK_V41_FLASH_MODEL,
   { provider: "tokendance", model: MODEL_IDS.tokendance.glm53Flash, reasoning: { enabled: false } },
   { provider: "tokendance", model: MODEL_IDS.tokendance.qwen3Max, reasoning: { enabled: false } },
   { provider: "tokendance", model: MODEL_IDS.tokendance.glm5, temperature: 1, reasoning: { enabled: false } },
