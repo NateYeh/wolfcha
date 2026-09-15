@@ -309,7 +309,8 @@ export const MODEL_IDS = {
     deepseekV4Flash0731: "deepseek-v4-flash-0731",
     // [LOCAL DEV PATCH] 指向本地 gpt-load2 閘道器實際註冊的模型名稱
     deepseekV41Flash: "deepseek-v4.1-flash:cloud",
-    glm53Flash: "glm-5.3-flash",
+    glm53Flash: "glm-5.3-flash:cloud",
+    gemma431b: "gemma4:31b-cloud",
     qwen3Max: "qwen3-max",
     glm5: "glm-5",
     kimiK25: "kimi-k2.5",
@@ -320,6 +321,19 @@ export const MODEL_IDS = {
 const BUILTIN_DEEPSEEK_V41_FLASH_MODEL: ModelRef = {
   provider: "tokendance",
   model: MODEL_IDS.tokendance.deepseekV41Flash,
+  reasoning: { enabled: false },
+};
+
+// [LOCAL DEV PATCH] 本地閘道器上可用的另兩顆模型，讓 AI 玩家能混用不同模型
+const BUILTIN_GLM53_FLASH_MODEL: ModelRef = {
+  provider: "tokendance",
+  model: MODEL_IDS.tokendance.glm53Flash,
+  reasoning: { enabled: false },
+};
+
+const BUILTIN_GEMMA4_31B_MODEL: ModelRef = {
+  provider: "tokendance",
+  model: MODEL_IDS.tokendance.gemma431b,
   reasoning: { enabled: false },
 };
 
@@ -345,12 +359,16 @@ export const TOKENDANCE_VALIDATION_MODEL = DEFAULT_MODEL_CONFIG.validation.token
 
 export const BUILTIN_PLAYER_MODELS: ModelRef[] = [
   BUILTIN_DEEPSEEK_V41_FLASH_MODEL,
+  BUILTIN_GLM53_FLASH_MODEL,
+  BUILTIN_GEMMA4_31B_MODEL,
 ];
 
 // Default built-in models exposed to the app when custom key is not enabled.
 // This list includes system defaults plus the small built-in player pool.
 export const AVAILABLE_MODELS: ModelRef[] = [
   BUILTIN_DEEPSEEK_V41_FLASH_MODEL,
+  BUILTIN_GLM53_FLASH_MODEL,
+  BUILTIN_GEMMA4_31B_MODEL,
 ];
 
 // Built-in project-key models that the server may call internally.
