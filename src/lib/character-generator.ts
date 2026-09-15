@@ -209,9 +209,40 @@ export interface BaseProfile {
 
 const normalizeBaseProfiles = (result: unknown): { profiles: BaseProfile[]; raw: unknown } => {
   if (isRecord(result) && Array.isArray(result.profiles)) {
-    return { profiles: result.profiles as BaseProfile[], raw: result };
+    const profiles = result.profiles
+      .map(normalizeBaseProfileItem)
+      .filter((p): p is BaseProfile => p !== null);
+    return { profiles, raw: result };
   }
   return { profiles: [], raw: result };
+};
+
+/**
+ * 基础档案宽容归一：glm 等不支援 response_format 的模型会偶发吐出
+ * 「INTJ-T」尾缀、小写 mbti、字符串年龄、大写性别等可修复偏差；
+ * 无法归一的项返回 null，交由外层重试。
+ */
+const normalizeBaseProfileItem = (p: unknown): BaseProfile | null => {
+  if (!isRecord(p)) return null;
+  const genderRaw = typeof p.gender === "string" ? p.gender.trim().toLowerCase() : "";
+  let gender: Gender | null = null;
+  if (["male", "man", "男"].includes(genderRaw)) gender = "male";
+  else if (["female", "woman", "女"].includes(genderRaw)) gender = "female";
+  else if (genderRaw.includes("non")) gender = "nonbinary";
+  if (!gender) return null;
+  const ageRaw = p.age;
+  const ageNum =
+    typeof ageRaw === "number" && Number.isFinite(ageRaw) ? Math.floor(ageRaw)
+    : typeof ageRaw === "string" && Number.isFinite(Number(ageRaw)) ? Math.floor(Number(ageRaw))
+    : NaN;
+  if (!Number.isFinite(ageNum)) return null;
+  const mbtiRaw = typeof p.mbti === "string" ? p.mbti.toUpperCase() : "";
+  const mbti = mbtiRaw.match(/[A-Z]{4}/)?.[0];
+  if (!mbti) return null;
+  const displayName = typeof p.displayName === "string" ? p.displayName.trim() : "";
+  const basicInfo = typeof p.basicInfo === "string" ? p.basicInfo.trim() : "";
+  if (!displayName || !basicInfo) return null;
+  return { displayName, gender, age: ageNum, mbti, basicInfo };
 };
 
 const isValidGender = (g: unknown): g is Gender => g === "male" || g === "female" || g === "nonbinary";
@@ -559,17 +590,62 @@ export async function generateCharacters(
 ): Promise<GeneratedCharacter[]> {
   const usedScenario = scenario ?? getRandomScenario();
   const basePrompt = buildBaseProfilesPrompt(count, usedScenario);
-  const baseResult = await generateJSON<unknown>({
-    model: getGeneratorModel(),
-    messages: [{ role: "user", content: basePrompt }],
-    temperature: GAME_TEMPERATURE.CHARACTER_GENERATION,
-    max_tokens: Math.max(2400, count * 350 + 600),
-    reasoning: CHARACTER_GENERATOR_REASONING,
-    response_format: buildBaseProfilesResponseFormat(count),
-  });
-  const baseProfiles = normalizeBaseProfiles(baseResult).profiles;
+  const baseModel = getGeneratorModel();
+  const baseStartedAt = Date.now();
+  // 基础档案阶段同样套重试：glm 不吃 response_format，坏样本是随机现象。
+  // TokenPay 付费路径不重试，避免重复计费。
+  const baseMaxAttempts = isTokenPayActive() ? 1 : CHARACTER_BATCH_MAX_ATTEMPTS;
+  let baseProfiles: BaseProfile[] = [];
+  let baseLastRaw: unknown;
+  let baseLastError: unknown = null;
+  for (let attempt = 1; attempt <= baseMaxAttempts; attempt += 1) {
+    try {
+      const baseResult = await generateJSON<unknown>({
+        model: baseModel,
+        messages: [{ role: "user", content: basePrompt }],
+        temperature: GAME_TEMPERATURE.CHARACTER_GENERATION,
+        max_tokens: Math.max(2400, count * 350 + 600),
+        reasoning: CHARACTER_GENERATOR_REASONING,
+        response_format: buildBaseProfilesResponseFormat(count),
+      });
+      baseLastRaw = baseResult;
+      const normalized = normalizeBaseProfiles(baseResult);
+      baseProfiles = normalized.profiles;
+      if (!isValidBaseProfiles(baseProfiles, count)) {
+        throw new Error("Base profile generation returned invalid schema");
+      }
+      await aiLogger.log({
+        type: "character_generation",
+        request: { model: baseModel, messages: [{ role: "user", content: basePrompt }] },
+        response: {
+          content: JSON.stringify(baseProfiles),
+          rawResponse: JSON.stringify({ stage: "base_profiles", attempt }),
+          duration: Date.now() - baseStartedAt,
+        },
+      });
+      break;
+    } catch (error) {
+      baseLastError = error;
+      if (attempt >= baseMaxAttempts) break;
+      console.warn(
+        `[character-gen] base profiles 第 ${attempt} 次失败（${String(error)}），重试`,
+      );
+      await aiLogger.log({
+        type: "character_generation",
+        request: { model: baseModel, messages: [{ role: "user", content: basePrompt }] },
+        response: {
+          content: "",
+          raw: baseLastRaw === undefined ? "" : JSON.stringify(baseLastRaw),
+          rawResponse: JSON.stringify({ stage: "base_profiles", attempt }),
+          duration: Date.now() - baseStartedAt,
+        },
+        error: String(error),
+        retrying: true,
+      });
+    }
+  }
   if (!isValidBaseProfiles(baseProfiles, count)) {
-    throw new Error("Base profile generation returned invalid schema");
+    throw baseLastError ?? new Error("Base profile generation returned invalid schema");
   }
   options?.onBaseProfiles?.(baseProfiles);
 

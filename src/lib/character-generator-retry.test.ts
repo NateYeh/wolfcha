@@ -216,3 +216,82 @@ test("字符串漏结尾引号的坏 JSON 由解析器修复，不需要重试",
     await restoreEnv();
   }
 });
+
+/** 基础档案阶段专用 mock：非流式回 baseReplies，流式回一份有效 persona。 */
+async function installBaseStageMockFetch(baseReplies: string[]) {
+  const originalFetch = globalThis.fetch;
+  let baseCalls = 0;
+  globalThis.fetch = async (input, init) => {
+    if (String(input) === "/api/demo-config") return Response.json({ active: false, enabled: false });
+    if (String(input) === "/api/dev-ai-logs") return Response.json({ ok: true });
+    const body = JSON.parse(String(init?.body ?? "{}")) as { stream?: boolean };
+    if (!body.stream) {
+      baseCalls += 1;
+      const reply = baseReplies[Math.min(baseCalls - 1, baseReplies.length - 1)];
+      return Response.json({
+        choices: [{ message: { role: "assistant", content: reply }, finish_reason: "stop" }],
+      });
+    }
+    return personaStream(JSON.stringify({ characters: [validCharacter] }), true);
+  };
+  return {
+    get baseCalls() { return baseCalls; },
+    restore: () => { globalThis.fetch = originalFetch; },
+  };
+}
+
+// glm 不支援 response_format，偶发小偏差应被宽容归一救回，不浪费重试。
+const driftedProfileJson = JSON.stringify({
+  profiles: [{
+    displayName: "林川",
+    gender: "Male",
+    age: "28",
+    mbti: "istj-T",
+    basicInfo: "审计用角色",
+  }],
+});
+
+test("基础档案可修复偏差（性别大小写/字符串年龄/mbti 尾缀）归一后直接通过", async () => {
+  const restoreEnv = await setupBrowserEnv();
+  const mock = await installBaseStageMockFetch([driftedProfileJson]);
+
+  try {
+    const { setModelSource, setTokenPayConnected } = await import("@/lib/api-keys");
+    setTokenPayConnected(false);
+    setModelSource("custom");
+
+    const { generateCharacters } = await import("@/lib/character-generator");
+    const result = await generateCharacters(1);
+
+    assert.equal(mock.baseCalls, 1, "归一救回就不该重试");
+    assert.equal(result.length, 1);
+    assert.equal(result[0].displayName, "林川");
+  } finally {
+    mock.restore();
+    await restoreEnv();
+  }
+});
+
+test("基础档案结构真坏（缺 profiles 键）时非 TokenPay 路径自动重试一次", async () => {
+  const restoreEnv = await setupBrowserEnv();
+  const mock = await installBaseStageMockFetch([
+    JSON.stringify({ characters: [validProfile] }),
+    JSON.stringify({ profiles: [validProfile] }),
+  ]);
+
+  try {
+    const { setModelSource, setTokenPayConnected } = await import("@/lib/api-keys");
+    setTokenPayConnected(false);
+    setModelSource("custom");
+
+    const { generateCharacters } = await import("@/lib/character-generator");
+    const result = await generateCharacters(1);
+
+    assert.equal(mock.baseCalls, 2, "应该重试一次基础档案");
+    assert.equal(result.length, 1);
+    assert.equal(result[0].displayName, "林川");
+  } finally {
+    mock.restore();
+    await restoreEnv();
+  }
+});
