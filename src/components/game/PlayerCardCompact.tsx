@@ -31,6 +31,23 @@ interface PlayerCardCompactProps {
   isInSelectionPhase?: boolean;
 }
 
+/** 角色牌上顯示的模型短名；完整 model id 放在 title 提示。 */
+const MODEL_SHORT_LABELS: Array<{ match: RegExp; label: string }> = [
+  { match: /deepseek/i, label: "DeepSeek" },
+  { match: /gemma/i, label: "Gemma" },
+  { match: /glm/i, label: "GLM" },
+  { match: /qwen/i, label: "Qwen" },
+  { match: /kimi|moonshot/i, label: "Kimi" },
+  { match: /gemini/i, label: "Gemini" },
+  { match: /claude/i, label: "Claude" },
+  { match: /openai|gpt/i, label: "OpenAI" },
+  { match: /minimax/i, label: "MiniMax" },
+];
+
+function modelShortLabel(model: string): string {
+  return MODEL_SHORT_LABELS.find((entry) => entry.match.test(model))?.label ?? model;
+}
+
 export function PlayerCardCompact({
   player,
   isSpeaking,
@@ -349,14 +366,14 @@ export function PlayerCardCompact({
               )}
             </div>
 
-            <div className="wc-player-card__name relative h-5" title={player.displayName}>
+            <div className="wc-player-card__name relative flex items-center gap-1.5 min-w-0" title={player.displayName}>
               <AnimatePresence mode="wait">
                 {isReady ? (
                   <motion.span
                     key="name-text"
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="block truncate font-medium text-[var(--text-primary)]"
+                    className="block truncate font-medium text-[var(--text-primary)] min-w-0"
                   >
                     {player.displayName}
                   </motion.span>
@@ -366,12 +383,23 @@ export function PlayerCardCompact({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="h-full flex items-center"
+                    className="h-3 flex items-center"
                   >
                     <div className="h-2 w-16 bg-[var(--text-secondary)]/10 rounded-full animate-pulse" />
                   </motion.div>
                 )}
               </AnimatePresence>
+              {isReady && showModel && modelLabel && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.25 }}
+                  className="shrink-0 text-[10px] font-normal leading-none text-[var(--text-muted)] bg-black/5 rounded-sm px-1 py-0.5"
+                  title={modelLabel}
+                >
+                  {modelShortLabel(modelLabel)}
+                </motion.span>
+              )}
             </div>
           </>
         )}
@@ -391,7 +419,7 @@ export function PlayerCardCompact({
               )}>{basicInfoLabel}</span>
             </motion.div>
           )}
-          {isReady && showModel && modelLabel && (
+          {isReady && showModel && modelLabel && variant === "mobile" && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -399,7 +427,7 @@ export function PlayerCardCompact({
               className="text-[10px] text-[var(--text-muted)] truncate"
               title={modelLabel}
             >
-              {modelLabel}
+              {modelShortLabel(modelLabel)}
             </motion.div>
           )}
           {!isReady && (
