@@ -883,6 +883,9 @@ alive_count: ${alivePlayers.length}
   // 自爆/夜刀目标是狼队认定的威胁，以及夜刀嫁祸：都是白天推理用的情报，夜间不拼入。
   const wolfBoomThreatNote = isDayPhase ? t("promptUtils.gameContext.wolfBoomThreatNote") : "";
   const wolfNightKillFramingNote = isDayPhase ? t("promptUtils.gameContext.wolfNightKillFramingNote") : "";
+  // 死者票无效力＋无对跳不放逐唯一预言家：都是白天推理守则，夜间不拼入。
+  const deadVoteNoCollusionNote = isDayPhase ? t("promptUtils.gameContext.deadVoteNoCollusionNote") : "";
+  const loneSeerProtectionNote = isDayPhase ? t("promptUtils.gameContext.loneSeerProtectionNote") : "";
   
   // Check if guard exists in this game
   const hasGuard = state.players.some(p => p.role === "Guard");
@@ -916,6 +919,12 @@ alive_count: ${alivePlayers.length}
   }
   if (wolfNightKillFramingNote) {
     rulesText += `\n${wolfNightKillFramingNote}`;
+  }
+  if (deadVoteNoCollusionNote) {
+    rulesText += `\n${deadVoteNoCollusionNote}`;
+  }
+  if (loneSeerProtectionNote) {
+    rulesText += `\n${loneSeerProtectionNote}`;
   }
   
   if (rulesText) {

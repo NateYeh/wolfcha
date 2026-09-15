@@ -305,3 +305,25 @@ test("最后发言者得到明确收尾约束，投票输入末尾保留本人�
   assert.match(vote, /必须自己先核对原始记录（票型、发言、死亡）/);
   assert.match(vote, /核对后发现对方讲的是事实，就不能再用这个理由投票/);
 });
+
+test("白天规则：死者票无效力＋无对跳保护唯一预言家；夜间不可见", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_VOTE");
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  state.currentSpeakerSeat = villager.seat;
+  const dayPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
+  // 死者票不能当狼队协作证据（本局好人曾把死亡玩家的警徽票读成悍跳证据）
+  assert.match(dayPrompt.user, /死者票提示/);
+  assert.match(dayPrompt.user, /只适用于存活玩家之间/);
+  // 无对跳时唯一跳预言家大概率真，放逐他＝销毁信息源
+  assert.match(dayPrompt.user, /无对跳守则/);
+  assert.match(dayPrompt.user, /几乎必然是好人自杀/);
+  // 夜间 prompt（狼出刀）不受这两条污染
+  const nightState = fresh("NIGHT_WOLF_ACTION");
+  const nightWolf = nightState.players.find((p) => p.role === "Werewolf")!;
+  nightState.currentSpeakerSeat = nightWolf.seat;
+  const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, nightWolf)!;
+  assert.doesNotMatch(nightPrompt.user, /死者票提示/);
+  assert.doesNotMatch(nightPrompt.user, /无对跳守则/);
+});
