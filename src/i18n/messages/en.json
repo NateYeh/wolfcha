@@ -1032,7 +1032,8 @@
       "reasonExample": "one short reason for this vote",
       "userNoTranscript": "(None)",
       "userNoSelfSpeech": "(You didn't speak today)",
-      "user": "{gameContext}\n\n【Current step】\nDaytime free discussion is complete. This is now the elimination vote. Your choice determines whom you vote to eliminate; it is not a sheriff vote.\n\n【Today's discussion】\n{todayTranscript}\n\n【Your speech summary】\n\"{selfSpeech}\"\n\nWhich seat do you vote?\n\n【Format】\nReturn a strict JSON object only. No code blocks, no extra text:\n{voteJsonFormat}"
+      "user": "{gameContext}\n\n【Current step】\nDaytime free discussion is complete. This is now the elimination vote. Your choice determines whom you vote to eliminate; it is not a sheriff vote.\n\n【Today's discussion】\n{todayTranscript}\n\n【Your speech summary】\n\"{selfSpeech}\"\n\nWhich seat do you vote?\n\n【Format】\nReturn a strict JSON object only. No code blocks, no extra text:\n{voteJsonFormat}",
+      "loneSeerGate": "Final constraint: {seat} ({name}) is the only seer claimant on the field (claimed seer, no counter-claim). Unless you can point to hard counterevidence — their claimed check contradicts published night deaths or other public facts, or their kill-check target died by the wolves' knife and the witch did NOT poison that target (a knife-matched check is the classic fake-seer trick; the death mechanism must be clarified by public info such as the witch's poison report) — you must NOT vote for {seat}. Vote for another target (preferably their kill-check target, or the most suspicious alive player). \"The check is unverifiable\", \"reported too late\", \"poor performance\", \"the witch's ledger does not conflict with their story\" are NOT hard counterevidence; exiling the sole seer without hard counterevidence is almost always a self-inflicted loss for the good faction."
     },
     "night": {
       "option": "Seat {seat} ({name})",

@@ -332,3 +332,40 @@ test("白天规则：死者票无效力＋无对跳保护唯一预言家；夜�
   assert.doesNotMatch(nightPrompt.user, /无对跳守则/);
   assert.doesNotMatch(nightPrompt.user, /查杀未证伪守则/);
 });
+
+test("投票最终约束：唯一跳预言家者无硬反证不得放逐；对跳/狼侧/本人不受约束", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_VOTE");
+  const seer = state.players.find((p) => p.role === "Seer")!;
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  const wolf = state.players.find((p) => p.role === "Werewolf")!;
+  // 预言家在警徽竞选发言中自称预言家（20260916-003216 局同款：真预言家被 5:1 投出）
+  state.messages = [
+    message(state, "我得站出来拿个警徽，我是预言家！昨晚我查了10号，就是头狼！", "DAY_BADGE_SPEECH", seer.seat),
+    message(state, "暂认2号预言家，查杀对得上。", "DAY_SPEECH", villager.seat),
+  ];
+  state.currentSpeakerSeat = villager.seat;
+  const votePrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
+  // 门在 prompt 最末尾（recency），点名座位并禁止无硬反证放逐
+  assert.match(votePrompt.user, /最终约束：\d+号.+是场上唯一跳预言家/);
+  assert.match(votePrompt.user, /不得把票投给/);
+  assert.match(votePrompt.user, /几乎必然是好人自杀/);
+  assert.ok(votePrompt.user.trimEnd().endsWith("好人自杀。"), "最终约束必须是 prompt 最后一段");
+
+  // 出现第二位自称预言家（对跳）→ 约束解除
+  const another = state.players.find((p) => p.role !== "Seer" && p.role !== "Villager" && p.role !== "Werewolf" && p.alive)!;
+  state.messages.push(message(state, "我才是预言家，他查杀的是我队友的刀口目标。", "DAY_SPEECH", another.seat));
+  const withCounter = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
+  assert.doesNotMatch(withCounter.user, /最终约束：/);
+
+  // 狼人投票 prompt 不受约束（保留正常投预言家的自由）
+  state.messages = [message(state, "我得站出来拿个警徽，我是预言家！昨晚我查了10号，就是头狼！", "DAY_BADGE_SPEECH", seer.seat)];
+  const wolfVote = new PhaseManager().getPrompt("DAY_VOTE", { state }, wolf)!;
+  assert.doesNotMatch(wolfVote.user, /最终约束：/);
+
+  // 「不是预言家」等反例不算自称
+  state.messages = [message(state, "我不是预言家，但如果预言家乱归票我第一个不服。", "DAY_SPEECH", villager.seat)];
+  const noClaim = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
+  assert.doesNotMatch(noClaim.user, /最终约束：/);
+});

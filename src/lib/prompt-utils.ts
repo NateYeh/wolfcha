@@ -563,6 +563,46 @@ export const buildTodayTranscript = (
   return transcript;
 };
 
+/** 发言类消息 phase 集合：用于识别「自称预言家」的公开发言。 */
+const SEER_CLAIM_PHASES = new Set(["DAY_BADGE_SPEECH", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"]);
+/** 自称预言家的典型表述（含简繁）。 */
+const SEER_CLAIM_PATTERNS = [
+  /我是(预言|預言)家/,
+  /我(才|就)是(预言|預言)家/,
+  /(我昨晚|昨晚我|我第一晚|第一晚我)(查了|查驗了|查验了|查驗|查验)/,
+  /我查了[0-9０-９一二三四五六七八九十零]{1,3}号/,
+  /我的查驗(结果|結果)?/,
+  /我的查验(结果|結果)?/,
+  /我的查殺/,
+  /我的查杀/,
+];
+/** 反例表述：这些消息里出现的「预言家」字样不是自称，不作数。 */
+const SEER_CLAIM_NEGATIVE_PATTERNS = [
+  /(不是|不是真的|并非|並非|没跳|沒跳|没跳过|沒跳過)(预言|預言)家/,
+  /(自称|自稱|声称|聲稱|说自己是|說自己是|如果|假如|假如你)(预言|預言)家/,
+];
+
+/**
+ * 从公开发言中识别「唯一跳预言家者」：
+ * 扫描所有发言类消息，统计存活玩家中自称预言家的人数；
+ * 恰好一人时返回该玩家（供投票阶段加「无硬反证不得放逐」的最终约束），否则返回 null。
+ * 只用公开信息，不借用引擎的真实身份，避免泄漏真预言家身份。
+ */
+export const findLoneSeerClaimant = (state: GameState): Player | null => {
+  const claimantSeats = new Set<number>();
+  for (const m of state.messages) {
+    if (m.isSystem) continue;
+    if (!m.phase || !SEER_CLAIM_PHASES.has(m.phase)) continue;
+    if (SEER_CLAIM_NEGATIVE_PATTERNS.some((p) => p.test(m.content))) continue;
+    if (!SEER_CLAIM_PATTERNS.some((p) => p.test(m.content))) continue;
+    const speaker = state.players.find((p) => p.playerId === m.playerId);
+    if (speaker?.alive) claimantSeats.add(speaker.seat);
+  }
+  if (claimantSeats.size !== 1) return null;
+  const claimantSeat = [...claimantSeats][0]!;
+  return state.players.find((p) => p.seat === claimantSeat) ?? null;
+};
+
 export const buildPlayerTodaySpeech = (state: GameState, player: Player): string => {
   const speech = state.messages
     .filter((m) => m.day === state.day)
