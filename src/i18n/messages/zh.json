@@ -1028,6 +1028,7 @@
       "phaseSection": "【当前环节】\n{phaseHint}",
       "userNoTranscript": "（暂无，你是第{speakOrder}个发言）",
       "userNoSelfSpeech": "（无）",
+"formatReminder": "只输出 JSON 字符串数组，形如 [\"第一段。\",\"第二段。\"]；不要写解释、思考过程或段落文字。",
       "user": "{gameContext}\n\n【本日讨论记录】\n{todayTranscript}\n\n【你本日已说过的话】\n{selfSpeech}\n\n{phaseHintSection}\n\n【发言顺序】\n{speakOrderHint}\n\n轮到你发言，返回JSON数组："
     },
     "vote": {
