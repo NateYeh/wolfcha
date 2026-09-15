@@ -22,6 +22,7 @@ import {
   hasTokendanceKey,
   hasZenmuxKey,
   isCustomKeyEnabled,
+  isTokenPayActive,
 } from "@/lib/api-keys";
 import { aiLogger } from "./ai-logger";
 import { GAME_TEMPERATURE } from "./ai-config";
@@ -57,6 +58,8 @@ const MODEL_DISPLAY_NAME_MAP: Array<{ match: RegExp; label: string }> = [
 const CHARACTER_GENERATOR_REASONING = { enabled: false } as const;
 const CHARACTER_PERSONA_BATCH_SIZE = 3;
 const CHARACTER_PERSONA_BATCH_MAX_TOKENS = 4200;
+const CHARACTER_BATCH_MAX_ATTEMPTS = 2;
+const CHARACTER_BATCH_RETRY_DELAY_MS = 800;
 
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
@@ -577,7 +580,7 @@ export async function generateCharacters(
     console.log(`[character-gen] emitted character ${index}: ${character.displayName}`);
   };
 
-  const generatePersonaBatch = async (
+  const generatePersonaBatchAttempt = async (
     batchProfiles: BaseProfile[],
     batchStartIndex: number,
   ): Promise<GeneratedCharacter[]> => {
@@ -729,6 +732,35 @@ export async function generateCharacters(
       });
       throw error;
     }
+  };
+
+  /**
+   * 重試包裝：模型偶爾會吐出壞掉的 JSON（例如字串漏掉結尾引號），使整批作廢。
+   * 這種瑕疵是抽樣随機現象，重新取一次通常就好了。
+   *
+   * TokenPay 付費路徑不重試：已經收到部分內容再打一次等於重複計費。
+   */
+  const generatePersonaBatch = async (
+    batchProfiles: BaseProfile[],
+    batchStartIndex: number,
+  ): Promise<GeneratedCharacter[]> => {
+    const maxAttempts = isTokenPayActive() ? 1 : CHARACTER_BATCH_MAX_ATTEMPTS;
+    let lastError: unknown = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await generatePersonaBatchAttempt(batchProfiles, batchStartIndex);
+      } catch (error) {
+        lastError = error;
+        if (attempt >= maxAttempts) break;
+        console.warn(
+          `[character-gen] batch ${batchStartIndex} 第 ${attempt} 次失敗（${String(error)}），重試`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, CHARACTER_BATCH_RETRY_DELAY_MS));
+      }
+    }
+
+    throw lastError;
   };
 
   const batchTasks: Promise<GeneratedCharacter[]>[] = [];
