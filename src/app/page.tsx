@@ -1560,7 +1560,7 @@ export default function Home() {
                             isBadgeHolder={gameState.badge.holderSeat === player.seat}
                             isBadgeCandidate={isBadgeCandidate}
                             showRoleBadge={canShowRole}
-                            showModel={gameState.phase === "GAME_END"}
+                            showModel
                             selectionTone={selectionTone}
                             isInSelectionPhase={isSelectionPhase}
                           />
@@ -1672,7 +1672,7 @@ export default function Home() {
                             isBadgeHolder={gameState.badge.holderSeat === player.seat}
                             isBadgeCandidate={isBadgeCandidate}
                             showRoleBadge={canShowRole}
-                            showModel={gameState.phase === "GAME_END"}
+                            showModel
                             selectionTone={selectionTone}
                             isInSelectionPhase={isSelectionPhase}
                           />
