@@ -9,6 +9,20 @@ import { generateUUID } from "./utils";
 
 const LOCAL_LOGS_STORAGE_KEY = "wolfcha_ai_logs";
 
+// [LOCAL DEV PATCH] 落盤檔名：wolfcha-<YYYYMMDD-HHmmss>-<session 前 6 碼>.log。
+// 檔名可排序，伺服器依檔名保留最新 N 局。
+const LOG_FILE_PREFIX = "wolfcha";
+
+function buildLogFileName(gameKey?: string | null, startedAt?: number | null): string {
+  const date = new Date(typeof startedAt === "number" && Number.isFinite(startedAt) ? startedAt : Date.now());
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const stamp = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`
+    + `-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+  const key = (gameKey ?? "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 6)
+    || generateUUID().replace(/-/g, "").slice(0, 6);
+  return `${LOG_FILE_PREFIX}-${stamp}-${key}.log`;
+}
+
 const AI_LOGGER_PAGE_LOAD_CLEAR_FLAG = "__wolfcha_ai_logger_page_load_cleared__";
 
 function canUseStorage(): boolean {
@@ -68,6 +82,7 @@ function parseCacheUsageFromRawResponse(rawResponse: string | undefined): Prompt
 
 class AILogger {
   private localCache: AILogEntry[] | null = null;
+  private logFile: string | null = null;
   private readonly listeners = new Set<AILogListener>();
 
   subscribe(listener: AILogListener): () => void {
@@ -147,15 +162,24 @@ class AILogger {
   }
 
   /**
+   * [LOCAL DEV PATCH] 指定本局要寫入的落盤檔名。同一局重複呼叫（例如重整後
+   * 恢復）會算出相同檔名，因此會接續寫在同一個檔案。
+   */
+  startGameLog(gameKey?: string | null, startedAt?: number | null) {
+    this.logFile = buildLogFileName(gameKey, startedAt);
+  }
+
+  /**
    * [LOCAL DEV PATCH] 將紀錄追加到本機日誌檔，讓紀錄能跨頁面重整保留。
-   * 實際寫入位置由伺服器的 WOLFCHA_AI_LOG_FILE 決定；寫入失敗不影響遊戲。
+   * 實際寫入位置由伺服器的 WOLFCHA_AI_LOG_DIR 決定；寫入失敗不影響遊戲。
    */
   private appendToFile(entry: AILogEntry) {
     if (!canUseStorage()) return;
+    if (!this.logFile) this.logFile = buildLogFileName(null, null);
     void fetch("/api/dev-ai-logs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(entry),
+      body: JSON.stringify({ file: this.logFile, entry }),
       keepalive: true,
     }).catch(() => {
       // 檔案紀錄失敗时靜默處理，不干擾對局

@@ -117,6 +117,8 @@ export function useGameLogic() {
     if (isRestorableGameState(gameState) && gameState.players.length > 0 && gameState.gameSessionId) {
       console.info("[wolfcha] Restoring game session from previous state");
       gameSessionTracker.rehydrate(gameState.gameSessionId, gameState.startTime ?? Date.now());
+      // [LOCAL DEV PATCH] 重整恢復時接續寫入同一局的紀錄檔
+      aiLogger.startGameLog(gameState.gameSessionId, gameState.startTime);
       void gameSessionTracker.syncProgressImmediate().catch((error) => {
         console.error("[game-session] Failed to sync restored session:", error);
       });
@@ -1436,6 +1438,8 @@ export function useGameLogic() {
       if (sessionId) {
         gameStatsTracker.setSessionId(sessionId);
       }
+      // [LOCAL DEV PATCH] 這一局的 AI 紀錄寫進獨立檔案
+      aiLogger.startGameLog(sessionId);
 
       const systemMessages = getSystemMessages();
       const scenario = isGenshinMode ? undefined : getRandomScenario();
