@@ -38,8 +38,8 @@ const ZENMUX_API_URL = "https://zenmux.ai/api/v1/chat/completions";
 const DASHSCOPE_API_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 const DASHSCOPE_CHAT_COMPLETIONS_URL = `${DASHSCOPE_API_BASE_URL}/chat/completions`;
 
-// API 调用超时时间（毫秒）；非流式请求要在这段时间内跑完，5 分钟给慢模型留足余量。
-const API_TIMEOUT_MS = 300000;
+// API 调用超时时间（毫秒）；非流式请求要在这段时间内跑完，1 分钟足够正常模型响应，超时快速失败可触发重试。
+const API_TIMEOUT_MS = 60000;
 const MAX_BATCH_REQUESTS = 12;
 
 // 部分上游（例如自架 gpt-load 閘道器）的推理模型，會把 thinking 產生的 token
