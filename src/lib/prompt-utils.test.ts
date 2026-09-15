@@ -148,6 +148,22 @@ test("狼人协作原则只在白天拼入队友劣势时的切割指引，不�
   assert.doesNotMatch(nightTeam, /狼队协作原则/);
 });
 
+test("票型不能当铁证：白天对所有阵营提示狼可投队友，夜间不拼入", () => {
+  const dayState = makeState();
+  const villager = dayState.players.find((p) => p.role === "Villager")!;
+  const wolf = dayState.players.find((p) => p.role === "Werewolf")!;
+  for (const actor of [villager, wolf]) {
+    const rules = buildGameContext(dayState, actor).match(/<rules>[\s\S]*?<\/rules>/)?.[0];
+    assert.ok(rules);
+    assert.match(rules, /狼人也可以在警徽选举或放逐投票中投队友/);
+  }
+
+  const nightState: GameState = { ...makeState(), phase: "NIGHT_WOLF_ACTION" };
+  const nightRules = buildGameContext(nightState, wolf).match(/<rules>[\s\S]*?<\/rules>/)?.[0];
+  assert.ok(nightRules);
+  assert.doesNotMatch(nightRules, /狼人也可以在警徽选举或放逐投票中投队友/);
+});
+
 test("警徽竞选期间明确死亡结果未公布，不能从空死亡列表推断平安夜", () => {
   const state = makeState();
   state.nightHistory = { 1: { wolfTarget: 4, deaths: [] } };

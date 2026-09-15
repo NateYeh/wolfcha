@@ -874,6 +874,11 @@ alive_count: ${alivePlayers.length}
     state.phase.includes("DAY")
       ? t("promptUtils.gameContext.noSameDayCausalityNote")
       : "";
+  // 票型不能当铁证：狼人也可以投队友做局，因此白天凡是涉及投票的环节都要提示。
+  // 夜间没有投票，不拼入以免干扰出刀判断。
+  const wolfVoteTeammateNote = state.phase.includes("DAY")
+    ? t("promptUtils.gameContext.wolfVoteTeammateNote")
+    : "";
   
   // Check if guard exists in this game
   const hasGuard = state.players.some(p => p.role === "Guard");
@@ -898,6 +903,9 @@ alive_count: ${alivePlayers.length}
   rulesText += `\n${phaseOrderNote}`;
   if (noSameDayCausalityNote) {
     rulesText += `\n${noSameDayCausalityNote}`;
+  }
+  if (wolfVoteTeammateNote) {
+    rulesText += `\n${wolfVoteTeammateNote}`;
   }
   
   if (rulesText) {
