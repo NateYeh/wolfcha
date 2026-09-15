@@ -1448,7 +1448,15 @@
     "idiotRevealed": "Seat {seat} {name} is the Idiot — immune to exile! Loses voting rights.",
     "whiteWolfKingBoom": "Seat {seat} {name} self-destructed! Took Seat {targetSeat} {targetName}.",
     "whiteWolfKingBoomNoTarget": "Seat {seat} {name} self-destructed! Didn't take anyone.",
-    "whiteWolfKingPrompt": "You are the White Wolf King. Tap a player card to choose your self-destruct target (or skip)."
+    "whiteWolfKingPrompt": "You are the White Wolf King. Tap a player card to choose your self-destruct target (or skip).",
+    "remarkTitle": "—— Post-game remarks ——",
+    "remarkSystem": "【Post-game remark】\nYou are Seat {seat} \"{name}\", role: {role}. The game is over and every identity is now public.\n{resultLine}\nDeliver one post-game remark in your character's voice:\n- If you won: praise the true god roles and key plays, or roast the confusing moves on the enemy side (\"they were secretly working for us\": voting good players out as wolves, misdirected night kills, random badge votes, etc.).\n- If you lost: roast the pig teammates — who played badly, who misled the whole table, who dropped the ball at the critical moment; you may also mock your own misreads.\n- Point at specific seats and specific actions, keep your character's tone, no empty politeness, and do not retell the whole game.\n【Output】Output the remark text directly, one paragraph within 60 characters; no JSON, no explanations.",
+    "remarkResultWin": "Your alignment won this game.",
+    "remarkResultLose": "Your alignment lost this game.",
+    "remarkUser": "【Full reveal】\n{reveal}\n\n【Key events】\n{keyEvents}\n\nYour speaking style: {personaLine}\nNow deliver your post-game remark.",
+    "remarkRevealLine": "Seat {seat} {name}: {role}{human}",
+    "remarkHumanTag": " (the human player)",
+    "remarkNoEvents": "(no daily records)"
   },
   "gameLogic": {
     "errors": {

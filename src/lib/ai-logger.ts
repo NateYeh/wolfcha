@@ -50,7 +50,8 @@ export interface AILogEntry {
    | "wolf_action" 
    | "guard_action" 
    | "witch_action" 
-   | "hunter_shoot" | "wwk_boom_decision" | "character_generation" | "daily_summary" | "daily_summary_retry" | "wolf_chat";
+   | "hunter_shoot" | "wwk_boom_decision" | "character_generation" | "daily_summary" | "daily_summary_retry" | "wolf_chat"
+  | "game_end_remark";
   request: {
     model: string;
     messages: LLMMessage[];

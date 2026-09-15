@@ -23,7 +23,7 @@ import { aiLogger } from "./ai-logger";
 import { getGeneratorModel, getSummaryModel } from "@/lib/api-keys";
 import { PhaseManager } from "@/game/core/PhaseManager";
 import type { PromptResult } from "@/game/core/types";
-import { buildCachedSystemMessageFromParts } from "./prompt-utils";
+import { buildCachedSystemMessageFromParts, getRoleText } from "./prompt-utils";
 import { parseLLMJson } from "./llm-json";
 import { getI18n } from "@/i18n/translator";
 import { getRoleConfiguration } from "@/lib/role-configuration";
@@ -1956,6 +1956,105 @@ export async function generateHunterShoot(
       error: String(error),
     });
     return null;
+  }
+}
+
+/**
+ * 赛后感言：游戏结束、全员身份公开后，单个 AI 角色的复盘发言。
+ * 赢家点评真神/调侃对方「卧底」，输家吐槽猪队友；失败返回空串（调用方跳过）。
+ */
+export async function generateGameEndRemark(
+  state: GameState,
+  player: Player,
+  winner: Alignment
+): Promise<string> {
+  const { t } = getI18n();
+  const reveal = state.players
+    .slice()
+    .sort((a, b) => a.seat - b.seat)
+    .map((p) =>
+      t("specialEvents.remarkRevealLine", {
+        seat: p.seat + 1,
+        name: p.displayName,
+        role: getRoleText(p.role),
+        human: p.isHuman ? t("specialEvents.remarkHumanTag") : "",
+      })
+    )
+    .join("\n");
+  // 关键事件：用各日总结压缩成赛后盘点素材，封顶避免 prompt 过长。
+  const keyEvents = Object.entries(state.dailySummaries ?? {})
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([day, bullets]) => `第${day}天：${(bullets ?? []).join("；")}`)
+    .join("\n")
+    .slice(0, 1600);
+  const persona = player.agentProfile?.persona;
+  const personaLine = persona?.voiceRules?.length
+    ? persona.voiceRules.join(t("promptUtils.gameContext.listSeparator"))
+    : "";
+
+  const prompt: PromptResult = {
+    system: t("specialEvents.remarkSystem", {
+      seat: player.seat + 1,
+      name: player.displayName,
+      role: getRoleText(player.role),
+      resultLine:
+        (player.alignment === "wolf") === (winner === "wolf")
+          ? t("specialEvents.remarkResultWin")
+          : t("specialEvents.remarkResultLose"),
+    }),
+    user: t("specialEvents.remarkUser", {
+      reveal,
+      keyEvents: keyEvents || t("specialEvents.remarkNoEvents"),
+      personaLine,
+    }),
+  };
+  const { messages } = buildMessagesForPrompt(prompt, false);
+  const startTime = Date.now();
+
+  try {
+    const result = await generateCompletion(
+      mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+        model: player.agentProfile!.modelRef.model,
+        messages,
+        promptScope: "gameplay",
+        temperature: GAME_TEMPERATURE.SPEECH,
+      })
+    );
+    const remark = sanitizeModelArtifacts(result.content)
+      .replace(/```[a-z]*\n?/gi, "")
+      .replace(/[`\n]+/g, " ")
+      .trim()
+      .slice(0, 160);
+
+    await aiLogger.log({
+      type: "game_end_remark",
+      request: {
+        model: player.agentProfile!.modelRef.model,
+        messages,
+        player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+      },
+      response: {
+        content: remark,
+        raw: result.content,
+        rawResponse: JSON.stringify(result.raw, null, 2),
+        finishReason: result.raw.choices?.[0]?.finish_reason,
+        duration: Date.now() - startTime,
+      },
+    });
+    return remark;
+  } catch (error) {
+    console.warn("[wolfcha] generateGameEndRemark failed:", player.displayName, error);
+    await aiLogger.log({
+      type: "game_end_remark",
+      request: {
+        model: player.agentProfile!.modelRef.model,
+        messages,
+        player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+      },
+      response: { content: "", duration: Date.now() - startTime },
+      error: String(error),
+    });
+    return "";
   }
 }
 

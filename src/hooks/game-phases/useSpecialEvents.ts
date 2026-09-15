@@ -18,6 +18,7 @@ import { delay, type FlowToken } from "@/lib/game-flow-controller";
 import { playNarrator } from "@/lib/narrator-audio-player";
 import { gameStatsTracker } from "@/hooks/useGameStats";
 import { gameSessionTracker } from "@/lib/game-session-tracker";
+import { addPlayerMessage, generateGameEndRemark } from "@/lib/game-master";
 
 export interface SpecialEventsCallbacks {
   setDialogue: (speaker: string, text: string, isStreaming?: boolean) => void;
@@ -88,9 +89,37 @@ export function useSpecialEvents(
       console.error("[game-session] Failed to end:", err);
     });
 
+    // 赛后感言：身份全公开后，AI 角色依次复盘本局（赢家点评真神/调侃对方
+    // 「卧底」，输家吐槽猪队友）。单个失败仅跳过该角色，不阻断后续。
+    currentState = addSystemMessage(currentState, texts.t("specialEvents.remarkTitle"));
+    setGameState(currentState);
+    setIsWaitingForAI(true);
+    try {
+      const speakers = currentState.players
+        .filter((p) => !p.isHuman)
+        .sort((a, b) => a.seat - b.seat);
+      for (const speaker of speakers) {
+        try {
+          const remark = await generateGameEndRemark(currentState, speaker, winner);
+          if (!remark.trim()) {
+            console.warn("[game-end] 空感言，跳过:", speaker.displayName);
+            continue;
+          }
+          currentState = addPlayerMessage(currentState, speaker.playerId, remark);
+          setGameState(currentState);
+          setDialogue(speaker.displayName, remark, false);
+          await delay(DELAY_CONFIG.DIALOGUE);
+        } catch (error) {
+          console.warn("[game-end] 感言生成失败，跳过:", speaker.displayName, error);
+        }
+      }
+    } finally {
+      setIsWaitingForAI(false);
+    }
+
     // 播放游戏结束语音
     await playNarrator(winner === "village" ? "villageWin" : "wolfWin");
-  }, [setGameState, setDialogue, prepareFinalState]);
+  }, [setGameState, setDialogue, setIsWaitingForAI, prepareFinalState]);
 
   /** 处理猎人死亡开枪 */
   const handleHunterDeath = useCallback(async (
