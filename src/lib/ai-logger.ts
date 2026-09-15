@@ -73,6 +73,8 @@ export interface AILogEntry {
     cache?: PromptCacheUsage; // Official provider cache counters normalized for reporting
   };
   error?: string;
+  /** 這筆失敗之後會自動重試，不是最終失敗；控制台降級成 warning 顯示。 */
+  retrying?: boolean;
 }
 
 export type AILogListener = (entry: AILogEntry) => void | Promise<void>;
@@ -262,7 +264,8 @@ class AILogger {
     }
     console.log("Duration:", `${entry.response.duration}ms`);
     if (entry.error) {
-      console.error("Error:", entry.error);
+      if (entry.retrying) console.warn("Error（即将自动重试）:", entry.error);
+      else console.error("Error:", entry.error);
     }
     console.groupEnd();
   }

@@ -583,6 +583,7 @@ export async function generateCharacters(
   const generatePersonaBatchAttempt = async (
     batchProfiles: BaseProfile[],
     batchStartIndex: number,
+    retrying: boolean,
   ): Promise<GeneratedCharacter[]> => {
     const batchStartedAt = Date.now();
     const batchModel = getGeneratorModel();
@@ -729,6 +730,7 @@ export async function generateCharacters(
           rawResponse: JSON.stringify({ batchStartIndex }),
         },
         error: String(error),
+        retrying,
       });
       throw error;
     }
@@ -749,7 +751,7 @@ export async function generateCharacters(
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        return await generatePersonaBatchAttempt(batchProfiles, batchStartIndex);
+        return await generatePersonaBatchAttempt(batchProfiles, batchStartIndex, attempt < maxAttempts);
       } catch (error) {
         lastError = error;
         if (attempt >= maxAttempts) break;
