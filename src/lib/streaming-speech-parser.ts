@@ -29,6 +29,7 @@ export class StreamingSpeechParser {
   private decodingError: string | undefined;
   private pendingString: string | undefined;
   private completeDocument = false;
+  private trailingJunk = false;
 
   constructor(private readonly options: StreamingSpeechParserOptions = {}) {}
 
@@ -130,6 +131,9 @@ export class StreamingSpeechParser {
       if (!this.frames.length && ch !== "[" && ch !== "{") {
         this.prefix += ch;
         if (!"```json".startsWith(this.prefix) && !"```".startsWith(this.prefix)) {
+          // 完整公开文档之后的垃圾尾缀（模型常在 JSON 后面补一句解释或自我检查）。
+          // 仍然标记为 invalid 以保持既有的格式错误上报，但让调用方能够区分并降级处理。
+          if (this.completeDocument) this.trailingJunk = true;
           this.invalid = true;
           return;
         }
@@ -182,6 +186,8 @@ export class StreamingSpeechParser {
   public getSegmentCount(): number { return this.segments.length; }
   /** 完整公开文档之后的垃圾尾缀可以丢弃；文档本身中断则必须恢复。 */
   public hasCompleteDocument(): boolean { return this.completeDocument; }
+  /** 是否只在完整文档之后出现了垃圾尾缀（模型补写的解释／自我检查，不是文档损坏）。 */
+  public hasTrailingJunk(): boolean { return this.trailingJunk; }
   public reset(): void {
     this.frames = [];
     this.segments = [];
@@ -191,6 +197,7 @@ export class StreamingSpeechParser {
     this.decodingError = undefined;
     this.pendingString = undefined;
     this.completeDocument = false;
+    this.trailingJunk = false;
     this.prefix = "";
   }
 }

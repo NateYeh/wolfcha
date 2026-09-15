@@ -795,6 +795,29 @@ export async function generateAISpeech(
   return result;
 }
 
+/**
+ * 区分「真正解析失败」与「文档已完整、只是尾缀多了一段说明」。
+ *
+ * 模型常在 JSON 数组后面补一句自我检查（例如 "Wait, need to check message count max 2."），
+ * 解析器会把这段尾缀当成格式错误上报。此时公开段落都已产出、预取也会被采用，
+ * 解析器自己的注释也写明「完整公开文档之后的垃圾尾缀可以丢弃」，因此不该记成 error。
+ *
+ * 注意只有尾缀垃圾、且没有触发恢复时才能降级：如果文档内容不合法到需要重新生成
+ * （recovered 为 true），那个格式错误是有意义的，必须照旧上报。
+ */
+export function resolveSpeechParseError(
+  parseError: string | undefined,
+  parser: StreamingSpeechParser,
+  recovered: boolean,
+): string | undefined {
+  if (!parseError) return undefined;
+  if (parser.hasTrailingJunk() && !recovered) {
+    console.warn("[speech] 已丢弃 JSON 数组之后的尾缀说明，不作为解析失败处理");
+    return undefined;
+  }
+  return parseError;
+}
+
 export async function generateAISpeechSegments(
   state: GameState,
   player: Player
@@ -836,7 +859,7 @@ export async function generateAISpeechSegments(
         finishReason: result.raw.choices?.[0]?.finish_reason,
         duration: Date.now() - startTime,
       },
-      error: parseError,
+      error: resolveSpeechParseError(parseError, parser, Boolean(recovery)),
     });
 
     return segments;
@@ -991,7 +1014,7 @@ export async function generateAISpeechSegmentsStream(
           rawResponse: recoveryDetails ? JSON.stringify({ recovery: recoveryDetails }) : undefined,
           duration: Date.now() - startTime,
         },
-        error: parseError,
+        error: resolveSpeechParseError(parseError, parser, Boolean(recoveryDetails)),
       });
 
       options.onComplete?.(result);

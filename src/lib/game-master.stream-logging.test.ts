@@ -108,6 +108,8 @@ test("生产流式链路不泄露 analysis，字幕、返回值和日志保留�
     { input: '[{"content":"不能公开的提示词","role":"user"},{"role":"assistant","content":"[\\"公开发言\\"]"}]', expected: ["公开发言"] },
     { input: '{"analysis":"我是狼人，准备装预言家"}', expected: ["恢复公开发言"], hasError: true },
     { input: '["公开首句",broken]', expected: ["公开首句", "恢复公开发言"], hasError: true },
+    // 模型在 JSON 数组后补自我检查/解释时，文档已完整、段落也齐，不该记成解析失败。
+    { input: '["公开首句"]\n\nWait, need to check message count max 2. Good. Let me keep it.', expected: ["公开首句"] },
   ];
   try {
     for (const output of outputs) {
