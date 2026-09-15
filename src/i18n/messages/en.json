@@ -1692,7 +1692,7 @@
       "phaseOrderNote": "Phase order: Night (wolf kills) → Dawn death announcement → Free discussion → Vote. Wolf kills happen before daytime speech, so today's not-yet-spoken statements cannot explain last night's target.",
       "phaseOrderNoteDay1BadgeBeforeDeath": "Phase order: Night (wolf kills) → Sheriff campaign → Dawn death announcement → Free discussion → Vote. Note: Wolf kills happen BEFORE the campaign; wolves have NOT heard any daytime speeches when they kill.",
       "noSameDayCausalityNote": "Timeline reminder: last night's kill target is locked before today's daytime begins; do not treat today's campaign, role claims, or speeches as the direct cause of last night's kill.",
-"wolfVoteTeammateNote": "Vote note: werewolves may also vote for a teammate in the sheriff election or the elimination vote (passing gold-water, setting up a play, cutting a lost teammate); a vote pattern does not prove that the voted player is good.",
+"wolfVoteTeammateNote": "Vote note: werewolves may also vote for a teammate in the sheriff election or the elimination vote (passing gold-water, setting up a play, cutting a lost teammate), so a vote pattern alone does not prove the voted player is good. Conversely, the same group repeatedly piling votes onto the same player (especially funneling sheriff votes to one candidate) remains a key clue of wolf coordination; do not dismiss it just because 'wolves would not be that obvious'.",
       "deathCauseWolf": "wolf kill",
       "deathCausePoison": "poisoned",
       "deathCauseVote": "voted out",

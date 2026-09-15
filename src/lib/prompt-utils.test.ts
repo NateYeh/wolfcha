@@ -156,6 +156,9 @@ test("票型不能当铁证：白天对所有阵营提示狼可投队友，夜�
     const rules = buildGameContext(dayState, actor).match(/<rules>[\s\S]*?<\/rules>/)?.[0];
     assert.ok(rules);
     assert.match(rules, /狼人也可以在警徽选举或放逐投票中投队友/);
+    // 票型不能当铁证，但票型集中仍是狼队线索（两个方向都要写清楚）。
+    assert.match(rules, /同一批人反复把票集中给同一个人/);
+    assert.match(rules, /不要因为“狼不会这么明显”就排除这种可能/);
   }
 
   const nightState: GameState = { ...makeState(), phase: "NIGHT_WOLF_ACTION" };
