@@ -134,6 +134,20 @@ test("狼人私密队伍按存活状态明确分组，且不包含村民", () =>
   assert.doesNotMatch(wolfTeam, /3号村民玩家/);
 });
 
+test("狼人协作原则只在白天拼入队友劣势时的切割指引，不污染夜间行动", () => {
+  const dayState = makeState();
+  const dayTeam = buildGameContext(dayState, dayState.players[1]).match(/<your_wolf_team>[\s\S]*?<\/your_wolf_team>/)?.[0];
+  assert.ok(dayTeam);
+  assert.match(dayTeam, /【狼队协作原则】/);
+  assert.match(dayTeam, /必要时把票投给队友（弃车保帅）/);
+  assert.match(dayTeam, /队友还有救/);
+
+  const nightState: GameState = { ...makeState(), phase: "NIGHT_WOLF_ACTION" };
+  const nightTeam = buildGameContext(nightState, nightState.players[1]).match(/<your_wolf_team>[\s\S]*?<\/your_wolf_team>/)?.[0];
+  assert.ok(nightTeam);
+  assert.doesNotMatch(nightTeam, /狼队协作原则/);
+});
+
 test("警徽竞选期间明确死亡结果未公布，不能从空死亡列表推断平安夜", () => {
   const state = makeState();
   state.nightHistory = { 1: { wolfTarget: 4, deaths: [] } };

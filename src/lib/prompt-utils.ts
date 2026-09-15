@@ -762,6 +762,11 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
     if (killRecords.length > 0) {
       wolfInfo += `\n【狼队出刀记录】\n${killRecords.join("\n")}`;
     }
+    // 白天才有保人与切割的取舍：队友劣势时无脑硬保会把狼队绑成一条线一起暴露。
+    // 夜间出刀与本原则无关，因此只在白天阶段拼入。
+    if (state.phase.includes("DAY")) {
+      wolfInfo += `\n【狼队协作原则】\n队友被集中怀疑时，不要无脑保人：公开硬保会把你和队友绑成一条线，等于一起暴露。\n- 队友还有救：按公开事实正常为他说话，要有依据，不能空喊“他是好人”。\n- 队友已明显挡不住票：不要硬撑，可以保持中立或顺势切割，必要时把票投给队友（弃车保帅）。\n- 判断标准是狼队整体收益，不是保住某一个队友；票型本身不能证明被投的人是好人。`;
+    }
     wolfInfo += `\n</your_wolf_team>`;
     return wolfInfo;
   }
