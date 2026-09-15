@@ -25,6 +25,21 @@ const message = (state: GameState, content: string, phase: Phase, seat = 0, roun
   content, phase, day: state.day, timestamp: 1, speechRound: round,
 });
 
+test("狼人夜晚出刀提示必须包含守卫博弈推断（守卫可能守谁、连刀逻辑）", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("NIGHT_WOLF_ACTION");
+  const actor = state.players.find((p) => p.role === "Werewolf")!;
+  state.currentSpeakerSeat = actor.seat;
+  const prompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state }, actor)!;
+  assert.match(prompt.user, /【守卫博弈】出刀前先推断守卫今晚会守谁/);
+  // 守卫倾向目标：公开跳神、警长、金水、昨晚刀口未死的目标。
+  assert.match(prompt.user, /昨晚刀口没死的目标/);
+  // 连刀逻辑：被刀却平安夜的目标，今晚守卫不能连守、女巫解药已用完。
+  assert.match(prompt.user, /今晚连刀 X 命中率通常最高/);
+  assert.match(prompt.user, /避开第 1 条里守卫今晚最可能守的座位/);
+});
+
 const decisions: Phase[] = ["DAY_BADGE_SIGNUP", "DAY_BADGE_ELECTION", "BADGE_TRANSFER", "DAY_VOTE", "HUNTER_SHOOT", "WHITE_WOLF_KING_BOOM", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"];
 for (const phase of decisions) {
   test(`阶段矩阵：${phase} 必须包含已公开的当天证据`, async () => {

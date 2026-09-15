@@ -1053,7 +1053,8 @@
         "teammateVotes": "【Teammate intent】\n{lines}",
         "voteLine": "- Seat {seat} ({name}) wants to kill: Seat {targetSeat}{targetName}",
         "task": "【Werewolf Skill】\nEach night wolves collectively decide to kill one player. Can kill good players, teammates (self-kill), or skip (no kill).\n\n【Task】\nChoose one player to kill.\n{teammateVotesSection}\n\nOptions: {options}\n",
-        "user": "{context}\n\nWhich seat do you want to kill?\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text:\n{jsonFormat}"
+        "user": "{context}\n\nWhich seat do you want to kill?\n{guardNote}\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text:\n{jsonFormat}",
+        "guardMindGame": "【Guard mind game】Before knifing, predict who the guard will protect tonight; do not feed your knife straight into the guard's arms.\n1. The guard most likely protects: players who publicly claimed god roles (seer, witch), the sheriff, gold-water players, and last night's knife target that survived.\n2. A target X knifed last night but alive at dawn means exactly one of the guard/witch saved X: if it was the guard, he cannot protect X again tonight (no consecutive protection of the same player); if it was the witch, her heal is spent. So re-knifing X tonight usually has the highest success rate, unless the witch may still hold a heal.\n3. If you switch targets, avoid the seats the guard is most likely protecting tonight (per point 1), and prefer key good players the guard cannot cover."
       },
       "guard": {
         "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{winCondition}",

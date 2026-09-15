@@ -600,6 +600,8 @@ export class NightPhase extends GamePhase {
 
     const user = t("prompts.night.wolf.user", {
       context: this.buildContextWithDay(context, todayTranscript, selfSpeech),
+      // 守卫博弈：出刀前推断守卫动向，避免把刀送进守护位（仅夜间出刀提示）。
+      guardNote: t("prompts.night.wolf.guardMindGame"),
       jsonFormat: JSON.stringify({ seat: (alivePlayers[0]?.seat ?? player.seat) + 1 }),
     });
 
