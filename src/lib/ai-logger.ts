@@ -140,9 +140,26 @@ class AILogger {
 
     this.printToConsole(fullEntry);
     this.appendLocal(fullEntry);
+    this.appendToFile(fullEntry);
     this.notify(fullEntry);
 
     return fullEntry;
+  }
+
+  /**
+   * [LOCAL DEV PATCH] 將紀錄追加到本機日誌檔，讓紀錄能跨頁面重整保留。
+   * 實際寫入位置由伺服器的 WOLFCHA_AI_LOG_FILE 決定；寫入失敗不影響遊戲。
+   */
+  private appendToFile(entry: AILogEntry) {
+    if (!canUseStorage()) return;
+    void fetch("/api/dev-ai-logs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(entry),
+      keepalive: true,
+    }).catch(() => {
+      // 檔案紀錄失敗时靜默處理，不干擾對局
+    });
   }
 
   private notify(entry: AILogEntry) {
