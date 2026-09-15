@@ -473,8 +473,10 @@ function doSaveGameState(state: GameState): void {
       state,
       savedAt: Date.now(),
     };
-    localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(persisted));
-    console.debug(`[wolfcha] Saved checkpoint at ${state.phase}, day ${state.day}`);
+    const serialized = JSON.stringify(persisted);
+    localStorage.setItem(GAME_STATE_STORAGE_KEY, serialized);
+    // 帶上大小（KB）：localStorage 配額有限，出現 QuotaExceededError 時可直接看出對局存檔有多大。
+    console.debug(`[wolfcha] Saved checkpoint at ${state.phase}, day ${state.day} (${Math.round(serialized.length * 2 / 1024)} KB)`);
   } catch (error) {
     console.error("[wolfcha] Failed to save game state:", error);
   }

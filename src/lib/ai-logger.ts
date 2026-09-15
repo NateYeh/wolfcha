@@ -9,6 +9,14 @@ import { generateUUID } from "./utils";
 
 const LOCAL_LOGS_STORAGE_KEY = "wolfcha_ai_logs";
 
+const MAX_LOCAL_LOGS = 800;
+/**
+ * localStorage 每個來源只有幾 MB，而 AI 紀錄帶著完整 prompt（單筆約 10KB），
+ * 只靠筆數上限會累積到數 MB，把配額吃光後連對局存檔都會失敗，因此再加一道位元組上限。
+ * localStorage 以 UTF-16 計算，字元數 × 2 即為位元組估算值。
+ */
+const MAX_LOCAL_LOG_BYTES = 1_500_000;
+
 // [LOCAL DEV PATCH] 落盤檔名：wolfcha-<YYYYMMDD-HHmmss>-<session 前 6 碼>.log。
 // 檔名可排序，伺服器依檔名保留最新 N 局。
 const LOG_FILE_PREFIX = "wolfcha";
@@ -115,23 +123,37 @@ class AILogger {
     }
   }
 
-  private persistLocalLogs(logs: AILogEntry[]) {
-    if (!canUseStorage()) return;
-    try {
-      window.localStorage.setItem(LOCAL_LOGS_STORAGE_KEY, JSON.stringify(logs));
-    } catch {
-      // ignore
-    }
-  }
-
   private appendLocal(entry: AILogEntry) {
     if (!canUseStorage()) return;
     const logs = this.loadLocalLogs();
     logs.push(entry);
-    const MAX = 800;
-    const trimmed = logs.length > MAX ? logs.slice(logs.length - MAX) : logs;
+
+    let trimmed = logs.length > MAX_LOCAL_LOGS ? logs.slice(logs.length - MAX_LOCAL_LOGS) : logs;
+    let serialized = JSON.stringify(trimmed);
+    while (trimmed.length > 1 && serialized.length * 2 > MAX_LOCAL_LOG_BYTES) {
+      trimmed = trimmed.slice(Math.max(1, Math.floor(trimmed.length / 4)));
+      serialized = JSON.stringify(trimmed);
+    }
+
+    // 其他 key 佔用過多時仍有機會寫不進去，再丟掉一半最舊紀錄重試，
+    // 避免 AI 紀錄把配額吃光後連對局存檔都一起失敗。
+    for (;;) {
+      try {
+        window.localStorage.setItem(LOCAL_LOGS_STORAGE_KEY, serialized);
+        break;
+      } catch (error) {
+        if (trimmed.length <= 1) {
+          console.warn("[ai-logger] localStorage 寫入 AI 紀錄失敗，已放棄本次紀錄:", error);
+          this.localCache = trimmed;
+          return;
+        }
+        console.warn("[ai-logger] localStorage 配額不足，捨棄較舊的 AI 紀錄後重試:", error);
+        trimmed = trimmed.slice(Math.max(1, Math.floor(trimmed.length / 2)));
+        serialized = JSON.stringify(trimmed);
+      }
+    }
+
     this.localCache = trimmed;
-    this.persistLocalLogs(trimmed);
   }
 
   async log(entry: Omit<AILogEntry, "id" | "timestamp">) {

@@ -60,3 +60,62 @@ test("单个订阅者抛错不会影响其他订阅者或 log", async () => {
     unsubscribeReceiving();
   }
 });
+
+test("localStorage 紀錄依位元組上限裁剪，不會撐爆配額", async () => {
+  const aiLogger = await getLogger();
+  const originalWindow = globalThis.window;
+  const values = new Map<string, string>();
+  const storage: Storage = {
+    get length() { return values.size; },
+    clear: () => values.clear(),
+    getItem: (key) => values.get(key) ?? null,
+    key: (index) => Array.from(values.keys())[index] ?? null,
+    removeItem: (key) => { values.delete(key); },
+    setItem: (key, value) => {
+      const total = Array.from(values.entries()).reduce((sum, [k, v]) => sum + k.length + v.length, 0);
+      if (total / 2 + value.length > 5_000_000) {
+        throw new DOMException("Setting the value exceeded the quota.", "QuotaExceededError");
+      }
+      values.set(key, String(value));
+    },
+  };
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      localStorage: storage,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => true,
+    },
+  });
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: storage });
+
+  const bigEntry = (index: number): Omit<AILogEntry, "id" | "timestamp"> => ({
+    type: "speech",
+    request: { model: "model-1", messages: [{ role: "user", content: `${index}:` + "长".repeat(10_000) }] },
+    response: { content: "回复", duration: 1 },
+  });
+
+  try {
+    await aiLogger.clearLogs();
+    for (let i = 0; i < 400; i++) {
+      await aiLogger.log(bigEntry(i));
+    }
+
+    const stored = values.get("wolfcha_ai_logs");
+    assert.ok(stored, "紀錄應該有寫入 localStorage");
+    assert.ok(stored.length * 2 <= 5_000_000, "不得超過來源配額");
+    assert.ok(stored.length * 2 <= 1_500_000 + 200_000, "應依位元組上限裁剪");
+
+    const logs = JSON.parse(stored) as AILogEntry[];
+    assert.ok(logs.length < 400, "舊紀錄應該被丟棄");
+    const firstContent = (logs[0].request.messages[0].content as string);
+    assert.match(firstContent, /^\d+:/, "保留下來的應該仍是完整且合法的紀錄");
+    const lastContent = logs.at(-1)?.request.messages[0].content;
+    assert.equal(typeof lastContent === "string" && lastContent.startsWith("399:"), true, "最新一筆必須保留");
+  } finally {
+    await aiLogger.clearLogs();
+    if (originalWindow === undefined) Reflect.deleteProperty(globalThis, "window");
+    else Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow });
+  }
+});
