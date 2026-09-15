@@ -2176,7 +2176,8 @@ input[type="submit"]:not(:disabled),
 .wc-notebook-fab {
   position: fixed;
   bottom: 30px;
-  right: 30px;
+  /* 避开右下角 DevConsole 的两颗悬浮按钮（right 20px、宽 48px），否则会盖住它们 */
+  right: 88px;
   width: 56px;
   height: 56px;
   border-radius: 50%;
