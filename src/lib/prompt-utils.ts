@@ -821,6 +821,8 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
     // 夜间出刀与本原则无关，因此只在白天阶段拼入。
     if (state.phase.includes("DAY")) {
       wolfInfo += `\n【狼队协作原则】\n队友被集中怀疑时，不要无脑保人：公开硬保会把你和队友绑成一条线，等于一起暴露。\n- 队友还有救：按公开事实正常为他说话，要有依据，不能空喊“他是好人”。\n- 队友已明显挡不住票：不要硬撑，可以保持中立或顺势切割，必要时把票投给队友（弃车保帅）。\n- 判断标准是狼队整体收益，不是保住某一个队友；票型本身不能证明被投的人是好人。`;
+      // 悍跳守則：白天想跳預言家的狼需要一套不容易被證偽的假查验打法；夜間無關。
+      wolfInfo += `\n${t("promptUtils.gameContext.wolfFakeSeerGuidance")}`;
     }
     wolfInfo += `\n</your_wolf_team>`;
     return wolfInfo;
@@ -945,10 +947,16 @@ alive_count: ${alivePlayers.length}
   const counterClaimNote = isDayPhase ? t("promptUtils.gameContext.counterClaimNote") : "";
   // 查杀未证伪＋毒杀印证＋报查验时机：狼队反打真预言家的标准话术防线，仅白天拼入。
   const unverifiedCheckNote = isDayPhase ? t("promptUtils.gameContext.unverifiedCheckNote") : "";
+  // 線索獨立守則：疊證前先驗獨立性（「相互印證」的一般化前提），僅白天拼入。
+  const evidenceIndependenceNote = isDayPhase ? t("promptUtils.gameContext.evidenceIndependenceNote") : "";
   // 警徽流：预言家夜死后交徽＝最后遗言，优先于生前口头怀疑，仅白天拼入。
   const badgeFlowNote = isDayPhase ? t("promptUtils.gameContext.badgeFlowNote") : "";
   // 夜刀读法：被刀默认＝灭口好人；禁止自刀反推与事后死保定罪，仅白天拼入。
   const nightKillEvidenceNote = isDayPhase ? t("promptUtils.gameContext.nightKillEvidenceNote") : "";
+  // 警長職責：只有拿徽者收到，避免狼警長免費收割「跟警徽走」的權威；僅白天拼入。
+  const sheriffDutyNote = isDayPhase && state.badge?.holderSeat === player.seat
+    ? t("promptUtils.gameContext.sheriffDutyNote")
+    : "";
   
   // Check if guard exists in this game
   const hasGuard = state.players.some(p => p.role === "Guard");
@@ -996,12 +1004,20 @@ alive_count: ${alivePlayers.length}
   if (unverifiedCheckNote) {
     rulesText += `\n${unverifiedCheckNote}`;
   }
+  // 緊貼查殺未證偽守則：獨立守則是「相互印證」的一般化前提。
+  if (evidenceIndependenceNote) {
+    rulesText += `\n${evidenceIndependenceNote}`;
+  }
   if (badgeFlowNote) {
     rulesText += `\n${badgeFlowNote}`;
   }
   // 夜刀读法守则放最末：本局最痛的误判是把刀口反着读（自刀反推、事后死保定罪），需吃 recency。
   if (nightKillEvidenceNote) {
     rulesText += `\n${nightKillEvidenceNote}`;
+  }
+  // 警長職責放最後：對拿徽者是最直接的行動指令（歸票）。
+  if (sheriffDutyNote) {
+    rulesText += `\n${sheriffDutyNote}`;
   }
   
   if (rulesText) {

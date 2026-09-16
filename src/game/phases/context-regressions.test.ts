@@ -501,6 +501,57 @@ test("職業白天指引：預言家/女巫/守衛各得報帳守則，村民無
   assert.doesNotMatch(nightWolfPrompt.user, /对跳守则/);
 });
 
+test("悍跳守则／警长职责／线索独立守则：分眾拼装与排序", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_SPEECH");
+
+  // 悍跳守则：只拼入狼队私有段（白天）
+  const wolf = state.players.find((p) => p.role === "Werewolf")!;
+  state.currentSpeakerSeat = wolf.seat;
+  const wolfPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, wolf)!;
+  assert.match(wolfPrompt.user, /【悍跳守则】/);
+  assert.match(wolfPrompt.user, /报出的查验不得与公开事实矛盾/);
+  assert.match(wolfPrompt.user, /优先给队友递金水/);
+
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  state.currentSpeakerSeat = villager.seat;
+  const villagerPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
+  assert.doesNotMatch(villagerPrompt.user, /【悍跳守则】/);
+
+  // 警长职责：只有拿徽者收到；非拿徽者看不到（避免狼警長免費收割權威）
+  state.phase = "DAY_VOTE";
+  state.badge = { ...state.badge, holderSeat: villager.seat };
+  const holderPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
+  assert.match(holderPrompt.user, /警长职责/);
+  assert.match(holderPrompt.user, /把票集中/);
+  assert.ok(
+    holderPrompt.user.lastIndexOf("警长职责") > holderPrompt.user.lastIndexOf("夜刀读法守则"),
+    "警长职责应排在 rules 最末"
+  );
+  state.badge = { ...state.badge, holderSeat: null };
+  const noBadgePrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
+  assert.doesNotMatch(noBadgePrompt.user, /警长职责/);
+
+  // 线索独立守则：白天 rules 内、夾在查杀未证伪守则与警徽流守则之间
+  assert.match(holderPrompt.user, /线索独立守则/);
+  assert.match(holderPrompt.user, /把关联当独立证据/);
+  assert.ok(
+    holderPrompt.user.indexOf("线索独立守则") > holderPrompt.user.indexOf("查杀未证伪守则") &&
+      holderPrompt.user.indexOf("线索独立守则") < holderPrompt.user.indexOf("警徽流守则"),
+    "线索独立守则应夾在查杀未证伪守则与警徽流守则之间"
+  );
+
+  // 夜间三者均不拼入
+  const nightState = fresh("NIGHT_WOLF_ACTION");
+  const nightWolf = nightState.players.find((p) => p.role === "Werewolf")!;
+  nightState.currentSpeakerSeat = nightWolf.seat;
+  const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, nightWolf)!;
+  assert.doesNotMatch(nightPrompt.user, /【悍跳守则】/);
+  assert.doesNotMatch(nightPrompt.user, /警长职责/);
+  assert.doesNotMatch(nightPrompt.user, /线索独立守则/);
+});
+
 test("投票最终约束：唯一跳预言家者无硬反证不得放逐；对跳/狼侧/本人不受约束", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
