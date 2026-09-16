@@ -362,6 +362,35 @@ test("警徽流守则：唯一无对跳预言家夜死交徽＝最后遗言，�
   assert.doesNotMatch(nightPrompt.user, /警徽流守则/);
 });
 
+test("夜刀读法守则：被刀默认＝灭口好人旁证；禁止自刀反推；死保须按当时信息评估；夜间不拼入", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_VOTE");
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  state.currentSpeakerSeat = villager.seat;
+  const dayPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
+  // 默认读法：狼刀＝灭口威胁，刀口指向＝死者为好的旁证
+  assert.match(dayPrompt.user, /夜刀读法守则/);
+  assert.match(dayPrompt.user, /默认读法是狼队灭口/);
+  // 禁止自刀反推：翻牌不公开，洗白已出局者无收益
+  assert.match(dayPrompt.user, /禁止「自刀反推」/);
+  assert.match(dayPrompt.user, /得不到任何收益/);
+  // 死保定罪须按当时公开信息评估：放逐不翻牌，站边被放逐者可能是正确判断
+  assert.match(dayPrompt.user, /按当时的公开信息评估/);
+  assert.match(dayPrompt.user, /放逐出局并不翻牌/);
+  // 排在 rules 最末（recency，压过警徽流守则）
+  assert.ok(
+    dayPrompt.user.lastIndexOf("夜刀读法守则") > dayPrompt.user.lastIndexOf("警徽流守则"),
+    "夜刀读法守则应在警徽流守则之后"
+  );
+  // 夜间（狼出刀）不拼入
+  const nightState = fresh("NIGHT_WOLF_ACTION");
+  const nightWolf = nightState.players.find((p) => p.role === "Werewolf")!;
+  nightState.currentSpeakerSeat = nightWolf.seat;
+  const nightPrompt2 = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, nightWolf)!;
+  assert.doesNotMatch(nightPrompt2.user, /夜刀读法守则/);
+});
+
 test("投票最终约束：唯一跳预言家者无硬反证不得放逐；对跳/狼侧/本人不受约束", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");

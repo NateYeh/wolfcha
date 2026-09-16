@@ -930,6 +930,8 @@ alive_count: ${alivePlayers.length}
   const unverifiedCheckNote = isDayPhase ? t("promptUtils.gameContext.unverifiedCheckNote") : "";
   // 警徽流：预言家夜死后交徽＝最后遗言，优先于生前口头怀疑，仅白天拼入。
   const badgeFlowNote = isDayPhase ? t("promptUtils.gameContext.badgeFlowNote") : "";
+  // 夜刀读法：被刀默认＝灭口好人；禁止自刀反推与事后死保定罪，仅白天拼入。
+  const nightKillEvidenceNote = isDayPhase ? t("promptUtils.gameContext.nightKillEvidenceNote") : "";
   
   // Check if guard exists in this game
   const hasGuard = state.players.some(p => p.role === "Guard");
@@ -973,9 +975,12 @@ alive_count: ${alivePlayers.length}
   if (unverifiedCheckNote) {
     rulesText += `\n${unverifiedCheckNote}`;
   }
-  // 警徽流放最后：接徽解讀比死者生前發言更晚出現，需吃 recency。
   if (badgeFlowNote) {
     rulesText += `\n${badgeFlowNote}`;
+  }
+  // 夜刀读法守则放最末：本局最痛的误判是把刀口反着读（自刀反推、事后死保定罪），需吃 recency。
+  if (nightKillEvidenceNote) {
+    rulesText += `\n${nightKillEvidenceNote}`;
   }
   
   if (rulesText) {
