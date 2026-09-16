@@ -30,6 +30,7 @@ export interface CharacterPoolStatus {
   /** 池內角色總數。 */
   total: number;
   /** 池綁定的情境；尚未建立時為 null。 */
+  scenarioId: string | null;
   scenarioTitle: string | null;
   /** 目標容量＝一局需要的角色數 × CHARACTER_POOL_ROUNDS。 */
   target: number;
@@ -45,6 +46,7 @@ export function getCharacterPoolStatus(
   return {
     unused: pool ? unusedCharacterIndexes(pool).length : 0,
     total: pool?.characters.length ?? 0,
+    scenarioId: pool?.scenario.id ?? null,
     scenarioTitle: pool?.scenario.title ?? null,
     target,
     refilling: refillInFlight,

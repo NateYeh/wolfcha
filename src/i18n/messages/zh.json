@@ -455,7 +455,21 @@
       "refilling": "生成中…",
       "rebuild": "換情境重建",
       "hint": "停留在歡迎畫面時會自動補到三局份；開局直接從池中抽用，省下角色生成的等待。",
-      "failed": "上一次補充失敗（詳見瀏覽器 console）；開局時將即時生成，不影響遊戲。"
+      "failed": "上一次補充失敗（詳見瀏覽器 console）；開局時將即時生成，不影響遊戲。",
+      "scenarioLabel": "情境",
+      "scenarioRandom": "隨機情境（每次重建換新的）",
+      "scenarioSelectHint": "選情境後按「換情境重建」生效；重建會清空現有池，背景補到三局份。",
+      "builtinGroup": "內建情境",
+      "customGroup": "自訂情境",
+      "customHeading": "自訂情境",
+      "customName": "情境名稱",
+      "customDesc": "世界觀描述",
+      "customRoles": "角色類型與對話調性",
+      "customNamePlaceholder": "例：金庸群俠",
+      "customDescPlaceholder": "例：華山之巔英雄大會，各派高手齊聚一堂，酒過三巡恩怨爆發。",
+      "customRolesPlaceholder": "例：掌門、俠女、魔教教主、丐幫長老。對話風格：武俠腔、恩怨分明。",
+      "customAdd": "儲存並重建",
+      "customDelete": "刪除"
     },
     "rolePreference": {
       "label": "身份偏好",

@@ -78,7 +78,8 @@ const isValidPool = (value: unknown): value is CharacterPool => {
   if (!isRecord(value)) return false;
   if (value.version !== POOL_VERSION) return false;
   if (!isValidScenario(value.scenario)) return false;
-  if (!Array.isArray(value.characters) || value.characters.length === 0) return false;
+  // 允許空池（綁定情境但角色尚未生成）；補充流程會以綁定情境慢慢補滿。
+  if (!Array.isArray(value.characters)) return false;
   if (!value.characters.every(isValidCharacter)) return false;
   if (!Array.isArray(value.usedIndexes)) return false;
   if (!value.usedIndexes.every((index) => Number.isInteger(index))) return false;
@@ -140,6 +141,29 @@ export function clearCharacterPool(storage = resolveCharacterPoolStorage()): voi
   } catch (error) {
     logWarn("清空角色池失敗", error);
   }
+}
+
+/**
+ * 綁定角色池情境：建立（或重設為）「綁定情境的空池」。
+ * 之後的背景補充會以此情境生成，開局抽用時沿用同一情境；
+ * 與 clearCharacterPool 的差異在於 clear 之後會隨機抽新情境，本函式則明確指定。
+ */
+export function setCharacterPoolScenario(
+  scenario: GameScenario,
+  storage = resolveCharacterPoolStorage(),
+): boolean {
+  if (!isValidScenario(scenario)) {
+    logWarn("情境資料不完整，角色池未綁定");
+    return false;
+  }
+  if (!storage) {
+    logWarn("沒有可用的儲存空間，角色池未綁定");
+    return false;
+  }
+  return writeCharacterPool(
+    { version: POOL_VERSION, scenario, characters: [], usedIndexes: [], updatedAt: Date.now() },
+    storage,
+  );
 }
 
 /** 池內尚未被抽用過的索引。 */

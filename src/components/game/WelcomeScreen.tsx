@@ -957,6 +957,7 @@ export function WelcomeScreen({
           characterPoolError={characterPool.error}
           onRefillCharacterPool={() => void characterPool.refillNow()}
           onRebuildCharacterPool={characterPool.rebuild}
+          onRebuildWithScenario={characterPool.rebuildWithScenario}
           playerCount={playerCount}
           onPlayerCountChange={setPlayerCount}
           preferredRole={preferredRole}

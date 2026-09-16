@@ -1,20 +1,29 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { SoundSettingsSection } from "@/components/game/SettingsModal";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useTranslations } from "next-intl";
+import { getScenarios } from "@/lib/scenarios";
+import {
+  deleteCustomScenario,
+  loadCustomScenarios,
+  saveCustomScenario,
+} from "@/lib/custom-scenarios";
 import type { CharacterPoolStatus } from "@/lib/character-pool-refill";
-import type { Role } from "@/types/game";
+import type { GameScenario, Role } from "@/types/game";
 
 /** Return the unique roles present in the default configuration for a given player count. */
 function getAvailableRoles(playerCount: number): Role[] {
@@ -52,6 +61,8 @@ interface GameSetupModalProps {
   characterPoolError: string | null;
   onRefillCharacterPool: () => void;
   onRebuildCharacterPool: () => void;
+  /** 綁定指定情境並重建整池（自訂情境或內建情境）。 */
+  onRebuildWithScenario: (scenario: GameScenario) => void;
 }
 
 
@@ -78,6 +89,7 @@ export function GameSetupModal({
   characterPoolError,
   onRefillCharacterPool,
   onRebuildCharacterPool,
+  onRebuildWithScenario,
 }: GameSetupModalProps) {
   const t = useTranslations();
 
@@ -118,6 +130,59 @@ export function GameSetupModal({
   );
 
   const availableRoles = useMemo(() => getAvailableRoles(playerCount), [playerCount]);
+
+  // 情境選擇與自訂情境表單：選定後按「換情境重建」生效。
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string>("random");
+  const [customScenarios, setCustomScenarios] = useState<GameScenario[]>([]);
+  const [customName, setCustomName] = useState("");
+  const [customDesc, setCustomDesc] = useState("");
+  const [customRoles, setCustomRoles] = useState("");
+
+  // 開啟設定時載入自訂情境清單，並同步目前池綁定的情境。
+  useEffect(() => {
+    if (!open) return;
+    // setState 包在 requestAnimationFrame：避開 effect 內同步 setState 的串聯渲染。
+    const frame = requestAnimationFrame(() => {
+      setCustomScenarios(loadCustomScenarios());
+      setSelectedScenarioId(characterPool.scenarioId ?? "random");
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, characterPool.scenarioId]);
+
+  const allScenarios = useMemo(() => [...getScenarios(), ...customScenarios], [customScenarios]);
+
+  const handleRebuildSelected = () => {
+    if (selectedScenarioId === "random") {
+      onRebuildCharacterPool();
+      return;
+    }
+    const scenario = allScenarios.find((item) => item.id === selectedScenarioId);
+    if (scenario) onRebuildWithScenario(scenario);
+  };
+
+  const canSaveCustom =
+    customName.trim() !== "" && customDesc.trim() !== "" && customRoles.trim() !== "";
+  const handleSaveCustom = () => {
+    const saved = saveCustomScenario({
+      title: customName,
+      description: customDesc,
+      rolesHint: customRoles,
+    });
+    if (!saved) return;
+    setCustomScenarios(loadCustomScenarios());
+    setCustomName("");
+    setCustomDesc("");
+    setCustomRoles("");
+    setSelectedScenarioId(saved.id);
+    onRebuildWithScenario(saved);
+  };
+
+  const handleDeleteCustom = () => {
+    if (!selectedScenarioId.startsWith("custom_")) return;
+    deleteCustomScenario(selectedScenarioId);
+    setCustomScenarios(loadCustomScenarios());
+    setSelectedScenarioId("random");
+  };
 
   // Reset preferred role if it's no longer available for the current player count
   const effectivePreferredRole = preferredRole && availableRoles.includes(preferredRole) ? preferredRole : "";
@@ -225,6 +290,32 @@ export function GameSetupModal({
                 : t("gameSetup.characterPool.empty")}
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Select value={selectedScenarioId} onValueChange={setSelectedScenarioId}>
+                <SelectTrigger className="h-8 w-full text-xs sm:w-[280px]">
+                  <SelectValue placeholder={t("gameSetup.characterPool.scenarioLabel")} />
+                </SelectTrigger>
+                <SelectContent className="max-h-[280px]">
+                  <SelectItem value="random">{t("gameSetup.characterPool.scenarioRandom")}</SelectItem>
+                  <SelectGroup>
+                    <SelectLabel>{t("gameSetup.characterPool.builtinGroup")}</SelectLabel>
+                    {getScenarios().map((scenario) => (
+                      <SelectItem key={scenario.id} value={scenario.id}>
+                        {scenario.title}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  {customScenarios.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>{t("gameSetup.characterPool.customGroup")}</SelectLabel>
+                      {customScenarios.map((scenario) => (
+                        <SelectItem key={scenario.id} value={scenario.id}>
+                          {scenario.title}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                </SelectContent>
+              </Select>
               <Button
                 type="button"
                 variant="outline"
@@ -243,10 +334,69 @@ export function GameSetupModal({
                 size="sm"
                 className="h-8 text-xs"
                 disabled={characterPool.refilling}
-                onClick={onRebuildCharacterPool}
+                onClick={handleRebuildSelected}
               >
                 {t("gameSetup.characterPool.rebuild")}
               </Button>
+              {selectedScenarioId.startsWith("custom_") && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs text-[var(--text-muted)]"
+                  onClick={handleDeleteCustom}
+                >
+                  {t("gameSetup.characterPool.customDelete")}
+                </Button>
+              )}
+            </div>
+            <div className="mt-1 text-xs text-[var(--text-muted)]">
+              {t("gameSetup.characterPool.scenarioSelectHint")}
+            </div>
+
+            {/* 自訂情境表單：填好按「儲存並重建」，角色池會改用該情境生成 */}
+            <div className="mt-3 space-y-2">
+              <div className="text-xs font-medium text-[var(--text-primary)]">
+                {t("gameSetup.characterPool.customHeading")}
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Input
+                  value={customName}
+                  onChange={(event) => setCustomName(event.target.value)}
+                  placeholder={t("gameSetup.characterPool.customNamePlaceholder")}
+                  aria-label={t("gameSetup.characterPool.customName")}
+                  maxLength={30}
+                  className="h-8 text-xs"
+                />
+                <Input
+                  value={customRoles}
+                  onChange={(event) => setCustomRoles(event.target.value)}
+                  placeholder={t("gameSetup.characterPool.customRolesPlaceholder")}
+                  aria-label={t("gameSetup.characterPool.customRoles")}
+                  maxLength={200}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <textarea
+                value={customDesc}
+                onChange={(event) => setCustomDesc(event.target.value)}
+                placeholder={t("gameSetup.characterPool.customDescPlaceholder")}
+                aria-label={t("gameSetup.characterPool.customDesc")}
+                rows={2}
+                maxLength={400}
+                className="w-full rounded-sm border border-[var(--border-color)] bg-transparent px-2 py-1.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+              />
+              <div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={!canSaveCustom || characterPool.refilling}
+                  onClick={handleSaveCustom}
+                >
+                  {t("gameSetup.characterPool.customAdd")}
+                </Button>
+              </div>
             </div>
             <div className="mt-2 text-xs text-[var(--text-muted)]">
               {characterPoolError

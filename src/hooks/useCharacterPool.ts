@@ -8,6 +8,8 @@ import {
   resetCharacterPoolScenario,
   type CharacterPoolStatus,
 } from "@/lib/character-pool-refill";
+import { setCharacterPoolScenario } from "@/lib/character-pool";
+import type { GameScenario } from "@/types/game";
 
 /** 背景補池的間隔；只在歡迎畫面閒置時運作。 */
 const REFILL_TICK_MS = 20000;
@@ -18,8 +20,10 @@ export interface UseCharacterPoolResult {
   error: string | null;
   /** 立即補一批（一局份）；已達標或正在補充時不會重複生成。 */
   refillNow: () => Promise<void>;
-  /** 換一個情境重建整池。 */
+  /** 換一個情境重建整池（隨機抽新情境）。 */
   rebuild: () => void;
+  /** 綁定指定情境並重建整池（自訂情境或內建情境）。 */
+  rebuildWithScenario: (scenario: GameScenario) => void;
 }
 
 /**
@@ -86,5 +90,16 @@ export function useCharacterPool(charactersPerGame: number, enabled: boolean): U
     refresh();
   }, [refresh]);
 
-  return { status, error, refillNow, rebuild };
+  /** 綁定指定情境並重建整池：先寫入「綁定情境的空池」，背景補充會以該情境生成。 */
+  const rebuildWithScenario = useCallback(
+    (scenario: GameScenario) => {
+      const bound = setCharacterPoolScenario(scenario);
+      if (!bound) setError("rebindFailed");
+      else setError(null);
+      refresh();
+    },
+    [refresh],
+  );
+
+  return { status, error, refillNow, rebuild, rebuildWithScenario };
 }

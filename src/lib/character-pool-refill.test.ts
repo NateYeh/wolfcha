@@ -113,7 +113,7 @@ test("角色池狀態：回報未使用數、總數、情境與目標容量", as
   const { getCharacterPoolStatus, refillCharacterPoolOnce } = await loadRefill();
   const storage = makeStorage();
   const before = getCharacterPoolStatus(9, storage);
-  assert.deepEqual(before, { unused: 0, total: 0, scenarioTitle: null, target: 27, refilling: false });
+  assert.deepEqual(before, { unused: 0, total: 0, scenarioId: null, scenarioTitle: null, target: 27, refilling: false });
 
   await refillCharacterPoolOnce(9, storage, async (_c, _s) => batch("丁", 9));
   const after = getCharacterPoolStatus(9, storage);

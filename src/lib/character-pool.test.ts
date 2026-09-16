@@ -11,6 +11,7 @@ import {
   unusedCharacterIndexes,
   type CharacterPool,
   type CharacterPoolStorage,
+  setCharacterPoolScenario,
 } from "./character-pool";
 
 const makeStorage = (): CharacterPoolStorage => {
@@ -136,4 +137,44 @@ test("角色池：沒有可用儲存空間時安全停用（回傳 null 並留�
   assert.equal(readCharacterPool(null), null);
   assert.equal(appendCharactersToPool(scenario("family_dinner"), batch("庚", 3), null), null);
   assert.equal(takeCharactersFromPool(1, null), null);
+});
+
+test("角色池：綁定指定情境（空池），抽用回傳 null、補充沿用該情境", () => {
+  const storage = makeStorage();
+  const custom: GameScenario = {
+    id: "custom_jinyong",
+    title: "金庸群俠",
+    description: "華山之巔英雄大會，各派高手齊聚一堂。",
+    rolesHint: "角色類型：掌門、俠女、魔教教主、丐幫長老。",
+  };
+  assert.equal(setCharacterPoolScenario(custom, storage), true);
+
+  const pool = readCharacterPool(storage);
+  assert.equal(pool?.scenario.id, "custom_jinyong");
+  assert.equal(pool?.characters.length, 0);
+
+  // 空池抽用回傳 null（交由開局即時生成），不消耗綁定
+  assert.equal(takeCharactersFromPool(9, storage), null);
+
+  // 補充沿用綁定情境，不會換成隨機情境
+  appendCharactersToPool(custom, batch("俠", 3), storage);
+  const after = readCharacterPool(storage);
+  assert.equal(after?.scenario.id, "custom_jinyong");
+  assert.equal(after?.characters.length, 3);
+
+  // 情境不符的補充照舊被略過（一池綁一情境）
+  const skipped = appendCharactersToPool(scenario("detective_noir"), batch("客", 2), storage);
+  assert.equal(skipped?.scenario.id, "custom_jinyong");
+  assert.equal(readCharacterPool(storage)?.characters.length, 3);
+});
+
+test("角色池：綁定情境資料不完整時拒絕並留警告，不破壞既有池", () => {
+  const storage = makeStorage();
+  appendCharactersToPool(scenario("detective_noir"), batch("甲", 2), storage);
+  const before = readCharacterPool(storage);
+  const bad = { id: "custom_bad", title: "", description: "x", rolesHint: "y" } as unknown as GameScenario;
+  assert.equal(setCharacterPoolScenario(bad, storage), false);
+  const after = readCharacterPool(storage);
+  assert.equal(after?.scenario.id, "detective_noir");
+  assert.equal(after?.characters.length, 2);
 });

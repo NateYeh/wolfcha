@@ -436,7 +436,21 @@
       "refilling": "Generating...",
       "rebuild": "New scenario",
       "hint": "Refills itself up to three games' worth while you stay on this screen; starting a game draws from the pool instead of waiting.",
-      "failed": "The last refill failed (see the browser console). The game will generate characters on the spot instead."
+      "failed": "The last refill failed (see the browser console). The game will generate characters on the spot instead.",
+      "scenarioLabel": "Scenario",
+      "scenarioRandom": "Random scenario (new on each rebuild)",
+      "scenarioSelectHint": "Pick a scenario then press Rebuild to apply; rebuilding clears the pool and refills to three games' worth in the background.",
+      "builtinGroup": "Built-in scenarios",
+      "customGroup": "Custom scenarios",
+      "customHeading": "Custom scenario",
+      "customName": "Scenario name",
+      "customDesc": "World description",
+      "customRoles": "Role types and tone",
+      "customNamePlaceholder": "e.g. Jin Yong heroes",
+      "customDescPlaceholder": "e.g. A heroes' summit on Mount Hua; old grudges erupt over wine.",
+      "customRolesPlaceholder": "e.g. Sect leaders, swordswomen, an evil-cult master, beggar-clan elders. Wuxia tone, honour-bound.",
+      "customAdd": "Save & rebuild",
+      "customDelete": "Delete"
     },
     "rolePreference": {
       "label": "Role Preference",
