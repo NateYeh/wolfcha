@@ -3,6 +3,7 @@ import test from "node:test";
 import { setLocale } from "@/i18n/locale-store";
 import type { ChatMessage, GameState, Player, Role } from "@/types/game";
 import {
+  buildDecisionGrounding,
   buildGameContext,
   buildPastDaysTranscript,
   buildPublicRoleConfiguration,
@@ -428,4 +429,16 @@ test("旧存档缺少投票时警长快照时不使用当前警长伪造历史�
   assert.match(execution, /3号玩家3: \{投票者: \[1,7,9\]\}/);
   assert.doesNotMatch(execution, /9号玩家9: \{票数:/);
   assert.doesNotMatch(execution, /3号玩家3: \{票数:/);
+});
+
+test("decision_grounding：否認憑空補金水，但承認警徽移交等已公布事件可作推論依據", () => {
+  const state = makeState();
+  const player = state.players[1]!;
+  const grounding = buildDecisionGrounding(state, player);
+  // 收緊的部分仍在：不能靠「某人說可信」補金水
+  assert.match(grounding, /不能凭空补成金水——「某人说了一句可信」不构成依据/);
+  // 例外：警徽移交等主持人已公布事件是事實，可用於推論
+  assert.match(grounding, /主持人已公布的事件（谁出局、警徽移交给谁、公开技能翻牌）属于事实/);
+  // 警徽流的解讀：死者最後的信任，不是矛盾
+  assert.match(grounding, /唯一跳预言家者被夜刀后把警徽交给的人，应按「死者最后的信任／倾向金水」理解，不是「说法矛盾」/);
 });
