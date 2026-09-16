@@ -602,6 +602,8 @@ export class NightPhase extends GamePhase {
       context: this.buildContextWithDay(context, todayTranscript, selfSpeech),
       // 守卫博弈：出刀前推断守卫动向，避免把刀送进守护位（仅夜间出刀提示）。
       guardNote: t("prompts.night.wolf.guardMindGame"),
+      // 刀口优先级：修正「只算命中率」的出刀——收益优先，跳预言家持警徽者是资讯核心。
+      knifeNote: t("prompts.night.wolf.knifePriority"),
       jsonFormat: JSON.stringify({ seat: (alivePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你们为什么刀他" }),
     });
 

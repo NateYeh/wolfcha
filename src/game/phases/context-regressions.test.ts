@@ -33,6 +33,14 @@ test("狼人夜晚出刀提示必须包含守卫博弈推断（守卫可能守�
   state.currentSpeakerSeat = actor.seat;
   const prompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state }, actor)!;
   assert.match(prompt.user, /【守卫博弈】出刀前先推断守卫今晚会守谁/);
+  // 刀口优先级：修正「只算命中率」——收益优先，跳预言家持警徽者是资讯核心，且排在守卫博弈之后作修正。
+  assert.match(prompt.user, /【刀口优先级】刀口看收益，不只看好杀/);
+  assert.match(prompt.user, /命中率最高不等于赚/);
+  assert.match(prompt.user, /自保式刀口.*低于胜利式刀口/);
+  assert.ok(
+    prompt.user.indexOf("刀口优先级") > prompt.user.indexOf("守卫博弈"),
+    "刀口优先级应排在守卫博弈之后（修正顺序）"
+  );
   // 守卫倾向目标：公开跳神、警长、金水、昨晚刀口未死的目标。
   assert.match(prompt.user, /昨晚刀口没死的目标/);
   // 连刀逻辑：被刀却平安夜的目标，今晚守卫不能连守、女巫解药已用完。
