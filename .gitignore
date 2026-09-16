@@ -47,3 +47,6 @@ ai-logs.jsonl
 
 # windsurf rules (local only)
 .windsurf/rules/renewlog.md
+
+# 角色池／自訂情境的伺服器端資料檔
+.data/

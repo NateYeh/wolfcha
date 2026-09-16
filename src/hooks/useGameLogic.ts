@@ -36,7 +36,7 @@ import {
   generateWhiteWolfKingBoomDecision,
 } from "@/lib/game-master";
 import { buildGenshinModelRefs, generateCharacters, generateGenshinModeCharacters, sampleModelRefs, type GeneratedCharacter } from "@/lib/character-generator";
-import { takeCharactersFromPool } from "@/lib/character-pool";
+import { takeServerPoolCharacters } from "@/lib/character-pool-api";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { getRandomScenario } from "@/lib/scenarios";
 import { DELAY_CONFIG, getRoleName } from "@/lib/game-constants";
@@ -1614,9 +1614,9 @@ export function useGameLogic() {
           }, 200 + index * 180); // 逐个出现，每个间隔 180ms
         });
       } else {
-        // 先抽預先生成的角色池：命中就省下約 50 秒的角色生成。
+        // 先抽伺服器上的預生成角色池：命中就省下約 50 秒的角色生成。
         // 未命中（首次開局或池不足）才即時生成，行為與以往相同。
-        const pooled = takeCharactersFromPool(numAiPlayers);
+        const pooled = await takeServerPoolCharacters(numAiPlayers);
         if (pooled) {
           scenario = pooled.scenario;
           characters = pooled.characters;

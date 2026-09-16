@@ -18,10 +18,10 @@ import { Input } from "@/components/ui/input";
 import { useTranslations } from "next-intl";
 import { getScenarios } from "@/lib/scenarios";
 import {
-  deleteCustomScenario,
-  loadCustomScenarios,
-  saveCustomScenario,
-} from "@/lib/custom-scenarios";
+  deleteCustomScenarioRemote,
+  fetchCustomScenariosRemote,
+  saveCustomScenarioRemote,
+} from "@/lib/character-pool-api";
 import type { CharacterPoolStatus } from "@/lib/character-pool-refill";
 import type { GameScenario, Role } from "@/types/game";
 
@@ -138,15 +138,19 @@ export function GameSetupModal({
   const [customDesc, setCustomDesc] = useState("");
   const [customRoles, setCustomRoles] = useState("");
 
-  // 開啟設定時載入自訂情境清單，並同步目前池綁定的情境。
+  // 開啟設定時載入自訂情境清單（伺服器），並同步目前池綁定的情境。
   useEffect(() => {
     if (!open) return;
-    // setState 包在 requestAnimationFrame：避開 effect 內同步 setState 的串聯渲染。
-    const frame = requestAnimationFrame(() => {
-      setCustomScenarios(loadCustomScenarios());
+    let cancelled = false;
+    void (async () => {
+      const scenarios = await fetchCustomScenariosRemote();
+      if (cancelled) return;
+      setCustomScenarios(scenarios);
       setSelectedScenarioId(characterPool.scenarioId ?? "random");
-    });
-    return () => cancelAnimationFrame(frame);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [open, characterPool.scenarioId]);
 
   const allScenarios = useMemo(() => [...getScenarios(), ...customScenarios], [customScenarios]);
@@ -163,25 +167,29 @@ export function GameSetupModal({
   const canSaveCustom =
     customName.trim() !== "" && customDesc.trim() !== "" && customRoles.trim() !== "";
   const handleSaveCustom = () => {
-    const saved = saveCustomScenario({
-      title: customName,
-      description: customDesc,
-      rolesHint: customRoles,
-    });
-    if (!saved) return;
-    setCustomScenarios(loadCustomScenarios());
-    setCustomName("");
-    setCustomDesc("");
-    setCustomRoles("");
-    setSelectedScenarioId(saved.id);
-    onRebuildWithScenario(saved);
+    void (async () => {
+      const saved = await saveCustomScenarioRemote({
+        title: customName,
+        description: customDesc,
+        rolesHint: customRoles,
+      });
+      if (!saved) return;
+      setCustomScenarios(await fetchCustomScenariosRemote());
+      setCustomName("");
+      setCustomDesc("");
+      setCustomRoles("");
+      setSelectedScenarioId(saved.id);
+      onRebuildWithScenario(saved);
+    })();
   };
 
   const handleDeleteCustom = () => {
     if (!selectedScenarioId.startsWith("custom_")) return;
-    deleteCustomScenario(selectedScenarioId);
-    setCustomScenarios(loadCustomScenarios());
-    setSelectedScenarioId("random");
+    void (async () => {
+      await deleteCustomScenarioRemote(selectedScenarioId);
+      setCustomScenarios(await fetchCustomScenariosRemote());
+      setSelectedScenarioId("random");
+    })();
   };
 
   // Reset preferred role if it's no longer available for the current player count

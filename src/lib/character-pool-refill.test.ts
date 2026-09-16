@@ -1,136 +1,189 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+// character-generator 依賴鏈會載入 supabase，模組層級檢查環境變數；測試環境先補假值。
 process.env.NEXT_PUBLIC_SUPABASE_URL ||= "https://example.supabase.co";
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "test-publishable-key";
 
 import type { GameScenario } from "@/types/game";
 import type { GeneratedCharacter } from "./character-generator";
-import {
-  CHARACTER_POOL_ROUNDS,
-  readCharacterPool,
-  takeCharactersFromPool,
-  unusedCharacterIndexes,
-  type CharacterPoolStorage,
-} from "./character-pool";
+import { CHARACTER_POOL_ROUNDS, type CharacterPool } from "./character-pool";
+
 // character-generator（間接）會載入 supabase，必須等環境變數設好再動態載入。
-const loadRefill = () => import("./character-pool-refill");
+const loadRefill = (): Promise<typeof import("./character-pool-refill")> => import("./character-pool-refill");
 
-const makeStorage = (): CharacterPoolStorage => {
-  const map = new Map<string, string>();
-  return {
-    getItem: (key) => map.get(key) ?? null,
-    setItem: (key, value) => void map.set(key, value),
-    removeItem: (key) => void map.delete(key),
-  };
-};
-
-const scenario: GameScenario = {
-  id: "tech_startup",
-  title: "创业公司",
-  description: "创业公司团建",
-  rolesHint: "创始人、程序员、产品经理",
-};
+const scenario = (id: string): GameScenario => ({
+  id,
+  title: `場景-${id}`,
+  description: `描述-${id}`,
+  rolesHint: `角色建議-${id}`,
+});
 
 const character = (name: string): GeneratedCharacter => ({
   displayName: name,
-  persona: { voiceRules: ["说话很快"], mbti: "ENFP", gender: "female", age: 27, basicInfo: "产品经理" },
+  persona: {
+    voiceRules: ["说话直接"],
+    mbti: "INTJ",
+    gender: "male",
+    age: 30,
+    basicInfo: `${name}的職業`,
+  },
   playerMind: {
     courage: "敢冲票",
-    memoryBias: "记听感",
-    suspicionThreshold: "偏低",
-    selfProtection: "先反问",
-    logicDepth: "点到为止",
-    tablePresence: "高",
+    memoryBias: "记票型",
+    suspicionThreshold: "偏高",
+    selfProtection: "会自保",
+    logicDepth: "愿意展开",
+    tablePresence: "中等",
   },
 });
 
 const batch = (prefix: string, count: number): GeneratedCharacter[] =>
   Array.from({ length: count }, (_, index) => character(`${prefix}${index + 1}`));
 
-test("角色池補充：未達標時生成一局份並綁定情境；達標後不再生成", async () => {
-  const { refillCharacterPoolOnce } = await loadRefill();
-  const storage = makeStorage();
-  const calls: number[] = [];
-  const usedScenarios: GameScenario[] = [];
-  const generator = async (count: number, used: GameScenario) => {
-    calls.push(count);
-    usedScenarios.push(used);
-    return batch(`批${calls.length}-`, count);
+const makePool = (scenarioId: string, characters: GeneratedCharacter[], usedIndexes: number[] = []): CharacterPool => ({
+  version: 1,
+  scenario: scenario(scenarioId),
+  characters,
+  usedIndexes,
+  updatedAt: Date.now(),
+});
+
+interface RecordedRequest {
+  url: string;
+  method: string;
+  body: unknown;
+}
+
+/** 安裝 fetch 假實作，模擬伺服器 API；回傳請求紀錄與還原函式。 */
+const installFetchMock = (handlers: {
+  getPool?: () => CharacterPool | null;
+  postAppend?: (scenario: GameScenario, characters: GeneratedCharacter[]) => { ok: boolean };
+}) => {
+  const requests: RecordedRequest[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    const method = (init?.method ?? "GET").toUpperCase();
+    const body = typeof init?.body === "string" ? (JSON.parse(init.body) as unknown) : undefined;
+    requests.push({ url, method, body });
+    if (method === "GET" && url.includes("/api/character-pool")) {
+      return Response.json({ pool: handlers.getPool?.() ?? null });
+    }
+    if (method === "POST" && url.includes("/api/character-pool")) {
+      const payload = body as { action?: string; scenario?: GameScenario; characters?: GeneratedCharacter[] };
+      if (payload.action === "append" && payload.scenario && payload.characters) {
+        const result = handlers.postAppend?.(payload.scenario, payload.characters) ?? { ok: true };
+        if (result.ok) return Response.json({ pool: null });
+        return Response.json({ error: "write_failed" }, { status: 500 });
+      }
+    }
+    return Response.json({ error: "unexpected_request" }, { status: 500 });
+  }) as typeof fetch;
+  return {
+    requests,
+    restore: (): void => {
+      globalThis.fetch = original;
+    },
   };
+};
 
-  const first = await refillCharacterPoolOnce(9, storage, generator);
-  assert.equal(first, "refilled");
-  assert.deepEqual(calls, [9]);
-  // 首次建立時抽一個情境，池就綁定該情境
-  const boundScenarioId = readCharacterPool(storage)?.scenario.id;
-  assert.equal(typeof boundScenarioId, "string");
-  assert.equal(usedScenarios[0]?.id, boundScenarioId);
-
-  const second = await refillCharacterPoolOnce(9, storage, generator);
-  assert.equal(second, "refilled");
-  assert.equal(readCharacterPool(storage)?.characters.length, 18);
-  // 後續補充沿用池的情境
-  assert.equal(usedScenarios[1]?.id, boundScenarioId);
-
-  const third = await refillCharacterPoolOnce(9, storage, generator);
-  assert.equal(third, "refilled");
-
-  // 已達三局份目標 → skipped，且不再呼叫生成
-  const fourth = await refillCharacterPoolOnce(9, storage, generator);
-  assert.equal(fourth, "skipped");
-  assert.deepEqual(calls, [9, 9, 9]);
-  assert.equal(readCharacterPool(storage)?.characters.length, 9 * CHARACTER_POOL_ROUNDS);
-
-  // 抽掉一局後又低於目標，會再補
-  assert.equal(takeCharactersFromPool(9, storage)?.characters.length, 9);
-  const fifth = await refillCharacterPoolOnce(9, storage, generator);
-  assert.equal(fifth, "refilled");
-  assert.equal(unusedCharacterIndexes(readCharacterPool(storage)!).length, 27);
+test("補池協調：狀態由池物件計算（unused/total/target/情境）", async () => {
+  const { getCharacterPoolStatus } = await loadRefill();
+  const perGame = 9;
+  const status = getCharacterPoolStatus(perGame, makePool("s1", batch("甲", 12), [0, 1]));
+  assert.equal(status.unused, 10);
+  assert.equal(status.total, 12);
+  assert.equal(status.target, perGame * CHARACTER_POOL_ROUNDS);
+  assert.equal(status.scenarioId, "s1");
+  assert.equal(status.scenarioTitle, "場景-s1");
+  assert.equal(getCharacterPoolStatus(perGame, null).total, 0);
+  assert.equal(getCharacterPoolStatus(perGame, null).scenarioId, null);
 });
 
-test("角色池補充：生成失敗或空結果時池維持不變（不寫入半套）", async () => {
+test("補池協調：池已達標時 skipped，不生成也不送出", async () => {
   const { refillCharacterPoolOnce } = await loadRefill();
-  const storage = makeStorage();
-  const failing = async () => {
-    throw new Error("上游 500");
-  };
-  const empty = async () => [];
-
-  assert.equal(await refillCharacterPoolOnce(9, storage, failing), "failed");
-  assert.equal(readCharacterPool(storage), null);
-
-  assert.equal(await refillCharacterPoolOnce(9, storage, empty), "failed");
-  assert.equal(readCharacterPool(storage), null);
-
-  // 成功一次建立池後，失敗的批次不會破壞既有內容
-  assert.equal(await refillCharacterPoolOnce(9, storage, async (_c, _s) => batch("丙", 9)), "refilled");
-  assert.equal(await refillCharacterPoolOnce(9, storage, failing), "failed");
-  assert.equal(readCharacterPool(storage)?.characters.length, 9);
+  const perGame = 9;
+  const mock = installFetchMock({ getPool: () => makePool("s1", batch("甲", perGame * CHARACTER_POOL_ROUNDS)) });
+  try {
+    let generated = 0;
+    const result = await refillCharacterPoolOnce(perGame, async () => {
+      generated += 1;
+      return [];
+    });
+    assert.equal(result, "skipped");
+    assert.equal(generated, 0);
+    assert.equal(mock.requests.filter((request) => request.method === "POST").length, 0);
+  } finally {
+    mock.restore();
+  }
 });
 
-test("角色池狀態：回報未使用數、總數、情境與目標容量", async () => {
-  const { getCharacterPoolStatus, refillCharacterPoolOnce } = await loadRefill();
-  const storage = makeStorage();
-  const before = getCharacterPoolStatus(9, storage);
-  assert.deepEqual(before, { unused: 0, total: 0, scenarioId: null, scenarioTitle: null, target: 27, refilling: false });
-
-  await refillCharacterPoolOnce(9, storage, async (_c, _s) => batch("丁", 9));
-  const after = getCharacterPoolStatus(9, storage);
-  assert.equal(after.unused, 9);
-  assert.equal(after.total, 9);
-  assert.equal(after.scenarioTitle, readCharacterPool(storage)?.scenario.title);
-  assert.equal(after.target, 27);
+test("補池協調：沿用池既有情境，生成後送出 append", async () => {
+  const { refillCharacterPoolOnce } = await loadRefill();
+  const perGame = 9;
+  const mock = installFetchMock({
+    getPool: () => makePool("jinyong", batch("舊", perGame * 2)),
+  });
+  try {
+    const seenScenarios: string[] = [];
+    const result = await refillCharacterPoolOnce(perGame, async (count, scenario) => {
+      seenScenarios.push(scenario.id);
+      assert.equal(count, perGame);
+      return batch("新", count);
+    });
+    assert.equal(result, "refilled");
+    assert.deepEqual(seenScenarios, ["jinyong"]);
+    const appendRequest = mock.requests.find((request) => request.method === "POST");
+    assert.ok(appendRequest);
+    assert.equal((appendRequest.body as { action: string }).action, "append");
+    assert.equal((appendRequest.body as { scenario: GameScenario }).scenario.id, "jinyong");
+    assert.equal((appendRequest.body as { characters: GeneratedCharacter[] }).characters.length, perGame);
+  } finally {
+    mock.restore();
+  }
 });
 
-test("角色池重建：清空後下一次補充以新情境重新建立", async () => {
-  const { refillCharacterPoolOnce, resetCharacterPoolScenario } = await loadRefill();
-  const storage = makeStorage();
-  await refillCharacterPoolOnce(9, storage, async () => batch("戊", 9));
-  resetCharacterPoolScenario(storage);
-  assert.equal(readCharacterPool(storage), null);
+test("補池協調：伺服器沒有池時，生成會附帶新抽的情境", async () => {
+  const { refillCharacterPoolOnce } = await loadRefill();
+  const perGame = 9;
+  const mock = installFetchMock({ getPool: () => null });
+  try {
+    const seenScenarios: string[] = [];
+    const result = await refillCharacterPoolOnce(perGame, async (count, scenario) => {
+      seenScenarios.push(scenario.id);
+      return batch("新", count);
+    });
+    assert.equal(result, "refilled");
+    assert.equal(seenScenarios.length, 1);
+    assert.ok(seenScenarios[0]);
+  } finally {
+    mock.restore();
+  }
+});
 
-  const results = await refillCharacterPoolOnce(9, storage, async () => batch("己", 9));
-  assert.equal(results, "refilled");
-  assert.equal(readCharacterPool(storage)?.characters.length, 9);
+test("補池協調：生成為空回 failed，不送出", async () => {
+  const { refillCharacterPoolOnce } = await loadRefill();
+  const mock = installFetchMock({ getPool: () => null });
+  try {
+    const result = await refillCharacterPoolOnce(9, async () => []);
+    assert.equal(result, "failed");
+    assert.equal(mock.requests.filter((request) => request.method === "POST").length, 0);
+  } finally {
+    mock.restore();
+  }
+});
+
+test("補池協調：伺服器寫入失敗回 failed", async () => {
+  const { refillCharacterPoolOnce } = await loadRefill();
+  const mock = installFetchMock({
+    getPool: () => null,
+    postAppend: () => ({ ok: false }),
+  });
+  try {
+    const result = await refillCharacterPoolOnce(9, async (count) => batch("新", count));
+    assert.equal(result, "failed");
+  } finally {
+    mock.restore();
+  }
 });

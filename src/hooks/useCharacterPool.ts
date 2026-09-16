@@ -8,11 +8,20 @@ import {
   resetCharacterPoolScenario,
   type CharacterPoolStatus,
 } from "@/lib/character-pool-refill";
-import { setCharacterPoolScenario } from "@/lib/character-pool";
+import { fetchServerPool, setServerPoolScenarioRemote, clearServerPoolRemote } from "@/lib/character-pool-api";
 import type { GameScenario } from "@/types/game";
 
 /** 背景補池的間隔；只在歡迎畫面閒置時運作。 */
 const REFILL_TICK_MS = 20000;
+
+const INITIAL_STATUS = (charactersPerGame: number): CharacterPoolStatus => ({
+  unused: 0,
+  total: 0,
+  scenarioId: null,
+  scenarioTitle: null,
+  target: Math.max(1, charactersPerGame) * 3,
+  refilling: false,
+});
 
 export interface UseCharacterPoolResult {
   status: CharacterPoolStatus;
@@ -27,28 +36,27 @@ export interface UseCharacterPoolResult {
 }
 
 /**
- * 角色池的背景維護：
- * - 掛載後（歡迎畫面）自動把池補到「三局份」，一次補一局份，不阻塞開局；
+ * 角色池的背景維護（伺服器共用池）：
+ * - 池本體存在伺服器，所有瀏覽器共用；本 hook 負責在歡迎畫面閒置時補池；
+ * - 掛載後自動把池補到「三局份」，一次補一局份，不阻塞開局；
  * - 離開歡迎畫面就停止，避免與遊戲中的 AI 呼叫搶資源。
  */
 export function useCharacterPool(charactersPerGame: number, enabled: boolean): UseCharacterPoolResult {
-  const [status, setStatus] = useState<CharacterPoolStatus>(() =>
-    getCharacterPoolStatus(charactersPerGame),
-  );
+  const [status, setStatus] = useState<CharacterPoolStatus>(() => INITIAL_STATUS(charactersPerGame));
   const [error, setError] = useState<string | null>(null);
   const runningRef = useRef(false);
 
-  const refresh = useCallback(() => {
-    setStatus(getCharacterPoolStatus(charactersPerGame));
+  const refresh = useCallback(async () => {
+    const pool = await fetchServerPool();
+    setStatus(getCharacterPoolStatus(charactersPerGame, pool));
   }, [charactersPerGame]);
 
   const refillNow = useCallback(async () => {
     if (runningRef.current || isCharacterPoolRefillInFlight()) {
-      refresh();
+      void refresh();
       return;
     }
     runningRef.current = true;
-    refresh();
     try {
       const result = await refillCharacterPoolOnce(charactersPerGame);
       setError(result === "failed" ? "refillFailed" : null);
@@ -58,7 +66,7 @@ export function useCharacterPool(charactersPerGame: number, enabled: boolean): U
       setError(String(refillError));
     } finally {
       runningRef.current = false;
-      refresh();
+      await refresh();
     }
   }, [charactersPerGame, refresh]);
 
@@ -68,11 +76,11 @@ export function useCharacterPool(charactersPerGame: number, enabled: boolean): U
 
     const tick = async () => {
       if (cancelled || isCharacterPoolRefillInFlight()) return;
-      const current = getCharacterPoolStatus(charactersPerGame);
-      if (current.unused >= current.target) {
-        refresh();
-        return;
-      }
+      const pool = await fetchServerPool();
+      if (cancelled) return;
+      const current = getCharacterPoolStatus(charactersPerGame, pool);
+      setStatus({ ...current, refilling: runningRef.current });
+      if (current.unused >= current.target) return;
       await refillNow();
     };
 
@@ -82,21 +90,26 @@ export function useCharacterPool(charactersPerGame: number, enabled: boolean): U
       cancelled = true;
       clearInterval(timer);
     };
-  }, [enabled, charactersPerGame, refillNow, refresh]);
+  }, [enabled, charactersPerGame, refillNow]);
 
   const rebuild = useCallback(() => {
-    resetCharacterPoolScenario();
-    setError(null);
-    refresh();
+    void (async () => {
+      const ok = await clearServerPoolRemote();
+      if (!ok) setError("rebindFailed");
+      else setError(null);
+      await refresh();
+    })();
   }, [refresh]);
 
-  /** 綁定指定情境並重建整池：先寫入「綁定情境的空池」，背景補充會以該情境生成。 */
+  /** 綁定指定情境並重建整池：先建立「綁定情境的空池」，背景補充會以該情境生成。 */
   const rebuildWithScenario = useCallback(
     (scenario: GameScenario) => {
-      const bound = setCharacterPoolScenario(scenario);
-      if (!bound) setError("rebindFailed");
-      else setError(null);
-      refresh();
+      void (async () => {
+        const ok = await setServerPoolScenarioRemote(scenario);
+        if (!ok) setError("rebindFailed");
+        else setError(null);
+        await refresh();
+      })();
     },
     [refresh],
   );
