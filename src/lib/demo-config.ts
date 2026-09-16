@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from "@/lib/request-timeout";
+import { fetchWithTimeout, RequestTimeoutError } from "@/lib/request-timeout";
 
 export type DemoModePublicConfigSnapshot = {
   source: "database";
@@ -38,6 +38,23 @@ export function isCachedDemoModeActiveClient(): boolean {
   return cachedDemoModeConfig?.active ?? false;
 }
 
+// Dev server 編譯／GC 停頓可能造成瞬時逾時；逾時自動重試一次（間隔 1 秒），避免一次卡頓就把開局判成非演示模式。
+async function fetchDemoConfigResponse(): Promise<Response> {
+  try {
+    return await fetchWithTimeout(DEMO_CONFIG_ENDPOINT, {
+      method: "GET",
+      cache: "no-store",
+    }, DEMO_CONFIG_TIMEOUT_MS);
+  } catch (error) {
+    if (!(error instanceof RequestTimeoutError)) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    return await fetchWithTimeout(DEMO_CONFIG_ENDPOINT, {
+      method: "GET",
+      cache: "no-store",
+    }, DEMO_CONFIG_TIMEOUT_MS);
+  }
+}
+
 export async function fetchDemoModeConfigClient(forceRefresh = false): Promise<DemoModePublicConfigSnapshot> {
   if (!forceRefresh && cachedDemoModeConfig) {
     return cachedDemoModeConfig;
@@ -47,10 +64,7 @@ export async function fetchDemoModeConfigClient(forceRefresh = false): Promise<D
     return inFlightDemoModeConfigRequest;
   }
 
-  const request = fetchWithTimeout(DEMO_CONFIG_ENDPOINT, {
-    method: "GET",
-    cache: "no-store",
-  }, DEMO_CONFIG_TIMEOUT_MS)
+  const request = fetchDemoConfigResponse()
     .then(async (response) => {
       if (!response.ok) {
         throw new Error(`Failed to fetch demo config: ${response.status}`);
