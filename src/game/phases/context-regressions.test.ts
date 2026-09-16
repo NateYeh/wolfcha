@@ -391,6 +391,18 @@ test("夜刀读法守则：被刀默认＝灭口好人旁证；禁止自刀反�
   assert.doesNotMatch(nightPrompt2.user, /夜刀读法守则/);
 });
 
+test("发言底线规则：未发言者不得被描述发言风格（禁止凭空「说话实」）", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_SPEECH");
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  state.currentSpeakerSeat = villager.seat;
+  const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
+  assert.match(prompt.system, /严禁编造不存在的发言/);
+  assert.match(prompt.system, /不得描述他的发言风格或内容/);
+  assert.match(prompt.system, /明说没有依据的直觉/);
+});
+
 test("投票最终约束：唯一跳预言家者无硬反证不得放逐；对跳/狼侧/本人不受约束", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
