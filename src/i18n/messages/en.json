@@ -398,8 +398,7 @@
         "tag": "Challenge"
       }
     }
-  }
-  ,
+  },
   "gameSetup": {
     "title": "Game setup",
     "description": "Adjust difficulty and player count before starting",
@@ -414,11 +413,31 @@
       "hardDesc": "Deep confrontation, more complex reasoning"
     },
     "playerCount": {
-      "8": { "title": "8 players", "description": "3 wolves, 3 gods, 2 villagers", "roles": "Gods: Seer, Witch, Hunter" },
-      "9": { "title": "9 players", "description": "3 wolves, 3 gods, 3 villagers", "roles": "Gods: Seer, Witch, Hunter" },
-      "10": { "title": "10 players", "description": "2 wolves + WWK, 4 gods, 3 villagers", "roles": "Gods: Seer, Witch, Hunter, Guard" },
-      "11": { "title": "11 players", "description": "3 wolves + WWK, 5 gods, 2 villagers", "roles": "Gods: Seer, Witch, Hunter, Guard, Idiot" },
-      "12": { "title": "12 players", "description": "3 wolves + WWK, 5 gods, 3 villagers", "roles": "Gods: Seer, Witch, Hunter, Guard, Idiot" }
+      "8": {
+        "title": "8 players",
+        "description": "3 wolves, 3 gods, 2 villagers",
+        "roles": "Gods: Seer, Witch, Hunter"
+      },
+      "9": {
+        "title": "9 players",
+        "description": "3 wolves, 3 gods, 3 villagers",
+        "roles": "Gods: Seer, Witch, Hunter"
+      },
+      "10": {
+        "title": "10 players",
+        "description": "2 wolves + WWK, 4 gods, 3 villagers",
+        "roles": "Gods: Seer, Witch, Hunter, Guard"
+      },
+      "11": {
+        "title": "11 players",
+        "description": "3 wolves + WWK, 5 gods, 2 villagers",
+        "roles": "Gods: Seer, Witch, Hunter, Guard, Idiot"
+      },
+      "12": {
+        "title": "12 players",
+        "description": "3 wolves + WWK, 5 gods, 3 villagers",
+        "roles": "Gods: Seer, Witch, Hunter, Guard, Idiot"
+      }
     },
     "genshinMode": {
       "title": "Model original mode",
@@ -468,8 +487,7 @@
         "idiot": "Survives a vote-out by revealing role, but loses voting rights"
       }
     }
-  }
-  ,
+  },
   "authModal": {
     "title": "Sign in or sign up",
     "description": "Sign in to access credits and share rewards.",
@@ -547,8 +565,7 @@
         "description": "Please check your inbox"
       }
     }
-  }
-  ,
+  },
   "resetPassword": {
     "title": "Reset password",
     "description": "Enter your new password. It must be at least 6 characters.",
@@ -580,8 +597,7 @@
         "description": "An unknown error occurred"
       }
     }
-  }
-  ,
+  },
   "accountModal": {
     "title": "Change password",
     "description": "Update your account password. It must be at least 6 characters.",
@@ -610,8 +626,7 @@
         "description": "An unknown error occurred"
       }
     }
-  }
-  ,
+  },
   "userProfile": {
     "title": "Account",
     "description": "View account details and actions",
@@ -638,8 +653,7 @@
         "description": "Clipboard is unavailable or permission denied"
       }
     }
-  }
-  ,
+  },
   "sharePanel": {
     "title": "Share link",
     "description": "Share this link with friends.",
@@ -653,8 +667,7 @@
       "copySuccess": "Share link copied",
       "copyFail": "Copy failed. Please copy manually."
     }
-  }
-  ,
+  },
   "bottomAction": {
     "cancel": "Cancel",
     "confirmVote": "Confirm vote: Seat {seat}",
@@ -678,15 +691,13 @@
       "whiteWolfKingBoom": "Self-destruct & take #{seat}",
       "whiteWolfKingBoomBtn": "Self-destruct"
     }
-  }
-  ,
+  },
   "mentions": {
     "playerLabel": "Seat {seat} {name}",
     "seatLabel": "Seat {seat}",
     "mention": "@Seat {seat}",
     "noMatch": "No matching players"
-  }
-  ,
+  },
   "common": {
     "you": "You",
     "listSeparator": ", ",
@@ -704,21 +715,18 @@
     "badgeHolder": "Sheriff",
     "badgeCandidate": "Candidate",
     "joining": "Joining..."
-  }
-  ,
+  },
   "voteResult": {
     "seatLabel": "Seat {seat}",
     "voteCount": "{count} votes"
-  }
-  ,
+  },
   "votingProgress": {
     "votedCount": "{voted}/{total} voted",
     "totalVotes": "Total {count}",
     "waiting": "Waiting for votes...",
     "waitingLabel": "Waiting:",
     "youSuffix": " (you)"
-  }
-  ,
+  },
   "persona": {
     "strategy": {
       "aggressive": "Aggressive",
@@ -734,8 +742,7 @@
     "background": "Background",
     "voiceStyle": "Voice style",
     "selfRole": "This is your role"
-  }
-  ,
+  },
   "tutorialModal": {
     "title": "Beginner Guide: How to Play Werewolf",
     "intro": "This is a faction game of hidden roles, reasoning, and table talk. Follow the system prompts and act or speak when it's your turn.",
@@ -793,8 +800,7 @@
     "actions": {
       "close": "Got it"
     }
-  }
-  ,
+  },
   "roleReveal": {
     "cardTitle": "Role card",
     "cardHint": "View privately",
@@ -1047,7 +1053,7 @@
       "phaseSection": "【Current phase】\n{phaseHint}",
       "userNoTranscript": "(None yet. You are speaker #{speakOrder}.)",
       "userNoSelfSpeech": "(None)",
-"formatReminder": "Output only a JSON string array like [\"First bubble.\",\"Second bubble.\"]; no prose, reasoning, or paragraphs.",
+      "formatReminder": "Output only a JSON string array like [\"First bubble.\",\"Second bubble.\"]; no prose, reasoning, or paragraphs.",
       "user": "{gameContext}\n\n【Today's discussion】\n{todayTranscript}\n\n【Your speech today】\n{selfSpeech}\n\n{phaseHintSection}\n\n【Speaking order】\n{speakOrderHint}\n\nYour turn. Return a JSON array:"
     },
     "vote": {
@@ -1081,7 +1087,7 @@
         "task": "【Werewolf Skill】\nEach night wolves collectively decide to kill one player. Can kill good players, teammates (self-kill), or skip (no kill).\n\n【Task】\nChoose one player to kill.\n{teammateVotesSection}\n\nOptions: {options}\n",
         "user": "{context}\n\nWhich seat do you want to kill?\n{guardNote}\n{knifeNote}\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text:\n{jsonFormat}\nUse the reason field for one short sentence on why you kill him (under 30 words).",
         "guardMindGame": "【Guard mind game】Before knifing, predict who the guard will protect tonight; do not feed your knife straight into the guard's arms.\n1. The guard most likely protects: players who publicly claimed god roles (seer, witch), the sheriff, gold-water players, and last night's knife target that survived.\n2. A target X knifed last night but alive at dawn means exactly one of the guard/witch saved X: if it was the guard, he cannot protect X again tonight (no consecutive protection of the same player); if it was the witch, her heal is spent. So re-knifing X tonight usually has the highest success rate, unless the witch may still hold a heal.\n3. If you switch targets, avoid the seats the guard is most likely protecting tonight (per point 1), and prefer key good players the guard cannot cover.",
-    "knifePriority": "【Knife priority】Judge knife targets by value, not just by hit chance.\n1. Anyone who openly claims seer, holds the badge, or keeps reporting checks is the village's information core and usually the first-priority knife — especially once he has checked (or may have checked) a teammate; leave the real seer alive and the wolves get picked off one by one.\n2. Exception: a concrete reason to believe the claimed seer is your own fake-claiming teammate (teammates never mistake their own). Beyond that, do not skip him just because the guard might protect him — a blocked knife costs one night; a living information source costs a teammate every night.\n3. Before re-knifing a saved target, weigh the payoff: the saved player may be a power role (shoots on death) or a mere villager (a wasted night); highest hit rate is not the same as profit.\n4. A self-preservation knife (killing whoever doubted my speech) ranks below a victory knife (killing the information source, the badge holder); judge by the wolf team's overall gain, not personal pressure."
+        "knifePriority": "【Knife priority】Judge knife targets by value, not just by hit chance.\n1. Anyone who openly claims seer, holds the badge, or keeps reporting checks is the village's information core and usually the first-priority knife — especially once he has checked (or may have checked) a teammate; leave the real seer alive and the wolves get picked off one by one.\n2. Exception: a concrete reason to believe the claimed seer is your own fake-claiming teammate (teammates never mistake their own). Beyond that, do not skip him just because the guard might protect him — a blocked knife costs one night; a living information source costs a teammate every night.\n3. Before re-knifing a saved target, weigh the payoff: the saved player may be a power role (shoots on death) or a mere villager (a wasted night); highest hit rate is not the same as profit.\n4. A self-preservation knife (killing whoever doubted my speech) ranks below a victory knife (killing the information source, the badge holder); judge by the wolf team's overall gain, not personal pressure."
       },
       "guard": {
         "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{winCondition}",
@@ -1102,8 +1108,7 @@
         "task": "【Witch Skill】\nYou have one antidote (save) and one poison (kill), each once per game.\n\n【Important Rules】\n- Antidote can save the wolf's victim (including yourself)\n- Poison can kill any player (usually confirmed wolves)\n- One potion max per night\n- If guard and witch both save the same target (milk poison), they still die\n\n【Potion Status】\nAntidote: {healStatus} | Poison: {poisonStatus}\n\n【Tonight】\n{tonightInfo}\n\n【Task】\nDecide whether to use a potion.\n{saveLine}\n{poisonLine}\n- You may use no potion\n\nPoison targets: {poisonTargets}\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text.\nSave example: {saveJsonFormat}\nPoison example: {poisonJsonFormat}\nPass example: {passJsonFormat}\nUse the reason field for one short sentence on your judgment (under 30 words).",
         "user": "{context}\n\nWhat will you do? Return a strict JSON object."
       }
-    }
-    ,
+    },
     "badge": {
       "option": "Seat {seat} ({name})",
       "signup": {
@@ -1131,7 +1136,7 @@
     "hunter": {
       "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{winCondition}",
       "task": "【Current phase】\nThis is the one-time Hunter shooting window for this death.\n\n【Hunter skill】\nYou can shoot one player if voted out or killed by werewolves. You cannot shoot if poisoned by the Witch. Shooting is immediate and irreversible. Passing permanently forfeits this shot; it cannot be saved for a later round.\n\n【Task】\nChoose one currently eligible living player to shoot, or pass.\n\nOptions: {options}",
-        "shootingRules": "\n\n【Shooting discipline】\n1. Check public hard verification first: a player gold-watered by the real seer, one who publicly claimed witch with the save fact matching, or the sheriff leading the vote coalition — never shoot these targets. Killing a hard-verified good player does the wolves' job for them.\n2. Prefer shooting: a surviving checked wolf, or the strongest target on your own suspicion chain that carries no good-faction verification.\n3. If you were voted out by the seer's coalition: check the seer's check record first — if the kills/gold waters match the true identities of the eliminated and nobody counter-claimed, the seer is most likely real and you were probably misjudged. In that case never shoot his gold water or verified allies; the right target is the other suspect he named, or simply do not shoot.\n4. The judgment you just wrote in the voting phase (who you voted for and why) is your freshest judgment. A target announced in your last words is only a passing remark; if it conflicts with these rules (e.g. shooting a verified good player), you must overturn the last words and re-decide by the rules.",
+      "shootingRules": "\n\n【Shooting discipline】\n1. Check public hard verification first: a player gold-watered by the real seer, one who publicly claimed witch with the save fact matching, or the sheriff leading the vote coalition — never shoot these targets. Killing a hard-verified good player does the wolves' job for them.\n2. Prefer shooting: a surviving checked wolf, or the strongest target on your own suspicion chain that carries no good-faction verification.\n3. If you were voted out by the seer's coalition: check the seer's check record first — if the kills/gold waters match the true identities of the eliminated and nobody counter-claimed, the seer is most likely real and you were probably misjudged. In that case never shoot his gold water or verified allies; the right target is the other suspect he named, or simply do not shoot.\n4. The judgment you just wrote in the voting phase (who you voted for and why) is your freshest judgment. A target announced in your last words is only a passing remark; if it conflicts with these rules (e.g. shooting a verified good player), you must overturn the last words and re-decide by the rules.",
       "user": "{context}\n\nWhich seat do you want to shoot?\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text.\nShoot example: {jsonFormat}\nPass example: {passJsonFormat}",
       "lastWordsContext": "\n\n【Public record that already occurred: your last words】\n{lastWords}"
     },
@@ -1155,32 +1160,85 @@
     "tiePk": "Execution tied. Enter PK speeches."
   },
   "phase": {
-    "lobby": { "description": "Ready to start" },
-    "setup": { "description": "Generating roles..." },
-    "nightStart": { "description": "Night falls" },
-    "nightGuard": { "description": "Guard in action", "human": "Tap a player card to choose who to protect" },
-    "nightWolf": { "description": "Werewolves in action", "human": "Tap a player card to choose a kill target" },
-    "nightWitch": { "description": "Witch in action", "human": "Use a potion?" },
-    "nightSeer": { "description": "Seer in action", "human": "Tap a player card to choose who to check" },
-    "nightResolve": { "description": "Day breaks" },
-    "dayStart": { "description": "Day begins" },
-    "badgeSignup": { "description": "Sheriff signup", "human": "Run for sheriff?" },
-    "badgeSpeech": { "description": "Sheriff speeches" },
+    "lobby": {
+      "description": "Ready to start"
+    },
+    "setup": {
+      "description": "Generating roles..."
+    },
+    "nightStart": {
+      "description": "Night falls"
+    },
+    "nightGuard": {
+      "description": "Guard in action",
+      "human": "Tap a player card to choose who to protect"
+    },
+    "nightWolf": {
+      "description": "Werewolves in action",
+      "human": "Tap a player card to choose a kill target"
+    },
+    "nightWitch": {
+      "description": "Witch in action",
+      "human": "Use a potion?"
+    },
+    "nightSeer": {
+      "description": "Seer in action",
+      "human": "Tap a player card to choose who to check"
+    },
+    "nightResolve": {
+      "description": "Day breaks"
+    },
+    "dayStart": {
+      "description": "Day begins"
+    },
+    "badgeSignup": {
+      "description": "Sheriff signup",
+      "human": "Run for sheriff?"
+    },
+    "badgeSpeech": {
+      "description": "Sheriff speeches"
+    },
     "badgeElection": {
       "description": "Sheriff election",
       "human": "Tap a player card to vote for sheriff",
       "noVote": "You're a candidate; no vote needed"
     },
-    "pkSpeech": { "description": "PK speeches" },
-    "daySpeech": { "description": "Discussion phase" },
+    "pkSpeech": {
+      "description": "PK speeches"
+    },
+    "daySpeech": {
+      "description": "Discussion phase"
+    },
     "speechYourTurn": "Your turn to speak",
-    "lastWords": { "description": "Last words" },
-    "dayVote": { "description": "Vote phase", "human": "Tap a player card to vote", "noVotePk": "You are in the PK; no vote needed", "noVoteIdiot": "Idiot revealed — no voting rights" },
-    "dayResolve": { "description": "Execution resolution" },
-    "badgeTransfer": { "description": "Sheriff badge transfer", "human": "Tap a player card to choose a transfer target" },
-    "hunterShoot": { "description": "Hunter shot", "human": "Tap a player card to choose your shot target" },
-    "whiteWolfKingBoom": { "description": "White Wolf King self-destruct", "human": "Tap a player card to choose self-destruct target" },
-    "gameEnd": { "description": "Game over", "villageWin": "Villagers win", "wolfWin": "Werewolves win" }
+    "lastWords": {
+      "description": "Last words"
+    },
+    "dayVote": {
+      "description": "Vote phase",
+      "human": "Tap a player card to vote",
+      "noVotePk": "You are in the PK; no vote needed",
+      "noVoteIdiot": "Idiot revealed — no voting rights"
+    },
+    "dayResolve": {
+      "description": "Execution resolution"
+    },
+    "badgeTransfer": {
+      "description": "Sheriff badge transfer",
+      "human": "Tap a player card to choose a transfer target"
+    },
+    "hunterShoot": {
+      "description": "Hunter shot",
+      "human": "Tap a player card to choose your shot target"
+    },
+    "whiteWolfKingBoom": {
+      "description": "White Wolf King self-destruct",
+      "human": "Tap a player card to choose self-destruct target"
+    },
+    "gameEnd": {
+      "description": "Game over",
+      "villageWin": "Villagers win",
+      "wolfWin": "Werewolves win"
+    }
   },
   "page": {
     "voteHelp": "How to vote?",
@@ -1333,7 +1391,10 @@
           "By day, disguise as good and mislead others"
         ],
         "action": "Tap a good player to choose a kill target",
-        "tips": ["Coordinate with teammates", "Sound good, but not perfect"]
+        "tips": [
+          "Coordinate with teammates",
+          "Sound good, but not perfect"
+        ]
       },
       "Seer": {
         "desc": "You can check a player’s true alignment.",
@@ -1342,7 +1403,10 @@
           "Share results in the day to guide votes"
         ],
         "action": "Tap a player to check",
-        "tips": ["Build trust before revealing", "Let others believe you're the seer"]
+        "tips": [
+          "Build trust before revealing",
+          "Let others believe you're the seer"
+        ]
       },
       "Witch": {
         "desc": "You have one antidote and one poison.",
@@ -1351,7 +1415,10 @@
           "Poison: eliminate any player (once)"
         ],
         "action": "Choose save, poison, or pass",
-        "tips": ["Potions are precious", "Wait when info is limited"]
+        "tips": [
+          "Potions are precious",
+          "Wait when info is limited"
+        ]
       },
       "Hunter": {
         "desc": "When you are eliminated, you may shoot one player.",
@@ -1360,7 +1427,10 @@
           "If you die or are banished, you can shoot one player"
         ],
         "action": "Tap a player to shoot",
-        "tips": ["Don’t reveal too early", "Decide carefully before you fall"]
+        "tips": [
+          "Don’t reveal too early",
+          "Decide carefully before you fall"
+        ]
       },
       "Guard": {
         "desc": "You can protect a player from a wolf kill.",
@@ -1369,7 +1439,10 @@
           "You cannot protect the same player two nights in a row"
         ],
         "action": "Tap a player to protect",
-        "tips": ["Guard key moments, not just key people", "Don’t reveal who you guarded"]
+        "tips": [
+          "Guard key moments, not just key people",
+          "Don’t reveal who you guarded"
+        ]
       },
       "Villager": {
         "desc": "You have no special power, but your judgment matters.",
@@ -1378,7 +1451,10 @@
           "Listen carefully, find logic gaps, and vote suspicious players"
         ],
         "action": "Tap a player to vote during voting phase",
-        "tips": ["Speak with evidence", "Think and listen more"]
+        "tips": [
+          "Speak with evidence",
+          "Think and listen more"
+        ]
       },
       "Idiot": {
         "desc": "Immune to exile once — flip your card and survive.",
@@ -1388,7 +1464,10 @@
           "After reveal, lose voting rights but can still speak"
         ],
         "action": "Tap a player to vote (before reveal)",
-        "tips": ["Speak boldly", "After reveal, influence through speech"]
+        "tips": [
+          "Speak boldly",
+          "After reveal, influence through speech"
+        ]
       },
       "WhiteWolfKing": {
         "desc": "King of wolves — self-destruct to take someone down.",
@@ -1398,7 +1477,10 @@
           "After self-destruct, skip to night immediately"
         ],
         "action": "Tap a player to kill at night; use self-destruct button during day",
-        "tips": ["Timing is everything", "Prioritize taking key roles"]
+        "tips": [
+          "Timing is everything",
+          "Prioritize taking key roles"
+        ]
       }
     }
   },
@@ -1516,7 +1598,7 @@
   },
   "characterGenerator": {
     "rosterLine": "{index}. {name} ({gender}, age {age}) - {basicInfo}",
-    "baseProfilesPrompt": "You are a Werewolf game character designer.\n\n【Scenario background】\nTitle: {title}\nBackground: {description}\nRole hints: {rolesHint}\n\n【Task】\nGenerate {count} player profiles. These are normal people playing Werewolf, not mystery story characters.\n\n【Important】\n- This is a Werewolf game; profiles must allow discussion and voting\n- Catchphrases should feel like casual filler; avoid over-the-top anime quirks\n- Catchphrases should be occasional, not every sentence\n- Backgrounds are ordinary occupations/identities; no mystery drama\n- Characters should vary, but their speech should be natural\n- The scenario background is only for determining character name style and occupation; characters only discuss Werewolf gameplay, not scenario-related plots\n- Use English only; do not use Chinese characters\n- IMPORTANT: Use native Western English names (e.g., James Miller, Sarah Johnson), NOT Asian-style names (e.g., avoid names like Wang, Li, Zhang, Chen)\n\n【Output requirements】\n1. Must output strict JSON object\n2. Must have exactly {count} profiles\n3. Each profile fields:\n   - displayName: string (native Western English name with first and last name, e.g., \"James Miller\", \"Emma Wilson\")\n   - gender: \"male\" | \"female\"\n   - age: number (20–55)\n   - mbti: string (4 letters like INTJ/ENFP)\n   - basicInfo: string (one-sentence occupation/identity in English)\n4. Names must be unique\n\n【Example】\n'{'\n  \"profiles\": [\n    '{' \"displayName\": \"James Miller\", \"gender\": \"male\", \"age\": 35, \"mbti\": \"ESTJ\", \"basicInfo\": \"Taxi driver with 10 years of experience\" '}',\n    '{' \"displayName\": \"Emma Wilson\", \"gender\": \"female\", \"age\": 24, \"mbti\": \"ENFP\", \"basicInfo\": \"Product manager at a tech company\" '}'\n  ]\n'}'\n\nNow output:",
+    "baseProfilesPrompt": "You are a Werewolf game character designer.\n\n【Scenario background】\nTitle: {title}\nBackground: {description}\nRole hints: {rolesHint}\n\n【Task】\nGenerate {count} player profiles. These are normal people playing Werewolf, not mystery story characters.\n\n【Important】\n- This is a Werewolf game; profiles must allow discussion and voting\n- Catchphrases should feel like casual filler; avoid over-the-top anime quirks\n- Catchphrases should be occasional, not every sentence\n- Backgrounds are ordinary occupations/identities; no mystery drama\n- Characters should vary, but their speech should be natural\n- The scenario background is only for determining character name style and occupation; characters only discuss Werewolf gameplay, not scenario-related plots\n- Use English only; do not use Chinese characters\n- IMPORTANT: Use native Western English names (e.g., James Miller, Sarah Johnson), NOT Asian-style names (e.g., avoid names like Wang, Li, Zhang, Chen)\n\n【Output requirements】\n1. Must output strict JSON object\n2. Must have exactly {count} profiles\n3. Each profile fields:\n   - displayName: string (native Western English name with first and last name, e.g., \"James Miller\", \"Emma Wilson\")\n   - gender: \"male\" | \"female\"\n   - age: number (20–55)\n   - mbti: string (4 letters like INTJ/ENFP)\n   - basicInfo: string (one-sentence occupation/identity in English)\n4. Names must be unique\n5. Name language must follow the scenario: a Chinese setting (e.g., wuxia, Republican era) gets Chinese names, never Western names\n\n【Example】\n'{'\n  \"profiles\": [\n    '{' \"displayName\": \"James Miller\", \"gender\": \"male\", \"age\": 35, \"mbti\": \"ESTJ\", \"basicInfo\": \"Taxi driver with 10 years of experience\" '}',\n    '{' \"displayName\": \"Emma Wilson\", \"gender\": \"female\", \"age\": 24, \"mbti\": \"ENFP\", \"basicInfo\": \"Product manager at a tech company\" '}'\n  ]\n'}'\n\nNow output:",
     "fullPersonasPrompt": "You are a Werewolf game character designer.\n\n【Scenario】\n{title} - {description}\nNote: The scenario is only for identity/background/name flavor. Everyone is now playing a live Werewolf game, so all speech should stay at the table: reads, pressure, doubt, voting, claims, silence, and survival.\n\n【Roster】\n{roster}\n\n【Task】\nCreate both persona and playerMind for each player.\n- persona describes surface identity and speech texture.\n- playerMind describes how this person actually plays Werewolf under pressure.\nThe goal is a believable table: some players are bold, some cautious; some remember votes, some remember tone; some speak in one or two sentences, and some expand when pressured.\n\n【persona hidden profile fields】\n- werewolfExperience: natural description of how this person understands Werewolf, without label-like tiers\n- vocabularyStyle: everyday wording and speech texture; plain everyday speech first, Werewolf jargon at most a light touch, close to real players\n- reasoningStyle: what they naturally notice first: tone, votes, claims, incentives, seat positions, interactions, or odd wording\n- speechLengthHabit: how their speech length changes across normal turns, pressure, and final pushes; natural language only, no numeric character ranges\n- pressureStyle: how they react when named or suspected\n- uncertaintyStyle: how they hedge, change reads, or avoid overcommitting\n- mistakePattern: believable wrong reads or blind spots\n- wolfDeceptionStyle: how they pretend to hold a town perspective when assigned a wolf role\n\n【playerMind fields】\n- courage: how willing they are to bluff, hard push, counterattack, vote boldly, or take a public risk\n- memoryBias: what they remember most: votes, contradictions, tone, claims, quiet seats, or timing\n- suspicionThreshold: how many clues make them change sides, and what kind of clue matters most\n- selfProtection: what they do when attacked: explain, counterattack, play wronged, joke, go quiet, or redirect\n- logicDepth: whether they mostly catch single points or can connect several players and vote patterns\n- tablePresence: whether they take space, speak briefly, interrupt softly, wait, lurk, or become loud only at key moments\n\n【Important constraints】\n- These hidden fields are only for AI prompts and must not be shown in the UI\n- Use natural descriptions, not enum labels like high/low/aggressive/passive or beginner/expert/pro\n- Avoid numeric character ranges\n- Make some people capable of one-sentence turns; some people can be medium-length; a few can ramble when stressed\n- A small number may have tiny micro-actions, short reactions, or emoji habits in voiceRules; most should sound like ordinary speech\n- voiceRules should describe tone, rhythm, sentence shape, and small verbal habits; avoid job-related analogies or jargon\n- Keep wording plain and conversational; avoid community slang; game jargon at most a light touch that any player understands\n- Preserve diversity while keeping everyone realistic and playable\n- Use English only; do not use Chinese characters\n\n【Output requirements】\n1. Must output JSON: '{ \"characters\": [...] }'\n2. Must have exactly {count} characters, with names and order matching the roster\n3. Every character must include all persona hidden fields and all playerMind fields\n\n【Output structure】\n'{'\n  \"characters\": [\n{schema}\n  ]\n'}'\n\nNow output:"
   },
   "scenarios": {
@@ -1730,21 +1812,21 @@
       "phaseOrderNote": "Phase order: Night (wolf kills) → Dawn death announcement → Free discussion → Vote. Wolf kills happen before daytime speech, so today's not-yet-spoken statements cannot explain last night's target.",
       "phaseOrderNoteDay1BadgeBeforeDeath": "Phase order: Night (wolf kills) → Sheriff campaign → Dawn death announcement → Free discussion → Vote. Note: Wolf kills happen BEFORE the campaign; wolves have NOT heard any daytime speeches when they kill.",
       "noSameDayCausalityNote": "Timeline reminder: last night's kill target is locked before today's daytime begins; do not treat today's campaign, role claims, or speeches as the direct cause of last night's kill.",
-"wolfVoteTeammateNote": "Vote note: werewolves may also vote for a teammate in the sheriff election or the elimination vote (passing gold-water, setting up a play, cutting a lost teammate), so a vote pattern alone does not prove the voted player is good. Conversely, the same group repeatedly piling votes onto the same player (especially funneling sheriff votes to one candidate) remains a key clue of wolf coordination; do not dismiss it just because 'wolves would not be that obvious'.",
-"wolfBoomThreatNote": "Intel note: the target taken by the White Wolf King's self-destruct, and the target wolves prioritize at night, are the threats the wolf team must remove. If that person claimed seer and gave a cursed-check while no second seer counter-claimed, that check is highly credible — do not discard it just because the speaker is already out ('pressing a dead player's read' is not a crime). Judge a seer claim by only three things: (1) whether anyone counter-claimed, (2) whether the wolf team paid a heavy price (self-destruct, priority night kill) to remove them, (3) how the checked player behaved afterwards. Do not use 'the check came too fast / too smooth / too high-payoff' gut feelings to dismiss an uncontested seer claim.",
-"wolfNightKillFramingNote": "Night-kill note: a player killed at night is not necessarily silenced — wolves also kill the good player who accused someone hardest, in order to frame that person. 'The dead player accused X' is only a clue, never the sole basis for a conviction; night 1 targets are chosen before any speech happens.",
-    "deadVoteNoCollusionNote": "Dead-vote note: badge/exile votes cast by eliminated players while alive cannot serve as evidence that their vote target is a wolf — dead players cannot coordinate with the wolf team anymore, and who dies at night is decided by the wolves themselves; wolves will not knife their own just to farm one suspicious vote for a teammate. A dead player voting for someone instead suggests that person is more likely the real seer (dying good players side with the true seer; wolves also vote for the real seer to disguise their vote pattern). The \"concentrated votes = wolf coordination\" clue above only applies among living players; when someone accuses a player of being a fake seer because \"the dead players voted for them\", it is very likely a narrative actively manufactured and amplified by the wolves — stay alert.",
-    "loneSeerProtectionNote": "No-counterclaim rule: when no second player has claimed seer (counter-claim), the sole seer claimant is most likely the real seer (wolves know whether their teammates counter-claimed; a fake seer claim usually comes with a counter-claim). Exiling a sole seer without hard counterevidence destroys your own faction's only information source. Hard counterevidence means only two things: their claimed checks contradict published night deaths or other public facts, or the target of their kill-check has verifiable counterevidence. Voting out the sole seer merely because \"some players voted for them\" (especially votes from eliminated players) is almost always a self-inflicted loss for the good faction.",
-    "unverifiedCheckNote": "No-unrefuted-check rule: when a seer's check target dies that same night (knifed or poisoned), the check merely becomes impossible to verify face-to-face — it is NOT refuted. Unverifiable does not mean false. In particular, if the witch — who has zero information on night one — poisons the very person the seer kill-checked, that is two independent information sources pointing at the same player: mutual corroboration. Do not flip yesterday's \"the check matches the death\" verdict into \"the check is suspect\" just because the witch's potion \"explains\" the death — that flip is exactly the wolves' standard script for counterattacking a real seer. Three more points: (1) a fake seer's classic trick is to fake-check the wolves' own knife target (the death is guaranteed to \"match\"); wolves cannot predict the witch's poison in advance, so once the witch publicly reports her poison and clarifies the death mechanism, the check should be treated as corroborated, not doubtful. (2) A seer produces at most one check per night and can only announce it in the next day's speech — announcing within his own speaking slot is timely. Speaking later in the rotation, or reporting only after being pressed, cannot be used to deny him; \"reported too late\", \"passive counterattack\", \"no sense of process\" are the wolves' stock phrases against real seers. Demanding the seer produce \"one more new check\" within the same day is an impossible task; rejecting a seer over such an ultimatum hands the wolves a knife. (3) A seer's poor play (wrong badge-direction votes, exiling the wrong person, poor speeches) is a skill issue, not identity evidence — real seers make mistakes and fake seers can perform brilliantly.",
-    "badgeFlowNote": "Badge-flow rule: when the sole, uncounter-claimed seer is knifed at night and hands the badge to someone, that is his last and most reliable word — it outranks any verbal suspicion he voiced while alive. Default reading: (1) handing it to someone means he checked or trusts that seat as good (if he checked that seat that very night, it is equivalent to gold water); (2) handing it to his own counter-claimant or kill-check target equals admitting they are the wolf; (3) tearing the badge means he lost faith in the whole table, not that anyone in particular is guilty. So \"he said he would look for wolves among two players, yet gave the badge to one of them\" is not a contradiction — it is an update after checking; treating that combination as proof of guilt is exactly the wolves' standard script for counterattacking a dead player and taking the badge recipient out along with him. Anyone questioning the recipient must present verifiable counterevidence (their words or acts directly conflicting with the dead player's final judgment, or contradicting public facts); \"the handover was a night action\", \"the timing is suspicious\", \"who knows what the dead were thinking\" do not qualify. If hard counterevidence already shows this seer claimant was a fake (claimed checks contradict public facts, etc.), this rule does not apply.",
-    "nightKillEvidenceNote": "Night-kill reading rule: the default reading for anyone who dies at night is that the wolves silenced someone who troubled them — whom the wolves chose to cut usually shows whom they considered dangerous, and the dead player's most threatening stance against the wolf line is itself evidence he was good (this does NOT mean whoever he doubted is a wolf — the night-kill framing note covers that). Self-knife inversion is forbidden: exile and night kills never reveal roles, so the wolves gain nothing by laundering an already-dead player; if the dead player really were a wolf teammate, knifing him means burning a precious kill for nothing and personally destroying a live mouth still defending the wolf narrative in public — such a reading contradicts itself. Only when positive evidence shows his death clearly benefits the wolves' storyline AND the silencing explanation completely fails may a self-knife be considered; otherwise always read it as silencing. When convicting someone for \"he defended player X to the death while alive\", judge by the public information available at the time: if the defense happened before X's wolf identity was ever proven (especially in a counter-claim standoff, and exile reveals no roles), siding with the later-exiled player is something a good person could easily do — that exile itself may have been wrong. Only continued defense after X has been proven a wolf by verifiable hard evidence counts as wolf-teammate suspicion.",
-    "seerClaimGuidance": "【Seer claim guidance】In daytime you have exactly two legitimate ways to handle your check records: (1) claim seer = report the full ledger — which night, whom you checked, the result, nothing omitted, exactly matching your private records, never edited; (2) stay silent = keep it to yourself — at most admit a baseless gut read (say outright \"can't say why\"); never fabricate listening impressions, speaking style, or speech content as evidence. When to claim: someone fake-claims seer against you, your kill-check target is steering the table, or the badge race needs the real seer — every night you stay silent costs the village one night of information.",
-    "witchAccountGuidance": "【Potion ledger guidance】Only you know your potion usage, and reporting it is an independent information source: (1) report the full ledger — which night, whom you saved or poisoned, which potions remain — in one go, and never revise it afterwards; (2) when to reveal: the death mechanics are being questioned, someone's death needs clarifying as knife or poison, or you are under suspicion and must prove yourself; (3) once the antidote is spent you no longer see the knife target — never present an old knife target as tonight's information.",
-    "guardAccountGuidance": "【Guard ledger guidance】Only you know whom you guarded: (1) report the full ledger — whom you guarded each night, in one go, exactly matching your records; never rewrite or invent entries to fit your earlier speeches; (2) \"I guarded X that night\" and \"I saved X\" are different claims — your records alone cannot prove the guard worked (the witch may have saved them), so report facts only; (3) when death attribution is disputed or a night's knife target needs counterevidence, your guard ledger is key information worth revealing in full.",
-    "counterClaimNote": "Counter-claim rule: when two players both claim seer (counter-claim), do NOT rush to exile either one that same day — the counter-claim is itself the wolves' standard tactic to drag down the real seer; you cannot tell truth from fake on the spot, and exiling the wrong one is village suicide. Correct play: (1) that day, cross-check both claimants' reported checks against public facts (death mechanics, the witch's poison ledger, badge flow, vote patterns) and eliminate only the one that hard-contradicts public facts; (2) if neither hard-contradicts, watch the later behavior of each claimant's gold-water/kill-check targets and the nightly knife targets, and settle gradually instead of same-day; (3) cast the exile vote for the claimant whose checks contradict public facts, not the one who \"sounds weaker\".",
-    "wolfFakeSeerGuidance": "【Fake-seer rule】If you decide to fake-claim seer (or report fake checks by day): (1) your reported checks must never contradict public facts (death mechanics, vote patterns, badge flow all have to line up) — one falsification hands your teammates' trust line to the village; (2) prefer handing gold water to teammates to bind votes, and aim kill-checks at the good players hunting wolves hardest or the real seer's gold water — never kill-check an already-eliminated player (checking the dead looks contrived); (3) pace your checks like a real seer: at most one per night, with a sense of process, never invent extras, never revise what you already reported; (4) when the real seer counter-claims, counterattack with verifiable hard points like \"his checks contradict public facts\", not just \"he reported too late\" or \"his speech feels off\" — the good-side rules are tightening, and vibes no longer buy votes.",
-    "sheriffDutyNote": "Sheriff duty: whoever holds the badge is the table's vote-caller — before each exile vote, state publicly who to vote this round and why, and concentrate the votes; vague stances and scattered votes mean abandoning the sheriff's organizing role. If your information is thin, say explicitly \"this round I follow X's read\" — do not abstain and do not drift with the crowd. Wrong calls are on you, so run your reasons against public facts before calling the vote.",
-    "evidenceIndependenceNote": "Evidence-independence rule: before stacking multiple threads that all point at one player into hard proof, first confirm the threads are truly independent — knife-framing, fake kill-checks, and concentrated votes are all things the wolves can manufacture themselves; multiple \"clues\" from the wolves' own hand still add up to one piece of evidence. Only when you can argue the sources cannot reach each other (e.g. death mechanics only the witch knows, checks only the seer knows, and both sides' interests contradict the wolves') does simultaneous pointing count as mutual confirmation. The wolves' favorite trick is manufacturing the illusion of \"several clues conveniently pointing at the same good player\"; treating correlation as independent evidence is walking straight into their script.",
+      "wolfVoteTeammateNote": "Vote note: werewolves may also vote for a teammate in the sheriff election or the elimination vote (passing gold-water, setting up a play, cutting a lost teammate), so a vote pattern alone does not prove the voted player is good. Conversely, the same group repeatedly piling votes onto the same player (especially funneling sheriff votes to one candidate) remains a key clue of wolf coordination; do not dismiss it just because 'wolves would not be that obvious'.",
+      "wolfBoomThreatNote": "Intel note: the target taken by the White Wolf King's self-destruct, and the target wolves prioritize at night, are the threats the wolf team must remove. If that person claimed seer and gave a cursed-check while no second seer counter-claimed, that check is highly credible — do not discard it just because the speaker is already out ('pressing a dead player's read' is not a crime). Judge a seer claim by only three things: (1) whether anyone counter-claimed, (2) whether the wolf team paid a heavy price (self-destruct, priority night kill) to remove them, (3) how the checked player behaved afterwards. Do not use 'the check came too fast / too smooth / too high-payoff' gut feelings to dismiss an uncontested seer claim.",
+      "wolfNightKillFramingNote": "Night-kill note: a player killed at night is not necessarily silenced — wolves also kill the good player who accused someone hardest, in order to frame that person. 'The dead player accused X' is only a clue, never the sole basis for a conviction; night 1 targets are chosen before any speech happens.",
+      "deadVoteNoCollusionNote": "Dead-vote note: badge/exile votes cast by eliminated players while alive cannot serve as evidence that their vote target is a wolf — dead players cannot coordinate with the wolf team anymore, and who dies at night is decided by the wolves themselves; wolves will not knife their own just to farm one suspicious vote for a teammate. A dead player voting for someone instead suggests that person is more likely the real seer (dying good players side with the true seer; wolves also vote for the real seer to disguise their vote pattern). The \"concentrated votes = wolf coordination\" clue above only applies among living players; when someone accuses a player of being a fake seer because \"the dead players voted for them\", it is very likely a narrative actively manufactured and amplified by the wolves — stay alert.",
+      "loneSeerProtectionNote": "No-counterclaim rule: when no second player has claimed seer (counter-claim), the sole seer claimant is most likely the real seer (wolves know whether their teammates counter-claimed; a fake seer claim usually comes with a counter-claim). Exiling a sole seer without hard counterevidence destroys your own faction's only information source. Hard counterevidence means only two things: their claimed checks contradict published night deaths or other public facts, or the target of their kill-check has verifiable counterevidence. Voting out the sole seer merely because \"some players voted for them\" (especially votes from eliminated players) is almost always a self-inflicted loss for the good faction.",
+      "unverifiedCheckNote": "No-unrefuted-check rule: when a seer's check target dies that same night (knifed or poisoned), the check merely becomes impossible to verify face-to-face — it is NOT refuted. Unverifiable does not mean false. In particular, if the witch — who has zero information on night one — poisons the very person the seer kill-checked, that is two independent information sources pointing at the same player: mutual corroboration. Do not flip yesterday's \"the check matches the death\" verdict into \"the check is suspect\" just because the witch's potion \"explains\" the death — that flip is exactly the wolves' standard script for counterattacking a real seer. Three more points: (1) a fake seer's classic trick is to fake-check the wolves' own knife target (the death is guaranteed to \"match\"); wolves cannot predict the witch's poison in advance, so once the witch publicly reports her poison and clarifies the death mechanism, the check should be treated as corroborated, not doubtful. (2) A seer produces at most one check per night and can only announce it in the next day's speech — announcing within his own speaking slot is timely. Speaking later in the rotation, or reporting only after being pressed, cannot be used to deny him; \"reported too late\", \"passive counterattack\", \"no sense of process\" are the wolves' stock phrases against real seers. Demanding the seer produce \"one more new check\" within the same day is an impossible task; rejecting a seer over such an ultimatum hands the wolves a knife. (3) A seer's poor play (wrong badge-direction votes, exiling the wrong person, poor speeches) is a skill issue, not identity evidence — real seers make mistakes and fake seers can perform brilliantly.",
+      "badgeFlowNote": "Badge-flow rule: when the sole, uncounter-claimed seer is knifed at night and hands the badge to someone, that is his last and most reliable word — it outranks any verbal suspicion he voiced while alive. Default reading: (1) handing it to someone means he checked or trusts that seat as good (if he checked that seat that very night, it is equivalent to gold water); (2) handing it to his own counter-claimant or kill-check target equals admitting they are the wolf; (3) tearing the badge means he lost faith in the whole table, not that anyone in particular is guilty. So \"he said he would look for wolves among two players, yet gave the badge to one of them\" is not a contradiction — it is an update after checking; treating that combination as proof of guilt is exactly the wolves' standard script for counterattacking a dead player and taking the badge recipient out along with him. Anyone questioning the recipient must present verifiable counterevidence (their words or acts directly conflicting with the dead player's final judgment, or contradicting public facts); \"the handover was a night action\", \"the timing is suspicious\", \"who knows what the dead were thinking\" do not qualify. If hard counterevidence already shows this seer claimant was a fake (claimed checks contradict public facts, etc.), this rule does not apply.",
+      "nightKillEvidenceNote": "Night-kill reading rule: the default reading for anyone who dies at night is that the wolves silenced someone who troubled them — whom the wolves chose to cut usually shows whom they considered dangerous, and the dead player's most threatening stance against the wolf line is itself evidence he was good (this does NOT mean whoever he doubted is a wolf — the night-kill framing note covers that). Self-knife inversion is forbidden: exile and night kills never reveal roles, so the wolves gain nothing by laundering an already-dead player; if the dead player really were a wolf teammate, knifing him means burning a precious kill for nothing and personally destroying a live mouth still defending the wolf narrative in public — such a reading contradicts itself. Only when positive evidence shows his death clearly benefits the wolves' storyline AND the silencing explanation completely fails may a self-knife be considered; otherwise always read it as silencing. When convicting someone for \"he defended player X to the death while alive\", judge by the public information available at the time: if the defense happened before X's wolf identity was ever proven (especially in a counter-claim standoff, and exile reveals no roles), siding with the later-exiled player is something a good person could easily do — that exile itself may have been wrong. Only continued defense after X has been proven a wolf by verifiable hard evidence counts as wolf-teammate suspicion.",
+      "seerClaimGuidance": "【Seer claim guidance】In daytime you have exactly two legitimate ways to handle your check records: (1) claim seer = report the full ledger — which night, whom you checked, the result, nothing omitted, exactly matching your private records, never edited; (2) stay silent = keep it to yourself — at most admit a baseless gut read (say outright \"can't say why\"); never fabricate listening impressions, speaking style, or speech content as evidence. When to claim: someone fake-claims seer against you, your kill-check target is steering the table, or the badge race needs the real seer — every night you stay silent costs the village one night of information.",
+      "witchAccountGuidance": "【Potion ledger guidance】Only you know your potion usage, and reporting it is an independent information source: (1) report the full ledger — which night, whom you saved or poisoned, which potions remain — in one go, and never revise it afterwards; (2) when to reveal: the death mechanics are being questioned, someone's death needs clarifying as knife or poison, or you are under suspicion and must prove yourself; (3) once the antidote is spent you no longer see the knife target — never present an old knife target as tonight's information.",
+      "guardAccountGuidance": "【Guard ledger guidance】Only you know whom you guarded: (1) report the full ledger — whom you guarded each night, in one go, exactly matching your records; never rewrite or invent entries to fit your earlier speeches; (2) \"I guarded X that night\" and \"I saved X\" are different claims — your records alone cannot prove the guard worked (the witch may have saved them), so report facts only; (3) when death attribution is disputed or a night's knife target needs counterevidence, your guard ledger is key information worth revealing in full.",
+      "counterClaimNote": "Counter-claim rule: when two players both claim seer (counter-claim), do NOT rush to exile either one that same day — the counter-claim is itself the wolves' standard tactic to drag down the real seer; you cannot tell truth from fake on the spot, and exiling the wrong one is village suicide. Correct play: (1) that day, cross-check both claimants' reported checks against public facts (death mechanics, the witch's poison ledger, badge flow, vote patterns) and eliminate only the one that hard-contradicts public facts; (2) if neither hard-contradicts, watch the later behavior of each claimant's gold-water/kill-check targets and the nightly knife targets, and settle gradually instead of same-day; (3) cast the exile vote for the claimant whose checks contradict public facts, not the one who \"sounds weaker\".",
+      "wolfFakeSeerGuidance": "【Fake-seer rule】If you decide to fake-claim seer (or report fake checks by day): (1) your reported checks must never contradict public facts (death mechanics, vote patterns, badge flow all have to line up) — one falsification hands your teammates' trust line to the village; (2) prefer handing gold water to teammates to bind votes, and aim kill-checks at the good players hunting wolves hardest or the real seer's gold water — never kill-check an already-eliminated player (checking the dead looks contrived); (3) pace your checks like a real seer: at most one per night, with a sense of process, never invent extras, never revise what you already reported; (4) when the real seer counter-claims, counterattack with verifiable hard points like \"his checks contradict public facts\", not just \"he reported too late\" or \"his speech feels off\" — the good-side rules are tightening, and vibes no longer buy votes.",
+      "sheriffDutyNote": "Sheriff duty: whoever holds the badge is the table's vote-caller — before each exile vote, state publicly who to vote this round and why, and concentrate the votes; vague stances and scattered votes mean abandoning the sheriff's organizing role. If your information is thin, say explicitly \"this round I follow X's read\" — do not abstain and do not drift with the crowd. Wrong calls are on you, so run your reasons against public facts before calling the vote.",
+      "evidenceIndependenceNote": "Evidence-independence rule: before stacking multiple threads that all point at one player into hard proof, first confirm the threads are truly independent — knife-framing, fake kill-checks, and concentrated votes are all things the wolves can manufacture themselves; multiple \"clues\" from the wolves' own hand still add up to one piece of evidence. Only when you can argue the sources cannot reach each other (e.g. death mechanics only the witch knows, checks only the seer knows, and both sides' interests contradict the wolves') does simultaneous pointing count as mutual confirmation. The wolves' favorite trick is manufacturing the illusion of \"several clues conveniently pointing at the same good player\"; treating correlation as independent evidence is walking straight into their script.",
       "deathCauseWolf": "wolf kill",
       "deathCausePoison": "poisoned",
       "deathCauseVote": "voted out",
