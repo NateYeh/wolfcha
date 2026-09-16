@@ -41,6 +41,10 @@ test("TokenPay 角色流已返回部分内容后中断也不会重新付费请�
   let baseCalls = 0;
   let streamCalls = 0;
   globalThis.fetch = async (_input, init) => {
+    // AI 日誌回報（/api/dev-ai-logs）不是模型呼叫，不計入付費呼叫數
+    if (String(_input).includes("/dev-ai-logs")) {
+      return Response.json({ ok: true });
+    }
     const body = JSON.parse(String(init?.body ?? "{}")) as { stream?: boolean };
     if (!body.stream) {
       baseCalls += 1;
