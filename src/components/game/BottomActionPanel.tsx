@@ -142,6 +142,19 @@ export function BottomActionPanel({
           return null;
         })()}
 
+        {/* 守衛選人前的毒奶規則提示（人類玩家夜間 UI 過去完全看不到這條規則） */}
+        {phase === "NIGHT_GUARD_ACTION" && humanPlayer?.role === "Guard" && humanPlayer.alive && !isWaitingForAI && selectedSeat === null && (
+          <motion.div
+            key="guard-milk-hint"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className={`w-full text-center text-[11px] leading-tight px-2 ${isNight ? "text-white/50" : "text-[var(--text-muted)]"}`}
+          >
+            {t("bottomAction.milkRuleHint")}
+          </motion.div>
+        )}
+
         {/* 女巫行动面板 */}
         {phase === "NIGHT_WITCH_ACTION" && humanPlayer?.role === "Witch" && !isWaitingForAI && (
           selectedSeat !== null ? (
@@ -175,8 +188,9 @@ export function BottomActionPanel({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="wc-witch-action-row flex items-center gap-2 w-full"
+              className="wc-witch-action-row flex flex-col gap-1.5 w-full"
             > 
+              <div className="flex items-center gap-2 w-full">
               {gameState.nightActions.wolfTarget !== undefined && (
                 <button 
                   onClick={() => onNightAction(gameState.nightActions.wolfTarget!, "save")}
@@ -205,6 +219,13 @@ export function BottomActionPanel({
                 <X size={16} />
                 {t("bottomAction.pass")}
               </button>
+              </div>
+              {/* 解藥仍在、今晚有刀口時提示毒奶規則：救了可能被守衛疊加守護而死 */}
+              {gameState.nightActions.wolfTarget !== undefined && !gameState.roleAbilities.witchHealUsed && (
+                <div className={`w-full text-center text-[11px] leading-tight ${isNight ? "text-white/50" : "text-[var(--text-muted)]"}`}>
+                  {t("bottomAction.milkRuleHint")}
+                </div>
+              )}
             </motion.div>
           )
         )}

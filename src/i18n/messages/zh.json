@@ -667,6 +667,7 @@
     "poisonUsed": "毒药已耗尽",
     "clickToPoison": "点击玩家卡片选择毒杀目标",
     "pass": "跳过",
+    "milkRuleHint": "毒奶规则：若守卫今晚也守护同一人，该玩家仍会死亡",
     "gameEnd": {
       "villageWin": "好人阵营胜利！",
       "wolfWin": "狼人阵营胜利！"

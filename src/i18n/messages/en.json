@@ -654,6 +654,7 @@
     "poisonUsed": "Poison used up",
     "clickToPoison": "Tap a player card to choose a poison target",
     "pass": "Pass",
+    "milkRuleHint": "Milk rule: if the guard also protects the same player tonight, that player still dies",
     "gameEnd": {
       "villageWin": "Villagers win!",
       "wolfWin": "Werewolves win!"

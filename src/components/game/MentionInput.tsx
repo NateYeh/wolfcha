@@ -329,7 +329,7 @@ export function MentionInput({
             !e.ctrlKey &&
             !e.altKey &&
             !e.shiftKey &&
-            !(e as any).isComposing
+            !e.nativeEvent.isComposing
           ) {
             if (holdingSlashRef.current) {
               e.preventDefault();
@@ -387,6 +387,8 @@ export function MentionInput({
           }
 
           if (e.key === "Enter" && !e.shiftKey) {
+            // IME 輸入法：選字確認的 Enter 不得當作送出（isComposing/keyCode 229 都是組字中訊號）
+            if (e.nativeEvent.isComposing || e.keyCode === 229) return;
             // Don't send if suggestion popup is open
             if (isSuggestionOpen) return;
             e.preventDefault();
