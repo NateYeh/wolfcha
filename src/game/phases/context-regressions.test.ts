@@ -403,6 +403,69 @@ test("发言底线规则：未发言者不得被描述发言风格（禁止凭�
   assert.match(prompt.system, /明说没有依据的直觉/);
 });
 
+test("職業白天指引：預言家/女巫/守衛各得報帳守則，村民無；對跳守則緊貼無對跳守則且夜間不拼入", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_SPEECH");
+  // 讓預言家私有段出現（seerHistory 空會提早 return）
+  state.nightActions = { seerHistory: [{ day: 1, targetSeat: 8, isWolf: false }] };
+  const seer = state.players.find((p) => p.role === "Seer")!;
+  const witch = state.players.find((p) => p.role === "Witch")!;
+  const guard = state.players.find((p) => p.role === "Guard")!;
+  const villager = state.players.find((p) => p.role === "Villager")!;
+
+  state.currentSpeakerSeat = seer.seat;
+  const seerPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, seer)!;
+  assert.match(seerPrompt.user, /<your_seer_checks>[\s\S]*查验公布指引/);
+  assert.match(seerPrompt.user, /报完整帐目/);
+  assert.match(seerPrompt.user, /不得编造听感、发言风格或发言内容/);
+  assert.match(seerPrompt.user, /该跳的时机/);
+
+  state.currentSpeakerSeat = witch.seat;
+  const witchPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, witch)!;
+  assert.match(witchPrompt.user, /<your_potions>[\s\S]*用药公布指引/);
+  assert.match(witchPrompt.user, /报帐要完整/);
+  assert.match(witchPrompt.user, /别把旧刀口当作今晚的信息/);
+
+  state.currentSpeakerSeat = guard.seat;
+  const guardPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, guard)!;
+  assert.match(guardPrompt.user, /<your_guard_info>[\s\S]*守护公布指引/);
+  assert.match(guardPrompt.user, /不得为圆先前的发言而改写或补造/);
+  assert.match(guardPrompt.user, /「那晚我守了X」和「我守住了X」是两回事/);
+
+  // 村民/狼不拿到三職業指引
+  state.currentSpeakerSeat = villager.seat;
+  const villagerPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
+  assert.doesNotMatch(villagerPrompt.user, /公布指引/);
+
+  // 夜間查验行動不帶白天指引（夜間提示另有一套）
+  const nightState = fresh("NIGHT_SEER_ACTION");
+  nightState.nightActions = { seerHistory: [{ day: 1, targetSeat: 8, isWolf: false }] };
+  const nightSeer = nightState.players.find((p) => p.role === "Seer")!;
+  nightState.currentSpeakerSeat = nightSeer.seat;
+  const nightSeerPrompt = new PhaseManager().getPrompt("NIGHT_SEER_ACTION", { state: nightState }, nightSeer)!;
+  assert.doesNotMatch(nightSeerPrompt.user, /查验公布指引/);
+
+  // 對跳守則：進 rules、緊貼無對跳守則（互斥情境相鄰）、夜間不拼入
+  const voteState = fresh("DAY_VOTE");
+  const voteVillager = voteState.players.find((p) => p.role === "Villager")!;
+  voteState.currentSpeakerSeat = voteVillager.seat;
+  const votePrompt = new PhaseManager().getPrompt("DAY_VOTE", { state: voteState }, voteVillager)!;
+  assert.match(votePrompt.user, /对跳守则/);
+  assert.match(votePrompt.user, /只排除与公开事实硬矛盾的一方/);
+  assert.match(votePrompt.user, /而不是「听起来更弱」的那一方/);
+  assert.ok(
+    votePrompt.user.indexOf("对跳守则") > votePrompt.user.indexOf("无对跳守则") &&
+      votePrompt.user.indexOf("对跳守则") < votePrompt.user.indexOf("查杀未证伪守则"),
+    "對跳守則應夾在無對跳守則與查殺未證偽守則之間"
+  );
+  const nightWolfState = fresh("NIGHT_WOLF_ACTION");
+  const nightWolf = nightWolfState.players.find((p) => p.role === "Werewolf")!;
+  nightWolfState.currentSpeakerSeat = nightWolf.seat;
+  const nightWolfPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightWolfState }, nightWolf)!;
+  assert.doesNotMatch(nightWolfPrompt.user, /对跳守则/);
+});
+
 test("投票最终约束：唯一跳预言家者无硬反证不得放逐；对跳/狼侧/本人不受约束", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");

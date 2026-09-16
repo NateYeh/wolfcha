@@ -663,6 +663,7 @@ const buildRolePrivateInfo = (
   player: Player,
   options?: { excludePendingDeaths?: boolean }
 ): string | null => {
+  const { t } = getI18n();
   // 夜间"结果"(刀/守/救是否致死)在天亮公布前不得泄露给当前行动者。目标"身份"(刀谁/守谁/夜里看到的刀口)
   // 本就属于该角色夜间合法所知，可照常展示；这里只对"当晚(state.day)结果"在死亡公布前做门控，过往夜次已公开。
   const outcomeKnownForDay = (day: number): boolean =>
@@ -677,10 +678,15 @@ const buildRolePrivateInfo = (
       return `  第${record.day}夜 → ${record.targetSeat + 1}号${target?.displayName || ""} = ${resultEmoji}`;
     });
     
-    return `<your_seer_checks>
+    let seerInfo = `<your_seer_checks>
 【你的查验记录】
-${checks.join("\n")}
-</your_seer_checks>`;
+${checks.join("\n")}`;
+    // 白天（含警徽競選 DAY_BADGE_*）才需要公布決策指引：跳/不跳/何時跳；夜間查验行動有自己的提示。
+    if (state.phase.includes("DAY")) {
+      seerInfo += `\n${t("promptUtils.gameContext.seerClaimGuidance")}`;
+    }
+    seerInfo += `\n</your_seer_checks>`;
+    return seerInfo;
   }
   
   if (player.role === "Witch") {
@@ -739,6 +745,10 @@ ${checks.join("\n")}
     if (witchActions.length > 0) {
       witchInfo += `\n【用药记录】\n${witchActions.join("\n")}`;
     }
+    // 白天才需要報帳指引（何時公開、報什麼）；夜間用藥決策有自己的提示。
+    if (state.phase.includes("DAY")) {
+      witchInfo += `\n${t("promptUtils.gameContext.witchAccountGuidance")}`;
+    }
     witchInfo += `\n</your_potions>`;
     return witchInfo;
   }
@@ -760,11 +770,16 @@ ${checks.join("\n")}
       });
     const lastSeat = state.nightActions.lastGuardTarget;
     const lastTarget = state.players.find((p) => p.seat === lastSeat);
-    return `<your_guard_info>
+    let guardInfo = `<your_guard_info>
 【守护记录】${records.length ? `\n${records.join("\n")}` : "暂无已记录的守护行动"}
 【记录含义】守护目标未出局不代表全场平安夜，也不能证明守护生效或目标被狼人袭击。以每夜全场公开结果为准，不得为维护先前发言而改写死亡日期。
-${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.displayName || ""}\n【今晚限制】不能连续守护 ${lastSeat + 1}号` : "【今晚限制】无，可以守护任何存活玩家"}
-</your_guard_info>`;
+${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.displayName || ""}\n【今晚限制】不能连续守护 ${lastSeat + 1}号` : "【今晚限制】无，可以守护任何存活玩家"}`;
+    // 白天才需要報帳指引（報什麼、怎麼報）；夜間守護決策有自己的提示。
+    if (state.phase.includes("DAY")) {
+      guardInfo += `\n${t("promptUtils.gameContext.guardAccountGuidance")}`;
+    }
+    guardInfo += `\n</your_guard_info>`;
+    return guardInfo;
   }
   
   if (isWolfRole(player.role)) {
@@ -926,6 +941,8 @@ alive_count: ${alivePlayers.length}
   // 死者票无效力＋无对跳不放逐唯一预言家：都是白天推理守则，夜间不拼入。
   const deadVoteNoCollusionNote = isDayPhase ? t("promptUtils.gameContext.deadVoteNoCollusionNote") : "";
   const loneSeerProtectionNote = isDayPhase ? t("promptUtils.gameContext.loneSeerProtectionNote") : "";
+  // 對跳守則：有對跳時的裁決路徑，與無對跳守則成對，僅白天拼入。
+  const counterClaimNote = isDayPhase ? t("promptUtils.gameContext.counterClaimNote") : "";
   // 查杀未证伪＋毒杀印证＋报查验时机：狼队反打真预言家的标准话术防线，仅白天拼入。
   const unverifiedCheckNote = isDayPhase ? t("promptUtils.gameContext.unverifiedCheckNote") : "";
   // 警徽流：预言家夜死后交徽＝最后遗言，优先于生前口头怀疑，仅白天拼入。
@@ -971,6 +988,10 @@ alive_count: ${alivePlayers.length}
   }
   if (loneSeerProtectionNote) {
     rulesText += `\n${loneSeerProtectionNote}`;
+  }
+  // 緊貼無對跳守則：唯一跳/有對跳是互斥情境，相鄰便於對照。
+  if (counterClaimNote) {
+    rulesText += `\n${counterClaimNote}`;
   }
   if (unverifiedCheckNote) {
     rulesText += `\n${unverifiedCheckNote}`;
