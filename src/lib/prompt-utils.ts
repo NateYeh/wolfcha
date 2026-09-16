@@ -928,6 +928,8 @@ alive_count: ${alivePlayers.length}
   const loneSeerProtectionNote = isDayPhase ? t("promptUtils.gameContext.loneSeerProtectionNote") : "";
   // 查杀未证伪＋毒杀印证＋报查验时机：狼队反打真预言家的标准话术防线，仅白天拼入。
   const unverifiedCheckNote = isDayPhase ? t("promptUtils.gameContext.unverifiedCheckNote") : "";
+  // 警徽流：预言家夜死后交徽＝最后遗言，优先于生前口头怀疑，仅白天拼入。
+  const badgeFlowNote = isDayPhase ? t("promptUtils.gameContext.badgeFlowNote") : "";
   
   // Check if guard exists in this game
   const hasGuard = state.players.some(p => p.role === "Guard");
@@ -970,6 +972,10 @@ alive_count: ${alivePlayers.length}
   }
   if (unverifiedCheckNote) {
     rulesText += `\n${unverifiedCheckNote}`;
+  }
+  // 警徽流放最后：接徽解讀比死者生前發言更晚出現，需吃 recency。
+  if (badgeFlowNote) {
+    rulesText += `\n${badgeFlowNote}`;
   }
   
   if (rulesText) {

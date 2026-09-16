@@ -333,6 +333,35 @@ test("白天规则：死者票无效力＋无对跳保护唯一预言家；夜�
   assert.doesNotMatch(nightPrompt.user, /查杀未证伪守则/);
 });
 
+test("警徽流守则：唯一无对跳预言家夜死交徽＝最后遗言，优先于生前口头怀疑；夜间不拼入", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_VOTE");
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  state.currentSpeakerSeat = villager.seat;
+  const dayPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
+  // 交徽＝死者最後、最可靠的表態（優先於生前口頭懷疑）
+  assert.match(dayPrompt.user, /警徽流守则/);
+  assert.match(dayPrompt.user, /优先于他生前任何口头怀疑/);
+  // 「生前说从某两人里找狼、警徽却给了其中一人」不是矛盾，是查验后的更新
+  assert.match(dayPrompt.user, /不是矛盾，而是查验后的更新/);
+  // 逃生口：接徽者不因此免疫，質疑者要舉可核实的反证
+  assert.match(dayPrompt.user, /必须给出可核实的反证/);
+  // 防狼利用：已有硬反证證明跳預言家者是悍跳時本条不适用
+  assert.match(dayPrompt.user, /本条不适用/);
+  // 警徽流排在 rules 最末（recency 壓過死者生前發言锚点）
+  assert.ok(
+    dayPrompt.user.lastIndexOf("警徽流守则") > dayPrompt.user.lastIndexOf("查杀未证伪守则"),
+    "警徽流守则应在查杀未证伪守则之后"
+  );
+  // 夜间（狼出刀）不拼入
+  const nightState = fresh("NIGHT_WOLF_ACTION");
+  const nightWolf = nightState.players.find((p) => p.role === "Werewolf")!;
+  nightState.currentSpeakerSeat = nightWolf.seat;
+  const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, nightWolf)!;
+  assert.doesNotMatch(nightPrompt.user, /警徽流守则/);
+});
+
 test("投票最终约束：唯一跳预言家者无硬反证不得放逐；对跳/狼侧/本人不受约束", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
