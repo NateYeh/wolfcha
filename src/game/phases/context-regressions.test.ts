@@ -40,6 +40,41 @@ test("狼人夜晚出刀提示必须包含守卫博弈推断（守卫可能守�
   assert.match(prompt.user, /避开第 1 条里守卫今晚最可能守的座位/);
 });
 
+test("夜間行動帶 reason：四職業 prompt 要求一句話理由，jsonFormat 範例含 reason 字段", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+
+  const seerState = fresh("NIGHT_SEER_ACTION");
+  const seer = seerState.players.find((p) => p.role === "Seer")!;
+  seerState.currentSpeakerSeat = seer.seat;
+  const seerPrompt = new PhaseManager().getPrompt("NIGHT_SEER_ACTION", { state: seerState }, seer)!;
+  assert.match(seerPrompt.user, /reason 字段用一句话说明你为什么查验他（30字内）/);
+  assert.match(seerPrompt.user, /"reason":"一句话说明你为什么查验他"/);
+
+  const wolfState = fresh("NIGHT_WOLF_ACTION");
+  const wolf = wolfState.players.find((p) => p.role === "Werewolf")!;
+  wolfState.currentSpeakerSeat = wolf.seat;
+  const wolfPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: wolfState }, wolf)!;
+  assert.match(wolfPrompt.user, /reason 字段用一句话说明你们为什么刀他（30字内）/);
+  assert.match(wolfPrompt.user, /"reason":"一句话说明你们为什么刀他"/);
+
+  const guardState = fresh("NIGHT_GUARD_ACTION");
+  const guard = guardState.players.find((p) => p.role === "Guard")!;
+  guardState.currentSpeakerSeat = guard.seat;
+  const guardPrompt = new PhaseManager().getPrompt("NIGHT_GUARD_ACTION", { state: guardState }, guard)!;
+  assert.match(guardPrompt.user, /reason 字段用一句话说明你为什么守他（30字内）/);
+  assert.match(guardPrompt.user, /"reason":"一句话说明你为什么守他"/);
+
+  const witchState = fresh("NIGHT_WITCH_ACTION");
+  const witch = witchState.players.find((p) => p.role === "Witch")!;
+  witchState.currentSpeakerSeat = witch.seat;
+  const witchPrompt = new PhaseManager().getPrompt("NIGHT_WITCH_ACTION", { state: witchState }, witch)!;
+  // 女巫的技能段與格式範例都在 system（task 模板）
+  assert.match(witchPrompt.system, /reason 字段用一句话说明你的判断（30字内）/);
+  assert.match(witchPrompt.system, /"action":"save","reason"/);
+  assert.match(witchPrompt.system, /"action":"poison","seat":\d+,"reason"/);
+});
+
 test("猎人开枪提示必须包含开枪守则，且排在遗言之后（可推翻遗言目标）", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");

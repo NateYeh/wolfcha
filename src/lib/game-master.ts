@@ -1249,6 +1249,8 @@ function seatSelectionResponseFormat(
   name: string,
   validSeats: number[]
 ): NonNullable<GenerateOptions["response_format"]> {
+  // 夜間行動（查验/出刀/守護）與白天放逐投票一樣帶 reason：留一句思路供日誌除錯與賽後復盤。
+  const withReason = ["day_vote", "seer_action", "wolf_action", "guard_action"].includes(name);
   return structuredResponseFormat(modelRef, name, {
     type: "object",
     properties: {
@@ -1256,9 +1258,9 @@ function seatSelectionResponseFormat(
         type: "integer",
         enum: validSeats.map((seat) => seat + 1),
       },
-      ...(name === "day_vote" ? { reason: { type: "string" } } : {}),
+      ...(withReason ? { reason: { type: "string" } } : {}),
     },
-    required: name === "day_vote" ? ["seat", "reason"] : ["seat"],
+    required: withReason ? ["seat", "reason"] : ["seat"],
     additionalProperties: false,
   });
 }
@@ -1573,6 +1575,16 @@ export async function generateBadgeTransfer(
   }
 }
 
+// 從夜間行動的 cleaned JSON 抽出 reason 一句話（僅供日誌；非字串或缺失回空字串，不影響行動本身）。
+function extractActionReason(cleaned: string): string {
+  try {
+    const parsed = JSON.parse(cleaned) as { reason?: unknown };
+    return typeof parsed?.reason === "string" ? parsed.reason.trim().slice(0, 200) : "";
+  } catch {
+    return "";
+  }
+}
+
 export async function generateSeerAction(
   state: GameState,
   player: Player
@@ -1615,7 +1627,7 @@ export async function generateSeerAction(
         raw: completion.result.content,
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
-        parsed: { targetSeat: parsedSeat },
+        parsed: { targetSeat: parsedSeat, reason: extractActionReason(completion.cleaned) },
         duration: Date.now() - startTime
       },
     });
@@ -1680,7 +1692,7 @@ export async function generateWolfAction(
         raw: completion.result.content,
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
-        parsed: { targetSeat: parsedSeat },
+        parsed: { targetSeat: parsedSeat, reason: extractActionReason(completion.cleaned) },
         duration: Date.now() - startTime
       },
     });
@@ -1779,7 +1791,7 @@ export async function generateWitchAction(
         raw: completion.result.content,
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
-        parsed: { ...parsedAction, attempts: completion.attempts },
+        parsed: { ...parsedAction, attempts: completion.attempts, reason: extractActionReason(completion.cleaned) },
         duration: Date.now() - startTime,
       },
     });
@@ -1850,7 +1862,7 @@ export async function generateGuardAction(
         raw: completion.result.content,
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
-        parsed: { targetSeat: parsedSeat },
+        parsed: { targetSeat: parsedSeat, reason: extractActionReason(completion.cleaned) },
         duration: Date.now() - startTime,
       },
     });

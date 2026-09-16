@@ -1060,7 +1060,7 @@
         "base": "【身份】\n你是 {seat}号「{name}」\n身份: {role}\n\n{winCondition}",
         "checkedLine": "已查验过: {list}（不建议重复查验）",
         "task": "【预言家技能】\n每晚可查验一名玩家的身份（狼人/好人）。查验结果只有你知道，可选择公开或隐藏。\n\n【任务】\n选择一名玩家查验身份。\n{checkedLine}\n\n可选: {options}",
-        "user": "{context}\n\n你要查验几号？\n\n【格式】\n严格返回 JSON 对象，不要代码块，不要解释，不要多余文字：\n{jsonFormat}"
+        "user": "{context}\n\n你要查验几号？\n\n【格式】\n严格返回 JSON 对象，不要代码块，不要解释，不要多余文字：\n{jsonFormat}\nreason 字段用一句话说明你为什么查验他（30字内）。"
       },
       "wolf": {
         "base": "【身份】\n你是 {seat}号「{name}」\n身份: {role}",
@@ -1070,14 +1070,14 @@
         "teammateVotes": "【队友意向】\n{lines}",
         "voteLine": "- {seat}号({name}) 想杀: {targetSeat}号{targetName}",
         "task": "【狼人技能】\n每晚狼人集体决定击杀一名玩家。可以选择击杀好人、队友（自刀）或不选（空刀）。\n\n【任务】\n选择一名玩家击杀。\n{teammateVotesSection}\n\n可选: {options}\n",
-        "user": "{context}\n\n你们要杀几号？\n{guardNote}\n\n【格式】\n严格返回 JSON 对象，不要代码块，不要解释，不要多余文字：\n{jsonFormat}",
+        "user": "{context}\n\n你们要杀几号？\n{guardNote}\n\n【格式】\n严格返回 JSON 对象，不要代码块，不要解释，不要多余文字：\n{jsonFormat}\nreason 字段用一句话说明你们为什么刀他（30字内）。",
         "guardMindGame": "【守卫博弈】出刀前先推断守卫今晚会守谁，别把刀送进守卫怀里。\n1. 守卫最可能守护：公开跳神的玩家（预言家、女巫）、警长、金水玩家，以及昨晚刀口没死的目标。\n2. 昨晚被刀却平安夜的目标 X：保下 X 的要么是守卫（今晚不能再守 X，不能连守同一人），要么是女巫（解药已用完）。因此今晚连刀 X 命中率通常最高，除非女巫可能还留有解药。\n3. 若决定换目标，避开第 1 条里守卫今晚最可能守的座位，优先刀守卫顾不到的关键好人。"
       },
       "guard": {
         "base": "【身份】\n你是 {seat}号「{name}」\n身份: {role}\n\n{winCondition}",
         "lastTarget": "上晚保护了{seat}号，今晚不能选",
         "task": "【守卫技能】\n每晚可保护一名玩家不被狼人杀害。守护成功则刀口存活。\n\n【重要规则】\n- 不能连续两晚保护同一人\n- 可以保护自己\n- 若守卫和女巫同时救同一人（毒奶），该玩家仍会死亡\n\n【任务】\n选择一名玩家保护。\n\n可选: {options}\n{lastTargetLine}",
-        "user": "{context}\n\n你要保护几号？\n\n【格式】\n严格返回 JSON 对象，不要代码块，不要解释，不要多余文字：\n{jsonFormat}"
+        "user": "{context}\n\n你要保护几号？\n\n【格式】\n严格返回 JSON 对象，不要代码块，不要解释，不要多余文字：\n{jsonFormat}\nreason 字段用一句话说明你为什么守他（30字内）。"
       },
       "witch": {
         "base": "【身份】\n你是 {seat}号「{name}」\n身份: {role}\n\n{winCondition}",
@@ -1089,7 +1089,7 @@
         "noSave": "- 解药已用完或无人被杀",
         "poisonOption": "- 可以使用毒药毒杀一名可毒目标",
         "noPoison": "- 毒药已用完",
-        "task": "【女巫技能】\n拥有一瓶解药（救人）和一瓶毒药（杀人），全局各一瓶。\n\n【重要规则】\n- 解药可救被狼人杀害的玩家（包括自救）\n- 毒药可毒杀任意玩家（通常用于确认的狼人）\n- 每晚最多用一瓶药\n- 若守卫和女巫同时救同一人（毒奶），该玩家仍会死亡\n\n【药水状态】\n解药: {healStatus} | 毒药: {poisonStatus}\n\n【今晚情况】\n{tonightInfo}\n\n【任务】\n决定是否使用药水。\n{saveLine}\n{poisonLine}\n- 可以不使用药水\n\n可毒目标: {poisonTargets}\n\n【格式】\n严格返回 JSON 对象，不要代码块，不要解释，不要多余文字。\n救人示例：{saveJsonFormat}\n毒人示例：{poisonJsonFormat}\n不用药示例：{passJsonFormat}",
+        "task": "【女巫技能】\n拥有一瓶解药（救人）和一瓶毒药（杀人），全局各一瓶。\n\n【重要规则】\n- 解药可救被狼人杀害的玩家（包括自救）\n- 毒药可毒杀任意玩家（通常用于确认的狼人）\n- 每晚最多用一瓶药\n- 若守卫和女巫同时救同一人（毒奶），该玩家仍会死亡\n\n【药水状态】\n解药: {healStatus} | 毒药: {poisonStatus}\n\n【今晚情况】\n{tonightInfo}\n\n【任务】\n决定是否使用药水。\n{saveLine}\n{poisonLine}\n- 可以不使用药水\n\n可毒目标: {poisonTargets}\n\n【格式】\n严格返回 JSON 对象，不要代码块，不要解释，不要多余文字。\n救人示例：{saveJsonFormat}\n毒人示例：{poisonJsonFormat}\n不用药示例：{passJsonFormat}\nreason 字段用一句话说明你的判断（30字内）。",
         "user": "{context}\n\n你要怎么做？严格返回 JSON 对象。"
       }
     },

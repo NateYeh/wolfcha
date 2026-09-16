@@ -538,7 +538,7 @@ export class NightPhase extends GamePhase {
 
     const user = t("prompts.night.seer.user", {
       context: this.buildContextWithDay(context, todayTranscript, selfSpeech),
-      jsonFormat: JSON.stringify({ seat: (eligiblePlayers[0]?.seat ?? player.seat) + 1 }),
+      jsonFormat: JSON.stringify({ seat: (eligiblePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你为什么查验他" }),
     });
 
     return { system, user, systemParts };
@@ -602,7 +602,7 @@ export class NightPhase extends GamePhase {
       context: this.buildContextWithDay(context, todayTranscript, selfSpeech),
       // 守卫博弈：出刀前推断守卫动向，避免把刀送进守护位（仅夜间出刀提示）。
       guardNote: t("prompts.night.wolf.guardMindGame"),
-      jsonFormat: JSON.stringify({ seat: (alivePlayers[0]?.seat ?? player.seat) + 1 }),
+      jsonFormat: JSON.stringify({ seat: (alivePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你们为什么刀他" }),
     });
 
     return { system, user, systemParts };
@@ -639,7 +639,7 @@ export class NightPhase extends GamePhase {
 
     const user = t("prompts.night.guard.user", {
       context: this.buildContextWithDay(context, todayTranscript, selfSpeech),
-      jsonFormat: JSON.stringify({ seat: (eligiblePlayers[0]?.seat ?? player.seat) + 1 }),
+      jsonFormat: JSON.stringify({ seat: (eligiblePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你为什么守他" }),
     });
 
     return { system, user, systemParts };
@@ -698,9 +698,9 @@ export class NightPhase extends GamePhase {
       saveLine,
       poisonLine,
       poisonTargets,
-      saveJsonFormat: JSON.stringify({ action: "save" }),
-      poisonJsonFormat: JSON.stringify({ action: "poison", seat: (alivePlayers[0]?.seat ?? player.seat) + 1 }),
-      passJsonFormat: JSON.stringify({ action: "pass" }),
+      saveJsonFormat: JSON.stringify({ action: "save", reason: "一句话说明你的判断" }),
+      poisonJsonFormat: JSON.stringify({ action: "poison", seat: (alivePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你的判断" }),
+      passJsonFormat: JSON.stringify({ action: "pass", reason: "一句话说明你的判断" }),
     });
     const systemParts: SystemPromptPart[] = [
       { text: cacheableContent, cacheable: true, ttl: "1h" },

@@ -1054,7 +1054,7 @@
         "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{winCondition}",
         "checkedLine": "Already checked: {list} (avoid repeat checks)",
         "task": "【Seer Skill】\nEach night you can check one player's identity (Werewolf/Good). Only you know the result; you can reveal or hide it.\n\n【Task】\nChoose one player to check.\n{checkedLine}\n\nOptions: {options}",
-        "user": "{context}\n\nWhich seat will you check?\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text:\n{jsonFormat}"
+        "user": "{context}\n\nWhich seat will you check?\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text:\n{jsonFormat}\nUse the reason field for one short sentence on why you check him (under 30 words)."
       },
       "wolf": {
         "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}",
@@ -1064,14 +1064,14 @@
         "teammateVotes": "【Teammate intent】\n{lines}",
         "voteLine": "- Seat {seat} ({name}) wants to kill: Seat {targetSeat}{targetName}",
         "task": "【Werewolf Skill】\nEach night wolves collectively decide to kill one player. Can kill good players, teammates (self-kill), or skip (no kill).\n\n【Task】\nChoose one player to kill.\n{teammateVotesSection}\n\nOptions: {options}\n",
-        "user": "{context}\n\nWhich seat do you want to kill?\n{guardNote}\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text:\n{jsonFormat}",
+        "user": "{context}\n\nWhich seat do you want to kill?\n{guardNote}\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text:\n{jsonFormat}\nUse the reason field for one short sentence on why you kill him (under 30 words).",
         "guardMindGame": "【Guard mind game】Before knifing, predict who the guard will protect tonight; do not feed your knife straight into the guard's arms.\n1. The guard most likely protects: players who publicly claimed god roles (seer, witch), the sheriff, gold-water players, and last night's knife target that survived.\n2. A target X knifed last night but alive at dawn means exactly one of the guard/witch saved X: if it was the guard, he cannot protect X again tonight (no consecutive protection of the same player); if it was the witch, her heal is spent. So re-knifing X tonight usually has the highest success rate, unless the witch may still hold a heal.\n3. If you switch targets, avoid the seats the guard is most likely protecting tonight (per point 1), and prefer key good players the guard cannot cover."
       },
       "guard": {
         "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{winCondition}",
         "lastTarget": "You protected Seat {seat} last night; cannot pick again",
         "task": "【Guard Skill】\nEach night you can protect one player from wolf kills. If successful, the target survives.\n\n【Important Rules】\n- Cannot protect the same player on consecutive nights\n- Can protect yourself\n- If guard and witch both save the same target (milk poison), they still die\n\n【Task】\nChoose one player to protect.\n\nOptions: {options}\n{lastTargetLine}",
-        "user": "{context}\n\nWhich seat do you want to protect?\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text:\n{jsonFormat}"
+        "user": "{context}\n\nWhich seat do you want to protect?\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text:\n{jsonFormat}\nUse the reason field for one short sentence on why you protect him (under 30 words)."
       },
       "witch": {
         "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{winCondition}",
@@ -1083,7 +1083,7 @@
         "noSave": "- Antidote unavailable or no victim",
         "poisonOption": "- You may use poison on one poison target",
         "noPoison": "- Poison already used",
-        "task": "【Witch Skill】\nYou have one antidote (save) and one poison (kill), each once per game.\n\n【Important Rules】\n- Antidote can save the wolf's victim (including yourself)\n- Poison can kill any player (usually confirmed wolves)\n- One potion max per night\n- If guard and witch both save the same target (milk poison), they still die\n\n【Potion Status】\nAntidote: {healStatus} | Poison: {poisonStatus}\n\n【Tonight】\n{tonightInfo}\n\n【Task】\nDecide whether to use a potion.\n{saveLine}\n{poisonLine}\n- You may use no potion\n\nPoison targets: {poisonTargets}\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text.\nSave example: {saveJsonFormat}\nPoison example: {poisonJsonFormat}\nPass example: {passJsonFormat}",
+        "task": "【Witch Skill】\nYou have one antidote (save) and one poison (kill), each once per game.\n\n【Important Rules】\n- Antidote can save the wolf's victim (including yourself)\n- Poison can kill any player (usually confirmed wolves)\n- One potion max per night\n- If guard and witch both save the same target (milk poison), they still die\n\n【Potion Status】\nAntidote: {healStatus} | Poison: {poisonStatus}\n\n【Tonight】\n{tonightInfo}\n\n【Task】\nDecide whether to use a potion.\n{saveLine}\n{poisonLine}\n- You may use no potion\n\nPoison targets: {poisonTargets}\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text.\nSave example: {saveJsonFormat}\nPoison example: {poisonJsonFormat}\nPass example: {passJsonFormat}\nUse the reason field for one short sentence on your judgment (under 30 words).",
         "user": "{context}\n\nWhat will you do? Return a strict JSON object."
       }
     }
