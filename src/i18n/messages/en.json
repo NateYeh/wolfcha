@@ -428,6 +428,16 @@
       "title": "Spectator Mode",
       "description": "Watch AI players only, without participating. Tap player cards to reveal their true role"
     },
+    "characterPool": {
+      "title": "Character pool",
+      "status": "{unused}/{target} unused pre-generated characters (scenario: {scenario})",
+      "empty": "Not built yet. Characters will be generated when the game starts (about 50s)",
+      "refill": "Add a batch",
+      "refilling": "Generating...",
+      "rebuild": "New scenario",
+      "hint": "Refills itself up to three games' worth while you stay on this screen; starting a game draws from the pool instead of waiting.",
+      "failed": "The last refill failed (see the browser console). The game will generate characters on the spot instead."
+    },
     "rolePreference": {
       "label": "Role Preference",
       "random": "Random",

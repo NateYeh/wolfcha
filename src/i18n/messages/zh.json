@@ -447,6 +447,16 @@
       "title": "纯斗蛐蛐模式",
       "description": "不参与游戏，只看 AI 玩儿。点击玩家卡片可查看真实身份"
     },
+    "characterPool": {
+      "title": "角色池",
+      "status": "已預生成 {unused}/{target} 名未使用角色（情境：{scenario}）",
+      "empty": "尚未建立。開局時需即時生成角色，約需 50 秒",
+      "refill": "補充一批",
+      "refilling": "生成中…",
+      "rebuild": "換情境重建",
+      "hint": "停留在歡迎畫面時會自動補到三局份；開局直接從池中抽用，省下角色生成的等待。",
+      "failed": "上一次補充失敗（詳見瀏覽器 console）；開局時將即時生成，不影響遊戲。"
+    },
     "rolePreference": {
       "label": "身份偏好",
       "random": "随机分配",

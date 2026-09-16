@@ -61,6 +61,10 @@ const CHARACTER_PERSONA_BATCH_MAX_TOKENS = 4200;
 const CHARACTER_BATCH_MAX_ATTEMPTS = 2;
 const CHARACTER_BATCH_RETRY_DELAY_MS = 800;
 
+/** 生成來源標記（僅寫入 AI 日誌，不影響遊戲）。 */
+const withLogSource = (payload: Record<string, unknown>, logSource?: string): string =>
+  JSON.stringify(logSource ? { ...payload, source: logSource } : payload);
+
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -586,6 +590,8 @@ export async function generateCharacters(
   options?: {
     onBaseProfiles?: (profiles: BaseProfile[]) => void;
     onCharacter?: (index: number, character: GeneratedCharacter) => void;
+    /** 標記這批生成的來源（例如角色池背景補充），只寫進 AI 日誌方便事後區分。 */
+    logSource?: string;
   }
 ): Promise<GeneratedCharacter[]> {
   const usedScenario = scenario ?? getRandomScenario();
@@ -619,7 +625,7 @@ export async function generateCharacters(
         request: { model: baseModel, messages: [{ role: "user", content: basePrompt }] },
         response: {
           content: JSON.stringify(baseProfiles),
-          rawResponse: JSON.stringify({ stage: "base_profiles", attempt }),
+          rawResponse: withLogSource({ stage: "base_profiles", attempt }, options?.logSource),
           duration: Date.now() - baseStartedAt,
         },
       });
@@ -636,7 +642,7 @@ export async function generateCharacters(
         response: {
           content: "",
           raw: baseLastRaw === undefined ? "" : JSON.stringify(baseLastRaw),
-          rawResponse: JSON.stringify({ stage: "base_profiles", attempt }),
+          rawResponse: withLogSource({ stage: "base_profiles", attempt }, options?.logSource),
           duration: Date.now() - baseStartedAt,
         },
         error: String(error),
@@ -660,6 +666,7 @@ export async function generateCharacters(
     batchProfiles: BaseProfile[],
     batchStartIndex: number,
     retrying: boolean,
+    logSource?: string,
   ): Promise<GeneratedCharacter[]> => {
     const batchStartedAt = Date.now();
     const batchModel = getGeneratorModel();
@@ -788,7 +795,7 @@ export async function generateCharacters(
             playerMind: c.playerMind,
           }))),
           duration: Date.now() - batchStartedAt,
-          rawResponse: JSON.stringify({ batchStartIndex }),
+          rawResponse: withLogSource({ batchStartIndex }, logSource),
         },
       });
       return batchCharacters;
@@ -803,7 +810,7 @@ export async function generateCharacters(
           content: accumulatedContent,
           duration: Date.now() - batchStartedAt,
           raw: accumulatedContent,
-          rawResponse: JSON.stringify({ batchStartIndex }),
+          rawResponse: withLogSource({ batchStartIndex }, logSource),
         },
         error: String(error),
         retrying,
@@ -821,13 +828,14 @@ export async function generateCharacters(
   const generatePersonaBatch = async (
     batchProfiles: BaseProfile[],
     batchStartIndex: number,
+    logSource?: string,
   ): Promise<GeneratedCharacter[]> => {
     const maxAttempts = isTokenPayActive() ? 1 : CHARACTER_BATCH_MAX_ATTEMPTS;
     let lastError: unknown = null;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        return await generatePersonaBatchAttempt(batchProfiles, batchStartIndex, attempt < maxAttempts);
+        return await generatePersonaBatchAttempt(batchProfiles, batchStartIndex, attempt < maxAttempts, logSource);
       } catch (error) {
         lastError = error;
         if (attempt >= maxAttempts) break;
@@ -847,6 +855,7 @@ export async function generateCharacters(
       generatePersonaBatch(
         baseProfiles.slice(start, start + CHARACTER_PERSONA_BATCH_SIZE),
         start,
+        options?.logSource,
       ),
     );
   }

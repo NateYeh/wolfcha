@@ -36,6 +36,7 @@ import {
   generateWhiteWolfKingBoomDecision,
 } from "@/lib/game-master";
 import { buildGenshinModelRefs, generateCharacters, generateGenshinModeCharacters, sampleModelRefs, type GeneratedCharacter } from "@/lib/character-generator";
+import { takeCharactersFromPool } from "@/lib/character-pool";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { getRandomScenario } from "@/lib/scenarios";
 import { DELAY_CONFIG, getRoleName } from "@/lib/game-constants";
@@ -1442,7 +1443,8 @@ export function useGameLogic() {
       aiLogger.startGameLog(sessionId);
 
       const systemMessages = getSystemMessages();
-      const scenario = isGenshinMode ? undefined : getRandomScenario();
+      // 角色池會綁定情境，抽用成功時改寫成池的情境（見下方 pooledCharacters）。
+      let scenario = isGenshinMode ? undefined : getRandomScenario();
       const makeId = () => generateUUID();
 
       // 普通模式每局只随机一次人类座位；之后 UI、阶段推进和 Prompt 都读取同一个 seat。
@@ -1612,44 +1614,55 @@ export function useGameLogic() {
           }, 200 + index * 180); // 逐个出现，每个间隔 180ms
         });
       } else {
-        characters = await generateCharacters(numAiPlayers, scenario, {
-          onBaseProfiles: (profiles) => {
-            profiles.forEach((p, i) => {
-              const seat = aiSeatOrder[i] ?? aiSeats[i] ?? i;
+        // 先抽預先生成的角色池：命中就省下約 50 秒的角色生成。
+        // 未命中（首次開局或池不足）才即時生成，行為與以往相同。
+        const pooled = takeCharactersFromPool(numAiPlayers);
+        if (pooled) {
+          scenario = pooled.scenario;
+          characters = pooled.characters;
+          console.info(
+            `[character-pool] 本局使用預生成角色 ${pooled.characters.length} 名（情境：${pooled.scenario.title}）`,
+          );
+        } else {
+          characters = await generateCharacters(numAiPlayers, scenario, {
+            onBaseProfiles: (profiles) => {
+              profiles.forEach((p, i) => {
+                const seat = aiSeatOrder[i] ?? aiSeats[i] ?? i;
+                scheduleCancellableTimeout(characterAnimationGeneration, () => {
+                  setGameState((prev) => {
+                    const nextPlayers = prev.players.map((pl) => {
+                      if (pl.seat === seat) return { ...pl, displayName: p.displayName };
+                      return pl;
+                    });
+                    return { ...prev, players: nextPlayers };
+                  });
+                }, 420 + i * 260);
+              });
+            },
+            onCharacter: (index, character) => {
+              const seat = aiSeatOrder[index] ?? aiSeats[index] ?? index;
               scheduleCancellableTimeout(characterAnimationGeneration, () => {
                 setGameState((prev) => {
                   const nextPlayers = prev.players.map((pl) => {
-                    if (pl.seat === seat) return { ...pl, displayName: p.displayName };
-                    return pl;
+                    if (pl.seat !== seat) return pl;
+                    if (pl.isHuman) return pl;
+                    return {
+                      ...pl,
+                      displayName: character.displayName,
+                      avatarSeed: pl.avatarSeed ?? pl.playerId,
+                      agentProfile: {
+                        modelRef: aiModelRefs[index] ?? getRandomModelRef(),
+                        persona: character.persona,
+                        playerMind: character.playerMind,
+                      },
+                    };
                   });
                   return { ...prev, players: nextPlayers };
                 });
-              }, 420 + i * 260);
-            });
-          },
-          onCharacter: (index, character) => {
-            const seat = aiSeatOrder[index] ?? aiSeats[index] ?? index;
-            scheduleCancellableTimeout(characterAnimationGeneration, () => {
-              setGameState((prev) => {
-                const nextPlayers = prev.players.map((pl) => {
-                  if (pl.seat !== seat) return pl;
-                  if (pl.isHuman) return pl;
-                  return {
-                    ...pl,
-                    displayName: character.displayName,
-                  avatarSeed: pl.avatarSeed ?? pl.playerId,
-                    agentProfile: {
-                      modelRef: aiModelRefs[index] ?? getRandomModelRef(),
-                      persona: character.persona,
-                      playerMind: character.playerMind,
-                    },
-                  };
-                });
-                return { ...prev, players: nextPlayers };
-              });
-            }, 120);
-          },
-        });
+              }, 120);
+            },
+          });
+        }
       }
 
       if (sessionId) {

@@ -11,7 +11,9 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { SoundSettingsSection } from "@/components/game/SettingsModal";
+import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
+import type { CharacterPoolStatus } from "@/lib/character-pool-refill";
 import type { Role } from "@/types/game";
 
 /** Return the unique roles present in the default configuration for a given player count. */
@@ -45,6 +47,11 @@ interface GameSetupModalProps {
   onSoundEnabledChange: (value: boolean) => void;
   onAiVoiceEnabledChange: (value: boolean) => void;
   onAutoAdvanceDialogueEnabledChange: (value: boolean) => void;
+  /** 角色池狀態（預先生成的角色，開局直接抽用）。 */
+  characterPool: CharacterPoolStatus;
+  characterPoolError: string | null;
+  onRefillCharacterPool: () => void;
+  onRebuildCharacterPool: () => void;
 }
 
 
@@ -67,6 +74,10 @@ export function GameSetupModal({
   onSoundEnabledChange,
   onAiVoiceEnabledChange,
   onAutoAdvanceDialogueEnabledChange,
+  characterPool,
+  characterPoolError,
+  onRefillCharacterPool,
+  onRebuildCharacterPool,
 }: GameSetupModalProps) {
   const t = useTranslations();
 
@@ -200,6 +211,48 @@ export function GameSetupModal({
             </div>
             </div>
             <Switch className="shrink-0 mt-1" checked={isSpectatorMode} onCheckedChange={onSpectatorModeChange} />
+          </div>
+
+          <div className="border-t border-[var(--border-color)] pt-4">
+            <div className="text-sm font-medium text-[var(--text-primary)]">{t("gameSetup.characterPool.title")}</div>
+            <div className="mt-1 text-xs text-[var(--text-muted)]">
+              {characterPool.scenarioTitle
+                ? t("gameSetup.characterPool.status", {
+                    unused: characterPool.unused,
+                    target: characterPool.target,
+                    scenario: characterPool.scenarioTitle,
+                  })
+                : t("gameSetup.characterPool.empty")}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={characterPool.refilling}
+                onClick={onRefillCharacterPool}
+              >
+                {characterPool.refilling
+                  ? t("gameSetup.characterPool.refilling")
+                  : t("gameSetup.characterPool.refill")}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={characterPool.refilling}
+                onClick={onRebuildCharacterPool}
+              >
+                {t("gameSetup.characterPool.rebuild")}
+              </Button>
+            </div>
+            <div className="mt-2 text-xs text-[var(--text-muted)]">
+              {characterPoolError
+                ? t("gameSetup.characterPool.failed")
+                : t("gameSetup.characterPool.hint")}
+            </div>
           </div>
 
           <div className="border-t border-[var(--border-color)] pt-4">

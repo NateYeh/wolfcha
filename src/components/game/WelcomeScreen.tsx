@@ -21,6 +21,7 @@ import { LowCreditModal, LOW_CREDIT_THRESHOLD } from "@/components/game/LowCredi
 import { LocaleSwitcher } from "@/components/game/LocaleSwitcher";
 import { CustomCharacterModal } from "@/components/game/CustomCharacterModal";
 import { useCustomCharacters } from "@/hooks/useCustomCharacters";
+import { useCharacterPool } from "@/hooks/useCharacterPool";
 import { useCredits, type ConsumeCreditResult } from "@/hooks/useCredits";
 import { difficultyAtom, playerCountAtom, preferredRoleAtom } from "@/store/settings";
 import {
@@ -336,6 +337,11 @@ export function WelcomeScreen({
   const [difficulty, setDifficulty] = useAtom(difficultyAtom);
   const [playerCount, setPlayerCount] = useAtom(playerCountAtom);
   const [preferredRole, setPreferredRole] = useAtom(preferredRoleAtom);
+  // 角色池：只要還在欢迎画面（非 genshin）就背景預生成，開局直接抽用。
+  const characterPool = useCharacterPool(
+    isSpectatorMode ? playerCount : Math.max(1, playerCount - 1),
+    !isGenshinMode,
+  );
   const [githubStars, setGithubStars] = useState<number | null>(null);
   const springCampaignRemainingQuota = springCampaign?.remainingQuota ?? 0;
   const springCampaignTotalQuota = springCampaign?.totalQuota ?? 0;
@@ -947,6 +953,10 @@ export function WelcomeScreen({
         <GameSetupModal
           open={isSetupOpen}
           onOpenChange={setIsSetupOpen}
+          characterPool={characterPool.status}
+          characterPoolError={characterPool.error}
+          onRefillCharacterPool={() => void characterPool.refillNow()}
+          onRebuildCharacterPool={characterPool.rebuild}
           playerCount={playerCount}
           onPlayerCountChange={setPlayerCount}
           preferredRole={preferredRole}
