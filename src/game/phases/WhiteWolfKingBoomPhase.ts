@@ -3,6 +3,7 @@ import { GamePhase } from "../core/GamePhase";
 import type { GameContext, PromptResult, SystemPromptPart } from "../core/types";
 import {
   buildDecisionContext,
+  buildSeerClaimStateLine,
   getRoleText,
   getWinCondition,
   buildSystemTextFromParts,
@@ -35,6 +36,7 @@ export class WhiteWolfKingBoomPhase extends GamePhase {
 
     const dynamicContent = t("prompts.whiteWolfKingBoom.task", {
       options,
+      tactics: t("prompts.whiteWolfKingBoom.tactics"),
       jsonFormat: JSON.stringify({ action: "boom", seat: exampleSeat }),
       passJsonFormat: JSON.stringify({ action: "pass" }),
     });
@@ -44,8 +46,10 @@ export class WhiteWolfKingBoomPhase extends GamePhase {
     ];
     const system = buildSystemTextFromParts(systemParts);
 
+    // 場上有幾條預言家線是自爆這筆帳的關鍵輸入（純事實陳述，不含策略指引）。
+    const seerClaimState = buildSeerClaimStateLine(state);
     const user = t("prompts.whiteWolfKingBoom.user", {
-      context: gameContext,
+      context: seerClaimState ? `${gameContext}\n\n${seerClaimState}` : gameContext,
       jsonFormat: JSON.stringify({ action: "boom", seat: exampleSeat }),
       passJsonFormat: JSON.stringify({ action: "pass" }),
     });

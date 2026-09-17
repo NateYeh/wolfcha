@@ -574,22 +574,37 @@ export const buildTodayTranscript = (
 
 /** 发言类消息 phase 集合：用于识别「自称预言家」的公开发言。 */
 const SEER_CLAIM_PHASES = new Set(["DAY_BADGE_SPEECH", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"]);
-/** 自称预言家的典型表述（含简繁）。 */
+/**
+ * 自称预言家的典型表述（含简繁）。
+ * 只用第一人称措辞；「别人的金水/支持谁」这类第三人称一律交给反例挡掉。
+ */
 const SEER_CLAIM_PATTERNS = [
-  /我是(预言|預言)家/,
+  /我是(那个|那個)?(预言|預言)家/,
   /我(才|就)是(预言|預言)家/,
-  /(我昨晚|昨晚我|我第一晚|第一晚我)(查了|查驗了|查验了|查驗|查验)/,
-  /我查了[0-9０-９一二三四五六七八九十零]{1,3}号/,
-  /我的查驗(结果|結果)?/,
-  /我的查验(结果|結果)?/,
-  /我的查殺/,
-  /我的查杀/,
+  /我[^。！？\n]{0,6}是(预言|預言)家/,
+  /我(来|來)?(跳|悍跳)(预言|預言)家/,
+  /我(摊牌|攤牌|明说|明說|直说|直說)[^。！？\n]{0,12}(预言|預言)家/,
+  /我是\d{1,2}\s*号[^。！？\n]{0,12}(预言|預言)家/,
+  /我[^。！？\n]{0,6}(昨晚|昨天|首夜|第一夜|第[一二三四五]夜)?[^。！？\n]{0,4}(验|驗|查)(了|的|过|過)[^。！？\n]{0,8}\d{1,2}\s*号/,
+  /(^|[。！？\n，,])(第[一二三四五]夜|首夜|昨晚|昨夜)(我)?(验|驗|查)(了|的)?[^。！？\n]{0,8}\d{1,2}\s*号/,
 ];
-/** 反例表述：这些消息里出现的「预言家」字样不是自称，不作数。 */
+/** 反例表述：这些「预言家」字样不是自称，不作数。 */
 const SEER_CLAIM_NEGATIVE_PATTERNS = [
-  /(不是|不是真的|并非|並非|没跳|沒跳|没跳过|沒跳過)(预言|預言)家/,
-  /(自称|自稱|声称|聲稱|说自己是|說自己是|如果|假如|假如你)(预言|預言)家/,
+  /(不是|不是真的|并非|並非|没跳|沒跳|没跳过|沒跳過|不可能|不会是|不會是)[^。！？\n]{0,4}(预言|預言)家/,
+  /(自称|自稱|声称|聲稱|说自己是|說自己是|如果|假如|要是|万一|萬一)[^。！？\n]{0,6}(预言|預言)家/,
+  /(信|站|跟|认|認|相信|支持|质疑|質疑|怀疑|懷疑)[^。！？\n]{0,8}(预言|預言)家/,
+  /(没人|沒人|无人|無人|没有人|沒有人|还没人|還沒人|还没|還沒|没有|沒有)[^。！？\n]{0,5}(跳|对跳|對跳)?[^。！？\n]{0,4}(预言|預言)家/,
+  /(报|報|给|給|发|發|拿|被)[^。！？\n]{0,3}我的(查验|查驗|查殺|查杀)/,
 ];
+
+/** 句子里的座位号（用来判断这句話说的是自己还是别人）。 */
+const SEAT_MENTION_PATTERN = /(\d{1,2})\s*号/g;
+
+/** 命中片段是否只在说「自己这个座位」——含别人的座位号就不算自称。 */
+const isSelfClaimWindow = (window: string, ownSeat: number): boolean => {
+  const seats = [...window.matchAll(SEAT_MENTION_PATTERN)].map((match) => Number(match[1]));
+  return seats.every((seat) => seat === ownSeat);
+};
 
 /**
  * 从公开发言中识别「自称预言家」的玩家（存活者）。
@@ -600,10 +615,22 @@ export const findSeerClaimants = (state: GameState): Player[] => {
   for (const m of state.messages) {
     if (m.isSystem) continue;
     if (!m.phase || !SEER_CLAIM_PHASES.has(m.phase)) continue;
-    if (SEER_CLAIM_NEGATIVE_PATTERNS.some((p) => p.test(m.content))) continue;
-    if (!SEER_CLAIM_PATTERNS.some((p) => p.test(m.content))) continue;
     const speaker = state.players.find((p) => p.playerId === m.playerId);
-    if (speaker?.alive) claimantSeats.add(speaker.seat);
+    if (!speaker?.alive) continue;
+    const content = m.content;
+    if (SEER_CLAIM_NEGATIVE_PATTERNS.some((p) => p.test(content))) continue;
+
+    const ownSeat = speaker.seat + 1;
+    const windows = SEER_CLAIM_PATTERNS.flatMap((pattern) =>
+      [...content.matchAll(pattern.global ? pattern : new RegExp(pattern.source, `${pattern.flags}g`))]
+        .map((match) => match[0])
+    );
+    // 自己报座位号的跳法（例如「那我摊牌了，7号令狐冲，预言家」）。
+    const ownSeatPattern = new RegExp(`${ownSeat}\\s*号[^。！？\\n]{0,12}(预言|預言)家`);
+    const ownSeatMatch = content.match(ownSeatPattern);
+    if (ownSeatMatch) windows.push(ownSeatMatch[0]);
+
+    if (windows.some((window) => isSelfClaimWindow(window, ownSeat))) claimantSeats.add(speaker.seat);
   }
   return [...claimantSeats]
     .sort((a, b) => a - b)

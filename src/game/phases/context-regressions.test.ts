@@ -707,3 +707,69 @@ test("悍跳引導改為收益／時機（提示不限制）＋狼隊原則補�
   const vPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
   assert.doesNotMatch(vPrompt.user, /切割和抢线是两条路/);
 });
+
+test("自称预言家的辨识：自然跳法要认、第三人称支持不能误判（【场上现状】的事實來源）", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const { findSeerClaimants } = await import("@/lib/prompt-utils");
+
+  const state = fresh("DAY_SPEECH");
+  const [n1, n2, n3] = state.players;
+  state.messages = [
+    // 自然跳法（實際對局出現過的句型）
+    message(state, "得嘞，轮到我了。那我摊牌了，" + `${n1.seat + 1}号${n1.displayName}` + "，预言家。第一夜验的X号，查杀。", "DAY_BADGE_SPEECH", n1.seat),
+    // 第三人稱：支持別人的線、別人的查殺，都不能算自稱
+    message(state, "我跟着1号线走，这预言家我先信了。", "DAY_SPEECH", n2.seat),
+    message(state, "我说句实在的，平安夜还没人跳预言家，这局狼藏得够深。", "DAY_SPEECH", n2.seat),
+    message(state, "1号今天才报我的查杀，这预言家当得可真会挑时候。", "DAY_SPEECH", n2.seat),
+  ];
+  const claimants = findSeerClaimants(state);
+  assert.deepEqual(claimants.map((p) => p.seat), [n1.seat]);
+
+  // 白天 prompt 要拿到這條事實
+  state.currentSpeakerSeat = n3.seat;
+  const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, n3)!;
+  assert.match(prompt.user, /【场上现状】目前只有/);
+  assert.match(prompt.user, /自称预言家，无人对跳/);
+
+  // 第二個人跳 → 對跳中
+  state.messages = [
+    ...state.messages,
+    message(state, `我是${n3.seat + 1}号，我才是预言家，第一夜我查验了X号。`, "DAY_SPEECH", n3.seat),
+  ];
+  assert.equal(findSeerClaimants(state).length, 2);
+  const prompt2 = new PhaseManager().getPrompt("DAY_SPEECH", { state }, state.players[1])!;
+  assert.match(prompt2.user, /【场上现状】目前有 2 人自称预言家（对跳中）/);
+});
+
+test("白狼王自爆：拿得到【场上现状】與自爆算帳知識（純提示、不下命令）", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+
+  const state = fresh("WHITE_WOLF_KING_BOOM");
+  const wwk = state.players.find((p) => p.role === "WhiteWolfKing")!;
+  const seer = state.players.find((p) => p.role === "Seer")!;
+  state.currentSpeakerSeat = wwk.seat;
+  state.messages = [
+    message(state, `那我摊牌了，${seer.seat + 1}号${seer.displayName}，预言家。第一夜验的X号，查杀。`, "DAY_BADGE_SPEECH", seer.seat),
+  ];
+
+  const prompt = new PhaseManager().getPrompt("WHITE_WOLF_KING_BOOM", { state }, wwk)!;
+  // 事實：場上幾條預言家線（自爆划不划算的關鍵輸入）
+  assert.match(prompt.user, /【场上现状】目前只有/);
+  // 知識：算帳方式（跳過投票的收益、目標價值、有對跳時炸掉一個＝告訴全場被炸的是真的）
+  // 自爆算帳屬於技能說明，與任務同在 system
+  assert.match(prompt.system, /【自爆这笔账怎么算（要不要炸，你自己决定）】/);
+  assert.match(prompt.system, /跳过投票本身就是收益/);
+  assert.match(prompt.system, /等于亲手告诉全场「被炸的那个才是真的」/);
+  assert.match(prompt.system, /这一刀是救线还是卖线/);
+  // 沒有禁令字眼
+  assert.doesNotMatch(prompt.system, /不得|禁止|必须/);
+
+  // 好人拿不到自爆算帳內容
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  state.phase = "DAY_SPEECH";
+  state.currentSpeakerSeat = villager.seat;
+  const vPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
+  assert.doesNotMatch(vPrompt.user, /自爆这笔账怎么算/);
+});
