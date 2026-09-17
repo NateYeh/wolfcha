@@ -10,7 +10,6 @@ import {
   getWinCondition,
   buildSystemTextFromParts,
   buildDecisionGrounding,
-  findLoneSeerClaimant,
 } from "@/lib/prompt-utils";
 import { getI18n } from "@/i18n/translator";
 import {
@@ -175,20 +174,9 @@ export class VotePhase extends GamePhase {
       todayTranscript: todayTranscript || t("prompts.vote.userNoTranscript"),
       selfSpeech: selfSpeechContext || t("prompts.vote.userNoSelfSpeech"),
       voteJsonFormat: JSON.stringify({ seat: exampleSeat }),
-    }) + `\n\n${buildDecisionGrounding(state, player)}\n<my_public_position>\n${selfSpeech || "本日没有本人公开发言"}\n</my_public_position>\n投票前核对自己最后明确支持或排除的目标。如果你在本轮发言中已经指出某人的新矛盾、新问题，或已经改了对某人的判断，投票必须跟这个新判断走，不要用维持旧立场去否定自己刚说出口的分析。改变立场只需在 reason 里写明依据；确实没有任何新发言或新事件时，才延续自己的公开结论，不要编造尚未发生的回应。不要拿别人的结论当依据：你要引用“某人账算不平”“某人不合逻辑”这类说法，必须自己先核对原始记录（票型、发言、死亡）；核对后发现对方讲的是事实，就不能再用这个理由投票。只输出 {"seat":座位号,"reason":"本次投票依据"}。`;
+    }) + `\n\n${buildDecisionGrounding(state, player)}\n<my_public_position>\n${selfSpeech || "本日没有本人公开发言"}\n</my_public_position>\n投票前核对自己最后明确支持或排除的目标。改口是你的自由——真人也会反悔、会被说服；想改就在 reason 里写一句为什么。如果本轮没有新发言、新事件，沿用自己公开的结论就行，别编造还没发生的回应。不要拿别人的结论当依据：你要引用“某人账算不平”“某人不合逻辑”这类说法，必须自己先核对原始记录（票型、发言、死亡）；核对后发现对方讲的是事实，就不能再用这个理由投票。只输出 {"seat":座位号,"reason":"本次投票依据"}。`;
 
-    // 最终约束（放在 prompt 最末尾，recency）：场上唯一跳预言家者，无硬反证不得放逐。
-    // 仅约束好人阵营投票人；狼人保留正常投预言家的自由，且避免向狼侧泄漏保护策略。
-    const isWolfTeamPlayer = player.role === "Werewolf" || player.role === "WhiteWolfKing";
-    const loneSeerClaimant = findLoneSeerClaimant(state);
-    const seerGateTail = !isWolfTeamPlayer && loneSeerClaimant && loneSeerClaimant.playerId !== player.playerId
-      ? "\n\n" + t("prompts.vote.loneSeerGate", {
-        seat: loneSeerClaimant.seat + 1,
-        name: loneSeerClaimant.displayName,
-      })
-      : "";
-
-    return { system, user: user + seerGateTail, systemParts };
+    return { system, user, systemParts };
   }
 
   async handleAction(_context: GameContext, _action: GameAction): Promise<void> {

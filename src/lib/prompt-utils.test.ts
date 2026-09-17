@@ -139,14 +139,14 @@ test("狼人协作原则只在白天拼入队友劣势时的切割指引，不�
   const dayState = makeState();
   const dayTeam = buildGameContext(dayState, dayState.players[1]).match(/<your_wolf_team>[\s\S]*?<\/your_wolf_team>/)?.[0];
   assert.ok(dayTeam);
-  assert.match(dayTeam, /【狼队协作原则】/);
-  assert.match(dayTeam, /必要时把票投给队友（弃车保帅）/);
-  assert.match(dayTeam, /队友还有救/);
+  assert.match(dayTeam, /【狼队怎么配合】/);
+  assert.match(dayTeam, /必要时把票投给他（弃车保帅）/);
+  assert.match(dayTeam, /他还有救/);
 
   const nightState: GameState = { ...makeState(), phase: "NIGHT_WOLF_ACTION" };
   const nightTeam = buildGameContext(nightState, nightState.players[1]).match(/<your_wolf_team>[\s\S]*?<\/your_wolf_team>/)?.[0];
   assert.ok(nightTeam);
-  assert.doesNotMatch(nightTeam, /狼队协作原则/);
+  assert.doesNotMatch(nightTeam, /狼队怎么配合/);
 });
 
 test("票型不能当铁证：白天对所有阵营提示狼可投队友，夜间不拼入", () => {
@@ -156,24 +156,27 @@ test("票型不能当铁证：白天对所有阵营提示狼可投队友，夜�
   for (const actor of [villager, wolf]) {
     const rules = buildGameContext(dayState, actor).match(/<rules>[\s\S]*?<\/rules>/)?.[0];
     assert.ok(rules);
-    assert.match(rules, /狼人也可以在警徽选举或放逐投票中投队友/);
+    assert.match(rules, /【票型怎么读】/);
     // 票型不能当铁证，但票型集中仍是狼队线索（两个方向都要写清楚）。
-    assert.match(rules, /同一批人反复把票集中给同一个人/);
-    assert.match(rules, /不要因为“狼不会这么明显”就排除这种可能/);
-    // 自爆/夜刀情报与夜刀嫁祸：同样只在白天拼入。
-    assert.match(rules, /白狼王自爆带走的目标/);
-    assert.match(rules, /不能因为发言者已经出局就把他的查杀当废话/);
-    assert.match(rules, /不要用“查杀来得太快、太顺、收益太高”这类听感理由/);
-    assert.match(rules, /狼队也会故意刀掉质疑某人最凶的好人，用来嫁祸那个人/);
-    assert.match(rules, /不能当成定罪的唯一依据/);
+    assert.match(rules, /狼可以投队友/);
+    assert.match(rules, /同一批人反复把票集中到同一个人身上/);
+    assert.match(rules, /尤其是警徽票灌给同一个人/);
+    // 讀刀口：滅口 vs 嫁禍、自刀洗白不成立（同樣只在白天拼入）。
+    assert.match(rules, /【读刀口】/);
+    assert.match(rules, /也可以是嫁祸/);
+    assert.match(rules, /狼会故意刀掉质疑某人最凶的好人/);
+    assert.match(rules, /自刀洗白/);
+    // 預言家線：狼隊不惜代價清除真預言家＝他是真的旁證。
+    assert.match(rules, /白狼王自爆/);
   }
 
   const nightState: GameState = { ...makeState(), phase: "NIGHT_WOLF_ACTION" };
   const nightRules = buildGameContext(nightState, wolf).match(/<rules>[\s\S]*?<\/rules>/)?.[0];
   assert.ok(nightRules);
-  assert.doesNotMatch(nightRules, /狼人也可以在警徽选举或放逐投票中投队友/);
-  assert.doesNotMatch(nightRules, /白狼王自爆带走的目标/);
-  assert.doesNotMatch(nightRules, /狼队也会故意刀掉质疑某人最凶的好人/);
+  assert.doesNotMatch(nightRules, /【票型怎么读】/);
+  assert.doesNotMatch(nightRules, /【读刀口】/);
+  assert.doesNotMatch(nightRules, /狼会故意刀掉质疑某人最凶的好人/);
+  assert.doesNotMatch(nightRules, /白狼王自爆/);
 });
 
 test("警徽竞选期间明确死亡结果未公布，不能从空死亡列表推断平安夜", () => {
@@ -346,12 +349,10 @@ test("发言顺序上下文只陈述本轮客观记录，不加入策略建议",
   assert.match(statusSection, /当前轮到：1号（第3\/4位）/);
   assert.match(statusSection, /已有公开发言记录：8号、9号/);
   assert.match(statusSection, /尚未轮到且没有公开发言记录：3号/);
-  assert.doesNotMatch(statusSection, /可以|建议|应该|先抛|回应/);
-
-  const fullPrompt = `${prompt.system}\n${prompt.user}`;
+  // 發言順序區段本身不得夾帶任何策略建議（規則區塊不在這一段內）
   assert.doesNotMatch(
-    fullPrompt,
-    /更想看谁|能不能带队|哪里站不住|想争取的东西|想达到什么效果|你可以坦诚|带节奏/
+    statusSection,
+    /可以|建议|应该|先抛|回应|更想看谁|能不能带队|哪里站不住|想争取的东西|想达到什么效果|你可以坦诚|带节奏/
   );
 });
 

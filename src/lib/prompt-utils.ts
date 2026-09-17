@@ -38,26 +38,35 @@ export const getRoleText = (role: string) => {
   }
 };
 
+/** 勝負條件＋兩個全域區塊（想贏的動機、允許不完美），所有玩家階段都會收到。 */
+const withPlayerMindset = (winCondition: string): string => {
+  const { t } = getI18n();
+  return `${winCondition}\n\n${t("promptUtils.winMotivationNote")}\n\n${t("promptUtils.humannessNote")}`;
+};
+
 export const getWinCondition = (role: string) => {
   const { t } = getI18n();
-  switch (role) {
-    case "Werewolf":
-      return t("promptUtils.winCondition.werewolf");
-    case "WhiteWolfKing":
-      return t("promptUtils.winCondition.whiteWolfKing");
-    case "Seer":
-      return t("promptUtils.winCondition.seer");
-    case "Witch":
-      return t("promptUtils.winCondition.witch");
-    case "Hunter":
-      return t("promptUtils.winCondition.hunter");
-    case "Guard":
-      return t("promptUtils.winCondition.guard");
-    case "Idiot":
-      return t("promptUtils.winCondition.idiot");
-    default:
-      return t("promptUtils.winCondition.villager");
-  }
+  const raw = ((): string => {
+    switch (role) {
+      case "Werewolf":
+        return t("promptUtils.winCondition.werewolf");
+      case "WhiteWolfKing":
+        return t("promptUtils.winCondition.whiteWolfKing");
+      case "Seer":
+        return t("promptUtils.winCondition.seer");
+      case "Witch":
+        return t("promptUtils.winCondition.witch");
+      case "Hunter":
+        return t("promptUtils.winCondition.hunter");
+      case "Guard":
+        return t("promptUtils.winCondition.guard");
+      case "Idiot":
+        return t("promptUtils.winCondition.idiot");
+      default:
+        return t("promptUtils.winCondition.villager");
+    }
+    })();
+  return withPlayerMindset(raw);
 };
 
 const PUBLIC_ROLE_ORDER: Role[] = [
@@ -291,7 +300,7 @@ export function buildDecisionGrounding(state: GameState, player: Player): string
   return `<decision_grounding>
 ${lines.join("\n")}
 复述票型要区分警徽和放逐、投票人和被投人；累计几次平安夜不等于连续几夜。玩家原话是声明，身份只有主持人翻牌才算公开确认；被投出不等于已验明狼人。
-引用发言必须核对发言人、日期和完整上下句；对方同一句中的纠正也要算，不能把已纠正的口误当作仍坚持的观点。没有查验记录的座位不能凭空补成金水——「某人说了一句可信」不构成依据；但主持人已公布的事件（谁出局、警徽移交给谁、公开技能翻牌）属于事实，可以作为推论的起点：唯一跳预言家者被夜刀后把警徽交给的人，应按「死者最后的信任／倾向金水」理解，不是「说法矛盾」。你的真实身份与私有查验用于自己判断，不得误把自己列入待查身份；策略性隐瞒或悍跳可以保留。
+引用发言要核对发言人、日期和完整上下句。对方说错的话（口误）可能是狼露的马脚，也可能只是紧张、打错字——这两种在桌上都会发生，值不值得记他一笔，你自己判断。没有查验记录的座位不能凭空补成金水——「某人说了一句可信」不构成依据；但主持人已公布的事件（谁出局、警徽移交给谁、公开技能翻牌）属于事实，可以作为推论的起点：唯一跳预言家者被夜刀后把警徽交给的人，应按「死者最后的信任／倾向金水」理解，不是「说法矛盾」。你的真实身份与私有查验用于自己判断，不得误把自己列入待查身份；策略性隐瞒或悍跳可以保留。
 </decision_grounding>`;
 }
 
@@ -583,12 +592,10 @@ const SEER_CLAIM_NEGATIVE_PATTERNS = [
 ];
 
 /**
- * 从公开发言中识别「唯一跳预言家者」：
- * 扫描所有发言类消息，统计存活玩家中自称预言家的人数；
- * 恰好一人时返回该玩家（供投票阶段加「无硬反证不得放逐」的最终约束），否则返回 null。
+ * 从公开发言中识别「自称预言家」的玩家（存活者）。
  * 只用公开信息，不借用引擎的真实身份，避免泄漏真预言家身份。
  */
-export const findLoneSeerClaimant = (state: GameState): Player | null => {
+export const findSeerClaimants = (state: GameState): Player[] => {
   const claimantSeats = new Set<number>();
   for (const m of state.messages) {
     if (m.isSystem) continue;
@@ -598,9 +605,27 @@ export const findLoneSeerClaimant = (state: GameState): Player | null => {
     const speaker = state.players.find((p) => p.playerId === m.playerId);
     if (speaker?.alive) claimantSeats.add(speaker.seat);
   }
-  if (claimantSeats.size !== 1) return null;
-  const claimantSeat = [...claimantSeats][0]!;
-  return state.players.find((p) => p.seat === claimantSeat) ?? null;
+  return [...claimantSeats]
+    .sort((a, b) => a - b)
+    .map((seat) => state.players.find((p) => p.seat === seat))
+    .filter((p): p is Player => Boolean(p));
+};
+
+/** 白天規則裡的「場上現況」：目前誰自稱預言家、有無對跳（純事實陳述）。 */
+export const buildSeerClaimStateLine = (state: GameState): string => {
+  const { t } = getI18n();
+  const claimants = findSeerClaimants(state);
+  if (claimants.length === 1) {
+    const [only] = claimants;
+    return t("promptUtils.gameContext.seerClaimStateLone", { seat: only.seat + 1, name: only.displayName });
+  }
+  if (claimants.length > 1) {
+    return t("promptUtils.gameContext.seerClaimStateMultiple", {
+      count: claimants.length,
+      list: claimants.map((p) => `${p.seat + 1}号 ${p.displayName}`).join("、"),
+    });
+  }
+  return "";
 };
 
 export const buildPlayerTodaySpeech = (state: GameState, player: Player): string => {
@@ -820,7 +845,7 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
     // 白天才有保人与切割的取舍：队友劣势时无脑硬保会把狼队绑成一条线一起暴露。
     // 夜间出刀与本原则无关，因此只在白天阶段拼入。
     if (state.phase.includes("DAY")) {
-      wolfInfo += `\n【狼队协作原则】\n队友被集中怀疑时，不要无脑保人：公开硬保会把你和队友绑成一条线，等于一起暴露。\n- 队友还有救：按公开事实正常为他说话，要有依据，不能空喊“他是好人”。\n- 队友已明显挡不住票：不要硬撑，可以保持中立或顺势切割，必要时把票投给队友（弃车保帅）。\n- 判断标准是狼队整体收益，不是保住某一个队友；票型本身不能证明被投的人是好人。`;
+      wolfInfo += `\n${t("promptUtils.gameContext.wolfTeamPrinciples")}`;
       // 悍跳守則：白天想跳預言家的狼需要一套不容易被證偽的假查验打法；夜間無關。
       wolfInfo += `\n${t("promptUtils.gameContext.wolfFakeSeerGuidance")}`;
     }
@@ -934,29 +959,15 @@ alive_count: ${alivePlayers.length}
   const isDayPhase = state.phase.includes("DAY");
   // 票型不能当铁证：狼人也可以投队友做局，因此白天凡是涉及投票的环节都要提示。
   // 夜间没有投票，不拼入以免干扰出刀判断。
-  const wolfVoteTeammateNote = isDayPhase
-    ? t("promptUtils.gameContext.wolfVoteTeammateNote")
-    : "";
-  // 自爆/夜刀目标是狼队认定的威胁，以及夜刀嫁祸：都是白天推理用的情报，夜间不拼入。
-  const wolfBoomThreatNote = isDayPhase ? t("promptUtils.gameContext.wolfBoomThreatNote") : "";
-  const wolfNightKillFramingNote = isDayPhase ? t("promptUtils.gameContext.wolfNightKillFramingNote") : "";
-  // 死者票无效力＋无对跳不放逐唯一预言家：都是白天推理守则，夜间不拼入。
-  const deadVoteNoCollusionNote = isDayPhase ? t("promptUtils.gameContext.deadVoteNoCollusionNote") : "";
-  const loneSeerProtectionNote = isDayPhase ? t("promptUtils.gameContext.loneSeerProtectionNote") : "";
-  // 對跳守則：有對跳時的裁決路徑，與無對跳守則成對，僅白天拼入。
-  const counterClaimNote = isDayPhase ? t("promptUtils.gameContext.counterClaimNote") : "";
-  // 查杀未证伪＋毒杀印证＋报查验时机：狼队反打真预言家的标准话术防线，仅白天拼入。
-  const unverifiedCheckNote = isDayPhase ? t("promptUtils.gameContext.unverifiedCheckNote") : "";
-  // 線索獨立守則：疊證前先驗獨立性（「相互印證」的一般化前提），僅白天拼入。
+  // 讀票型／讀刀口／預言家線／線索獨立／警徽／金水：白天推理用的知識區塊，夜間不拼入。
+  const voteReadingNote = isDayPhase ? t("promptUtils.gameContext.voteReadingNote") : "";
+  const nightKillReadingNote = isDayPhase ? t("promptUtils.gameContext.nightKillReadingNote") : "";
+  const seerLineReadingNote = isDayPhase ? t("promptUtils.gameContext.seerLineReadingNote") : "";
   const evidenceIndependenceNote = isDayPhase ? t("promptUtils.gameContext.evidenceIndependenceNote") : "";
-  // 警徽流：预言家夜死后交徽＝最后遗言，优先于生前口头怀疑，仅白天拼入。
-  const badgeFlowNote = isDayPhase ? t("promptUtils.gameContext.badgeFlowNote") : "";
-  // 金水保護：唯一無對跳預言家的查驗結果不因預言家死亡而失效，放逐投票不得投金水，僅白天拼入。
-  const verifiedGoodProtectionNote = isDayPhase
-    ? t("promptUtils.gameContext.verifiedGoodProtectionNote")
-    : "";
-  // 夜刀读法：被刀默认＝灭口好人；禁止自刀反推与事后死保定罪，仅白天拼入。
-  const nightKillEvidenceNote = isDayPhase ? t("promptUtils.gameContext.nightKillEvidenceNote") : "";
+  const badgeNote = isDayPhase ? t("promptUtils.gameContext.badgeNote") : "";
+  const goldWaterNote = isDayPhase ? t("promptUtils.gameContext.goldWaterNote") : "";
+  // 場上現況（誰自稱預言家、有無對跳）：只陳述公開事實，不下指令。
+  const seerClaimStateNote = isDayPhase ? buildSeerClaimStateLine(state) : "";
   // 警長職責：只有拿徽者收到，避免狼警長免費收割「跟警徽走」的權威；僅白天拼入。
   const sheriffDutyNote = isDayPhase && state.badge?.holderSeat === player.seat
     ? t("promptUtils.gameContext.sheriffDutyNote")
@@ -986,42 +997,27 @@ alive_count: ${alivePlayers.length}
   if (noSameDayCausalityNote) {
     rulesText += `\n${noSameDayCausalityNote}`;
   }
-  if (wolfVoteTeammateNote) {
-    rulesText += `\n${wolfVoteTeammateNote}`;
+  if (voteReadingNote) {
+    rulesText += `\n${voteReadingNote}`;
   }
-  if (wolfBoomThreatNote) {
-    rulesText += `\n${wolfBoomThreatNote}`;
+  if (nightKillReadingNote) {
+    rulesText += `\n${nightKillReadingNote}`;
   }
-  if (wolfNightKillFramingNote) {
-    rulesText += `\n${wolfNightKillFramingNote}`;
+  // 場上現況緊貼預言家線：先看事實，再看讀法。
+  if (seerClaimStateNote) {
+    rulesText += `\n${seerClaimStateNote}`;
   }
-  if (deadVoteNoCollusionNote) {
-    rulesText += `\n${deadVoteNoCollusionNote}`;
+  if (seerLineReadingNote) {
+    rulesText += `\n${seerLineReadingNote}`;
   }
-  if (loneSeerProtectionNote) {
-    rulesText += `\n${loneSeerProtectionNote}`;
-  }
-  // 緊貼無對跳守則：唯一跳/有對跳是互斥情境，相鄰便於對照。
-  if (counterClaimNote) {
-    rulesText += `\n${counterClaimNote}`;
-  }
-  if (unverifiedCheckNote) {
-    rulesText += `\n${unverifiedCheckNote}`;
-  }
-  // 緊貼查殺未證偽守則：獨立守則是「相互印證」的一般化前提。
   if (evidenceIndependenceNote) {
     rulesText += `\n${evidenceIndependenceNote}`;
   }
-  if (badgeFlowNote) {
-    rulesText += `\n${badgeFlowNote}`;
+  if (badgeNote) {
+    rulesText += `\n${badgeNote}`;
   }
-  // 緊貼警徽流守則：接徽者的信任線與金水的保護門檻是同一套標準。
-  if (verifiedGoodProtectionNote) {
-    rulesText += `\n${verifiedGoodProtectionNote}`;
-  }
-  // 夜刀读法守则放最末：本局最痛的误判是把刀口反着读（自刀反推、事后死保定罪），需吃 recency。
-  if (nightKillEvidenceNote) {
-    rulesText += `\n${nightKillEvidenceNote}`;
+  if (goldWaterNote) {
+    rulesText += `\n${goldWaterNote}`;
   }
   // 警長職責放最後：對拿徽者是最直接的行動指令（歸票）。
   if (sheriffDutyNote) {
