@@ -825,3 +825,15 @@ test("警徽報名 prompt：上警收益/成本知識進 system，教判斷不�
   assert.match(prompt.system, /"signup":true/);
   assert.doesNotMatch(prompt.user, /上警这笔账/);
 });
+
+test("發言底線規則：要求大白話，禁成語/書面黑話（騎牆教訓）", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_SPEECH");
+  const speaker = state.players[0];
+  state.currentSpeakerSeat = speaker.seat;
+  const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
+  assert.match(prompt.system, /用大白话说，像平时聊天/);
+  assert.match(prompt.system, /「骑墙」/);
+  assert.doesNotMatch(prompt.system, /\{tactics\}/);
+});
