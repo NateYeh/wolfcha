@@ -773,3 +773,33 @@ test("白狼王自爆：拿得到【场上现状】與自爆算帳知識（純�
   const vPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
   assert.doesNotMatch(vPrompt.user, /自爆这笔账怎么算/);
 });
+
+test("第 2 天起也要知道「第 1 天警徽競選先於死訊公布」（女巫毒錯時間軸的修正）", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_SPEECH");
+  state.day = 2;
+  state.currentSpeakerSeat = 0;
+  const speaker = state.players[0];
+  const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
+  // 泛用階段順序注也要講第 1 天的例外：競選在前、死訊在警長選出後才公布。
+  assert.match(prompt.user, /第一天的警徽竞选先进行/);
+  assert.match(prompt.user, /死讯在警长选出后才公布/);
+  assert.match(prompt.user, /都发生在死讯公布之前/);
+});
+
+test("已死未公布的玩家：警徽報名／發言／投票名單要剔除（夜死者在公布前不參與）", async () => {
+  const { excludePendingDeathPlayers, getPendingDeathSeats } = await import("@/lib/game-master");
+  const state = fresh("DAY_BADGE_SPEECH");
+  // 夜 1：狼刀 5號（raw 4）、女巫毒 10號（raw 9）→ 兩人都已死未公布。
+  state.nightActions = { ...state.nightActions, pendingWolfVictim: 4, pendingPoisonVictim: 9 };
+  assert.deepEqual(getPendingDeathSeats(state).sort(), [4, 9]);
+
+  const candidates = state.players.filter((p) => [0, 1, 4, 9].includes(p.seat));
+  const eligible = excludePendingDeathPlayers(state, candidates);
+  assert.deepEqual(eligible.map((p) => p.seat).sort(), [0, 1]);
+
+  // 沒有 pending 死亡時名單原樣返回
+  const cleanState = { ...state, nightActions: {} };
+  assert.equal(excludePendingDeathPlayers(cleanState, candidates), candidates);
+});

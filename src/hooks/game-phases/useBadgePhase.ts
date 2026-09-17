@@ -14,6 +14,8 @@ import {
   generateBadgeTransfer,
   BADGE_VOTE_ABSTAIN,
   BADGE_TRANSFER_TORN,
+  excludePendingDeathPlayers,
+  getPendingDeathSeats,
 } from "@/lib/game-master";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { DELAY_CONFIG, GAME_CONFIG } from "@/lib/game-constants";
@@ -170,7 +172,11 @@ export function useBadgePhase(
     if (state.badge.holderSeat !== null) return;
 
     const candidates = state.badge.candidates || [];
-    const voters = state.players.filter((p) => p.alive && !candidates.includes(p.seat));
+    // 已死未公布（夜 1 被刀）的玩家不投票；其死亡尚未公布，但仍不能參與警徽投票。
+    const voters = excludePendingDeathPlayers(
+      state,
+      state.players.filter((p) => p.alive && !candidates.includes(p.seat))
+    );
     const voterIds = voters.map((p) => p.playerId);
     const allVoted = voterIds.every((id) => typeof state.badge.votes[id] === "number");
     if (!allVoted) return;
@@ -304,7 +310,8 @@ export function useBadgePhase(
 
     const task = (async (): Promise<GameState> => {
       const baseState = gameStateRef.current ?? state;
-      const alivePlayers = baseState.players.filter((p) => p.alive);
+      // 已死未公布（夜 1 被刀）的玩家不被詢問報名：死人不報名、不上警。
+      const alivePlayers = excludePendingDeathPlayers(baseState, baseState.players.filter((p) => p.alive));
       const aiPlayers = alivePlayers.filter((p) => !p.isHuman);
       const pendingAI = aiPlayers.filter(
         (p) => typeof baseState.badge.signup?.[p.playerId] !== "boolean"
@@ -384,14 +391,17 @@ export function useBadgePhase(
   /** 报名结束后检查是否开始发言 */
   const maybeStartBadgeSpeechAfterSignup = useCallback(async (state: GameState) => {
     const texts = getTexts();
-    const alivePlayers = state.players.filter((p) => p.alive);
+    // 已死未公布（夜 1 被刀）的玩家不參與報名，也不需要報名決定。
+    const alivePlayers = excludePendingDeathPlayers(state, state.players.filter((p) => p.alive));
     const signup = state.badge.signup || {};
     const allDecided = alivePlayers.every((p) => typeof signup[p.playerId] === "boolean");
     if (!allDecided) return;
 
-    const candidates = alivePlayers
-      .filter((p) => signup[p.playerId] === true)
-      .map((p) => p.seat);
+    // 候選人資格：存活且不是「已死未公布」的玩家（夜死者在警長選出前不能參選）。
+    const candidates = excludePendingDeathPlayers(
+      state,
+      alivePlayers.filter((p) => signup[p.playerId] === true)
+    ).map((p) => p.seat);
 
     if (candidates.length === 0) {
       const nextState = addSystemMessage(state, texts.t("badgePhase.noSignup"));
@@ -413,6 +423,8 @@ export function useBadgePhase(
     if (gameState.phase !== "DAY_BADGE_SIGNUP") return;
     const human = gameState.players.find((p) => p.isHuman);
     if (!human?.alive) return;
+    // 已死未公布（夜 1 被刀）的玩家不能报名，即使死亡尚未公布。
+    if (getPendingDeathSeats(gameState).includes(human.seat)) return;
     if (typeof gameState.badge.signup?.[human.playerId] === "boolean") return;
 
     let nextState: GameState = {
@@ -453,7 +465,10 @@ export function useBadgePhase(
     setDialogue(texts.speakerHost, texts.systemMessages.badgeSpeechStart, false);
 
     const candidates = currentState.badge.candidates || [];
-    const candidatePlayers = currentState.players.filter((p) => p.alive && candidates.includes(p.seat));
+    const candidatePlayers = excludePendingDeathPlayers(
+      currentState,
+      currentState.players.filter((p) => p.alive && candidates.includes(p.seat))
+    );
     const startSeat = candidatePlayers.length > 0
       ? candidatePlayers[Math.floor(Math.random() * candidatePlayers.length)].seat
       : null;
@@ -534,15 +549,19 @@ export function useBadgePhase(
     const humanIsCandidate = human && candidates.includes(human.seat);
     
     // 只对非候选人显示投票提示
-    if (human?.alive && !humanIsCandidate) {
+    // 已死未公布（夜 1 被刀）的玩家不投票；候选人也不投票。
+    if (human?.alive && !humanIsCandidate && !getPendingDeathSeats(currentState).includes(human.seat)) {
       setDialogue(texts.speakerHost, texts.uiText.badgeVotePrompt, false);
     } else {
       setDialogue(texts.speakerHost, texts.uiText.aiVoting, false);
     }
     gameStateRef.current = currentState;
     setGameState(currentState);
-    const aiPlayers = currentState.players.filter((p) => p.alive && !p.isHuman && !candidates.includes(p.seat) &&
-      (!isResume || typeof currentState.badge.votes[p.playerId] !== "number"));
+    const aiPlayers = excludePendingDeathPlayers(
+      currentState,
+      currentState.players.filter((p) => p.alive && !p.isHuman && !candidates.includes(p.seat) &&
+        (!isResume || typeof currentState.badge.votes[p.playerId] !== "number"))
+    );
     try {
       for (const aiPlayer of aiPlayers) {
         setIsWaitingForAI(true);

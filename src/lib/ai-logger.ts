@@ -94,6 +94,8 @@ function parseCacheUsageFromRawResponse(rawResponse: string | undefined): Prompt
 class AILogger {
   private localCache: AILogEntry[] | null = null;
   private logFile: string | null = null;
+  /** 檔案寫入序列鏈：批次事件（警徽報名一次 9 筆）會同時觸發多筆 POST，序列化避免爆量。 */
+  private fileWriteChain: Promise<void> = Promise.resolve();
   private readonly listeners = new Set<AILogListener>();
 
   subscribe(listener: AILogListener): () => void {
@@ -197,18 +199,36 @@ class AILogger {
   /**
    * [LOCAL DEV PATCH] 將紀錄追加到本機日誌檔，讓紀錄能跨頁面重整保留。
    * 實際寫入位置由伺服器的 WOLFCHA_AI_LOG_DIR 決定；寫入失敗不影響遊戲。
+   *
+   * 不用 keepalive、逐筆排隊、失敗重試兩次：keepalive 請求同時在途有 64KB 上限，
+   * 批次事件（例如警徽報名一次 log 9 筆）超量的請求會被瀏覽器靜默丟棄，
+   * 導致每局的報名紀錄固定掉了後面幾筆；序列化＋重試讓紀錄完整落地。
    */
   private appendToFile(entry: AILogEntry) {
     if (!canUseStorage()) return;
     if (!this.logFile) this.logFile = buildLogFileName(null, null);
-    void fetch("/api/dev-ai-logs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ file: this.logFile, entry }),
-      keepalive: true,
-    }).catch(() => {
-      // 檔案紀錄失敗时靜默處理，不干擾對局
-    });
+    const payload = JSON.stringify({ file: this.logFile, entry });
+    this.fileWriteChain = this.fileWriteChain
+      .then(() => this.postEntryWithRetry(payload))
+      .catch(() => {
+        // 檔案紀錄失敗時靜默處理，不干擾對局
+      });
+  }
+
+  /** 逐筆 POST，失敗重試兩次（不阻擋後續寫入）。 */
+  private async postEntryWithRetry(payload: string, attempt = 0): Promise<void> {
+    try {
+      await fetch("/api/dev-ai-logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      });
+    } catch {
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+        return this.postEntryWithRetry(payload, attempt + 1);
+      }
+    }
   }
 
   private notify(entry: AILogEntry) {
