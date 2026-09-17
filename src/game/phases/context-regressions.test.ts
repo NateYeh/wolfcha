@@ -846,7 +846,7 @@ test("發言底線規則：公開翻牌推翻舊判斷時要認錯票（殷离�
   state.currentSpeakerSeat = speaker.seat;
   const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
   assert.match(prompt.system, /这票就是投错了/);
-  assert.match(prompt.system, /认不认、怎么认，由你判断/);
+  assert.match(prompt.system, /仅供参考；采不采纳、怎么用，由你自己决定/);
 });
 
 test("發言底線規則：發言前先對帳，抓公開事實矛盾＋要關鍵線索", async () => {
