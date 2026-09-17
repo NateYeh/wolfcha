@@ -837,3 +837,14 @@ test("發言底線規則：要求大白話，禁成語/書面黑話（騎牆教�
   assert.match(prompt.system, /「骑墙」/);
   assert.doesNotMatch(prompt.system, /\{tactics\}/);
 });
+
+test("發言底線規則：公開翻牌推翻舊判斷時要認錯票（殷离嘴硬教訓）", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_SPEECH");
+  const speaker = state.players[0];
+  state.currentSpeakerSeat = speaker.seat;
+  const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
+  assert.match(prompt.system, /公开翻牌推翻你旧判断时/);
+  assert.match(prompt.system, /这票就是投错了/);
+});
