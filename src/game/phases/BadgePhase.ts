@@ -100,7 +100,10 @@ export class BadgePhase extends GamePhase {
       winCondition: getWinCondition(player.role),
       persona,
     });
-    const dynamicContent = t("prompts.badge.signup.task");
+    // 上警收益/成本知識：教判斷不下命令，報不報名由 AI 自己算帳。
+    const dynamicContent = t("prompts.badge.signup.task", {
+      tactics: t("prompts.badge.signup.tactics"),
+    });
     const systemParts: SystemPromptPart[] = [
       { text: cacheableContent, cacheable: true, ttl: "1h" },
       { text: dynamicContent },

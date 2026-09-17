@@ -803,3 +803,25 @@ test("已死未公布的玩家：警徽報名／發言／投票名單要剔除�
   const cleanState = { ...state, nightActions: {} };
   assert.equal(excludePendingDeathPlayers(cleanState, candidates), candidates);
 });
+
+test("警徽報名 prompt：上警收益/成本知識進 system，教判斷不下命令", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_BADGE_SIGNUP");
+  const seer = state.players.find((p) => p.role === "Seer")!;
+  state.currentSpeakerSeat = seer.seat;
+  const prompt = new PhaseManager().getPrompt("DAY_BADGE_SIGNUP", { state }, seer)!;
+  // 知識在 system（與 task 同層），不在 user
+  assert.match(prompt.system, /【上警这笔账怎么算（报不报名，你自己决定）】/);
+  assert.match(prompt.system, /有查验要第一时间报/);
+  assert.match(prompt.system, /往往是免费暴露/);
+  assert.match(prompt.system, /警徽流是预言家的信息线/);
+  // 教知識不下命令：明說由自己判斷，且無禁令字眼
+  assert.match(prompt.system, /由你结合自己的身份/);
+  assert.doesNotMatch(prompt.system, /不得|禁止|必须报|不要报名/);
+  // task 的 {tactics} 佔位符已渲染，格式說明仍完整
+  assert.doesNotMatch(prompt.system, /\{tactics\}/);
+  assert.match(prompt.system, /【输出格式】/);
+  assert.match(prompt.system, /"signup":true/);
+  assert.doesNotMatch(prompt.user, /上警这笔账/);
+});
