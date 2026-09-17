@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  AVATAR_API_PATH,
   AvatarConfig,
   buildAvatarUrl,
   buildSimpleAvatarUrl,
@@ -60,6 +61,9 @@ test("頭像：URL 帶入性別髮型與 zero beard，且背景色穩定", () =>
   assert.equal(params.get("beardProbability"), "0");
   assert.equal(params.get("backgroundColor"), getAvatarBgColor("seed-1"));
   assert.equal(buildAvatarUrl({ seed: "seed-1", gender: "male" }).includes("hair=variant"), true);
+  // 走自家伺服器，不再連外部服務（避免限流與把角色名傳給第三方）
+  assert.equal(url.startsWith(`${AVATAR_API_PATH}?`), true);
+  assert.equal(url.includes("dicebear"), false);
 
   // 明確指定髮型時不再由性別決定
   const explicit = new URLSearchParams(buildAvatarUrl({ seed: "seed-1", gender: "male", hair: "variant10" }).split("?")[1]);

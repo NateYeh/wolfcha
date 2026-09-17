@@ -181,8 +181,14 @@ export interface AvatarUrlOptions {
   backgroundColor?: string | "transparent";
 }
 
+/** 自家頭像 API 路徑（伺服器端用 DiceBear 核心產生 SVG）。 */
+export const AVATAR_API_PATH = "/api/avatar";
+
 /**
- * 构建 DiceBear Notionists 头像 URL
+ * 构建头像 URL。
+ *
+ * 導向自家的 /api/avatar：不依賴外部服務、不會被限流，角色名（seed）
+ * 也不會傳給第三方。參數與原本的 api.dicebear.com/7.x/notionists/svg 相同。
  */
 export function buildAvatarUrl(options: AvatarUrlOptions): string {
   const {
@@ -234,7 +240,7 @@ export function buildAvatarUrl(options: AvatarUrlOptions): string {
   params.set("beardProbability", "0");
   
 
-  return `https://api.dicebear.com/7.x/notionists/svg?${params.toString()}`;
+  return `${AVATAR_API_PATH}?${params.toString()}`;
 }
 
 /**
