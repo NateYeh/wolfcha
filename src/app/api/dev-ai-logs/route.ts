@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
  */
 
 const LOG_FILE_PATTERN = /^wolfcha-\d{8}-\d{6}-[a-zA-Z0-9]{1,6}\.log$/;
-const DEFAULT_KEEP = 7;
+const DEFAULT_KEEP = 20;
 
 function resolveLogDir(): string | null {
   const configured = (process.env.WOLFCHA_AI_LOG_DIR ?? "").trim();

@@ -541,7 +541,7 @@ test("悍跳守则／警长职责／线索独立守则：分眾拼装与排序",
   const wolf = state.players.find((p) => p.role === "Werewolf")!;
   state.currentSpeakerSeat = wolf.seat;
   const wolfPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, wolf)!;
-  assert.match(wolfPrompt.user, /【悍跳的玩法与陷阱（如果你决定跳预言家）】/);
+  assert.match(wolfPrompt.user, /【悍跳的时机与收益（要不要跳，你自己决定）】/);
   assert.match(wolfPrompt.user, /报出来的查验必须跟公开事实对得上/);
   assert.match(wolfPrompt.user, /递金水给队友能绑票/);
   // 狼隊怎麼配合：知識型（不再是硬編碼條文）
@@ -551,7 +551,7 @@ test("悍跳守则／警长职责／线索独立守则：分眾拼装与排序",
   const villager = state.players.find((p) => p.role === "Villager")!;
   state.currentSpeakerSeat = villager.seat;
   const villagerPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
-  assert.doesNotMatch(villagerPrompt.user, /【悍跳的玩法与陷阱/);
+  assert.doesNotMatch(villagerPrompt.user, /【悍跳的时机与收益/);
   assert.doesNotMatch(villagerPrompt.user, /【狼队怎么配合】/);
 
   // 警长职责：只有拿徽者收到；非拿徽者看不到（避免狼警長免費收割權威）
@@ -582,7 +582,7 @@ test("悍跳守则／警长职责／线索独立守则：分眾拼装与排序",
   const nightWolf = nightState.players.find((p) => p.role === "Werewolf")!;
   nightState.currentSpeakerSeat = nightWolf.seat;
   const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, nightWolf)!;
-  assert.doesNotMatch(nightPrompt.user, /【悍跳的玩法与陷阱/);
+  assert.doesNotMatch(nightPrompt.user, /【悍跳的时机与收益/);
   assert.doesNotMatch(nightPrompt.user, /【你现在是警长】/);
   assert.doesNotMatch(nightPrompt.user, /【线索独立性】/);
 });
@@ -680,4 +680,30 @@ test("新補提示（不限制）：女巫用藥記錄讀法、死人遺言兩�
   const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, wolf)!;
   assert.doesNotMatch(nightPrompt.user, /死人的话分两种/);
   assert.doesNotMatch(nightPrompt.user, /随大流/);
+});
+
+test("悍跳引導改為收益／時機（提示不限制）＋狼隊原則補『搶線』", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_SPEECH");
+  const wolf = state.players.find((p) => p.role === "Werewolf")!;
+  state.currentSpeakerSeat = wolf.seat;
+  const wolfPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, wolf)!;
+
+  // 時機與收益：獨跳沒對跳的那一輪最值錢、越早跳越像真的
+  assert.match(wolfPrompt.user, /最值钱的时机是「真预言家独跳、没人对跳」的那一轮/);
+  assert.match(wolfPrompt.user, /你等于每轮白送一票/);
+  assert.match(wolfPrompt.user, /越早跳越像真的/);
+  // 仍是提示：明說由狼自己決定
+  assert.match(wolfPrompt.user, /要不要跳，你自己决定/);
+  // 風險仍在（沒被拿掉）
+  assert.match(wolfPrompt.user, /被证伪一次，你整条线就废了/);
+
+  // 狼隊原則：切割與搶線並列
+  assert.match(wolfPrompt.user, /切割和抢线是两条路/);
+  // 好人拿不到狼隊私有段落
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  state.currentSpeakerSeat = villager.seat;
+  const vPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
+  assert.doesNotMatch(vPrompt.user, /切割和抢线是两条路/);
 });
