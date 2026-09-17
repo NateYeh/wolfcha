@@ -71,7 +71,7 @@ export class HunterPhase extends GamePhase {
 
     const user = t("prompts.hunter.user", {
       context: gameContext,
-      jsonFormat: JSON.stringify({ seat: exampleSeat }),
+      jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "<一句话：这枪为什么打他>" }),
       passJsonFormat: JSON.stringify({ action: "pass" }),
     });
 

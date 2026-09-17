@@ -102,6 +102,9 @@ test("猎人开枪提示必须包含开枪守则，且排在遗言之后（可�
   const lastWordsIdx = prompt.system.indexOf("【已经发生的公开记录：你的遗言】");
   const rulesIdx = prompt.system.indexOf("【开枪的思路】");
   assert.ok(lastWordsIdx >= 0 && rulesIdx > lastWordsIdx, "开枪守则应排在遗言之后");
+  // 开枪需附 reason：供后续对帐分析
+  assert.match(prompt.user, /reason 里写一句话：这枪为什么打他，引用公开事实/);
+  assert.match(prompt.user, /"reason"/);
 });
 
 test("警徽评选：狼人可见警徽票纪律，好人不可见", async () => {

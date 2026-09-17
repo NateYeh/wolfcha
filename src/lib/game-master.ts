@@ -1971,7 +1971,7 @@ export async function generateHunterShoot(
         raw: completion.result.content,
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
-        parsed: { targetSeat: parsedTarget },
+        parsed: { targetSeat: parsedTarget, reason: extractActionReason(completion.cleaned) },
         duration: Date.now() - startTime,
       },
     });
