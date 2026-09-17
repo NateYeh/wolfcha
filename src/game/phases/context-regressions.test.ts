@@ -845,6 +845,18 @@ test("發言底線規則：公開翻牌推翻舊判斷時要認錯票（殷离�
   const speaker = state.players[0];
   state.currentSpeakerSeat = speaker.seat;
   const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
-  assert.match(prompt.system, /公开翻牌推翻你旧判断时/);
   assert.match(prompt.system, /这票就是投错了/);
+  assert.match(prompt.system, /认不认、怎么认，由你判断/);
+});
+
+test("發言底線規則：發言前先對帳，抓公開事實矛盾＋要關鍵線索", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_SPEECH");
+  const speaker = state.players[0];
+  state.currentSpeakerSeat = speaker.seat;
+  const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
+  assert.match(prompt.system, /发言前对一遍账/);
+  assert.match(prompt.system, /跳女巫却不报救了谁/);
+  assert.match(prompt.system, /由你自己决定/);
 });
