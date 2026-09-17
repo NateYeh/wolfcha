@@ -405,6 +405,42 @@ test("警徽流守则：唯一无对跳预言家夜死交徽＝最后遗言，�
   assert.doesNotMatch(nightPrompt.user, /警徽流守则/);
 });
 
+test("金水保护守则：唯一无对跳预言家的金水不因预言家死亡失效，放逐投票不得投金水；夜间不拼入", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_VOTE");
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  state.currentSpeakerSeat = villager.seat;
+  const dayPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
+  assert.match(dayPrompt.user, /金水保护守则/);
+  // 查驗是既成事實：預言家死亡／交徽不使其失效
+  assert.match(dayPrompt.user, /不会因为预言家死亡、交徽或不再说话而失效/);
+  // 明確禁止投金水，並要求硬反證
+  assert.match(dayPrompt.user, /放逐投票不得投金水/);
+  // 排除軟理由（態度、帶節奏、不聽警長）
+  assert.match(dayPrompt.user, /不听警长归票/);
+  // 狼隊反打戰術提示：推動投金水者最可疑
+  assert.match(dayPrompt.user, /谁在这时候积极推动投金水，谁的嫌疑就最大/);
+  // 警長也不得帶票投金水（金水守則本身載明門檻）
+  assert.match(dayPrompt.user, /包括拿警徽的警长/);
+  // 拿到警徽的人額外收到「歸票金水須先給硬反證」的指令
+  const sheriffState = fresh("DAY_VOTE");
+  sheriffState.badge = { ...sheriffState.badge, holderSeat: villager.seat };
+  const sheriffPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state: sheriffState }, villager)!;
+  assert.match(sheriffPrompt.user, /警徽不是免死金牌/);
+  // 排序：緊貼警徽流守則之後（同一套信任線標準）
+  assert.ok(
+    dayPrompt.user.lastIndexOf("金水保护守则") > dayPrompt.user.lastIndexOf("警徽流守则"),
+    "金水保护守则应在警徽流守则之后"
+  );
+  // 夜间（狼出刀）不拼入
+  const nightState = fresh("NIGHT_WOLF_ACTION");
+  const nightWolf = nightState.players.find((p) => p.role === "Werewolf")!;
+  nightState.currentSpeakerSeat = nightWolf.seat;
+  const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, nightWolf)!;
+  assert.doesNotMatch(nightPrompt.user, /金水保护守则/);
+});
+
 test("夜刀读法守则：被刀默认＝灭口好人旁证；禁止自刀反推；死保须按当时信息评估；夜间不拼入", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");

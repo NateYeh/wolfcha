@@ -951,6 +951,10 @@ alive_count: ${alivePlayers.length}
   const evidenceIndependenceNote = isDayPhase ? t("promptUtils.gameContext.evidenceIndependenceNote") : "";
   // 警徽流：预言家夜死后交徽＝最后遗言，优先于生前口头怀疑，仅白天拼入。
   const badgeFlowNote = isDayPhase ? t("promptUtils.gameContext.badgeFlowNote") : "";
+  // 金水保護：唯一無對跳預言家的查驗結果不因預言家死亡而失效，放逐投票不得投金水，僅白天拼入。
+  const verifiedGoodProtectionNote = isDayPhase
+    ? t("promptUtils.gameContext.verifiedGoodProtectionNote")
+    : "";
   // 夜刀读法：被刀默认＝灭口好人；禁止自刀反推与事后死保定罪，仅白天拼入。
   const nightKillEvidenceNote = isDayPhase ? t("promptUtils.gameContext.nightKillEvidenceNote") : "";
   // 警長職責：只有拿徽者收到，避免狼警長免費收割「跟警徽走」的權威；僅白天拼入。
@@ -1010,6 +1014,10 @@ alive_count: ${alivePlayers.length}
   }
   if (badgeFlowNote) {
     rulesText += `\n${badgeFlowNote}`;
+  }
+  // 緊貼警徽流守則：接徽者的信任線與金水的保護門檻是同一套標準。
+  if (verifiedGoodProtectionNote) {
+    rulesText += `\n${verifiedGoodProtectionNote}`;
   }
   // 夜刀读法守则放最末：本局最痛的误判是把刀口反着读（自刀反推、事后死保定罪），需吃 recency。
   if (nightKillEvidenceNote) {
