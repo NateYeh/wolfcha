@@ -770,6 +770,8 @@ ${checks.join("\n")}`;
     if (witchActions.length > 0) {
       witchInfo += `\n【用药记录】\n${witchActions.join("\n")}`;
     }
+    // 用藥記錄的讀法：救過的人＝狼當晚目標（偏好人），日夜都用得到，兩邊都拼。
+    witchInfo += `\n${t("promptUtils.gameContext.witchPotionReadingNote")}`;
     // 白天才需要報帳指引（何時公開、報什麼）；夜間用藥決策有自己的提示。
     if (state.phase.includes("DAY")) {
       witchInfo += `\n${t("promptUtils.gameContext.witchAccountGuidance")}`;

@@ -638,3 +638,46 @@ test("全域动机与人味：每个玩家阶段都收到（想赢、允许不�
   // 防幻覺底線仍在（不限制玩法，但不准編造事實）
   assert.match(dayPrompt.system, /严禁编造不存在的发言/);
 });
+
+test("新補提示（不限制）：女巫用藥記錄讀法、死人遺言兩種讀法、跟大流不構成狼證", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+
+  // 女巫：白天與夜間都拿得到「用藥記錄的讀法」
+  for (const phase of ["DAY_SPEECH", "NIGHT_WITCH_ACTION"] as const) {
+    const state = fresh(phase);
+    const witch = state.players.find((p) => p.role === "Witch")!;
+    state.currentSpeakerSeat = witch.seat;
+    const prompt = new PhaseManager().getPrompt(phase, { state }, witch)!;
+    assert.match(prompt.user, /<your_potions>[\s\S]*【用药记录的读法】/);
+    assert.match(prompt.user, /你救过的人＝那晚狼最想杀的人/);
+    // 只是提示，明說由模型自己決定
+    assert.match(prompt.user, /要不要照着走由你自己决定/);
+  }
+  // 非女巫看不到
+  const vState = fresh("DAY_SPEECH");
+  const villager = vState.players.find((p) => p.role === "Villager")!;
+  vState.currentSpeakerSeat = villager.seat;
+  const vPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state: vState }, villager)!;
+  assert.doesNotMatch(vPrompt.user, /用药记录的读法/);
+
+  // 死人遺言兩種讀法（讀刀口區塊）
+  const dayState = fresh("DAY_VOTE");
+  const voter = dayState.players.find((p) => p.role === "Villager")!;
+  dayState.currentSpeakerSeat = voter.seat;
+  const dayPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state: dayState }, voter)!;
+  assert.match(dayPrompt.user, /死人的话分两种/);
+  assert.match(dayPrompt.user, /也可能是拉一个好人下水/);
+
+  // 跟大流不構成狼證（票型區塊）
+  assert.match(dayPrompt.user, /「随大流」本身不构成狼证/);
+  assert.match(dayPrompt.user, /票跟自己的公开判断对不上/);
+
+  // 夜間不拼入讀票型／讀刀口
+  const nightState = fresh("NIGHT_WOLF_ACTION");
+  const wolf = nightState.players.find((p) => p.role === "Werewolf")!;
+  nightState.currentSpeakerSeat = wolf.seat;
+  const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, wolf)!;
+  assert.doesNotMatch(nightPrompt.user, /死人的话分两种/);
+  assert.doesNotMatch(nightPrompt.user, /随大流/);
+});
