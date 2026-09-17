@@ -28,6 +28,8 @@ export interface CharacterPoolStatus {
   scenarioTitle: string | null;
   /** 目標容量＝一局需要的角色數 × CHARACTER_POOL_ROUNDS。 */
   target: number;
+  /** 固定班底：不再自動生成新角色。 */
+  locked: boolean;
   refilling: boolean;
 }
 
@@ -43,13 +45,14 @@ export function getCharacterPoolStatus(
     scenarioId: pool?.scenario.id ?? null,
     scenarioTitle: pool?.scenario.title ?? null,
     target,
+    locked: pool?.locked === true,
     refilling: refillInFlight,
   };
 }
 
 /**
- * 補一批角色進伺服器池（若池已達標則不做任何事）。
- * - `skipped`：已達標或已有補充批次在跑
+ * 補一批角色進伺服器池（若池已達標或為固定班底則不做任何事）。
+ * - `skipped`：已達標、固定班底或已有補充批次在跑
  * - `refilled`：本次真的生成並寫入
  * - `failed`：生成或寫入失敗（已留警告，開局時會即時生成）
  */
@@ -72,6 +75,11 @@ export async function refillCharacterPoolOnce(
   if (refillInFlight) return "skipped";
 
   const pool = await fetchServerPool();
+  if (pool?.locked) {
+    // 固定班底：名單由使用者指定，不生成新角色。
+    console.info("[character-pool] 固定班底模式，跳過背景補充");
+    return "skipped";
+  }
   const unused = pool ? unusedCharacterIndexes(pool).length : 0;
   const target = perGame * CHARACTER_POOL_ROUNDS;
   if (unused >= target) return "skipped";

@@ -28,6 +28,11 @@ export interface CharacterPool {
   characters: GeneratedCharacter[];
   /** 已抽用過的角色索引；全部用完後會重置，允許下一輪重複使用。 */
   usedIndexes: number[];
+  /**
+   * 固定班底：開啟後只用手動指定的名單，背景補充不再生成新角色。
+   * 未設定（undefined）視為關閉。
+   */
+  locked?: boolean;
   updatedAt: number;
 }
 
@@ -160,10 +165,32 @@ export function setCharacterPoolScenario(
     logWarn("沒有可用的儲存空間，角色池未綁定");
     return false;
   }
+  // 綁定新情境等於重新開始，一併解除固定班底（空池又鎖著會永遠補不滿）。
   return writeCharacterPool(
-    { version: POOL_VERSION, scenario, characters: [], usedIndexes: [], updatedAt: Date.now() },
+    { version: POOL_VERSION, scenario, characters: [], usedIndexes: [], locked: false, updatedAt: Date.now() },
     storage,
   );
+}
+
+/** 池是否為「固定班底」模式（不再自動生成新角色）。 */
+export function isCharacterPoolLocked(pool: CharacterPool | null): boolean {
+  return pool?.locked === true;
+}
+
+/**
+ * 設定或取消「固定班底」。
+ * 池不存在時無法設定（沒有情境可綁），回傳 false 並留警告。
+ */
+export function setCharacterPoolLock(
+  locked: boolean,
+  storage = resolveCharacterPoolStorage(),
+): boolean {
+  const pool = readCharacterPool(storage);
+  if (!pool) {
+    logWarn("沒有角色池可設定固定班底");
+    return false;
+  }
+  return writeCharacterPool({ ...pool, locked }, storage);
 }
 
 /** 池內尚未被抽用過的索引。 */
@@ -224,6 +251,12 @@ export function appendCharactersToPool(
     return null;
   }
   const pool = readCharacterPool(storage);
+
+  if (isCharacterPoolLocked(pool)) {
+    // 固定班底：名單由使用者指定，任何自動生成的補充一律擋下。
+    logWarn("角色池為固定班底模式，略過自動補充");
+    return pool;
+  }
 
   if (pool && pool.scenario.id !== scenario.id) {
     logWarn(`角色池綁定情境「${pool.scenario.id}」，略過情境「${scenario.id}」的補充`);

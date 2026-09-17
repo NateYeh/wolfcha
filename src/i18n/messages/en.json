@@ -469,7 +469,10 @@
       "customDescPlaceholder": "e.g. A heroes' summit on Mount Hua; old grudges erupt over wine.",
       "customRolesPlaceholder": "e.g. Sect leaders, swordswomen, an evil-cult master, beggar-clan elders. Wuxia tone, honour-bound.",
       "customAdd": "Save & rebuild",
-      "customDelete": "Delete"
+      "customDelete": "Delete",
+      "lockedTitle": "Fixed roster",
+      "lockedDescription": "When on, no new characters are generated; only the current roster is used",
+      "lockedOn": "Fixed roster on: no new characters, just the current list"
     },
     "rolePreference": {
       "label": "Role Preference",

@@ -12,6 +12,7 @@ import {
   listServerCustomScenarios,
   readServerPool,
   saveServerCustomScenario,
+  setServerPoolLock,
   setServerPoolScenario,
   takeServerPool,
 } from "./character-pool-server";
@@ -108,7 +109,7 @@ test("伺服器池：資料確實落在 .data 檔案裡", async () => {
 
 test("伺服器自訂情境：新增、列出、刪除，並寫入檔案", async () => {
   const first = await saveServerCustomScenario({ title: "金庸群俠", description: "華山論劍", rolesHint: "掌門、俠女" });
-  const second = await saveServerCustomScenario({ title: "星際會議", description: "太空站談判", rolesHint: "艦長、科學官" });
+  await saveServerCustomScenario({ title: "星際會議", description: "太空站談判", rolesHint: "艦長、科學官" });
   assert.ok(first?.id.startsWith("custom_"));
   assert.equal(listServerCustomScenarios().length, 2);
 
@@ -127,4 +128,38 @@ test("伺服器自訂情境：缺少名稱或描述時拒絕儲存", async () =>
   const invalid = await saveServerCustomScenario({ title: "  ", description: "描述", rolesHint: "角色" });
   assert.equal(invalid, null);
   assert.equal(listServerCustomScenarios().length, before);
+});
+test("伺服器池：固定班底寫入檔案，並擋下自動補充", async () => {
+  await clearServerPool();
+  await setServerPoolScenario(scenario("locked_roster"));
+  await appendServerPool(scenario("locked_roster"), batch("俠", 3));
+
+  assert.equal(await setServerPoolLock(true), true);
+  const pool = readServerPool();
+  assert.equal(pool?.locked, true);
+  assert.equal(pool?.characters.length, 3);
+
+  // 檔案內容也要帶 locked，重啟伺服器後仍生效
+  const raw = JSON.parse(readFileSync(path.join(tempDataDir, "character-pool.json"), "utf-8")) as {
+    locked?: boolean;
+    characters?: unknown[];
+  };
+  assert.equal(raw.locked, true);
+
+  // 鎖定中：自動補充被擋下（回傳原池，不新增角色）
+  const blocked = await appendServerPool(scenario("locked_roster"), batch("新", 2));
+  assert.equal(blocked?.characters.length, 3);
+  assert.equal(readServerPool()?.characters.length, 3);
+
+  // 解鎖後可以再補
+  assert.equal(await setServerPoolLock(false), true);
+  const after = await appendServerPool(scenario("locked_roster"), batch("新", 2));
+  assert.equal(after?.characters.length, 5);
+});
+
+test("伺服器池：重新綁定情境會解除固定班底", async () => {
+  await setServerPoolLock(true);
+  assert.equal(readServerPool()?.locked, true);
+  await setServerPoolScenario(scenario("rebind_after_lock"));
+  assert.equal(readServerPool()?.locked, false);
 });

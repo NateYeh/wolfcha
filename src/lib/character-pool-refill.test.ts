@@ -41,11 +41,17 @@ const character = (name: string): GeneratedCharacter => ({
 const batch = (prefix: string, count: number): GeneratedCharacter[] =>
   Array.from({ length: count }, (_, index) => character(`${prefix}${index + 1}`));
 
-const makePool = (scenarioId: string, characters: GeneratedCharacter[], usedIndexes: number[] = []): CharacterPool => ({
+const makePool = (
+  scenarioId: string,
+  characters: GeneratedCharacter[],
+  usedIndexes: number[] = [],
+  locked = false,
+): CharacterPool => ({
   version: 1,
   scenario: scenario(scenarioId),
   characters,
   usedIndexes,
+  locked,
   updatedAt: Date.now(),
 });
 
@@ -97,8 +103,30 @@ test("補池協調：狀態由池物件計算（unused/total/target/情境）", 
   assert.equal(status.target, perGame * CHARACTER_POOL_ROUNDS);
   assert.equal(status.scenarioId, "s1");
   assert.equal(status.scenarioTitle, "場景-s1");
+  assert.equal(status.locked, false);
+  assert.equal(getCharacterPoolStatus(perGame, makePool("s1", [], [], true)).locked, true);
   assert.equal(getCharacterPoolStatus(perGame, null).total, 0);
   assert.equal(getCharacterPoolStatus(perGame, null).scenarioId, null);
+  assert.equal(getCharacterPoolStatus(perGame, null).locked, false);
+});
+
+test("補池協調：固定班底時 skipped，不生成也不送出", async () => {
+  const { refillCharacterPoolOnce } = await loadRefill();
+  const perGame = 9;
+  // 池只有一局份但已鎖定：未達標也不該生成。
+  const mock = installFetchMock({ getPool: () => makePool("jinyong", batch("甲", perGame), [], true) });
+  try {
+    let generated = 0;
+    const result = await refillCharacterPoolOnce(perGame, async () => {
+      generated += 1;
+      return batch("乙", perGame);
+    });
+    assert.equal(result, "skipped");
+    assert.equal(generated, 0);
+    assert.equal(mock.requests.filter((request) => request.method === "POST").length, 0);
+  } finally {
+    mock.restore();
+  }
 });
 
 test("補池協調：池已達標時 skipped，不生成也不送出", async () => {

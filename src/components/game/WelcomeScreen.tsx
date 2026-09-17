@@ -958,6 +958,7 @@ export function WelcomeScreen({
           onRefillCharacterPool={() => void characterPool.refillNow()}
           onRebuildCharacterPool={characterPool.rebuild}
           onRebuildWithScenario={characterPool.rebuildWithScenario}
+          onCharacterPoolLockChange={characterPool.setLocked}
           playerCount={playerCount}
           onPlayerCountChange={setPlayerCount}
           preferredRole={preferredRole}

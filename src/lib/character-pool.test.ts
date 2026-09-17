@@ -8,6 +8,8 @@ import {
   clearCharacterPool,
   readCharacterPool,
   takeCharactersFromPool,
+  isCharacterPoolLocked,
+  setCharacterPoolLock,
   unusedCharacterIndexes,
   type CharacterPool,
   type CharacterPoolStorage,
@@ -177,4 +179,51 @@ test("角色池：綁定情境資料不完整時拒絕並留警告，不破壞�
   const after = readCharacterPool(storage);
   assert.equal(after?.scenario.id, "detective_noir");
   assert.equal(after?.characters.length, 2);
+});
+
+test("角色池：固定班底開啟後拒絕自動補充，取消後可再補", () => {
+  const storage = makeStorage();
+  appendCharactersToPool(scenario("custom_jinyong"), batch("俠", 3), storage);
+
+  assert.equal(setCharacterPoolLock(true, storage), true);
+  assert.equal(readCharacterPool(storage)?.locked, true);
+  assert.equal(isCharacterPoolLocked(readCharacterPool(storage)), true);
+
+  // 鎖定中：自動補充被擋下，池維持原樣
+  const blocked = appendCharactersToPool(scenario("custom_jinyong"), batch("新", 2), storage);
+  assert.equal(blocked?.characters.length, 3);
+  assert.equal(readCharacterPool(storage)?.characters.length, 3);
+
+  // 解鎖後可以再補
+  assert.equal(setCharacterPoolLock(false, storage), true);
+  appendCharactersToPool(scenario("custom_jinyong"), batch("新", 2), storage);
+  assert.equal(readCharacterPool(storage)?.characters.length, 5);
+});
+
+test("角色池：固定班底時仍可抽用既有名單", () => {
+  const storage = makeStorage();
+  appendCharactersToPool(scenario("custom_jinyong"), batch("俠", 4), storage);
+  setCharacterPoolLock(true, storage);
+
+  const take = takeCharactersFromPool(3, storage);
+  assert.equal(take?.characters.length, 3);
+  assert.equal(readCharacterPool(storage)?.locked, true);
+});
+
+test("角色池：沒有池時無法設定固定班底（留警告不靜默）", () => {
+  const storage = makeStorage();
+  assert.equal(setCharacterPoolLock(true, storage), false);
+  assert.equal(readCharacterPool(storage), null);
+});
+
+test("角色池：重新綁定情境會解除固定班底（避免空池永遠補不滿）", () => {
+  const storage = makeStorage();
+  appendCharactersToPool(scenario("custom_jinyong"), batch("俠", 3), storage);
+  setCharacterPoolLock(true, storage);
+  assert.equal(readCharacterPool(storage)?.locked, true);
+
+  assert.equal(setCharacterPoolScenario(scenario("custom_minguo"), storage), true);
+  const after = readCharacterPool(storage);
+  assert.equal(after?.locked, false);
+  assert.equal(after?.characters.length, 0);
 });

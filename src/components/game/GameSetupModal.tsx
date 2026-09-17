@@ -63,6 +63,8 @@ interface GameSetupModalProps {
   onRebuildCharacterPool: () => void;
   /** 綁定指定情境並重建整池（自訂情境或內建情境）。 */
   onRebuildWithScenario: (scenario: GameScenario) => void;
+  /** 固定班底：開啟後不再自動生成新角色。 */
+  onCharacterPoolLockChange: (locked: boolean) => void;
 }
 
 
@@ -90,6 +92,7 @@ export function GameSetupModal({
   onRefillCharacterPool,
   onRebuildCharacterPool,
   onRebuildWithScenario,
+  onCharacterPoolLockChange,
 }: GameSetupModalProps) {
   const t = useTranslations();
 
@@ -329,7 +332,7 @@ export function GameSetupModal({
                 variant="outline"
                 size="sm"
                 className="h-8 text-xs"
-                disabled={characterPool.refilling}
+                disabled={characterPool.refilling || characterPool.locked}
                 onClick={onRefillCharacterPool}
               >
                 {characterPool.refilling
@@ -360,6 +363,26 @@ export function GameSetupModal({
             </div>
             <div className="mt-1 text-xs text-[var(--text-muted)]">
               {t("gameSetup.characterPool.scenarioSelectHint")}
+            </div>
+
+            {/* 固定班底：开启后不再自动生成，只用目前名单轮替 */}
+            <div className="mt-3 flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-medium text-[var(--text-primary)]">
+                  {t("gameSetup.characterPool.lockedTitle")}
+                </div>
+                <div className="text-xs text-[var(--text-muted)]">
+                  {characterPool.locked
+                    ? t("gameSetup.characterPool.lockedOn")
+                    : t("gameSetup.characterPool.lockedDescription")}
+                </div>
+              </div>
+              <Switch
+                className="shrink-0 mt-1"
+                checked={characterPool.locked}
+                onCheckedChange={onCharacterPoolLockChange}
+                aria-label={t("gameSetup.characterPool.lockedTitle")}
+              />
             </div>
 
             {/* 自訂情境表單：填好按「儲存並重建」，角色池會改用該情境生成 */}

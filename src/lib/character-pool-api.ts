@@ -98,6 +98,11 @@ export async function clearServerPoolRemote(): Promise<boolean> {
   return postPoolAction({ action: "clear" });
 }
 
+/** 切換「固定班底」：開啟後不再自動生成新角色。 */
+export async function setServerPoolLockRemote(locked: boolean): Promise<boolean> {
+  return postPoolAction({ action: "set-lock", locked });
+}
+
 // ---------------------------------------------------------------------------
 // 自訂情境
 // ---------------------------------------------------------------------------

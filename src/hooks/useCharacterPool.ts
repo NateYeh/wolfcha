@@ -5,10 +5,10 @@ import {
   getCharacterPoolStatus,
   isCharacterPoolRefillInFlight,
   refillCharacterPoolOnce,
-  resetCharacterPoolScenario,
   type CharacterPoolStatus,
 } from "@/lib/character-pool-refill";
-import { fetchServerPool, setServerPoolScenarioRemote, clearServerPoolRemote } from "@/lib/character-pool-api";
+import { fetchServerPool, setServerPoolScenarioRemote, setServerPoolLockRemote, clearServerPoolRemote } from "@/lib/character-pool-api";
+import { CHARACTER_POOL_ROUNDS } from "@/lib/character-pool";
 import type { GameScenario } from "@/types/game";
 
 /** 背景補池的間隔；只在歡迎畫面閒置時運作。 */
@@ -19,7 +19,8 @@ const INITIAL_STATUS = (charactersPerGame: number): CharacterPoolStatus => ({
   total: 0,
   scenarioId: null,
   scenarioTitle: null,
-  target: Math.max(1, charactersPerGame) * 3,
+  target: Math.max(1, charactersPerGame) * CHARACTER_POOL_ROUNDS,
+  locked: false,
   refilling: false,
 });
 
@@ -33,6 +34,8 @@ export interface UseCharacterPoolResult {
   rebuild: () => void;
   /** 綁定指定情境並重建整池（自訂情境或內建情境）。 */
   rebuildWithScenario: (scenario: GameScenario) => void;
+  /** 切換「固定班底」：開啟後不再自動生成新角色。 */
+  setLocked: (locked: boolean) => void;
 }
 
 /**
@@ -80,6 +83,7 @@ export function useCharacterPool(charactersPerGame: number, enabled: boolean): U
       if (cancelled) return;
       const current = getCharacterPoolStatus(charactersPerGame, pool);
       setStatus({ ...current, refilling: runningRef.current });
+      if (current.locked) return;
       if (current.unused >= current.target) return;
       await refillNow();
     };
@@ -114,5 +118,18 @@ export function useCharacterPool(charactersPerGame: number, enabled: boolean): U
     [refresh],
   );
 
-  return { status, error, refillNow, rebuild, rebuildWithScenario };
+  /** 切換固定班底：寫回伺服器後同步狀態（成功才顯示為開啟）。 */
+  const setLocked = useCallback(
+    (locked: boolean) => {
+      void (async () => {
+        const ok = await setServerPoolLockRemote(locked);
+        if (!ok) setError("lockFailed");
+        else setError(null);
+        await refresh();
+      })();
+    },
+    [refresh],
+  );
+
+  return { status, error, refillNow, rebuild, rebuildWithScenario, setLocked };
 }

@@ -12,7 +12,9 @@ import path from "node:path";
 import {
   appendCharactersToPool,
   clearCharacterPool,
+  isCharacterPoolLocked,
   readCharacterPool,
+  setCharacterPoolLock,
   setCharacterPoolScenario,
   takeCharactersFromPool,
   type CharacterPool,
@@ -114,6 +116,13 @@ export const appendServerPool = async (
   scenario: GameScenario,
   characters: GeneratedCharacter[],
 ): Promise<CharacterPool | null> => withPoolLock(() => appendCharactersToPool(scenario, characters, poolFileStorage));
+
+/** 切換「固定班底」：開啟後補池流程不再生成新角色。 */
+export const setServerPoolLock = async (locked: boolean): Promise<boolean> =>
+  withPoolLock(() => setCharacterPoolLock(locked, poolFileStorage));
+
+/** 伺服器池是否為固定班底模式。 */
+export const isServerPoolLocked = (): boolean => isCharacterPoolLocked(readServerPool());
 
 export const setServerPoolScenario = async (scenario: GameScenario): Promise<boolean> =>
   withPoolLock(() => setCharacterPoolScenario(scenario, poolFileStorage));
