@@ -37,7 +37,12 @@ export class WhiteWolfKingBoomPhase extends GamePhase {
     const dynamicContent = t("prompts.whiteWolfKingBoom.task", {
       options,
       tactics: t("prompts.whiteWolfKingBoom.tactics"),
-      jsonFormat: JSON.stringify({ action: "boom", seat: exampleSeat }),
+      jsonFormat: JSON.stringify({
+        action: "boom",
+        seat: exampleSeat,
+        farewell: "<一两句翻桌宣言，全场公开>",
+        reason: "<一句话：为什么现在炸>",
+      }),
       passJsonFormat: JSON.stringify({ action: "pass" }),
     });
     const systemParts: SystemPromptPart[] = [
@@ -50,7 +55,12 @@ export class WhiteWolfKingBoomPhase extends GamePhase {
     const seerClaimState = buildSeerClaimStateLine(state);
     const user = t("prompts.whiteWolfKingBoom.user", {
       context: seerClaimState ? `${gameContext}\n\n${seerClaimState}` : gameContext,
-      jsonFormat: JSON.stringify({ action: "boom", seat: exampleSeat }),
+      jsonFormat: JSON.stringify({
+        action: "boom",
+        seat: exampleSeat,
+        farewell: "<一两句翻桌宣言，全场公开>",
+        reason: "<一句话：为什么现在炸>",
+      }),
       passJsonFormat: JSON.stringify({ action: "pass" }),
     });
 

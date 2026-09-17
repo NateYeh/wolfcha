@@ -1611,6 +1611,17 @@ function extractActionReason(cleaned: string): string {
   }
 }
 
+// 從 cleaned JSON 抽出指定字串欄位（僅供日誌／自爆宣言；非字串或缺失回空字串，不影響行動本身）。
+function extractJsonTextField(cleaned: string, field: string, maxLen = 200): string {
+  try {
+    const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+    const value = parsed?.[field];
+    return typeof value === "string" ? value.trim().slice(0, maxLen) : "";
+  } catch {
+    return "";
+  }
+}
+
 export async function generateSeerAction(
   state: GameState,
   player: Player
@@ -2097,12 +2108,13 @@ export async function generateGameEndRemark(
 }
 
 /**
- * AI 白狼王自爆决策：返回目标座位号（自爆）或 null（不自爆）
+ * AI 白狼王自爆决策：返回 { targetSeat, farewell, reason }——targetSeat 为 null 表示不自爆；
+ * 自爆时 farewell 为一两句翻桌宣言（当场公开，供带风向发挥）。
  */
 export async function generateWhiteWolfKingBoomDecision(
   state: GameState,
   player: Player
-): Promise<number | null> {
+): Promise<{ targetSeat: number | null; farewell: string; reason: string }> {
   const prompt = resolvePhasePrompt("WHITE_WOLF_KING_BOOM", state, player);
   const alivePlayers = state.players.filter(
     (p) => p.alive && p.playerId !== player.playerId
@@ -2111,7 +2123,7 @@ export async function generateWhiteWolfKingBoomDecision(
   const { messages } = buildMessagesForPrompt(prompt);
   const validSeats = alivePlayers.map((p) => p.seat);
 
-  if (validSeats.length === 0) return null;
+  if (validSeats.length === 0) return { targetSeat: null, farewell: "", reason: "" };
 
   try {
     const completion = await generateCompletionAndParse<number | null>(
@@ -2150,6 +2162,8 @@ export async function generateWhiteWolfKingBoomDecision(
       }
     );
     const parsedTarget = completion.parsed;
+    const farewell = extractJsonTextField(completion.cleaned, "farewell", 400);
+    const boomReason = extractJsonTextField(completion.cleaned, "reason");
 
     await aiLogger.log({
       type: "wwk_boom_decision",
@@ -2163,12 +2177,12 @@ export async function generateWhiteWolfKingBoomDecision(
         raw: completion.result.content,
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
-        parsed: { targetSeat: parsedTarget, attempts: completion.attempts },
+        parsed: { targetSeat: parsedTarget, attempts: completion.attempts, reason: boomReason, farewell },
         duration: Date.now() - startTime,
       },
     });
 
-    return parsedTarget;
+    return { targetSeat: parsedTarget, farewell, reason: boomReason };
   } catch (error) {
     console.warn("[wolfcha] generateWhiteWolfKingBoomDecision failed, passing self-destruct:", error);
     await aiLogger.log({
@@ -2180,12 +2194,12 @@ export async function generateWhiteWolfKingBoomDecision(
       },
       response: {
         content: "",
-        parsed: { targetSeat: null },
+        parsed: { targetSeat: null, farewell: "", reason: "" },
         duration: Date.now() - startTime,
       },
       error: String(error),
     });
-    return null;
+    return { targetSeat: null, farewell: "", reason: "" };
   }
 }
 

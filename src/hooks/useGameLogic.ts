@@ -689,14 +689,21 @@ export function useGameLogic() {
     if (state.roleAbilities.whiteWolfKingBoomUsed) return false;
     if (!wwk.agentProfile?.modelRef) return false;
 
-    const targetSeat = await generateWhiteWolfKingBoomDecision(state, wwk);
-    if (targetSeat === null) return false; // AI 选择不自爆
+    const boomDecision = await generateWhiteWolfKingBoomDecision(state, wwk);
+    if (boomDecision.targetSeat === null) return false; // AI 选择不自爆
+    const targetSeat = boomDecision.targetSeat;
 
     const token = getToken();
     if (!isTokenValid(token)) return false;
 
+    // 自爆宣言：翻桌台词，先入公开记录（当天 transcript 只收存活者发言，需在死亡结算前加入）
+    let baseState = state;
+    if (boomDecision.farewell.trim().length > 0) {
+      baseState = addPlayerMessage(state, wwk.playerId, boomDecision.farewell, { isLastWords: true });
+    }
+
     // 执行自爆逻辑
-    let currentState = transitionPhase(state, "WHITE_WOLF_KING_BOOM");
+    let currentState = transitionPhase(baseState, "WHITE_WOLF_KING_BOOM");
     currentState = killPlayer(currentState, wwk.seat);
     currentState = {
       ...currentState,

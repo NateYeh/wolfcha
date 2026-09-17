@@ -863,3 +863,42 @@ test("發言底線規則：發言前先對帳，抓公開事實矛盾＋要關�
   assert.match(prompt.system, /跳女巫却不报救了谁/);
   assert.match(prompt.system, /由你自己决定/);
 });
+
+test("白狼王自爆决策：farewell 翻桌宣言进 prompt 与解析结果（供带风向发挥）", async () => {
+  const { generateWhiteWolfKingBoomDecision } = await import("@/lib/game-master");
+  const state = fresh("DAY_SPEECH");
+  const actor = state.players.find((p) => p.role === "WhiteWolfKing")!;
+  const target = state.players.find((p) => p.alive && p.seat !== actor.seat)!;
+  let prompt = "";
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    if (String(input) === "/api/demo-config") return Response.json({ active: false, enabled: false });
+    prompt = String(init?.body);
+    return Response.json({
+      id: "test",
+      choices: [{
+        message: {
+          role: "assistant",
+          content: JSON.stringify({
+            action: "boom",
+            seat: target.seat + 1,
+            farewell: "我是狼，刚才是演给你们看的。",
+            reason: "队友快顶不住了，炸一个换信息",
+          }),
+        },
+        finish_reason: "stop",
+      }],
+    });
+  };
+  try {
+    const result = await generateWhiteWolfKingBoomDecision(state, actor);
+    assert.equal(result.targetSeat, target.seat);
+    assert.equal(result.farewell, "我是狼，刚才是演给你们看的。");
+    // 宣言知识（含假出賣玩法，建议式）与格式要求
+    assert.match(prompt, /【自爆宣言与理由】/);
+    assert.match(prompt, /假出賣——故意乱指一个号当队友/);
+    assert.match(prompt, /怎么发挥由你自己决定/);
+    assert.match(prompt, /farewell/);
+    assert.match(prompt, /reason/);
+  } finally { globalThis.fetch = originalFetch; }
+});
