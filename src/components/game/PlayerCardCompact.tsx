@@ -131,6 +131,7 @@ export function PlayerCardCompact({
   const avatarSrc = isModelAvatar
     ? getModelLogoUrl(player.agentProfile?.modelRef)
     : buildSimpleAvatarUrl(player.avatarSeed ?? player.playerId, {
+        style: player.avatarStyle,
         gender: player.agentProfile?.persona?.gender,
       });
   const avatarClassName = cn(

@@ -66,6 +66,23 @@ export type Alignment = "village" | "wolf";
    rolesHint: string;
  }
 
+/**
+ * 頭像外觀的固定指定（手寫角色用）。
+ * 未指定的部分仍由 seed（與性別）決定，指定了就固定下來。
+ */
+export interface AvatarStyle {
+  /** 髮型 variant，如 "variant03"；未指定時依性別選池。 */
+  hair?: string;
+  /** 眼睛 variant，如 "variant01"；未指定時依 seed。 */
+  eyes?: string;
+  /** true = 一定留鬍子（適合老者、漢子）；未指定或 false 都不留。 */
+  beard?: boolean;
+  /** true/false = 一定要／一定不要眼鏡；未指定時依 seed 隨機。 */
+  glasses?: boolean;
+  /** 背景色（十六進位，不含 #）。 */
+  backgroundColor?: string;
+}
+
 export interface ModelRef {
   provider: "zenmux" | "dashscope" | "tokendance";
   model: string;
@@ -118,6 +135,8 @@ export interface Player {
   seat: number;
   displayName: string;
   avatarSeed?: string;
+  /** 頭像外觀的固定指定（手寫角色用）；未指定時依 gender＋seed 產生。 */
+  avatarStyle?: AvatarStyle;
   alive: boolean;
   role: Role;
   alignment: Alignment;

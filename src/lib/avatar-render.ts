@@ -31,6 +31,10 @@ export interface AvatarRenderOptions {
   translateY?: number;
   /** 十六進位色碼（不含 #）或 transparent。 */
   backgroundColor?: string;
+  /** true = 一定留鬍子（老者、漢子）。 */
+  beard?: boolean;
+  /** true/false = 一定要／一定不要眼鏡；未指定時依 seed。 */
+  glasses?: boolean;
 }
 
 const MAX_SCALE = 200;
@@ -44,7 +48,18 @@ const clampScale = (value: number): number =>
  * 同一個 seed＋同一組參數永遠得到同一張圖（DiceBear 以 seed 決定細節）。
  */
 export function renderAvatarSvg(options: AvatarRenderOptions): string {
-  const { seed, gender, hair, lips, eyes, scale = 100, translateY = 0, backgroundColor } = options;
+  const {
+    seed,
+    gender,
+    hair,
+    lips,
+    eyes,
+    scale = 100,
+    translateY = 0,
+    backgroundColor,
+    beard = false,
+    glasses,
+  } = options;
 
   const resolvedHair = hair ?? (gender ? getHairForSeed(seed, gender) : undefined);
   const resolvedEyes = eyes ?? getDayEyesForSeed(seed);
@@ -56,8 +71,9 @@ export function renderAvatarSvg(options: AvatarRenderOptions): string {
     backgroundColor: resolvedBackground,
     scale: clampScale(scale),
     translateY: Math.floor(translateY),
-    // 女性角色不長鬍子；男性也不用鬍子（維持與原本線上 API 完全相同的設定）
-    beardProbability: 0,
+    // 女性角色不長鬍子（未指定 beard 時一律 0，與原本線上 API 設定相同）
+    beardProbability: beard ? 100 : 0,
+    ...(typeof glasses === "boolean" ? { glassesProbability: glasses ? 100 : 0 } : {}),
     ...(resolvedHair ? { hair: [resolvedHair as HairVariant] } : {}),
     eyes: [resolvedEyes as EyesVariant],
     ...(lips ? { lips: [lips as LipsVariant] } : {}),

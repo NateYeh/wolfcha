@@ -82,6 +82,7 @@ const getPlayerAvatarUrl = (player: Player, isGenshinMode: boolean) => {
   }
   return buildSimpleAvatarUrl(player.avatarSeed ?? player.playerId, {
     gender: player.agentProfile?.persona?.gender,
+    style: player.avatarStyle,
   });
 };
 

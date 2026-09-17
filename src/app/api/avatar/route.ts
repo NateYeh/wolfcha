@@ -34,6 +34,14 @@ const normalizeText = (value: string | null): string | undefined => {
   return trimmed === "" ? undefined : trimmed;
 };
 
+/** 機率參數（0~100）：未帶參數回 undefined，0 為明確關閉，>0 為開啟。 */
+const normalizeProbability = (value: string | null): boolean | undefined => {
+  if (value === null || value.trim() === "") return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  return parsed > 0;
+};
+
 export async function GET(request: Request): Promise<NextResponse> {
   const params = new URL(request.url).searchParams;
   const seed = normalizeText(params.get("seed")) ?? "wolfcha";
@@ -53,6 +61,8 @@ export async function GET(request: Request): Promise<NextResponse> {
       hair,
       lips,
       eyes,
+      beard: normalizeProbability(params.get("beardProbability")) === true,
+      glasses: normalizeProbability(params.get("glassesProbability")),
       scale: normalizeNumber(params.get("scale"), 100),
       translateY: normalizeNumber(params.get("translateY"), 0),
       backgroundColor,

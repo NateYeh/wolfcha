@@ -51,3 +51,21 @@ test("頭像繪製：scale 超出範圍會被夾住，不會產生無效參數",
   // 一般情況仍可正常產生
   assert.ok(renderAvatarSvg({ seed: "player-4", scale: 100, translateY: 5 }).includes("<svg"));
 });
+
+test("頭像繪製：角色指定的鬍子與眼鏡會反映在圖上", () => {
+  const base = renderAvatarSvg({ seed: "player-5", gender: "male" });
+  const beard = renderAvatarSvg({ seed: "player-5", gender: "male", beard: true });
+  assert.notEqual(base, beard);
+
+  const withGlasses = renderAvatarSvg({ seed: "player-5", gender: "male", glasses: true });
+  const withoutGlasses = renderAvatarSvg({ seed: "player-5", gender: "male", glasses: false });
+  assert.notEqual(withGlasses, withoutGlasses);
+  // 沒指定眼鏡時，結果會等於其中一種（由 seed 決定），但不會同時等於兩者
+  assert.ok(base === withGlasses || base === withoutGlasses);
+});
+
+test("頭像繪製：指定髮型時不受性別影響（手寫角色的固定外觀）", () => {
+  const styled = renderAvatarSvg({ seed: "player-6", gender: "female", hair: "variant03" });
+  assert.equal(styled, renderAvatarSvg({ seed: "player-6", hair: "variant03" }));
+  assert.notEqual(styled, renderAvatarSvg({ seed: "player-6", gender: "female" }));
+});

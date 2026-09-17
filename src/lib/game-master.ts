@@ -303,6 +303,7 @@ export function setupPlayers(
         seat,
         displayName: character.displayName,
         avatarSeed: character.avatarSeed ?? playerId,
+        avatarStyle: character.avatarStyle,
         alive: true,
         role,
         alignment,

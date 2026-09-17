@@ -70,7 +70,10 @@ const getPhaseRole = (phase: Phase, humanRole?: string): string | null => {
 const getPlayerAvatarUrl = (player: Player, isGenshinMode: boolean) =>
   isGenshinMode && !player.isHuman
     ? getModelLogoUrl(player.agentProfile?.modelRef)
-    : buildSimpleAvatarUrl(player.avatarSeed ?? player.playerId, { gender: player.agentProfile?.persona?.gender });
+    : buildSimpleAvatarUrl(player.avatarSeed ?? player.playerId, {
+        gender: player.agentProfile?.persona?.gender,
+        style: player.avatarStyle,
+      });
 
 function isTurnPromptSystemMessage(content: string, t: ReturnType<typeof useTranslations>) {
   return content.includes(t("dialog.turnToSpeak")) || content.includes(t("dialog.turnToLastWords"));
@@ -576,6 +579,7 @@ export function DialogArea({
               <TalkingAvatar
                 seed={stablePortraitPlayer.avatarSeed ?? stablePortraitPlayer.playerId}
                 gender={stablePortraitPlayer.agentProfile?.persona?.gender}
+                style={stablePortraitPlayer.avatarStyle}
                 modelRef={stablePortraitPlayer.agentProfile?.modelRef}
                 useModelLogo={isGenshinMode && !stablePortraitPlayer.isHuman}
                 isTalking={talkingPlayerId === stablePortraitPlayer.playerId || (isTyping && !talkingPlayerId)}

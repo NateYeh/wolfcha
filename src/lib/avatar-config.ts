@@ -6,7 +6,7 @@
  * - 嘴型共 30 个变量 (variant01 - variant30)
  */
 
-import type { ModelRef } from "@/types/game";
+import type { AvatarStyle, ModelRef } from "@/types/game";
 import type { Gender } from "./character-generator";
 import { getModelLogoPath } from "./model-logo";
 
@@ -179,6 +179,8 @@ export interface AvatarUrlOptions {
   scale?: number;
   translateY?: number;
   backgroundColor?: string | "transparent";
+  /** 手寫角色的固定外觀指定（優先於 gender／seed 的預設）。 */
+  style?: AvatarStyle;
 }
 
 /** 自家頭像 API 路徑（伺服器端用 DiceBear 核心產生 SVG）。 */
@@ -200,16 +202,18 @@ export function buildAvatarUrl(options: AvatarUrlOptions): string {
     scale = 100,
     translateY = 0,
     backgroundColor,
+    style,
   } = options;
 
   const params = new URLSearchParams();
   params.set("seed", seed);
 
-  // 背景色
-  if (backgroundColor) {
-    params.set("backgroundColor", backgroundColor);
+  // 背景色（明確參數 > 角色指定 > 依 seed）
+  const resolvedBackgroundColor = backgroundColor ?? style?.backgroundColor;
+  if (resolvedBackgroundColor === "transparent") {
+    params.set("backgroundColor", "transparent");
   } else {
-    params.set("backgroundColor", getAvatarBgColor(seed));
+    params.set("backgroundColor", resolvedBackgroundColor ?? getAvatarBgColor(seed));
   }
 
   // 缩放和位移
@@ -220,14 +224,15 @@ export function buildAvatarUrl(options: AvatarUrlOptions): string {
     params.set("translateY", String(translateY));
   }
 
-  // 发型 - 如果提供了 gender，则根据性别选择
-  if (hair) {
-    params.set("hair", hair);
+  // 发型 - 优先明确参数，其次角色指定，最后依性别选池
+  const resolvedHair = hair ?? style?.hair;
+  if (resolvedHair) {
+    params.set("hair", resolvedHair);
   } else if (gender) {
     params.set("hair", getHairForSeed(seed, gender));
   }
 
-  const resolvedEyes = eyes ?? getDayEyesForSeed(seed);
+  const resolvedEyes = eyes ?? style?.eyes ?? getDayEyesForSeed(seed);
   params.set("eyes", resolvedEyes);
 
   // 嘴型
@@ -235,10 +240,13 @@ export function buildAvatarUrl(options: AvatarUrlOptions): string {
     params.set("lips", lips);
   }
 
-  // 胡子概率 - 女性角色设置为 0 防止出现胡子
- 
-  params.set("beardProbability", "0");
-  
+  // 胡子：女性角色保持 0；角色指定留胡子时给 100
+  params.set("beardProbability", style?.beard ? "100" : "0");
+
+  // 眼镜：未指定时不动（由 seed 决定），指定了就固定
+  if (typeof style?.glasses === "boolean") {
+    params.set("glassesProbability", style.glasses ? "100" : "0");
+  }
 
   return `${AVATAR_API_PATH}?${params.toString()}`;
 }
@@ -254,6 +262,7 @@ export function buildSimpleAvatarUrl(
         backgroundColor?: string | "transparent";
         gender?: Gender;
         eyes?: string;
+        style?: AvatarStyle;
       }
 ): string {
   const backgroundColor =
@@ -267,11 +276,16 @@ export function buildSimpleAvatarUrl(
   const eyes =
     typeof backgroundColorOrOptions === "string" ? undefined : backgroundColorOrOptions?.eyes;
 
+  const style =
+    typeof backgroundColorOrOptions === "string" ? undefined : backgroundColorOrOptions?.style;
+
   return buildAvatarUrl({
     seed,
     gender,
     eyes,
-    backgroundColor: backgroundColor || getAvatarBgColor(seed),
+    style,
+    // 未明確指定時交給 buildAvatarUrl 處理：角色指定 > 依 seed
+    backgroundColor,
   });
 }
 

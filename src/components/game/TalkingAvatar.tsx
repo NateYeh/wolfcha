@@ -8,11 +8,12 @@ import {
   getModelLogoUrl,
 } from "@/lib/avatar-config";
 import type { Gender } from "@/lib/character-generator";
-import type { ModelRef } from "@/types/game";
+import type { AvatarStyle, ModelRef } from "@/types/game";
 
 interface TalkingAvatarProps {
   seed: string;
   gender?: Gender;
+  style?: AvatarStyle;
   modelRef?: ModelRef;
   useModelLogo?: boolean;
   isTalking?: boolean;
@@ -25,6 +26,7 @@ interface TalkingAvatarProps {
 export function TalkingAvatar({ 
   seed, 
   gender,
+  style,
   modelRef,
   useModelLogo = false,
   isTalking = false, 
@@ -49,13 +51,13 @@ export function TalkingAvatar({
   const allLipsUrls = useMemo(() => {
     const urls: string[] = [];
     // 预加载静止状态
-    urls.push(buildAvatarUrl({ seed, gender, lips: IDLE_LIPS, scale, translateY, backgroundColor: "transparent" }));
+    urls.push(buildAvatarUrl({ seed, gender, style, lips: IDLE_LIPS, scale, translateY, backgroundColor: "transparent" }));
     // 预加载说话状态
     for (const lips of TALKING_LIPS) {
-      urls.push(buildAvatarUrl({ seed, gender, lips, scale, translateY, backgroundColor: "transparent" }));
+      urls.push(buildAvatarUrl({ seed, gender, style, lips, scale, translateY, backgroundColor: "transparent" }));
     }
     return urls;
-  }, [seed, gender, scale, translateY, IDLE_LIPS, TALKING_LIPS]);
+  }, [seed, gender, style, scale, translateY, IDLE_LIPS, TALKING_LIPS]);
 
   // 预加载图片
   useEffect(() => {
@@ -121,7 +123,7 @@ export function TalkingAvatar({
     };
   }, [isTalking]);
 
-  const currentUrl = buildAvatarUrl({ seed, gender, lips: currentLips, scale, translateY, backgroundColor: "transparent" });
+  const currentUrl = buildAvatarUrl({ seed, gender, style, lips: currentLips, scale, translateY, backgroundColor: "transparent" });
 
   return (
     <>
@@ -146,6 +148,7 @@ export function TalkingAvatar({
 interface TalkingAvatarSmallProps {
   seed: string;
   gender?: Gender;
+  style?: AvatarStyle;
   modelRef?: ModelRef;
   useModelLogo?: boolean;
   isTalking?: boolean;
@@ -156,6 +159,7 @@ interface TalkingAvatarSmallProps {
 export function TalkingAvatarSmall({ 
   seed, 
   gender,
+  style,
   modelRef,
   useModelLogo = false,
   isTalking = false, 
@@ -176,12 +180,12 @@ export function TalkingAvatarSmall({
   // 预加载 URL（透明背景）
   const preloadUrls = useMemo(() => {
     const urls: string[] = [];
-    urls.push(buildAvatarUrl({ seed, gender, lips: IDLE_LIPS, backgroundColor: "transparent" }));
+    urls.push(buildAvatarUrl({ seed, gender, style, lips: IDLE_LIPS, backgroundColor: "transparent" }));
     for (const lips of TALKING_LIPS) {
-      urls.push(buildAvatarUrl({ seed, gender, lips, backgroundColor: "transparent" }));
+      urls.push(buildAvatarUrl({ seed, gender, style, lips, backgroundColor: "transparent" }));
     }
     return urls;
-  }, [seed, gender, IDLE_LIPS, TALKING_LIPS]);
+  }, [seed, gender, style, IDLE_LIPS, TALKING_LIPS]);
 
   // 预加载
   useEffect(() => {
@@ -217,7 +221,7 @@ export function TalkingAvatarSmall({
     };
   }, [isTalking]);
 
-  const currentUrl = buildAvatarUrl({ seed, gender, lips: currentLips, backgroundColor: "transparent" });
+  const currentUrl = buildAvatarUrl({ seed, gender, style, lips: currentLips, backgroundColor: "transparent" });
 
   return (
     <img

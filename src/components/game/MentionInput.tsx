@@ -5,7 +5,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Mention from "@tiptap/extension-mention";
 import { type SuggestionKeyDownProps, type SuggestionProps } from "@tiptap/suggestion";
-import type { ModelRef, Player } from "@/types/game";
+import type { AvatarStyle, ModelRef, Player } from "@/types/game";
 import type { Gender } from "@/lib/character-generator";
 import { buildSimpleAvatarUrl, getModelLogoUrl } from "@/lib/avatar-config";
 import { getI18n } from "@/i18n/translator";
@@ -17,6 +17,7 @@ type MentionCandidate = {
   displayName: string;
   playerId: string;
   avatarSeed?: string;
+  avatarStyle?: AvatarStyle;
   gender?: Gender;
   modelRef?: ModelRef;
 };
@@ -64,6 +65,7 @@ function createSuggestionItems(players: Player[]) {
         displayName: p.displayName,
         playerId: p.playerId,
         avatarSeed: p.avatarSeed,
+        avatarStyle: p.avatarStyle,
         gender: p.agentProfile?.persona?.gender,
         modelRef: p.agentProfile?.modelRef,
       }))
@@ -151,7 +153,7 @@ function renderSuggestionList(isGenshinMode: boolean, onOpenChange?: (open: bool
           const avatarUrl =
             isGenshinMode && item.modelRef
               ? getModelLogoUrl(item.modelRef)
-              : buildSimpleAvatarUrl(item.avatarSeed ?? item.playerId, { gender: item.gender });
+              : buildSimpleAvatarUrl(item.avatarSeed ?? item.playerId, { gender: item.gender, style: item.avatarStyle });
           
           const avatar = document.createElement("img");
           avatar.src = avatarUrl;

@@ -73,3 +73,33 @@ test("頭像：URL 帶入性別髮型與 zero beard，且背景色穩定", () =>
   const noGender = new URLSearchParams(buildSimpleAvatarUrl("seed-1").split("?")[1]);
   assert.equal(noGender.get("hair"), null);
 });
+
+test("頭像：角色指定外觀（手寫角色）會蓋過性別與 seed 的預設", () => {
+  const style = { hair: "variant03", eyes: "variant02", beard: true, glasses: true, backgroundColor: "d4e5d7" };
+  const params = new URLSearchParams(
+    buildSimpleAvatarUrl("seed-9", { gender: "female", style }).split("?")[1],
+  );
+  assert.equal(params.get("hair"), "variant03");
+  assert.equal(params.get("eyes"), "variant02");
+  assert.equal(params.get("backgroundColor"), "d4e5d7");
+  assert.equal(params.get("beardProbability"), "100");
+  assert.equal(params.get("glassesProbability"), "100");
+
+  // 明確參數優先於角色指定
+  const explicit = new URLSearchParams(
+    buildAvatarUrl({ seed: "seed-9", style, hair: "variant44", eyes: "variant05" }).split("?")[1],
+  );
+  assert.equal(explicit.get("hair"), "variant44");
+  assert.equal(explicit.get("eyes"), "variant05");
+
+  // 沒指定鬍子就不會有鬍子；沒指定眼鏡時不寫入機率參數（維持 seed 隨機）
+  const plain = new URLSearchParams(buildSimpleAvatarUrl("seed-9", { gender: "male" }).split("?")[1]);
+  assert.equal(plain.get("beardProbability"), "0");
+  assert.equal(plain.get("glassesProbability"), null);
+
+  // 指定不要眼鏡
+  const noGlasses = new URLSearchParams(
+    buildSimpleAvatarUrl("seed-9", { style: { glasses: false } }).split("?")[1],
+  );
+  assert.equal(noGlasses.get("glassesProbability"), "0");
+});

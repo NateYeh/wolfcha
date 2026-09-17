@@ -30,7 +30,10 @@ interface PlayerDetailModalProps {
 const getPlayerAvatarUrl = (player: Player, isGenshinMode: boolean) =>
   isGenshinMode && !player.isHuman
     ? getModelLogoUrl(player.agentProfile?.modelRef)
-    : buildSimpleAvatarUrl(player.avatarSeed ?? player.playerId, { gender: player.agentProfile?.persona?.gender });
+    : buildSimpleAvatarUrl(player.avatarSeed ?? player.playerId, {
+        gender: player.agentProfile?.persona?.gender,
+        style: player.avatarStyle,
+      });
 
 const getRoleIcon = (role: string, size: number = 20) => {
   switch (role) {

@@ -10,6 +10,7 @@ import {
   PLAYER_MODELS,
   PROJECT_MODELS,
   filterPlayerModels,
+  type AvatarStyle,
   type GameScenario,
   type ModelRef,
   type Persona,
@@ -36,6 +37,8 @@ export interface GeneratedCharacter {
   persona: Persona;
   playerMind?: PlayerMind;
   avatarSeed?: string;
+  /** 頭像外觀的固定指定（手寫角色用）；未指定時依性別＋seed 產生。 */
+  avatarStyle?: AvatarStyle;
 }
 
 export interface GeneratedCharacters {

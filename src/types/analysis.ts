@@ -1,4 +1,4 @@
-import type { Alignment, Persona, Role } from "./game";
+import type { Alignment, AvatarStyle, Persona, Role } from "./game";
 
 export type NightEventType = "kill" | "save" | "poison" | "check" | "guard";
 export type DayEventType = "exile" | "badge" | "hunter_shot" | "white_wolf_king_boom" | "idiot_reveal";
@@ -54,6 +54,8 @@ export interface PlayerAward {
   avatar: string;
   /** 角色性別：決定頭像发型與角色一致（人類玩家可能沒有）。 */
   gender?: Persona["gender"];
+  /** 手寫角色的固定外觀指定。 */
+  avatarStyle?: AvatarStyle;
   role: Role;
 }
 
@@ -71,6 +73,8 @@ export interface PersonalStats {
   avatar: string;
   /** 角色性別：決定頭像发型與角色一致（人類玩家可能沒有）。 */
   gender?: Persona["gender"];
+  /** 手寫角色的固定外觀指定。 */
+  avatarStyle?: AvatarStyle;
   alignment: Alignment;
   tags: string[];
   radarStats: RadarStats;
@@ -84,6 +88,8 @@ export interface PlayerReview {
   avatar: string;
   /** 角色性別：決定頭像发型與角色一致。 */
   gender?: Persona["gender"];
+  /** 手寫角色的固定外觀指定。 */
+  avatarStyle?: AvatarStyle;
   content: string;
   relation: "ally" | "enemy";
   role: Role;
@@ -98,6 +104,8 @@ export interface PlayerSnapshot {
   avatar: string;
   /** 角色性別：決定頭像发型與角色一致（人類玩家可能沒有）。 */
   gender?: Persona["gender"];
+  /** 手寫角色的固定外觀指定。 */
+  avatarStyle?: AvatarStyle;
   role: Role;
   alignment: Alignment;
   isAlive: boolean;

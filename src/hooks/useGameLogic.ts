@@ -1534,6 +1534,7 @@ export function useGameLogic() {
               ...pl,
               displayName: match.character.displayName,
               avatarSeed: match.character.avatarSeed ?? pl.avatarSeed ?? pl.playerId,
+              avatarStyle: match.character.avatarStyle ?? pl.avatarStyle,
               agentProfile: {
                 modelRef: aiModelRefs[match.index] ?? getRandomModelRef(),
                 persona: match.character.persona,
@@ -1575,6 +1576,7 @@ export function useGameLogic() {
                   ...pl,
                   displayName: character.displayName,
                   avatarSeed: character.avatarSeed ?? pl.avatarSeed ?? pl.playerId,
+                  avatarStyle: character.avatarStyle ?? pl.avatarStyle,
                   agentProfile: {
                     modelRef: aiModelRefs[index] ?? getRandomModelRef(),
                     persona: character.persona,
@@ -1650,6 +1652,7 @@ export function useGameLogic() {
                       ...pl,
                       displayName: character.displayName,
                       avatarSeed: pl.avatarSeed ?? pl.playerId,
+                      avatarStyle: character.avatarStyle,
                       agentProfile: {
                         modelRef: aiModelRefs[index] ?? getRandomModelRef(),
                         persona: character.persona,
