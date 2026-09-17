@@ -2,6 +2,7 @@
 
 import { Crown, Scroll } from "lucide-react";
 import type { GameAnalysisData } from "@/types/analysis";
+import type { Persona } from "@/types/game";
 import { ROLE_SHORT } from "./constants";
 import { buildSimpleAvatarUrl } from "@/lib/avatar-config";
 
@@ -16,8 +17,8 @@ function formatDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-function PlayerAvatar({ seed, size = 96 }: { seed: string; size?: number }) {
-  const avatarUrl = buildSimpleAvatarUrl(seed);
+function PlayerAvatar({ seed, size = 96, gender }: { seed: string; size?: number; gender?: Persona["gender"] }) {
+  const avatarUrl = buildSimpleAvatarUrl(seed, { gender });
   return (
     <img
       src={avatarUrl}
@@ -49,7 +50,7 @@ export function OverviewCard({ data, onSelectPlayer }: OverviewCardProps) {
         <div className="flex flex-col items-center relative z-10">
           <div className="relative group">
             <div className="w-24 h-24 rounded-full border-2 border-[var(--color-gold)]/40 p-1 bg-black/40 shadow-[0_0_30px_rgba(0,0,0,0.5)] relative overflow-hidden">
-              <PlayerAvatar seed={personalStats.avatar} />
+              <PlayerAvatar seed={personalStats.avatar} gender={personalStats.gender} />
             </div>
             <div className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-2 shadow-lg flex items-center justify-center ${
               personalStats.alignment === "wolf" 
@@ -86,7 +87,7 @@ export function OverviewCard({ data, onSelectPlayer }: OverviewCardProps) {
             <Crown className="w-5 h-5 text-[var(--color-gold)] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
           </div>
           <div className="w-12 h-12 rounded-full border border-[var(--color-gold)]/30 mb-3 bg-black/20 p-0.5">
-            <PlayerAvatar seed={awards.mvp.avatar} size={44} />
+            <PlayerAvatar seed={awards.mvp.avatar} size={44} gender={awards.mvp.gender} />
           </div>
           <div className="text-xs text-[var(--color-gold)] font-bold tracking-widest mb-1">
             最佳表现
@@ -106,7 +107,7 @@ export function OverviewCard({ data, onSelectPlayer }: OverviewCardProps) {
           className="analysis-card rounded-lg p-4 flex flex-col items-center grayscale hover:grayscale-0 transition-all duration-500 relative cursor-pointer hover:bg-white/5 text-left"
         >
           <div className="w-12 h-12 rounded-full border border-white/10 mb-3 bg-black/20 p-0.5 opacity-70">
-            <PlayerAvatar seed={awards.svp.avatar} size={44} />
+            <PlayerAvatar seed={awards.svp.avatar} size={44} gender={awards.svp.gender} />
           </div>
           <div className="text-xs text-[var(--text-muted)] font-bold tracking-widest mb-1">
             虽败犹荣

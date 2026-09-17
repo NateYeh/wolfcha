@@ -32,7 +32,7 @@ function ReviewCard({ review, onClick }: { review: PlayerReview; onClick?: () =>
       <div className="flex items-center gap-3 mb-4 mt-2">
         <div className="w-10 h-10 rounded-full border border-[var(--color-gold)]/20 p-0.5 bg-black/20">
           <img
-            src={buildSimpleAvatarUrl(review.avatar)}
+            src={buildSimpleAvatarUrl(review.avatar, { gender: review.gender })}
             alt={review.fromCharacterName}
             className="w-full h-full rounded-full grayscale group-hover:grayscale-0 transition-all"
           />

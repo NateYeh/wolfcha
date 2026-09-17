@@ -23,7 +23,7 @@ const DEATH_CAUSE_LABELS: Record<string, string> = {
 };
 
 function PlayerCard({ player, onClick, seatOffset }: { player: PlayerSnapshot; onClick: () => void; seatOffset: number }) {
-  const avatarUrl = buildSimpleAvatarUrl(player.avatar || player.name);
+  const avatarUrl = buildSimpleAvatarUrl(player.avatar || player.name, { gender: player.gender });
   const roleName = ROLE_NAMES[player.role];
   const isWolf = player.alignment === "wolf";
 

@@ -15,20 +15,30 @@ import { getModelLogoPath } from "./model-logo";
 // ============================================
 
 // 长发变量 - 仅供女性使用
+// 逐一眼检 DiceBear Notionists 全部 63 个 variant 后分类：
+// 这批是长发／发髻／双丸子等一眼能辨为女性的发型。
+// 修掉原本的错分：variant30 其实是短发（移到男性）；39/48/58/59/62/63
+// 是长发却留在男性池，导致女角抽到短发、男角抽到长发。
 const FEMALE_ONLY_HAIR: readonly string[] = [
-  "variant02",
-  "variant04",
-  "variant10",
-  "variant20",
-  "variant23",
-  "variant28",
-  "variant30",
-  "variant36",
-  "variant37",
-  "variant45",
-  "variant46",
-  "variant47",
-  "variant41"
+  "variant02", // 长发波浪
+  "variant04", // 及下巴短发
+  "variant08", // 短发加发箍
+  "variant10", // 长发直
+  "variant20", // 卷中长发
+  "variant23", // 长发直
+  "variant28", // 长卷发
+  "variant36", // 长卷发
+  "variant37", // 中长波浪
+  "variant39", // 长发侧分
+  "variant41", // 长发编辫
+  "variant45", // 长发丸子头
+  "variant46", // 长发直
+  "variant47", // 长发侧分
+  "variant48", // 长发丸子头
+  "variant58", // 长卷发
+  "variant59", // 双丸子头
+  "variant62", // 长发直
+  "variant63", // 长卷发
 ] as const;
 
 // 生成所有发型变量 (1-63)

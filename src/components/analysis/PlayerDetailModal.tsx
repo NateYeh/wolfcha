@@ -29,7 +29,7 @@ const ALIGNMENT_LABELS: Record<string, { label: string; color: string }> = {
 export function PlayerDetailModal({ player, isOpen, onClose }: PlayerDetailModalProps) {
   if (!player) return null;
 
-  const avatarUrl = buildSimpleAvatarUrl(player.avatar || player.name);
+  const avatarUrl = buildSimpleAvatarUrl(player.avatar || player.name, { gender: player.gender });
   const roleIcon = ROLE_ICONS[player.role];
   const roleName = ROLE_NAMES[player.role];
   const isWolf = player.alignment === "wolf";
