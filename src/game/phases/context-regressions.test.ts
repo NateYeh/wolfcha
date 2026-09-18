@@ -999,6 +999,18 @@ test("發言底線規則：公開翻牌推翻舊判斷時要認錯票（殷离�
   assert.match(prompt.system, /仅供参考；采不采纳、怎么用，由你自己决定/);
 });
 
+test("發言經驗：徽鏈知識進【經驗參考】，正用與防栽贓兩面都在", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_SPEECH");
+  const speaker = state.players[0];
+  state.currentSpeakerSeat = speaker.seat;
+  const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
+  assert.match(prompt.system, /警徽移交值得核对/);
+  assert.match(prompt.system, /一条徽链|徽链是线索不是铁证/);
+  assert.match(prompt.system, /狼也可能故意把徽传给好人栽赃/);
+});
+
 test("發言底線規則：發言前先對帳，抓公開事實矛盾＋要關鍵線索", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
