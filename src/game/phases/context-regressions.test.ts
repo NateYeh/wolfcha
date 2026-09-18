@@ -931,6 +931,38 @@ test("猎人的枪口风险只给狼看：刀／炸／毒代价不同，好人�
   assert.doesNotMatch(buildGameContext(state, villager), /【猎人在场时的刀口风险】/);
 });
 
+test("女巫解药时机：首夜救人 vs 留药自救的取舍要带进 prompt，其他角色拿不到", () => {
+  const state = fresh("NIGHT_WITCH_ACTION");
+  const witch = state.players.find((p) => p.role === "Witch")!;
+  const ctx = buildGameContext(state, witch);
+  assert.match(ctx, /【解药什么时候该用】/);
+  assert.match(ctx, /解药全局只有一瓶，而且可以自救/);
+  assert.match(ctx, /留药自救不是怕死/);
+  assert.match(ctx, /怎么权衡你自己决定/);
+  // 解藥用完的兩個代價都要寫到：救不了自己、看不到刀口。
+  assert.match(ctx, /你被刀就没人能救你/);
+  assert.match(ctx, /看不到之后的刀口/);
+
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  assert.doesNotMatch(buildGameContext(state, villager), /【解药什么时候该用】/);
+});
+
+test("女巫保命：白天要带「药在人活」指引（票压上来跳女巫报药帐），夜间不拼入", () => {
+  const day = fresh("DAY_SPEECH");
+  const dayWitch = day.players.find((p) => p.role === "Witch")!;
+  const dayContext = buildGameContext(day, dayWitch);
+  assert.match(dayContext, /【药在你身上，你活着才有药】/);
+  assert.match(dayContext, /票已经压到你身上/);
+  assert.match(dayContext, /完整药帐/);
+  assert.match(dayContext, /别急着亮身份/);
+
+  const night: GameState = { ...day, phase: "NIGHT_WITCH_ACTION" as Phase };
+  const nightWitch = night.players.find((p) => p.role === "Witch")!;
+  assert.doesNotMatch(buildGameContext(night, nightWitch), /【药在你身上，你活着才有药】/);
+  const villager = day.players.find((p) => p.role === "Villager")!;
+  assert.doesNotMatch(buildGameContext(day, villager), /【药在你身上，你活着才有药】/);
+});
+
 test("女巫毒药时机：夜间出药提示要带用药时机知识，其他角色拿不到", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
@@ -941,6 +973,9 @@ test("女巫毒药时机：夜间出药提示要带用药时机知识，其他�
   assert.match(witchContext, /【毒药什么时候该用】/);
   assert.match(witchContext, /留到死的毒药等于没有毒药/);
   assert.match(witchContext, /盲毒算的是期望值/);
+  // 毒藥代價：獵人槍不會響、收網階段留藥邊際價值低。
+  assert.match(witchContext, /毒到猎人等于白废一把枪/);
+  assert.match(witchContext, /留药的边际价值已经很低/);
   // 真正送進模型的夜間用藥提示也要帶到（role block 要進 prompt.user，不能只存在 buildGameContext）。
   const prompt = new PhaseManager().getPrompt("NIGHT_WITCH_ACTION", { state }, witch)!;
   assert.match(prompt.user, /【毒药什么时候该用】/);

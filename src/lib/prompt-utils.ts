@@ -799,11 +799,16 @@ ${checks.join("\n")}`;
     }
     // 用藥記錄的讀法：救過的人＝狼當晚目標（偏好人），日夜都用得到，兩邊都拼。
     witchInfo += `\n${t("promptUtils.gameContext.witchPotionReadingNote")}`;
+    // 解藥的時機：首夜救人的價值 vs 留著自救；日夜都拼（白天要盤算、被質疑時也要用得上）。
+    witchInfo += `\n${t("promptUtils.gameContext.witchHealTimingNote")}`;
     // 毒藥的時機：修正「等確認的狼人才用」導致毒藥留到死的傾向，日夜都拼（白天也要盤算）。
     witchInfo += `\n${t("promptUtils.gameContext.witchPoisonTimingNote")}`;
-    // 白天才需要報帳指引（何時公開、報什麼）；夜間用藥決策有自己的提示。
+    // 白天才需要報帳與保命指引（何時公開、報什麼、票壓上來怎麼處理）；
+    // 夜間用藥決策有自己的提示。
     if (state.phase.includes("DAY")) {
       witchInfo += `\n${t("promptUtils.gameContext.witchAccountGuidance")}`;
+      // 藥在人活：被票出去＝兩瓶藥一起廢，白天發言要先保住自己這張牌。
+      witchInfo += `\n${t("promptUtils.gameContext.witchSelfPreservationNote")}`;
     }
     witchInfo += `\n</your_potions>`;
     return witchInfo;
