@@ -574,7 +574,10 @@ test("獵人：白天拿到打法／帶隊時機（藏或亮、槍徽流、被�
   assert.match(ctx, /发言好坏参半/);
   assert.match(ctx, /回头把带头推你的那个带走/);
   assert.match(ctx, /我今晚要是被刀，枪口对准 X 号/);
-  assert.match(ctx, /有人跳猎人：先算轮次/);
+  assert.match(ctx, /有人跳猎人：先自己算轮次/);
+  assert.match(ctx, /「警推在先」指好人只要白天都放逐到狼/);
+  assert.match(ctx, /「狼刀在先」指狼队在刀上已经领先/);
+  assert.match(ctx, /这个只有你有的视角去找他的队友/);
   assert.match(ctx, /被女巫毒死会闷枪/);
   assert.match(ctx, /怎么权衡你自己决定/);
 
