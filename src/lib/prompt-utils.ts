@@ -862,6 +862,14 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
     return null;
   }
 
+  if (player.role === "Idiot") {
+    // 白痴没有夜间行动，知识集中在白天；免死翻牌由游戏自动触发，这里教的是定位、表水与报明时机的取舍。
+    if (state.phase.includes("DAY")) {
+      return `<your_idiot_notes>\n${t("promptUtils.gameContext.idiotPlayNote")}\n</your_idiot_notes>`;
+    }
+    return null;
+  }
+
   if (player.role === "Hunter") {
     // 獵人沒有可報的帳（無查驗、無用藥記錄），白天要的是打法與帶隊時機；
     // 出局當下的一槍走 prompts.hunter.shootingRules，不在這裡重複。

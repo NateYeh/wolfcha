@@ -443,3 +443,22 @@ test("decision_grounding：否認憑空補金水，但承認警徽移交等已�
   // 警徽流的解讀：死者最後的信任，不是矛盾
   assert.match(grounding, /唯一跳预言家者被夜刀后把警徽交给的人，应按「死者最后的信任／倾向金水」理解，不是「说法矛盾」/);
 });
+
+test("白痴：白天拼入打法知识，夜间不拼入（免死翻牌由游戏自动触发）", () => {
+  const dayState = makeState();
+  dayState.phase = "DAY_SPEECH";
+  const villager = dayState.players.find((p) => p.role === "Villager")!;
+  dayState.players[villager.seat] = { ...villager, role: "Idiot" };
+  const idiot = dayState.players[villager.seat];
+
+  const dayCtx = buildGameContext(dayState, idiot);
+  assert.match(dayCtx, /<your_idiot_notes>/);
+  assert.match(dayCtx, /【白痴怎么打/);
+  assert.match(dayCtx, /自动翻牌免死/);
+  assert.match(dayCtx, /免疫只有一次/);
+  assert.match(dayCtx, /没有第二次免疫/);
+  assert.match(dayCtx, /失去投票权/);
+
+  const nightCtx = buildGameContext({ ...dayState, phase: "NIGHT_WOLF_ACTION" }, idiot);
+  assert.doesNotMatch(nightCtx, /【白痴怎么打/);
+});
