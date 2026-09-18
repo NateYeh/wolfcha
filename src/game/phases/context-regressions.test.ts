@@ -564,6 +564,28 @@ test("預言家：白天拿到警上三件事（警徽流／查殺先講／沒�
   assert.doesNotMatch(buildGameContext(day, villager), /警上怎么讲/);
 });
 
+test("村民：白天拿到打法／表水／被查殺心態，夜間不拼，其他角色拿不到", () => {
+  const day = fresh("DAY_SPEECH");
+  const villager = day.players.find((p) => p.role === "Villager")!;
+  const ctx = buildGameContext(day, villager);
+  assert.match(ctx, /<your_villager_notes>/);
+  assert.match(ctx, /【村民怎么打/);
+  assert.match(ctx, /你的技能就是那一票/);
+  assert.match(ctx, /本局必须投一名玩家/);
+  assert.match(ctx, /表水是你唯一的自证手段/);
+  assert.match(ctx, /被假预言家发了查杀别慌/);
+  assert.match(ctx, /狼一定藏在没跳的平民里/);
+  assert.match(ctx, /别穿神的衣服/);
+  assert.match(ctx, /怎么权衡你自己决定/);
+
+  const night: GameState = { ...day, phase: "NIGHT_WOLF_ACTION" as Phase };
+  const nightVillager = night.players.find((p) => p.role === "Villager")!;
+  assert.doesNotMatch(buildGameContext(night, nightVillager), /【村民怎么打/);
+
+  const seer = day.players.find((p) => p.role === "Seer")!;
+  assert.doesNotMatch(buildGameContext(day, seer), /【村民怎么打/);
+});
+
 test("獵人：白天拿到打法／帶隊時機（藏或亮、槍徽流、被毒悶槍），其他角色拿不到", () => {
   const day = fresh("DAY_SPEECH");
   const hunter = day.players.find((p) => p.role === "Hunter")!;

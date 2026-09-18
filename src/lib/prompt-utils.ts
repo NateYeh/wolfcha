@@ -853,6 +853,15 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
     return guardInfo;
   }
   
+  if (player.role === "Villager") {
+    // 村民沒有夜間行動，只有白天發言與投票——知識集中拼在白天；
+    // 票的理由已由投票 JSON 的 reason 記錄，這裡教的是「敢表態＋表水」。
+    if (state.phase.includes("DAY")) {
+      return `<your_villager_notes>\n${t("promptUtils.gameContext.villagerPlayNote")}\n</your_villager_notes>`;
+    }
+    return null;
+  }
+
   if (player.role === "Hunter") {
     // 獵人沒有可報的帳（無查驗、無用藥記錄），白天要的是打法與帶隊時機；
     // 出局當下的一槍走 prompts.hunter.shootingRules，不在這裡重複。
