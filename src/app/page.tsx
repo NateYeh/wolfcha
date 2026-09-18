@@ -173,8 +173,8 @@ export default function Home() {
     markCurrentSegmentCompleted,
     shouldAutoAdvanceToNextAI,
   } = useGameLogic();
-  const { settings, setBgmVolume, setSoundEnabled, setAiVoiceEnabled, setGenshinMode, setSpectatorMode, setAutoAdvanceDialogueEnabled } = useSettings();
-  const { bgmVolume, isSoundEnabled, isAiVoiceEnabled, isGenshinMode, isSpectatorMode, isAutoAdvanceDialogueEnabled } = settings;
+  const { settings, setBgmVolume, setSoundEnabled, setAiVoiceEnabled, setGenshinMode, setSpectatorMode, setAcquaintanceMode, setAutoAdvanceDialogueEnabled } = useSettings();
+  const { bgmVolume, isSoundEnabled, isAiVoiceEnabled, isGenshinMode, isSpectatorMode, isAcquaintanceGame, isAutoAdvanceDialogueEnabled } = settings;
   const shouldUseAiVoice = isSoundEnabled && isAiVoiceEnabled && bgmVolume > 0;
   
   // Exit game functionality - use restartGame which properly handles all state resets
@@ -1308,7 +1308,7 @@ export default function Home() {
               setHumanName={setHumanName}
               onStart={(options) => {
                 setAiVoiceEnabled(false);
-                return startGame({ ...(options ?? {}), isGenshinMode, isSpectatorMode });
+                return startGame({ ...(options ?? {}), isGenshinMode, isSpectatorMode, isAcquaintanceGame });
               }}
               onAbort={restartGame}
               isLoading={isLoading}
@@ -1316,6 +1316,8 @@ export default function Home() {
               onGenshinModeChange={setGenshinMode}
               isSpectatorMode={isSpectatorMode}
               onSpectatorModeChange={setSpectatorMode}
+              isAcquaintanceGame={isAcquaintanceGame}
+              onAcquaintanceModeChange={setAcquaintanceMode}
               bgmVolume={bgmVolume}
               isSoundEnabled={isSoundEnabled}
               isAiVoiceEnabled={isAiVoiceEnabled}

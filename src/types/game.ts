@@ -30,6 +30,8 @@ export interface StartGameOptions {
   gameSessionId?: string;
   isGenshinMode?: boolean;
   isSpectatorMode?: boolean;
+  /** 熟人局：AI 互相认识（注入印象与交手记录），供读人参考。 */
+  isAcquaintanceGame?: boolean;
   customCharacters?: CustomCharacterData[];
   preferredRole?: Role;
 }
@@ -113,6 +115,13 @@ export interface Persona {
   uncertaintyStyle?: string;
   mistakePattern?: string;
   wolfDeceptionStyle?: string;
+}
+
+/** 单个角色（按显示名聚合）的历史交手统计。 */
+export interface CharacterStat {
+  games: number;
+  wins: number;
+  mvps: number;
 }
 
 export interface PlayerMind {
@@ -205,6 +214,10 @@ export interface GameState {
   scenario?: GameScenario;
   isGenshinMode?: boolean;
   isSpectatorMode?: boolean;
+  /** 熟人局开关（开局面取一次）；开=buildGameContext 注入 <acquaintance_notes>。 */
+  isAcquaintanceGame?: boolean;
+  /** 各角色历史交手统计（games/wins/mvps），仅熟人局注入 prompt；取不到为 undefined。 */
+  characterStats?: Record<string, CharacterStat>;
   difficulty: DifficultyLevel;
   players: Player[];
   events: GameEvent[];

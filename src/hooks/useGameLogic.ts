@@ -38,6 +38,7 @@ import {
 } from "@/lib/game-master";
 import { buildGenshinModelRefs, generateCharacters, generateGenshinModeCharacters, sampleModelRefs, type GeneratedCharacter } from "@/lib/character-generator";
 import { takeServerPoolCharacters } from "@/lib/character-pool-api";
+import { fetchCharacterStats } from "@/lib/character-stats";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { getRandomScenario } from "@/lib/scenarios";
 import { DELAY_CONFIG, getRoleName } from "@/lib/game-constants";
@@ -1400,6 +1401,7 @@ export function useGameLogic() {
       gameSessionId,
       isGenshinMode = false,
       isSpectatorMode = false,
+      isAcquaintanceGame = false,
       customCharacters = [],
       preferredRole,
     } = options ?? {};
@@ -1496,6 +1498,9 @@ export function useGameLogic() {
         difficulty,
         isGenshinMode,
         isSpectatorMode,
+        isAcquaintanceGame,
+        // 熟人局才需要历史交手统计；取不到（首次游玩/接口失败）就静默降级为无记录。
+        characterStats: isAcquaintanceGame ? await fetchCharacterStats() : undefined,
       });
 
       setGameStarted(true);

@@ -62,6 +62,8 @@ interface GameSetupModalProps {
   onGenshinModeChange: (value: boolean) => void;
   isSpectatorMode: boolean;
   onSpectatorModeChange: (value: boolean) => void;
+  isAcquaintanceGame: boolean;
+  onAcquaintanceModeChange: (value: boolean) => void;
   bgmVolume: number;
   isSoundEnabled: boolean;
   isAiVoiceEnabled: boolean;
@@ -93,6 +95,8 @@ export function GameSetupModal({
   onGenshinModeChange,
   isSpectatorMode,
   onSpectatorModeChange,
+  isAcquaintanceGame,
+  onAcquaintanceModeChange,
   bgmVolume,
   isSoundEnabled,
   isAiVoiceEnabled,
@@ -413,6 +417,16 @@ export function GameSetupModal({
             </div>
             </div>
             <Switch className="shrink-0 mt-1" checked={isSpectatorMode} onCheckedChange={onSpectatorModeChange} />
+          </div>
+
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-[var(--text-primary)]">{t("gameSetup.acquaintanceMode.title")}</div>
+            <div className="text-xs text-[var(--text-muted)]">
+              {t("gameSetup.acquaintanceMode.description")}
+            </div>
+            </div>
+            <Switch className="shrink-0 mt-1" checked={isAcquaintanceGame} onCheckedChange={onAcquaintanceModeChange} />
           </div>
 
           <div className="border-t border-[var(--border-color)] pt-4">

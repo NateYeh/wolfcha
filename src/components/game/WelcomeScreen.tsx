@@ -232,6 +232,8 @@ interface WelcomeScreenProps {
   onGenshinModeChange: (value: boolean) => void;
   isSpectatorMode: boolean;
   onSpectatorModeChange: (value: boolean) => void;
+  isAcquaintanceGame: boolean;
+  onAcquaintanceModeChange: (value: boolean) => void;
   bgmVolume: number;
   isSoundEnabled: boolean;
   isAiVoiceEnabled: boolean;
@@ -252,6 +254,8 @@ export function WelcomeScreen({
   onGenshinModeChange,
   isSpectatorMode,
   onSpectatorModeChange,
+  isAcquaintanceGame,
+  onAcquaintanceModeChange,
   bgmVolume,
   isSoundEnabled,
   isAiVoiceEnabled,
@@ -971,6 +975,8 @@ export function WelcomeScreen({
           onGenshinModeChange={onGenshinModeChange}
           isSpectatorMode={isSpectatorMode}
           onSpectatorModeChange={onSpectatorModeChange}
+          isAcquaintanceGame={isAcquaintanceGame}
+          onAcquaintanceModeChange={onAcquaintanceModeChange}
           bgmVolume={bgmVolume}
           isSoundEnabled={isSoundEnabled}
           isAiVoiceEnabled={isAiVoiceEnabled}

@@ -18,6 +18,7 @@ import {
 } from "@/lib/game-analysis";
 import { gameStatsTracker } from "@/hooks/useGameStats";
 import { getReviewModel } from "@/lib/api-keys";
+import { recordCharacterStats, type CharacterStatRecord } from "@/lib/character-stats";
 
 export function useGameAnalysis() {
   const gameState = useAtomValue(gameStateAtom);
@@ -49,6 +50,17 @@ export function useGameAnalysis() {
       const reviewModel = getReviewModel();
       const data = await generateGameAnalysis(gameState, reviewModel, durationSeconds);
       setAnalysisData(data);
+
+      // 熟人局素材：把本局逐人结果（含 MVP）上报到角色交手统计。fire-and-forget，
+      // 失败只 warn；服务端按 gameId 去重，分析重触发不会重复计场。
+      const statRecords: CharacterStatRecord[] = gameState.players.map((p) => ({
+        gameId: gameState.gameId,
+        name: p.displayName,
+        alignment: p.alignment === "wolf" ? "wolf" : "village",
+        won: (p.alignment === "wolf") === (winner === "wolf"),
+        mvp: data.awards.mvp?.playerId === p.playerId,
+      }));
+      void recordCharacterStats(gameState.gameId, statRecords);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "分析生成失败";
       setError(errorMessage);

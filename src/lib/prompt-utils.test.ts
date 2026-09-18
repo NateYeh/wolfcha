@@ -462,3 +462,52 @@ test("白痴：白天拼入打法知识，夜间不拼入（免死翻牌由游�
   const nightCtx = buildGameContext({ ...dayState, phase: "NIGHT_WOLF_ACTION" }, idiot);
   assert.doesNotMatch(nightCtx, /【白痴怎么打/);
 });
+
+test("熟人局：注入其他玩家的印象与交手记录；关闭或无素材不拼入，本人不列", () => {
+  const dayState = makeState();
+  dayState.phase = "DAY_SPEECH";
+  const actor = dayState.players[2];
+
+  // 关闭开关：缺席
+  assert.doesNotMatch(buildGameContext({ ...dayState, isAcquaintanceGame: false }, actor), /<acquaintance_notes>/);
+  // 开启但无素材：缺席
+  assert.doesNotMatch(buildGameContext({ ...dayState, isAcquaintanceGame: true }, actor), /<acquaintance_notes>/);
+
+  // 有印象+有交手记录：他人拼入，本人不列
+  const state: GameState = { ...dayState, isAcquaintanceGame: true };
+  state.players[0] = {
+    ...state.players[0],
+    agentProfile: {
+      modelRef: { provider: "tokendance", model: "glm-5.3-flash:cloud" },
+      persona: {
+        voiceRules: ["说话直接"],
+        mbti: "ENTP",
+        gender: "male",
+        age: 32,
+        pressureStyle: "被查杀会急着自证",
+        wolfDeceptionStyle: "拿狼时话变多",
+      },
+      playerMind: {
+        courage: "偏怂",
+        memoryBias: "记得住数字记不住口径",
+        suspicionThreshold: "容易起疑",
+        selfProtection: "优先自保",
+        logicDepth: "两层",
+        tablePresence: "存在感强",
+      },
+    },
+  };
+  state.characterStats = { [state.players[0].displayName]: { games: 12, wins: 7, mvps: 2 } };
+
+  const ctx = buildGameContext(state, actor);
+  assert.match(ctx, /<acquaintance_notes>/);
+  assert.match(ctx, /【熟人局】/);
+  assert.match(ctx, /1号玩家1：.*压力反应：被查杀会急着自证/);
+  assert.match(ctx, /拿狼伪装：拿狼时话变多/);
+  assert.match(ctx, /胆量：偏怂/);
+  assert.match(ctx, /自保倾向：优先自保/);
+  assert.match(ctx, /场上存在感：存在感强/);
+  assert.match(ctx, /交手记录：12 场、胜率 58%、MVP 2 次/);
+  // 本人（3号）不列入名单
+  assert.doesNotMatch(ctx, /- 3号玩家3：/);
+});

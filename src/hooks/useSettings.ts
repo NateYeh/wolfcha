@@ -32,6 +32,10 @@ export function useSettings() {
     setSettings((prev) => ({ ...prev, isSpectatorMode: value }));
   }, [setSettings]);
 
+  const setAcquaintanceMode = useCallback((value: boolean) => {
+    setSettings((prev) => ({ ...prev, isAcquaintanceGame: value }));
+  }, [setSettings]);
+
   return {
     settings,
     isLoaded,
@@ -40,6 +44,7 @@ export function useSettings() {
     setAiVoiceEnabled,
     setGenshinMode,
     setSpectatorMode,
+    setAcquaintanceMode,
     setAutoAdvanceDialogueEnabled,
   };
 }

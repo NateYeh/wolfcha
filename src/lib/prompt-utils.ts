@@ -349,6 +349,51 @@ export const buildPersonaSection = (player: Player, isGenshinMode: boolean = fal
   return `${base}${extraInfo}${hiddenCommunicationProfile}${hiddenPlayerMind}`;
 };
 
+/**
+ * 熟人局素材：对其他玩家拼入「平时积累的印象」（persona 行为栏位）与「交手记录」（历史胜率/MVP）。
+ * 这些内容互相之间平时不可见，但熟人局设定下视为彼此认识多年所知；印象仅供参考，不是事实。
+ */
+const buildAcquaintanceNotes = (state: GameState, player: Player): string => {
+  if (!state.isAcquaintanceGame) return "";
+  const { t } = getI18n();
+  const lines: string[] = [];
+  for (const other of state.players) {
+    if (other.playerId === player.playerId) continue;
+    const traits: string[] = [];
+    const persona = other.agentProfile?.persona;
+    if (persona) {
+      if (persona.werewolfExperience) traits.push(t("promptUtils.acquaintance.fieldWerewolfExp", { v: persona.werewolfExperience }));
+      if (persona.reasoningStyle) traits.push(t("promptUtils.acquaintance.fieldReasoning", { v: persona.reasoningStyle }));
+      if (persona.vocabularyStyle) traits.push(t("promptUtils.acquaintance.fieldVocabulary", { v: persona.vocabularyStyle }));
+      if (persona.speechLengthHabit) traits.push(t("promptUtils.acquaintance.fieldLength", { v: persona.speechLengthHabit }));
+      if (persona.pressureStyle) traits.push(t("promptUtils.acquaintance.fieldPressure", { v: persona.pressureStyle }));
+      if (persona.uncertaintyStyle) traits.push(t("promptUtils.acquaintance.fieldUncertainty", { v: persona.uncertaintyStyle }));
+      if (persona.mistakePattern) traits.push(t("promptUtils.acquaintance.fieldMistake", { v: persona.mistakePattern }));
+      if (persona.wolfDeceptionStyle) traits.push(t("promptUtils.acquaintance.fieldWolfDisguise", { v: persona.wolfDeceptionStyle }));
+    }
+    const mind = other.agentProfile?.playerMind;
+    if (mind) {
+      if (mind.courage) traits.push(t("promptUtils.acquaintance.fieldCourage", { v: mind.courage }));
+      if (mind.selfProtection) traits.push(t("promptUtils.acquaintance.fieldSelfProtect", { v: mind.selfProtection }));
+      if (mind.tablePresence) traits.push(t("promptUtils.acquaintance.fieldPresence", { v: mind.tablePresence }));
+    }
+    const stat = state.characterStats?.[other.displayName];
+    const record = stat
+      ? t("promptUtils.acquaintance.statsLine", {
+        games: stat.games,
+        rate: stat.games > 0 ? Math.round((stat.wins / stat.games) * 100) : 0,
+        mvps: stat.mvps,
+      })
+      : "";
+    if (traits.length === 0 && !record) continue;
+    const traitText = traits.length > 0 ? traits.join(t("promptUtils.gameContext.listSeparator")) : "";
+    const parts = [traitText, record].filter((part) => part.length > 0);
+    lines.push(`- ${other.seat + 1}号${other.displayName}：${parts.join(t("promptUtils.gameContext.listSeparator"))}`);
+  }
+  if (lines.length === 0) return "";
+  return `\n\n<acquaintance_notes>\n${t("promptUtils.acquaintance.header")}\n${lines.join("\n")}\n</acquaintance_notes>`;
+};
+
 export const buildAliveCountsSection = (state: GameState): string => {
   const { t } = getI18n();
   const alive = state.players.filter((p) => p.alive);
@@ -1027,6 +1072,9 @@ alive_count: ${alivePlayers.length}
     .map((p) => `  - ${t("promptUtils.gameContext.seatLabel", { seat: p.seat + 1 })} ${p.displayName}${p.playerId === player.playerId ? t("promptUtils.gameContext.youSuffix") : ""}`)
     .join("\n");
   context += `\n\n<alive_players>\n${playerList}\n</alive_players>`;
+
+  // 熟人局：其他玩家的行为印象与交手记录（日夜都拼——读人不是白天专利）。
+  context += buildAcquaintanceNotes(state, player);
 
   const wolfFriendlyFireNote = t("promptUtils.gameContext.wolfFriendlyFireNote");
   const phaseOrderNote =

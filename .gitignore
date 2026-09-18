@@ -50,3 +50,4 @@ ai-logs.jsonl
 
 # 角色池／自訂情境的伺服器端資料檔
 .data/
+data/

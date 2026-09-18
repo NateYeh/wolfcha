@@ -523,6 +523,10 @@
         "guard": "Protect one player from wolf attacks each night",
         "idiot": "Survives a vote-out by revealing role, but loses voting rights"
       }
+    },
+    "acquaintanceMode": {
+      "title": "Friends' table",
+      "description": "AIs know each other: shares speech habits, pressure responses, and each character's historical win rate and MVP count as reference."
     }
   },
   "authModal": {
@@ -1909,6 +1913,21 @@
       "wolfChargeHookNote": "【Charge and Hook (experience notes; how you weigh them is up to you)】\nAfter the counter-claiming wolf jumps, the team's two common positions:\n- Charge: side with the fake seer and steer votes onto the real one. The worst move is siding for no reason - go through both seers' speeches first and give a checkable, public reason for why you accept him; and do not stammer - you are a confident good player expressing an opinion. Analyze with public daytime info only; never write what you learned at night into your reasoning.\n- Hook: side with the real seer and hide inside the good crowd. The real seer's checks can never land on you, and when the fake seer falls you are often the wolf who survives to the end - the hook's life is usually the longest in the pack.\n- A hook can switch to a charge: when the fake seer clearly outperforms and most good players side with him, charge together and push the real seer straight out - at that point you have nothing to fear from exposure, and you shield a teammate on the way.\n- When nobody has counter-claimed and there is only one seer line, the hook has nothing to hook onto yet - hold your fire and do not be the first to sell a teammate.",
       "wolfGodVillagerReadingNote": "【Reading gods and villagers by day (experience notes; how you weigh them are up to you)】\nGods and villagers play differently, and their speeches taste different:\n- Players eager to prove their innocence, whose speeches carry little information, are mostly villagers; confident players who pressure others, hunt for wolves everywhere and rush to lead the tempo are mostly gods.\n- Two uses for this ledger: at night, line up the god-looking players in your knife considerations; by day, pushing villager-looking players out costs the wolf side nothing, while an exiled god is a free win.\n- Reading people is a reference, not a verdict: weigh it together with vote patterns, checks and claims - misreading a villager as a god wastes a whole night.",
       "idiotPlayNote": "【How to play the Idiot (experience notes; how you weigh them is up to you)】\n- Know your rules first: when you are voted out, your card flips automatically — no need to claim it yourself. The immunity works only once; afterwards you lose your vote but keep speaking. If you top the vote again after revealing, there is no second immunity — you are out for real.\n- The Idiot is a weak god role: no tempo-recovery power (unlike the Witch's potions), weak self-proof (unlike the Hunter's gun, which wolves dare not fake). Exiling an Idiot wastes a village ballot and hands the knife tempo to the wolves. Your value lies in hiding: keep the wolves guessing while the village can accept you.\n- Ideal default: blend into the villagers and keep your record clean. Point at concrete seats and actions so the village accepts you without making yourself the center. High-risk tricks — fake-claiming at the badge race, clinging to a suspected wolf — backfire when your speech cannot back them up: easier to get pushed out, and they muddy the village's read.\n- When openly claiming is worth it: hit with a fake check from an impostor Seer — don't tough it out, claim and let the table see who is faking; about to be pushed out — flip early and watch how the pushers explain themselves (good players usually have a logic trail, wolves get flustered and trail off); endgame — wolves may impersonate you, so prove yourself with a complete first-to-last account of your game.\n- After revealing: no vote, but you still speak — lay out everything you saw across the game. You are one of the village's last information posts."
+    },
+    "acquaintance": {
+      "header": "【Friends' table】You know everyone at this table. Below are impressions built up over past games plus each player's record. Impressions are only impressions — this game they may not follow old habits, and the wolves especially may act out of character. How you use this knowledge is up to you.",
+      "fieldWerewolfExp": "Werewolf understanding: {v}",
+      "fieldReasoning": "Reasoning style: {v}",
+      "fieldVocabulary": "Vocabulary habit: {v}",
+      "fieldLength": "Speech length: {v}",
+      "fieldPressure": "Under pressure: {v}",
+      "fieldUncertainty": "When unsure: {v}",
+      "fieldMistake": "Common misreads: {v}",
+      "fieldWolfDisguise": "As wolf: {v}",
+      "fieldCourage": "Courage: {v}",
+      "fieldSelfProtect": "Self-preservation: {v}",
+      "fieldPresence": "Table presence: {v}",
+      "statsLine": "Record: {games} games, {rate}% wins, MVP x{mvps}"
     }
   },
   "devConsole": {

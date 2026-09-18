@@ -9,6 +9,7 @@ export interface AudioSettings {
   isGenshinMode: boolean;
   isAutoAdvanceDialogueEnabled: boolean;
   isSpectatorMode: boolean;
+  isAcquaintanceGame: boolean;
 }
 
 const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
@@ -18,6 +19,7 @@ const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   isGenshinMode: false,
   isAutoAdvanceDialogueEnabled: false,
   isSpectatorMode: false,
+  isAcquaintanceGame: false,
 };
 
 const clampVolume = (value: number) => Math.min(1, Math.max(0, value));
@@ -38,6 +40,10 @@ const normalizeAudioSettings = (value: Partial<AudioSettings>): AudioSettings =>
       : DEFAULT_AUDIO_SETTINGS.isAutoAdvanceDialogueEnabled,
   isSpectatorMode:
     typeof value.isSpectatorMode === "boolean" ? value.isSpectatorMode : DEFAULT_AUDIO_SETTINGS.isSpectatorMode,
+  isAcquaintanceGame:
+    typeof value.isAcquaintanceGame === "boolean"
+      ? value.isAcquaintanceGame
+      : DEFAULT_AUDIO_SETTINGS.isAcquaintanceGame,
 });
 
 const rawAudioSettingsAtom = atomWithStorage<AudioSettings>("wolfcha.settings.audio", DEFAULT_AUDIO_SETTINGS);
