@@ -21,6 +21,7 @@ import { GAME_SESSION_EXPIRED_CODE } from "@/lib/game-session-policy";
 import { parseLLMJson } from "./llm-json";
 import { generateUUID } from "./utils";
 import { withTimeout } from "@/lib/request-timeout";
+import { UPSTREAM_TIMEOUT_HEADER } from "@/lib/upstream-timeout";
 import type { PromptScope } from "@/lib/deepseek-prompt-scope";
 
 export type LLMContentPart =
@@ -401,6 +402,9 @@ async function fetchWithRetry(
 
       if (response.ok) return response;
 
+      // 上游模型無回應（route 已等滿自己的逾時）：重試只會讓整桌再卡一輪，直接回報。
+      if (response.headers.get(UPSTREAM_TIMEOUT_HEADER)) return response;
+
       const retryableStatuses = modelSource === "tokenpay"
         ? TOKENPAY_RETRYABLE_STATUS
         : RETRYABLE_STATUS;
@@ -418,6 +422,8 @@ async function fetchWithRetry(
     } catch (err) {
       init.signal?.throwIfAborted();
       lastError = err;
+      // 被主動中止的請求重試沒有意義（呼叫端已放棄，或上游連線被硬切）。
+      if (err instanceof DOMException && err.name === "AbortError") break;
       // TokenPay 没有请求幂等键。网络断开时无法确认上游是否已经计费，
       // 因此只允许对明确未执行的 429 重试，不自动重放模糊失败。
       if (modelSource === "tokenpay" || attempt === maxAttempts) break;
@@ -1082,7 +1088,7 @@ export async function* generateCompletionStream(
 }
 
 export async function generateJSON<T>(
-  options: GenerateOptions & { schema?: string }
+  options: GenerateOptions & { schema?: string; onRawContent?: (content: string) => void }
 ): Promise<T> {
   const messagesWithFormat = [...options.messages];
 
@@ -1111,5 +1117,7 @@ export async function generateJSON<T>(
     ...(shouldForceJsonObject ? { response_format: { type: "json_object" as const } } : {}),
     messages: messagesWithFormat,
   });
+  // 解析失敗時呼叫方才有原始回覆可記錄（否則 raw 只存在於這個函式內部）。
+  options.onRawContent?.(result.content);
   return parseJsonTolerant<T>(result.content);
 }

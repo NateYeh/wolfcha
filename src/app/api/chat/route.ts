@@ -24,6 +24,8 @@ import {
 } from "@/lib/deepseek-prompt-scope";
 import { recordGameSessionAiAttempt } from "@/lib/server-game-observability";
 import { trackSseAttempt } from "@/lib/sse-attempt-tracker";
+import { RequestTimeoutError } from "@/lib/request-timeout";
+import { UPSTREAM_TIMEOUT_CODE, UPSTREAM_TIMEOUT_HEADER } from "@/lib/upstream-timeout";
 
 // 9 人完整角色画像的正常流式输出实测可超过 80 秒。未启用 Fluid
 // Compute 的 Vercel 项目默认上限可能只有 60 秒，必须显式放宽；这只延长
@@ -40,6 +42,8 @@ const DASHSCOPE_CHAT_COMPLETIONS_URL = `${DASHSCOPE_API_BASE_URL}/chat/completio
 
 // API 调用超时时间（毫秒）；非流式请求要在这段时间内跑完，1 分钟足够正常模型响应，超时快速失败可触发重试。
 const API_TIMEOUT_MS = 60000;
+// 逾時訊息要能直接看懂：過去只會留下 Chrome 的 "This operation was aborted"，事後查不出原因。
+const UPSTREAM_TIMEOUT_MESSAGE = `上游模型无响应（超时 ${API_TIMEOUT_MS / 1000}s）`;
 const MAX_BATCH_REQUESTS = 12;
 
 // 部分上游（例如自架 gpt-load 閘道器）的推理模型，會把 thinking 產生的 token
@@ -201,9 +205,15 @@ async function fetchProvider(url: string, init: RequestInit, context: AttemptCon
     }
     return response;
   } catch (error) {
+    // 自己設的逾時會帶 RequestTimeoutError 當 abort reason；與呼叫端主動取消區分開。
+    const abortReason = init.signal?.reason;
+    const upstreamTimedOut = abortReason instanceof RequestTimeoutError;
     await recordAttempt(context, "network_error", {
-      errorCode: error instanceof DOMException && error.name === "AbortError" ? "aborted" : "network_error",
+      errorCode: upstreamTimedOut
+        ? UPSTREAM_TIMEOUT_CODE
+        : error instanceof DOMException && error.name === "AbortError" ? "aborted" : "network_error",
     });
+    if (upstreamTimedOut) throw abortReason;
     throw error;
   }
 }
@@ -606,7 +616,7 @@ async function runBatchItem(
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(new RequestTimeoutError(UPSTREAM_TIMEOUT_MESSAGE)), API_TIMEOUT_MS);
 
     let response: Response;
     try {
@@ -689,7 +699,7 @@ async function runBatchItem(
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(new RequestTimeoutError(UPSTREAM_TIMEOUT_MESSAGE)), API_TIMEOUT_MS);
 
     let response: Response;
     try {
@@ -769,7 +779,7 @@ async function runBatchItem(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(new RequestTimeoutError(UPSTREAM_TIMEOUT_MESSAGE)), API_TIMEOUT_MS);
 
   let response: Response;
   try {
@@ -1058,7 +1068,7 @@ export async function POST(request: NextRequest) {
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+      const timeoutId = setTimeout(() => controller.abort(new RequestTimeoutError(UPSTREAM_TIMEOUT_MESSAGE)), API_TIMEOUT_MS);
 
       let response: Response;
       try {
@@ -1166,7 +1176,7 @@ export async function POST(request: NextRequest) {
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+      const timeoutId = setTimeout(() => controller.abort(new RequestTimeoutError(UPSTREAM_TIMEOUT_MESSAGE)), API_TIMEOUT_MS);
 
       let response: Response;
       try {
@@ -1274,7 +1284,7 @@ export async function POST(request: NextRequest) {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(new RequestTimeoutError(UPSTREAM_TIMEOUT_MESSAGE)), API_TIMEOUT_MS);
 
     let response: Response;
     try {
@@ -1318,6 +1328,13 @@ export async function POST(request: NextRequest) {
       throw error;
     }
   } catch (error) {
+    if (error instanceof RequestTimeoutError) {
+      console.error("[api/chat] Upstream timeout:", error.message);
+      return NextResponse.json(
+        { error: error.message, code: UPSTREAM_TIMEOUT_CODE },
+        { status: 504, headers: { [UPSTREAM_TIMEOUT_HEADER]: String(API_TIMEOUT_MS) } }
+      );
+    }
     console.error("[api/chat] Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },

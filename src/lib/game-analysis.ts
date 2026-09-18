@@ -22,6 +22,8 @@ import type {
   DeathCause,
 } from "@/types/analysis";
 import { generateJSON } from "@/lib/llm";
+import type { LLMMessage } from "@/lib/llm";
+import { aiLogger } from "@/lib/ai-logger";
 import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
 
 const MAX_SPEECH_ITEMS_PER_PHASE = 30;
@@ -1560,21 +1562,40 @@ ${allHumanSpeeches || "（无发言记录）"}
    - clarity（发言清晰度）：分析表达是否清晰、是否容易理解
    - 如果无发言记录，两项均给50分`;
 
+  const analysisMessages: LLMMessage[] = [
+    { role: "system", content: "你是专业的狼人杀游戏分析师，擅长评价玩家表现并生成有趣的复盘内容。" },
+    { role: "user", content: prompt },
+  ];
+  // 解析失敗時要留下原始回覆才能事後對帳（JSON 修復無效的那種）。
+  let rawContent = "";
+  const startTime = Date.now();
+
   try {
     const result = await generateJSON<AIAnalysisResult>({
       model,
-      messages: [
-        { role: "system", content: "你是专业的狼人杀游戏分析师，擅长评价玩家表现并生成有趣的复盘内容。" },
-        { role: "user", content: prompt },
-      ],
+      messages: analysisMessages,
       temperature: 0.7,
       max_tokens: 2000,
+      response_format: { type: "json_object" },
+      onRawContent: (content) => { rawContent = content; },
+    });
+
+    await aiLogger.log({
+      type: "analysis",
+      request: { model, messages: analysisMessages },
+      response: { content: rawContent, parsed: result, duration: Date.now() - startTime },
     });
 
     // 校正 AI 返回的 playerId 和 avatar，确保与实际玩家数据匹配
     const correctedResult = correctAIResult(result, state, humanPlayer);
     return correctedResult;
   } catch (error) {
+    await aiLogger.log({
+      type: "analysis",
+      request: { model, messages: analysisMessages },
+      response: { content: rawContent, duration: Date.now() - startTime },
+      error: String(error),
+    });
     console.error("AI analysis generation failed:", error);
     return generateFallbackAIData(state, humanPlayer);
   }
