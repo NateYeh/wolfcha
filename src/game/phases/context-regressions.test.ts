@@ -902,3 +902,31 @@ test("白狼王自爆决策：farewell 翻桌宣言进 prompt 与解析结果（
     assert.match(prompt, /reason/);
   } finally { globalThis.fetch = originalFetch; }
 });
+
+test("有人跳猎人：白天知識區塊說明獵人自報沒有可核對的帳目，夜間不拼入", () => {
+  const state = fresh("DAY_SPEECH");
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  const dayContext = buildGameContext(state, villager);
+  assert.match(dayContext, /【有人跳猎人时怎么读】/);
+  assert.match(dayContext, /悍跳猎人很常见/);
+  assert.match(dayContext, /只能当声明，不能当证据/);
+
+  const nightState: GameState = { ...state, phase: "NIGHT_WOLF_ACTION" as Phase };
+  const wolf = state.players.find((p) => p.role === "Werewolf")!;
+  assert.doesNotMatch(buildGameContext(nightState, wolf), /【有人跳猎人时怎么读】/);
+});
+
+test("猎人的枪口风险只给狼看：刀／炸／毒代价不同，好人拿不到", () => {
+  const state = fresh("DAY_SPEECH");
+  const wolf = state.players.find((p) => p.role === "Werewolf")!;
+  const wwk = state.players.find((p) => p.role === "WhiteWolfKing")!;
+  const wolfContext = buildGameContext(state, wolf);
+  assert.match(wolfContext, /【猎人在场时的刀口风险】/);
+  assert.match(wolfContext, /被女巫毒死的猎人开不了枪/);
+  assert.match(wolfContext, /被白狼王自爆带走的猎人也会开枪/);
+  // 白狼王自爆決策也在白天，必須拿得到這筆帳，否則會炸掉獵人白送一槍。
+  assert.match(buildGameContext(state, wwk), /【猎人在场时的刀口风险】/);
+
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  assert.doesNotMatch(buildGameContext(state, villager), /【猎人在场时的刀口风险】/);
+});

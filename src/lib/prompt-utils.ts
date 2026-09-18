@@ -871,6 +871,9 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
     if (killRecords.length > 0) {
       wolfInfo += `\n【狼队出刀记录】\n${killRecords.join("\n")}`;
     }
+    // 獵人的槍口風險：夜間刀口、白狼王自爆、白天要不要碰自稱獵人的人都要算這筆帳，
+    // 日夜都拼入（處理獵人的三種方式代價不同）。
+    wolfInfo += `\n${t("promptUtils.gameContext.hunterGunThreatNote")}`;
     // 白天才有保人与切割的取舍：队友劣势时无脑硬保会把狼队绑成一条线一起暴露。
     // 夜间出刀与本原则无关，因此只在白天阶段拼入。
     if (state.phase.includes("DAY")) {
@@ -995,6 +998,8 @@ alive_count: ${alivePlayers.length}
   const evidenceIndependenceNote = isDayPhase ? t("promptUtils.gameContext.evidenceIndependenceNote") : "";
   const badgeNote = isDayPhase ? t("promptUtils.gameContext.badgeNote") : "";
   const goldWaterNote = isDayPhase ? t("promptUtils.gameContext.goldWaterNote") : "";
+  // 有人跳獵人怎麼讀：獵人報身份沒有可核對的帳目（不像查驗、用藥），白天推理用；夜間不拼入。
+  const hunterClaimReadingNote = isDayPhase ? t("promptUtils.gameContext.hunterClaimReadingNote") : "";
   // 場上現況（誰自稱預言家、有無對跳）：只陳述公開事實，不下指令。
   const seerClaimStateNote = isDayPhase ? buildSeerClaimStateLine(state) : "";
   // 警長職責：只有拿徽者收到，避免狼警長免費收割「跟警徽走」的權威；僅白天拼入。
@@ -1047,6 +1052,9 @@ alive_count: ${alivePlayers.length}
   }
   if (goldWaterNote) {
     rulesText += `\n${goldWaterNote}`;
+  }
+  if (hunterClaimReadingNote) {
+    rulesText += `\n${hunterClaimReadingNote}`;
   }
   // 警長職責放最後：對拿徽者是最直接的行動指令（歸票）。
   if (sheriffDutyNote) {
