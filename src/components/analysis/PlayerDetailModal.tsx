@@ -6,6 +6,8 @@ import Image from "next/image";
 import type { PlayerSnapshot } from "@/types/analysis";
 import { ROLE_ICONS, ROLE_NAMES } from "./constants";
 import { buildSimpleAvatarUrl } from "@/lib/avatar-config";
+import { useTranslations } from "next-intl";
+import { useCareerStats } from "@/hooks/useCareerStats";
 
 interface PlayerDetailModalProps {
   player: PlayerSnapshot | null;
@@ -27,6 +29,8 @@ const ALIGNMENT_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export function PlayerDetailModal({ player, isOpen, onClose }: PlayerDetailModalProps) {
+  const t = useTranslations();
+  const careerStats = useCareerStats(player?.name);
   if (!player) return null;
 
   const avatarUrl = buildSimpleAvatarUrl(player.avatar || player.name, { gender: player.gender });
@@ -100,6 +104,17 @@ export function PlayerDetailModal({ player, isOpen, onClose }: PlayerDetailModal
                 </div>
 
                 <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">{player.name}</h2>
+
+                {/* 生涯战绩：按角色名累计（无记录则不显示） */}
+                {careerStats && careerStats.games > 0 && (
+                  <div className="flex items-center justify-center gap-2 mb-2 text-[11px] text-[var(--text-secondary)]">
+                    <span>{t("playerDetail.statsGames", { games: careerStats.games })}</span>
+                    <span className="text-[var(--text-muted)]">｜</span>
+                    <span>{t("playerDetail.statsWinRate", { rate: Math.round((careerStats.wins / careerStats.games) * 100) })}</span>
+                    <span className="text-[var(--text-muted)]">｜</span>
+                    <span>{t("playerDetail.statsMvp", { mvps: careerStats.mvps })}</span>
+                  </div>
+                )}
 
                 <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${
                   isWolf 

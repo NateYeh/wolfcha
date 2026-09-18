@@ -29,7 +29,9 @@
     "wolf": "Werewolves"
   },
   "gameEnd": {
-    "wins": "win"
+    "wins": "win",
+    "mvpTitle": "Game MVP",
+    "mvpLoading": "Counting MVP votes…"
   },
   "welcome": {
     "group": {
@@ -758,7 +760,10 @@
     "model": "Model: {model}",
     "background": "Background",
     "voiceStyle": "Voice style",
-    "selfRole": "This is your role"
+    "selfRole": "This is your role",
+    "statsGames": "{games} games",
+    "statsWinRate": "{rate}% win",
+    "statsMvp": "{mvps} MVP"
   },
   "tutorialModal": {
     "title": "Beginner Guide: How to Play Werewolf",

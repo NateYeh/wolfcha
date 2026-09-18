@@ -16,6 +16,7 @@ import {
   WhiteWolfKingIcon
 } from "@/components/icons/FlatIcons";
 import { buildSimpleAvatarUrl, getModelLogoUrl } from "@/lib/avatar-config";
+import { useCareerStats } from "@/hooks/useCareerStats";
 import { useTranslations } from "next-intl";
 
 interface PlayerDetailModalProps {
@@ -53,6 +54,7 @@ const getRoleIcon = (role: string, size: number = 20) => {
 export function PlayerDetailModal({ player, isOpen, onClose, humanPlayer, isGenshinMode = false, isSpectatorMode = false }: PlayerDetailModalProps) {
   const t = useTranslations();
   const [renderPlayer, setRenderPlayer] = useState<Player | null>(player);
+  const careerStats = useCareerStats(renderPlayer?.displayName ?? null);
 
   useEffect(() => {
     if (player) {
@@ -194,6 +196,16 @@ export function PlayerDetailModal({ player, isOpen, onClose, humanPlayer, isGens
 
               {/* 内容区 - 背景信息 */}
               <div className="px-6 pb-6 space-y-4">
+                {/* 生涯战绩：按角色名累计（无记录则不显示） */}
+                {careerStats && careerStats.games > 0 && (
+                  <div className="flex items-center justify-center gap-3 rounded-lg bg-black/5 dark:bg-white/10 px-3 py-2 text-xs text-[var(--text-secondary)]">
+                    <span>{t("playerDetail.statsGames", { games: careerStats.games })}</span>
+                    <span className="text-[var(--text-muted)]">｜</span>
+                    <span>{t("playerDetail.statsWinRate", { rate: Math.round((careerStats.wins / careerStats.games) * 100) })}</span>
+                    <span className="text-[var(--text-muted)]">｜</span>
+                    <span>{t("playerDetail.statsMvp", { mvps: careerStats.mvps })}</span>
+                  </div>
+                )}
                 {showPersona && (
                   <>
                     {/* 性格标签 */}

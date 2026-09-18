@@ -29,7 +29,9 @@
     "wolf": "狼人阵营"
   },
   "gameEnd": {
-    "wins": "胜利"
+    "wins": "胜利",
+    "mvpTitle": "本局MVP",
+    "mvpLoading": "MVP 评选中…"
   },
   "welcome": {
     "group": {
@@ -758,7 +760,10 @@
     "model": "模型：{model}",
     "background": "背景",
     "voiceStyle": "说话风格",
-    "selfRole": "这是你的角色"
+    "selfRole": "这是你的角色",
+    "statsGames": "参赛 {games} 场",
+    "statsWinRate": "胜率 {rate}%",
+    "statsMvp": "MVP {mvps} 次"
   },
   "tutorialModal": {
     "title": "新手教学：狼人杀怎么玩？",

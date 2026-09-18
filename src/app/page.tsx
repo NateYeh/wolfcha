@@ -190,7 +190,7 @@ export default function Home() {
   } = useTutorial();
 
   // 游戏结束时自动触发复盘分析生成
-  const { isLoading: isAnalysisLoading } = useGameAnalysis();
+  const { isLoading: isAnalysisLoading, analysisData } = useGameAnalysis();
 
   const [visualIsNight, setVisualIsNight] = useState(isNight);
   const visualIsNightRef = useRef(isNight);
@@ -1603,6 +1603,7 @@ export default function Home() {
                       onWhiteWolfKingBoom={handleWhiteWolfKingBoom}
                       onViewAnalysis={handleViewAnalysis}
                       isAnalysisLoading={isAnalysisLoading}
+                      gameMvp={analysisData?.awards?.mvp}
                       isEventLogOpen={isEventLogOpen}
                       onEventLogOpenChange={setIsEventLogOpen}
                     />

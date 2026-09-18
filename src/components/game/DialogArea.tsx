@@ -14,6 +14,7 @@ import { TalkingAvatar } from "./TalkingAvatar";
 import { VoiceRecorder, type VoiceRecorderHandle } from "./VoiceRecorder";
 import { EventLog } from "./EventLog";
 import { buildSimpleAvatarUrl, getModelLogoUrl } from "@/lib/avatar-config";
+import type { PlayerAward } from "@/types/analysis";
 import { RoleRevealHistoryCard, type RoleRevealEntry } from "@/components/game/RoleRevealHistoryCard";
 import LoadingMiniGame from "./MiniGame/LoadingMiniGame";
 import type { GameState, Player, ChatMessage, Phase } from "@/types/game";
@@ -282,6 +283,8 @@ interface DialogAreaProps {
   onWhiteWolfKingBoom?: () => void;
   onViewAnalysis?: () => void;
   isAnalysisLoading?: boolean;
+  /** 本局 MVP（賽後感言區顯示；分析完成前為 undefined）。 */
+  gameMvp?: PlayerAward;
   isEventLogOpen?: boolean;
   onEventLogOpenChange?: (open: boolean) => void;
 }
@@ -397,6 +400,7 @@ export function DialogArea({
   onWhiteWolfKingBoom,
   onViewAnalysis,
   isAnalysisLoading = false,
+  gameMvp,
   isEventLogOpen = false,
   onEventLogOpenChange,
 }: DialogAreaProps) {
@@ -1223,6 +1227,34 @@ export function DialogArea({
                       <>GG! <span className="text-[var(--color-wolf)] font-semibold">{t("alignment.wolf")}</span> {t("gameEnd.wins")}!</>
                     )}
                   </div>
+                  {/* 本局 MVP：分析完成後顯示（生成中先顯示佔位） */}
+                  {gameMvp ? (
+                    <div className="flex items-center gap-3 mt-3 px-3 py-2.5 rounded-lg border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/10">
+                      <img
+                        src={buildSimpleAvatarUrl(gameMvp.avatar, { gender: gameMvp.gender, style: gameMvp.avatarStyle })}
+                        alt={gameMvp.playerName}
+                        className="w-10 h-10 rounded-full border-2 border-[var(--color-gold)]/40 object-cover"
+                      />
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                          <span className="text-[var(--color-gold)]">{t("gameEnd.mvpTitle")}</span>
+                          <span>{gameMvp.playerName}</span>
+                        </div>
+                        {gameMvp.reason && (
+                          <div className="text-xs text-[var(--text-muted)] truncate" title={gameMvp.reason}>
+                            {gameMvp.reason}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    isAnalysisLoading && (
+                      <div className="flex items-center gap-2 mt-3 px-3 py-2 text-xs text-[var(--text-muted)]">
+                        <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                        {t("gameEnd.mvpLoading")}
+                      </div>
+                    )
+                  )}
                   <div className={`flex items-center justify-between mt-4 pt-3 border-t ${isNight ? "border-white/10" : "border-black/5"}`}>
                     <span className="text-xs text-[var(--text-muted)]">{t("dialog.playAgainHint")}</span>
                     <div className="flex items-center gap-2">
