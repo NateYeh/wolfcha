@@ -4,7 +4,7 @@ import { setLocale } from "@/i18n/locale-store";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "vote-history-test-key";
-setLocale("zh");
+setLocale("zh-CN");
 
 test("日总结从竞选事件快照读取赢家，不被后续警徽移交覆盖", async () => {
   const [{ createInitialGameState, extractVoteDataFromDayMessages }, { getI18n }] = await Promise.all([

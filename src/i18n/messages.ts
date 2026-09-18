@@ -1,10 +1,15 @@
 import en from "./messages/en.json";
-import zh from "./messages/zh.json";
+import zhCN from "./messages/zh-CN.json";
+import zhTW from "./messages/zh-TW.json";
 import { defaultLocale, type AppLocale } from "./config";
 
-export type AppMessages = typeof zh;
+export type AppMessages = typeof zhCN;
 
-export const messagesByLocale: Record<AppLocale, AppMessages> = { zh, en };
+export const messagesByLocale: Record<AppLocale, AppMessages> = {
+  "zh-CN": zhCN,
+  "zh-TW": zhTW,
+  en,
+};
 
 export const getMessages = (locale: AppLocale): AppMessages => {
   return messagesByLocale[locale] ?? messagesByLocale[defaultLocale];

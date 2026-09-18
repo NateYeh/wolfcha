@@ -1414,7 +1414,7 @@ export function WelcomeScreen({
           <div ref={paperRef} className="wc-contract-paper">
             <div className="wc-contract-borders" aria-hidden="true" />
 
-            {locale === "zh" && FREE_ROUNDS_PROMO_ENABLED && (
+            {locale !== "en" && FREE_ROUNDS_PROMO_ENABLED && (
               <a
                 href="https://my.feishu.cn/share/base/form/shrcnqLuGo3qyh64vFp2JhCN9CF"
                 target="_blank"

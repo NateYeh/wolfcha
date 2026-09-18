@@ -38,7 +38,7 @@ export const getSystemMessages = (locale?: AppLocale) => {
   };
 };
 
-export const SYSTEM_MESSAGES_ZH_FALLBACK = getSystemMessages("zh");
+export const SYSTEM_MESSAGES_ZH_FALLBACK = getSystemMessages("zh-CN");
 export const SYSTEM_MESSAGES = getSystemMessages();
 
 export const getUiText = (locale?: AppLocale) => {

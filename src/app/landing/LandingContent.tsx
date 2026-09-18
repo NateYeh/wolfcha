@@ -429,7 +429,7 @@ function AvatarShowcase({ isZh }: { isZh: boolean }) {
 
 export function LandingContent() {
   const { locale, setLocale } = useAppLocale();
-  const isZh = locale === "zh";
+  const isZh = locale !== "en";
   const messages = getMessages(locale);
   const visibleSections = useScrollAnimation();
 
@@ -449,7 +449,7 @@ export function LandingContent() {
   };
 
   const toggleLocale = () => {
-    setLocale(isZh ? "en" : "zh");
+    setLocale(isZh ? "en" : "zh-CN");
   };
 
   const features = [

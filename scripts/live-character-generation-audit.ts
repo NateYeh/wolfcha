@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import messages from "@/i18n/messages/zh.json";
+import messages from "@/i18n/messages/zh-CN.json";
 import { setLocale } from "@/i18n/locale-store";
 import { parseLLMJson } from "@/lib/llm-json";
 import { stripMarkdownCodeFences } from "@/lib/llm";
@@ -193,7 +193,7 @@ async function runClientGenerationAudit() {
 
   // 只在本进程内模拟用户选择自定义 TokenDance Key。URL 模式走部署后的
   // /api/chat；direct-provider 模式只验证客户端生成管线，不代表生产 Route。
-  setLocale("zh");
+  setLocale("zh-CN");
   const storage = new MemoryStorage();
   storage.setItem("wolfcha_model_source", "custom");
   storage.setItem("wolfcha_model_source_explicit_v1", "true");

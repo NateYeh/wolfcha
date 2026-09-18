@@ -5,7 +5,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next"
 import { I18nProvider } from "@/i18n/I18nProvider";
-import { STORAGE_KEY, defaultLocale, isSupportedLocale, localeToHtmlLang, type AppLocale } from "@/i18n/config";
+import { STORAGE_KEY, defaultLocale, localeToHtmlLang, normalizeLocale, type AppLocale } from "@/i18n/config";
 import { getMessages } from "@/i18n/messages";
 import { JsonLd, getGameJsonLd, getWebsiteJsonLd, getOrganizationJsonLd } from "@/components/seo/JsonLd";
 
@@ -77,7 +77,8 @@ export const metadata: Metadata = {
     canonical: "/",
     languages: {
       "en": "/en",
-      "zh-CN": "/zh",
+      "zh-CN": "/zh-CN",
+      "zh-TW": "/zh-TW",
     },
   },
   robots: {
@@ -94,9 +95,9 @@ export const metadata: Metadata = {
 };
 
 function resolveInitialLocale(pathname: string | null, cookieLocale: string | undefined): AppLocale {
-  if (pathname && /^\/zh(\/|$)/.test(pathname)) return "zh";
-  if (isSupportedLocale(cookieLocale)) return cookieLocale;
-  return defaultLocale;
+  if (pathname && /^\/zh-TW(\/|$)/.test(pathname)) return "zh-TW";
+  if (pathname && /^\/zh(?:-CN)?(\/|$)/.test(pathname)) return "zh-CN";
+  return normalizeLocale(cookieLocale) ?? defaultLocale;
 }
 
 export default async function RootLayout({

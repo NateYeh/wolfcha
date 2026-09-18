@@ -7,7 +7,8 @@ import { useAppLocale } from "@/i18n/useAppLocale";
 import type { AppLocale } from "@/i18n/config";
 
 const LOCALES: { value: AppLocale; label: string }[] = [
-  { value: "zh", label: "中文" },
+  { value: "zh-CN", label: "简体中文" },
+  { value: "zh-TW", label: "繁體中文" },
   { value: "en", label: "English" },
 ];
 
@@ -72,7 +73,7 @@ export function LocaleSwitcher({ className = "" }: LocaleSwitcherProps) {
       >
         <Globe size={18} weight="regular" />
         <span className="text-xs font-medium leading-none text-[var(--text-primary)]">
-          {currentLocale.value === "zh" ? t("locale.zh") : t("locale.en")}
+          {currentLocale.label}
         </span>
       </button>
 

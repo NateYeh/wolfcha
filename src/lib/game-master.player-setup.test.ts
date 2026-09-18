@@ -6,7 +6,7 @@ import type { GeneratedCharacter } from "./character-generator";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "player-setup-test-key";
-setLocale("zh");
+setLocale("zh-CN");
 
 const modelRef: ModelRef = { provider: "tokendance", model: "player-setup-test" };
 

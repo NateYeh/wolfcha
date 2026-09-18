@@ -10,7 +10,7 @@ import {
   buildTodayTranscript,
 } from "./prompt-utils";
 
-setLocale("zh");
+setLocale("zh-CN");
 
 const rolesBySeat: Role[] = [
   "Seer",

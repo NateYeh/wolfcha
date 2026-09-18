@@ -288,7 +288,7 @@ async function runLiveAudit() {
     import("@/lib/ai-logger"),
     import("@/lib/game-master"),
   ]);
-  setLocale("zh");
+  setLocale("zh-CN");
 
   const callPaidProvider = async (payload: ChatPayload) => {
     providerCallId += 1;

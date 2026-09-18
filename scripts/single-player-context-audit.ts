@@ -359,7 +359,7 @@ export async function runSinglePlayerContextAudit(
       import("@/lib/ai-logger"),
       import("@/lib/game-master"),
     ]);
-    setLocale("zh");
+    setLocale("zh-CN");
     unsubscribe = aiLogger.subscribe((entry) => {
       capturedLogs.push(entry);
     });

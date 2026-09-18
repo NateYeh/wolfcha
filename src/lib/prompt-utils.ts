@@ -246,7 +246,7 @@ export const buildPublicFactsForPlayer = (state: GameState, player: Player): str
 }
 
 const buildHiddenCommunicationProfileSection = (persona: Persona, locale: string): string => {
-  if (locale === "zh") {
+  if (locale !== "en") {
     const lines: string[] = [];
     if (persona.werewolfExperience) lines.push(`狼人杀理解：${persona.werewolfExperience}`);
     if (persona.vocabularyStyle) lines.push(`词汇习惯：${persona.vocabularyStyle}`);
@@ -308,7 +308,7 @@ const buildHiddenPlayerMindSection = (player: Player, locale: string): string =>
   const mind = player.agentProfile?.playerMind;
   if (!mind) return "";
 
-  if (locale === "zh") {
+  if (locale !== "en") {
     const lines: string[] = [
       `胆量：${mind.courage}`,
       `记忆偏好：${mind.memoryBias}`,

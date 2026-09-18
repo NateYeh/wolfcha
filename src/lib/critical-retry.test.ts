@@ -6,7 +6,7 @@ import type { GameState, Player } from "@/types/game";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL ||= "https://example.supabase.co";
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "critical-retry-test-key";
-setLocale("zh");
+setLocale("zh-CN");
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();

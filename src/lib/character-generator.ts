@@ -494,8 +494,8 @@ const buildFullPersonasPrompt = (
           age: p.age,
           basicInfo: p.basicInfo,
         })} ${outputNames.has(p.displayName)
-          ? locale === "zh" ? "[本批输出]" : "[OUTPUT IN THIS BATCH]"
-          : locale === "zh" ? "[仅作全局去重参考]" : "[CONTEXT ONLY FOR GLOBAL DIVERSITY]"}`
+          ? locale !== "en" ? "[本批输出]" : "[OUTPUT IN THIS BATCH]"
+          : locale !== "en" ? "[仅作全局去重参考]" : "[CONTEXT ONLY FOR GLOBAL DIVERSITY]"}`
     )
     .join("\n");
 
@@ -746,7 +746,7 @@ export async function generateCharacters(
             normalized.persona.voiceId,
             normalized.persona.gender,
             normalized.persona.age,
-            "zh" as AppLocale,
+            "zh-CN" as AppLocale,
           );
           const character: GeneratedCharacter = {
             displayName: profile.displayName,
@@ -782,7 +782,7 @@ export async function generateCharacters(
             character.persona.voiceId,
             character.persona.gender,
             character.persona.age,
-            "zh" as AppLocale,
+            "zh-CN" as AppLocale,
           );
           const completed: GeneratedCharacter = {
             displayName: profile.displayName,

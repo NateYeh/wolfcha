@@ -1,4 +1,4 @@
-export type AppLocale = "zh" | "en";
+export type AppLocale = "zh-CN" | "zh-TW" | "en";
 
 export interface VoicePreset {
   id: string;
@@ -70,7 +70,7 @@ export function resolveVoiceId(
   input: string | undefined,
   gender: "male" | "female" | "nonbinary" | undefined,
   age?: number,
-  locale: AppLocale = "zh"
+  locale: AppLocale = "zh-CN"
 ): string {
   const normGender: "male" | "female" = gender === "female" ? "female" : "male";
   
@@ -79,7 +79,7 @@ export function resolveVoiceId(
   const defaults = locale === "en" ? DEFAULT_VOICE_ID_EN : DEFAULT_VOICE_ID;
   
   // For Chinese locale, check if input ID exists in presets
-  if (locale === "zh") {
+  if (locale !== "en") {
     const trimmed = (input || "").trim();
     const exists = trimmed ? presets.some((p) => p.id === trimmed) : false;
     if (exists) return trimmed;

@@ -94,12 +94,12 @@ export const NARRATOR_TEXTS_EN: Record<NarratorTextKey, string> = {
 };
 
 // Get narrator voice ID by locale
-export const getNarratorVoiceId = (locale: AppLocale = "zh"): string => {
+export const getNarratorVoiceId = (locale: AppLocale = "zh-CN"): string => {
   return locale === "en" ? NARRATOR_VOICE_ID_EN : NARRATOR_VOICE_ID;
 };
 
 // Get narrator text by locale
-export const getNarratorText = (key: NarratorTextKey, locale: AppLocale = "zh"): string => {
+export const getNarratorText = (key: NarratorTextKey, locale: AppLocale = "zh-CN"): string => {
   return locale === "en" ? NARRATOR_TEXTS_EN[key] : NARRATOR_TEXTS[key];
 };
 
@@ -113,12 +113,14 @@ export const getPlayerDiedKey = (seat: number): NarratorTextKey | null => {
 };
 
 // 旁白音频文件路径映射 (支持多语言)
-export const getNarratorAudioPath = (key: NarratorTextKey, locale: AppLocale = "zh"): string => {
-  return `/audio/narrator/${locale}/${key}.mp3`;
+export const getNarratorAudioPath = (key: NarratorTextKey, locale: AppLocale = "zh-CN"): string => {
+  // 旁白音檔僅錄製 zh／en 兩套，繁體中文沿用同一批中文音檔
+  const audioDir = locale === "en" ? "en" : "zh";
+  return `/audio/narrator/${audioDir}/${key}.mp3`;
 };
 
 // 检查旁白音频是否存在（用于前端）
-export const checkNarratorAudioExists = async (key: NarratorTextKey, locale: AppLocale = "zh"): Promise<boolean> => {
+export const checkNarratorAudioExists = async (key: NarratorTextKey, locale: AppLocale = "zh-CN"): Promise<boolean> => {
   try {
     const response = await fetch(getNarratorAudioPath(key, locale), { method: "HEAD" });
     return response.ok;

@@ -5,7 +5,7 @@ import type { ChatMessage, GameState, Player, Role } from "@/types/game";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "factual-context-test-key";
-setLocale("zh");
+setLocale("zh-CN");
 
 const roles: Role[] = [
   "Werewolf",

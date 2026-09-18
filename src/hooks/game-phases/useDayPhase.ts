@@ -222,9 +222,9 @@ export function useDayPhase(
       if (!collected.length) setDialogue(speakerHost, t(isGameSessionExpiredMessage(String(error))
         ? "dayPhase.sessionExpired" : "dayPhase.interrupted"), false);
       finalizeSpeechQueue({ requestId: id });
-      toast.error(getLocale() === "zh" ? "发言生成失败，游戏已暂停推进" : "Speech failed. Progress is paused.", {
+      toast.error(getLocale() !== "en" ? "发言生成失败，游戏已暂停推进" : "Speech failed. Progress is paused.", {
         duration: Infinity,
-        action: { label: getLocale() === "zh" ? "重试发言" : "Retry speech", onClick: () => {
+        action: { label: getLocale() !== "en" ? "重试发言" : "Retry speech", onClick: () => {
           if (!request.isValid()) return;
           activeRequestRef.current = null;
           void runAISpeech(store.get(gameStateAtom), player, options);

@@ -1,17 +1,18 @@
-import { STORAGE_KEY, defaultLocale, type AppLocale } from "./config";
+import { STORAGE_KEY, defaultLocale, normalizeLocale, type AppLocale } from "./config";
 
 let currentLocale: AppLocale = defaultLocale;
 const listeners = new Set<(locale: AppLocale) => void>();
 
-const LOCALE_PREFIX = "/zh";
-
-const hasZhPrefix = (pathname: string) => /^\/zh(\/|$)/.test(pathname);
+// 中文語系各帶 URL 前綴；英文不帶前綴。舊的 "/zh" 保留相容，讀取時視為 zh-CN。
+const LOCALE_PREFIXES: Record<Exclude<AppLocale, "en">, string> = {
+  "zh-CN": "/zh-CN",
+  "zh-TW": "/zh-TW",
+};
 
 const readLocaleFromStorage = (): AppLocale | null => {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw === "zh" || raw === "en") return raw;
+    return normalizeLocale(window.localStorage.getItem(STORAGE_KEY));
   } catch {
     // Ignore storage errors
   }
@@ -26,8 +27,7 @@ const readLocaleFromCookie = (): AppLocale | null => {
       const [keyRaw, valueRaw] = part.split("=");
       const key = keyRaw?.trim();
       if (key !== STORAGE_KEY) continue;
-      const value = (valueRaw ?? "").trim();
-      if (value === "zh" || value === "en") return value;
+      return normalizeLocale(valueRaw?.trim());
     }
   } catch {
     // Ignore cookie errors
@@ -36,26 +36,27 @@ const readLocaleFromCookie = (): AppLocale | null => {
 };
 
 const stripLocalePrefix = (pathname: string) => {
-  return pathname.replace(/^\/zh(\/|$)/, "/");
+  return pathname.replace(/^\/zh(?:-CN|-TW)?(\/|$)/, "/");
 };
 
 const applyLocaleToPathname = (pathname: string, locale: AppLocale) => {
   const normalized = stripLocalePrefix(pathname) || "/";
-  if (locale === "zh") {
-    return normalized === "/" ? LOCALE_PREFIX : `${LOCALE_PREFIX}${normalized}`;
-  }
-  return normalized;
+  if (locale === "en") return normalized;
+  const prefix = LOCALE_PREFIXES[locale];
+  return normalized === "/" ? prefix : `${prefix}${normalized}`;
 };
 
-const getLocaleFromPathname = (pathname: string): AppLocale => {
-  return hasZhPrefix(pathname) ? "zh" : "en";
+const getLocaleFromPathname = (pathname: string): AppLocale | null => {
+  if (/^\/zh-TW(\/|$)/.test(pathname)) return "zh-TW";
+  if (/^\/zh(?:-CN)?(\/|$)/.test(pathname)) return "zh-CN";
+  return null;
 };
 
 const resolvePreferredLocale = (fallback: AppLocale = currentLocale): AppLocale => {
   if (typeof window !== "undefined") {
     try {
       const urlLocale = getLocaleFromPathname(window.location.pathname);
-      if (urlLocale === "zh") return "zh";
+      if (urlLocale) return urlLocale;
     } catch {
       // Ignore URL errors
     }

@@ -8,7 +8,7 @@ import type { GameState, Phase } from "@/types/game";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "context-regression-key";
-setLocale("zh");
+setLocale("zh-CN");
 
 function fresh(phase: Phase = "DAY_SPEECH"): GameState {
   const state = createSinglePlayerContextAuditState();

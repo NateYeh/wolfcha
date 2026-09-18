@@ -14,6 +14,12 @@ const nextConfig: NextConfig = {
       { source: "/zh", destination: "/" },
       { source: "/zh/", destination: "/" },
       { source: "/zh/:path*", destination: "/:path*" },
+      { source: "/zh-CN", destination: "/" },
+      { source: "/zh-CN/", destination: "/" },
+      { source: "/zh-CN/:path*", destination: "/:path*" },
+      { source: "/zh-TW", destination: "/" },
+      { source: "/zh-TW/", destination: "/" },
+      { source: "/zh-TW/:path*", destination: "/:path*" },
     ];
   },
   env: {

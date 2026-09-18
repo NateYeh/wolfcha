@@ -1226,7 +1226,7 @@ export function DialogArea({
                   <div className={`flex items-center justify-between mt-4 pt-3 border-t ${isNight ? "border-white/10" : "border-black/5"}`}>
                     <span className="text-xs text-[var(--text-muted)]">{t("dialog.playAgainHint")}</span>
                     <div className="flex items-center gap-2">
-                      {getLocale() === "zh" && (
+                      {getLocale() !== "en" && (
                         <button
                           onClick={onViewAnalysis}
                           className="wc-action-btn text-sm h-9 px-4 flex items-center gap-2"

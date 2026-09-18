@@ -5,7 +5,7 @@ import test from "node:test";
 import { setLocale } from "@/i18n/locale-store";
 import type { GameState, Player } from "@/types/game";
 
-setLocale("zh");
+setLocale("zh-CN");
 
 function makeFetchMock(handler: (body: string) => Response): (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> {
   return async (input, init) => {
