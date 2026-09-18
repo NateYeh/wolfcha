@@ -2014,8 +2014,10 @@ export function useGameLogic() {
       await continueAfterHunterShot(currentState, async (nextState) => {
         await delay(1200);
         if (diedAtNight) {
-          let dayState = transitionPhase(nextState, "DAY_START");
-          dayState = addSystemMessage(dayState, systemMessages.dayBreak);
+          // 不重加 dayBreak：首次天亮的死訊公告、警徽移交、開槍公告都已在 messages 里。
+          // 若再添一條「天亮了」，每日總結／原始日轉寫會從「最後一條天亮」切起，
+          // 把夜死公告全部切掉——這是「獵人夜死開槍，賽後沒人提」的根因。
+          const dayState = transitionPhase(nextState, "DAY_START");
           setGameState(dayState);
           await delay(800);
           await startDayPhaseInternal(dayState, token, { skipAnnouncements: true });
