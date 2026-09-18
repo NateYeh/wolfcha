@@ -360,6 +360,12 @@ const buildAcquaintanceNotes = (state: GameState, player: Player): string => {
   for (const other of state.players) {
     if (other.playerId === player.playerId) continue;
     const traits: string[] = [];
+    if (other.isHuman) {
+      traits.push(t("promptUtils.acquaintance.humanTag"));
+    } else {
+      const model = other.agentProfile?.modelRef?.model;
+      if (model) traits.push(t("promptUtils.acquaintance.fieldModel", { v: model }));
+    }
     const persona = other.agentProfile?.persona;
     if (persona) {
       if (persona.werewolfExperience) traits.push(t("promptUtils.acquaintance.fieldWerewolfExp", { v: persona.werewolfExperience }));
@@ -1069,7 +1075,7 @@ alive_count: ${alivePlayers.length}
 
   // Add alive players list for reference
   const playerList = alivePlayers
-    .map((p) => `  - ${t("promptUtils.gameContext.seatLabel", { seat: p.seat + 1 })} ${p.displayName}${p.playerId === player.playerId ? t("promptUtils.gameContext.youSuffix") : ""}`)
+    .map((p) => `  - ${t("promptUtils.gameContext.seatLabel", { seat: p.seat + 1 })} ${p.displayName}${p.isHuman ? t("promptUtils.gameContext.humanSuffix") : ""}${p.playerId === player.playerId ? t("promptUtils.gameContext.youSuffix") : ""}`)
     .join("\n");
   context += `\n\n<alive_players>\n${playerList}\n</alive_players>`;
 

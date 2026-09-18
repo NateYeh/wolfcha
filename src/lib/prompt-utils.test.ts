@@ -470,13 +470,19 @@ test("熟人局：注入其他玩家的印象与交手记录；关闭或无素�
 
   // 关闭开关：缺席
   assert.doesNotMatch(buildGameContext({ ...dayState, isAcquaintanceGame: false }, actor), /<acquaintance_notes>/);
-  // 开启但无素材：缺席
-  assert.doesNotMatch(buildGameContext({ ...dayState, isAcquaintanceGame: true }, actor), /<acquaintance_notes>/);
+  // 开启但无素材：只有真人标记（真人恒有标记；AI 无印象无记录则不列）
+  const emptyCtx = buildGameContext({ ...dayState, isAcquaintanceGame: true }, actor);
+  assert.match(emptyCtx, /- 1号玩家1：真人玩家（不是 AI，行为没有固定套路）/);
+  assert.doesNotMatch(emptyCtx, /- 2号玩家2：/);
+  assert.doesNotMatch(emptyCtx, /- 1号玩家1：.*交手记录/);
 
-  // 有印象+有交手记录：他人拼入，本人不列
+  // 有印象+有交手记录：真人标真人＋交手记录；AI 标底层模型＋印象；本人不列
   const state: GameState = { ...dayState, isAcquaintanceGame: true };
-  state.players[0] = {
-    ...state.players[0],
+  // 真人（players[0] isHuman=true，无 agentProfile）：只有真人标记＋交手记录
+  state.characterStats = { [state.players[0].displayName]: { games: 12, wins: 7, mvps: 2 } };
+  // AI（players[1]）：persona＋playerMind＋底层模型
+  state.players[1] = {
+    ...state.players[1],
     agentProfile: {
       modelRef: { provider: "tokendance", model: "glm-5.3-flash:cloud" },
       persona: {
@@ -497,17 +503,20 @@ test("熟人局：注入其他玩家的印象与交手记录；关闭或无素�
       },
     },
   };
-  state.characterStats = { [state.players[0].displayName]: { games: 12, wins: 7, mvps: 2 } };
 
   const ctx = buildGameContext(state, actor);
+  // 存活玩家列表的真人标记（一般性信息，不受熟人局开关影响）
+  assert.match(ctx, /1号 玩家1（真人）/);
   assert.match(ctx, /<acquaintance_notes>/);
   assert.match(ctx, /【熟人局】/);
-  assert.match(ctx, /1号玩家1：.*压力反应：被查杀会急着自证/);
+  // 真人行：真人标记＋交手记录（用户自己的历史战绩）
+  assert.match(ctx, /- 1号玩家1：真人玩家（不是 AI，行为没有固定套路）、交手记录：12 场、胜率 58%、MVP 2 次/);
+  // AI 行：底层模型＋行为印象
+  assert.match(ctx, /- 2号玩家2：底层模型：glm-5.3-flash:cloud、/);
   assert.match(ctx, /拿狼伪装：拿狼时话变多/);
   assert.match(ctx, /胆量：偏怂/);
   assert.match(ctx, /自保倾向：优先自保/);
   assert.match(ctx, /场上存在感：存在感强/);
-  assert.match(ctx, /交手记录：12 场、胜率 58%、MVP 2 次/);
   // 本人（3号）不列入名单
   assert.doesNotMatch(ctx, /- 3号玩家3：/);
 });
