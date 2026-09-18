@@ -25,6 +25,7 @@ import {
 import { recordGameSessionAiAttempt } from "@/lib/server-game-observability";
 import { trackSseAttempt } from "@/lib/sse-attempt-tracker";
 import { RequestTimeoutError } from "@/lib/request-timeout";
+import { normalizeGatewayBaseUrl, toChatCompletionsUrl } from "@/lib/gateway-url";
 import { UPSTREAM_TIMEOUT_CODE, UPSTREAM_TIMEOUT_HEADER } from "@/lib/upstream-timeout";
 
 // 9 人完整角色画像的正常流式输出实测可超过 80 秒。未启用 Fluid
@@ -228,6 +229,28 @@ async function trackedStreamResponse(response: Response, context: AttemptContext
   );
 }
 
+
+/**
+ * 決定 TokenDance gateway 位址。
+ * 客戶端自帶的位址只在兩種情況下採用：
+ * 1. 客戶端同時提供了自己的 Key（否則伺服器會把專案金鑰送到對方指定的位址）；
+ * 2. 位址通過 gateway-url 規則（https，或 http 的 localhost／內網）。
+ * 不合法或不可信時直接忽略，改用伺服器設定的閘道器。
+ */
+function resolveTokendanceBaseUrl(
+  headerBaseUrl: string | null | undefined,
+  headerKey: string | null | undefined,
+): string {
+  const candidate = (headerBaseUrl ?? "").trim();
+  if (!candidate || !(headerKey ?? "").trim()) return getTokenPayGatewayUrl();
+  const check = normalizeGatewayBaseUrl(candidate);
+  if (!check.ok) {
+    console.warn("[chat] 忽略不合法的客戶端 gateway 位址:", candidate, check.reason);
+    return getTokenPayGatewayUrl();
+  }
+  return check.url;
+}
+
 function normalizePromptScope(value: unknown): PromptScope {
   return value === "gameplay" ? "gameplay" : "utility";
 }
@@ -240,10 +263,8 @@ function getProviderForModel(model: string): Provider | null {
 }
 
 function getTokendanceUrl(baseUrl: string): string {
-  const trimmed = baseUrl.trim();
-  if (!trimmed) return "";
-  const withoutTrailingSlash = trimmed.replace(/\/+$/, "");
-  return `${withoutTrailingSlash}/chat/completions`;
+  // 統一走 gateway-url 規則（含 http/https 與內網限制），避免前後端兩套判斷。
+  return toChatCompletionsUrl(baseUrl);
 }
 
 /** Resolve ModelRef for a model id; used to apply per-model temperature/reasoning overrides. */
@@ -664,7 +685,7 @@ async function runBatchItem(
       return { ok: false, status: 401, error: "已启用自定义 Key，但未提供 TokenDance Key（已拒绝回退到系统 Key）" };
     }
     const tokendanceApiKey = headerTokendanceKey || process.env.TOKENDANCE_API_KEY;
-    const tokendanceBaseUrl = headerTokendanceBaseUrl || getTokenPayGatewayUrl();
+    const tokendanceBaseUrl = resolveTokendanceBaseUrl(headerTokendanceBaseUrl, headerTokendanceKey);
     if (!tokendanceApiKey || !tokendanceBaseUrl) {
       return { ok: false, status: 500, error: "TOKENDANCE_API_KEY or TOKENDANCE_BASE_URL not configured on server" };
     }
@@ -1131,7 +1152,7 @@ export async function POST(request: NextRequest) {
       }
 
       const tokendanceApiKey = headerTokendanceKey || process.env.TOKENDANCE_API_KEY;
-      const tokendanceBaseUrl = headerTokendanceBaseUrl || getTokenPayGatewayUrl();
+      const tokendanceBaseUrl = resolveTokendanceBaseUrl(headerTokendanceBaseUrl, headerTokendanceKey);
       if (!tokendanceApiKey || !tokendanceBaseUrl) {
         return NextResponse.json(
           { error: "TOKENDANCE_API_KEY or TOKENDANCE_BASE_URL not configured on server" },

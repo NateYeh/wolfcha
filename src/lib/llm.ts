@@ -101,20 +101,26 @@ export function resolveRequestModelForSource(
 }
 
 function buildModelSourceHeaders(source: ModelSource): Record<string, string> {
-  if (source === "project") return {};
-  if (source === "tokenpay") return { "X-TokenPay-Mode": "true" };
-
-  const zenmuxApiKey = getZenmuxApiKey();
-  const dashscopeApiKey = getDashscopeApiKey();
+  // 「設定 → AI 服務連線」自帶的 gateway（key／位址）不分來源一律優先送出：
+  // 使用者自己填了 key，就該用他自己的 key 與位址，與專案／TokenPay 模式不衝突。
   const tokendanceApiKey = getTokendanceApiKey();
   const tokendanceBaseUrl = getTokendanceBaseUrl();
-  return {
-    ...(zenmuxApiKey ? { "X-Zenmux-Api-Key": zenmuxApiKey } : {}),
-    ...(dashscopeApiKey ? { "X-Dashscope-Api-Key": dashscopeApiKey } : {}),
+  const selfHosted = {
     ...(tokendanceApiKey ? { "X-Tokendance-Api-Key": tokendanceApiKey } : {}),
     ...(tokendanceApiKey && tokendanceBaseUrl
       ? { "X-Tokendance-Base-Url": tokendanceBaseUrl }
       : {}),
+  };
+
+  if (source === "project") return selfHosted;
+  if (source === "tokenpay") return { "X-TokenPay-Mode": "true", ...selfHosted };
+
+  const zenmuxApiKey = getZenmuxApiKey();
+  const dashscopeApiKey = getDashscopeApiKey();
+  return {
+    ...(zenmuxApiKey ? { "X-Zenmux-Api-Key": zenmuxApiKey } : {}),
+    ...(dashscopeApiKey ? { "X-Dashscope-Api-Key": dashscopeApiKey } : {}),
+    ...selfHosted,
   };
 }
 

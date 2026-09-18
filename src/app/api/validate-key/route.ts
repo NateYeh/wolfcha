@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DASHSCOPE_VALIDATION_MODEL, TOKENDANCE_VALIDATION_MODEL, ZENMUX_VALIDATION_MODEL } from "@/types/game";
-import { TOKENDANCE_BASE_URL } from "@/lib/api-keys";
+import { DEFAULT_GATEWAY_BASE_URL, toChatCompletionsUrl } from "@/lib/gateway-url";
 import { getTokenPayAppUrl } from "@/lib/tokenpay";
 
 const ZENMUX_API_URL = "https://zenmux.ai/api/v1/chat/completions";
@@ -116,10 +116,7 @@ async function validateZenmuxKey(apiKey: string): Promise<ValidationResult> {
 }
 
 function getTokendanceUrl(baseUrl: string): string {
-  const trimmed = baseUrl.trim();
-  if (!trimmed) return "";
-  const withoutTrailingSlash = trimmed.replace(/\/+$/, "");
-  return `${withoutTrailingSlash}/chat/completions`;
+  return toChatCompletionsUrl(baseUrl);
 }
 
 async function validateTokendanceKey(apiKey: string, baseUrl: string): Promise<ValidationResult> {
@@ -332,7 +329,7 @@ export async function POST(request: NextRequest) {
     const zenmuxKey = request.headers.get("x-zenmux-api-key")?.trim() || "";
     const dashscopeKey = request.headers.get("x-dashscope-api-key")?.trim() || "";
     const tokendanceKey = request.headers.get("x-tokendance-api-key")?.trim() || "";
-    const tokendanceBaseUrl = request.headers.get("x-tokendance-base-url")?.trim() || TOKENDANCE_BASE_URL;
+    const tokendanceBaseUrl = request.headers.get("x-tokendance-base-url")?.trim() || DEFAULT_GATEWAY_BASE_URL;
 
     if (!zenmuxKey && !dashscopeKey && !tokendanceKey) {
       return NextResponse.json(

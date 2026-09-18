@@ -83,6 +83,10 @@
       "cta": "去投票",
       "ariaLabel": "打开 Wolfcha 的 Product Hunt 页面（投票）"
     },
+"localMode": {
+        "badge": "本機模式（免登入）",
+        "hint": "不需要帳號：在「设置」裡設定伺服器位址、API Key 與模型池"
+      },
     "sponsor": {
       "title": "成为赞助商",
       "subtitle": "你的支持会直接帮助 Wolfcha 跑得更稳、让更多人可以免费玩到。",
@@ -406,6 +410,23 @@
     "selectDifficulty": "选择难度",
     "playerCountLabel": "人数",
     "selectPlayerCount": "选择人数",
+"connection": {
+    "title": "AI 服务连接",
+    "description": "留空就用内建网关；填了自己的地址与 Key 就用你自己的网关（只保存在本机浏览器，不进版本库）",
+    "baseUrlLabel": "服务器地址",
+    "keyLabel": "API Key",
+    "keyPlaceholder": "sk-...",
+    "test": "测试连接",
+    "testing": "测试中…",
+    "ok": "连接成功",
+    "fail": "连接失败（检查地址、Key 与网关是否允许本机调用）",
+    "invalid": {
+      "empty": "请填写服务器地址",
+      "invalid": "地址格式不对，需要完整 URL（例如 https://host/v1）",
+      "protocol": "只支持 http/https 地址",
+      "insecure": "http 只允许 localhost 或内网地址；对外地址请用 https"
+    }
+  },
 "modelPool": {
         "title": "AI 玩家模型池",
         "description": "勾选这一局允许出场的模型（没勾的不会被抽到 AI 玩家）；下一局生效",

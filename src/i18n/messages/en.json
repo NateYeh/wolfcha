@@ -83,6 +83,10 @@
       "cta": "UPVOTE",
       "ariaLabel": "Open Wolfcha on Product Hunt (vote)"
     },
+"localMode": {
+        "badge": "Local mode (no sign-in)",
+        "hint": "No account needed: set the server base URL, API key and model pool in Settings"
+      },
     "sponsor": {
       "title": "Become a sponsor",
       "subtitle": "Your support keeps Wolfcha running smoothly and free for everyone.",
@@ -406,6 +410,23 @@
     "selectDifficulty": "Select difficulty",
     "playerCountLabel": "Player count",
     "selectPlayerCount": "Select player count",
+"connection": {
+    "title": "AI service connection",
+    "description": "Leave blank to use the built-in gateway; with your own base URL and key the game calls your gateway (stored only in this browser, never committed)",
+    "baseUrlLabel": "Server base URL",
+    "keyLabel": "API Key",
+    "keyPlaceholder": "sk-...",
+    "test": "Test connection",
+    "testing": "Testing…",
+    "ok": "Connection OK",
+    "fail": "Connection failed (check URL, key, and whether the gateway allows local calls)",
+    "invalid": {
+      "empty": "Enter a server base URL",
+      "invalid": "Invalid URL — a full URL is required (e.g. https://host/v1)",
+      "protocol": "Only http/https URLs are supported",
+      "insecure": "http is only allowed for localhost or private LAN addresses; use https otherwise"
+    }
+  },
 "modelPool": {
         "title": "AI player model pool",
         "description": "Pick which models may appear this round (unchecked ones are never drawn for AI players); takes effect next game",

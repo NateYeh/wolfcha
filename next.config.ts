@@ -18,6 +18,8 @@ const nextConfig: NextConfig = {
   },
   env: {
     NEXT_PUBLIC_APP_VERSION: pkg.version ?? "0.0.0",
+    // 本機／自架模式：不提供帳號登入，玩家在「設定」自帶 gateway 與模型。
+    NEXT_PUBLIC_WOLFCHA_LOCAL_NO_AUTH: process.env.WOLFCHA_LOCAL_NO_AUTH ?? "",
   },
   webpack(config) {
     config.resolve = config.resolve || {};

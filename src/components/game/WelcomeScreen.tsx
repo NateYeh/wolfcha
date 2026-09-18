@@ -66,6 +66,10 @@ type SponsorCardProps = {
 
 const CUSTOM_CHARACTER_SELECTION_STORAGE_KEY = "wolfcha_custom_character_selection";
 
+// 本機／自架模式（WOLFCHA_LOCAL_NO_AUTH=1）：不提供帳號登入按鈕，
+// 玩家改用「設定」裡的服務連線（伺服器位址＋Key）與模型池。
+const LOCAL_NO_AUTH = process.env.NEXT_PUBLIC_WOLFCHA_LOCAL_NO_AUTH === "1";
+
 // Track sponsor click
 async function trackSponsorClick(sponsorId: string) {
   try {
@@ -1326,6 +1330,14 @@ export function WelcomeScreen({
                   </span>
                 )}
               </button>
+            ) : LOCAL_NO_AUTH ? (
+              <span
+                className="hidden md:flex items-center gap-2 rounded-md border-2 border-[var(--border-color)] bg-[var(--bg-card)] px-2.5 py-1.5 text-xs text-[var(--text-muted)]"
+                title={t("welcome.localMode.hint")}
+              >
+                <UserCircle size={16} />
+                {t("welcome.localMode.badge")}
+              </span>
             ) : (
               <Button
                 type="button"

@@ -24,6 +24,13 @@ import {
 } from "@/lib/character-pool-api";
 import type { CharacterPoolStatus } from "@/lib/character-pool-refill";
 import { getPlayerModelPool, setPlayerModelPool } from "@/lib/api-keys";
+import {
+  getTokendanceApiKey,
+  getTokendanceBaseUrl,
+  setTokendanceApiKey,
+  setTokendanceBaseUrl,
+} from "@/lib/api-keys";
+import { DEFAULT_GATEWAY_BASE_URL, normalizeGatewayBaseUrl } from "@/lib/gateway-url";
 import { PLAYER_MODELS, filterPlayerModels, type GameScenario, type Role } from "@/types/game";
 
 /** Return the unique roles present in the default configuration for a given player count. */
@@ -142,6 +149,73 @@ export function GameSetupModal({
   const [modelPool, setModelPool] = useState<string[]>(() => getPlayerModelPool());
   const [modelPoolNotice, setModelPoolNotice] = useState("");
   const playerModelOptions = useMemo(() => filterPlayerModels(PLAYER_MODELS), []);
+
+  // AI 服務連線：自帶 gateway（伺服器位址 + Key），同樣只存在本機瀏覽器。
+  const [gatewayBaseUrl, setGatewayBaseUrlState] = useState(() => {
+    const current = getTokendanceBaseUrl();
+    return current === DEFAULT_GATEWAY_BASE_URL ? "" : current;
+  });
+  const [gatewayKey, setGatewayKeyState] = useState(() => getTokendanceApiKey());
+  const [connectionState, setConnectionState] = useState<"idle" | "testing" | "ok" | "fail">("idle");
+  const [connectionMessage, setConnectionMessage] = useState("");
+  const baseUrlCheck = useMemo(
+    () => normalizeGatewayBaseUrl(gatewayBaseUrl.trim() || DEFAULT_GATEWAY_BASE_URL),
+    [gatewayBaseUrl],
+  );
+
+  const handleBaseUrlChange = (value: string) => {
+    setGatewayBaseUrlState(value);
+    setConnectionState("idle");
+    setConnectionMessage("");
+    if (!value.trim()) {
+      // 清空＝回到出廠預設 gateway
+      setTokendanceBaseUrl("");
+      return;
+    }
+    const check = normalizeGatewayBaseUrl(value);
+    // 只在合法時寫入，避免把無效位址存進設定而之後每次開局都打不通
+    if (check.ok) setTokendanceBaseUrl(check.url);
+  };
+
+  const handleGatewayKeyChange = (value: string) => {
+    setGatewayKeyState(value);
+    setConnectionState("idle");
+    setConnectionMessage("");
+    setTokendanceApiKey(value.trim());
+  };
+
+  const handleTestConnection = async () => {
+    const check = normalizeGatewayBaseUrl(gatewayBaseUrl.trim() || DEFAULT_GATEWAY_BASE_URL);
+    if (!check.ok) {
+      setConnectionState("fail");
+      setConnectionMessage(t(`gameSetup.connection.invalid.${check.reason}`));
+      return;
+    }
+    setConnectionState("testing");
+    setConnectionMessage("");
+    try {
+      const response = await fetch("/api/validate-key", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Tokendance-Api-Key": gatewayKey.trim(),
+          "X-Tokendance-Base-Url": check.url,
+        },
+      });
+      const data = (await response.json().catch(() => null)) as { valid?: boolean; error?: string } | null;
+      if (response.ok && data?.valid) {
+        setConnectionState("ok");
+        setConnectionMessage(t("gameSetup.connection.ok"));
+        return;
+      }
+      setConnectionState("fail");
+      setConnectionMessage(data?.error || t("gameSetup.connection.fail"));
+    } catch (error) {
+      console.error("[GameSetupModal] 連線測試失敗", error);
+      setConnectionState("fail");
+      setConnectionMessage(t("gameSetup.connection.fail"));
+    }
+  };
 
   const applyModelPool = (next: string[]) => {
     // 全選時收斂成空陣列（＝全部），避免與「未勾選」語意混淆。
@@ -458,6 +532,57 @@ export function GameSetupModal({
               {characterPoolError
                 ? t("gameSetup.characterPool.failed")
                 : t("gameSetup.characterPool.hint")}
+            </div>
+          </div>
+
+          <div className="border-t border-[var(--border-color)] pt-4">
+            <div className="text-sm font-medium text-[var(--text-primary)]">{t("gameSetup.connection.title")}</div>
+            <div className="mt-1 text-xs text-[var(--text-muted)]">{t("gameSetup.connection.description")}</div>
+            <div className="mt-2 space-y-2">
+              <div className="space-y-1">
+                <div className="text-xs text-[var(--text-muted)]">{t("gameSetup.connection.baseUrlLabel")}</div>
+                <Input
+                  value={gatewayBaseUrl}
+                  onChange={(event) => handleBaseUrlChange(event.target.value)}
+                  placeholder={DEFAULT_GATEWAY_BASE_URL}
+                  aria-label={t("gameSetup.connection.baseUrlLabel")}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs text-[var(--text-muted)]">{t("gameSetup.connection.keyLabel")}</div>
+                <Input
+                  type="password"
+                  value={gatewayKey}
+                  onChange={(event) => handleGatewayKeyChange(event.target.value)}
+                  placeholder={t("gameSetup.connection.keyPlaceholder")}
+                  aria-label={t("gameSetup.connection.keyLabel")}
+                  className="h-8 text-xs"
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={connectionState === "testing" || !gatewayKey.trim() || !baseUrlCheck.ok}
+                  onClick={() => void handleTestConnection()}
+                >
+                  {connectionState === "testing" ? t("gameSetup.connection.testing") : t("gameSetup.connection.test")}
+                </Button>
+                {connectionMessage ? (
+                  <span className={connectionState === "ok" ? "text-xs text-[var(--color-success)]" : "text-xs text-[var(--color-warning,#c0392b)]"}>
+                    {connectionMessage}
+                  </span>
+                ) : null}
+              </div>
+              {!baseUrlCheck.ok && gatewayBaseUrl.trim() ? (
+                <div className="text-xs text-[var(--color-warning,#c0392b)]">
+                  {t(`gameSetup.connection.invalid.${baseUrlCheck.reason}`)}
+                </div>
+              ) : null}
             </div>
           </div>
 

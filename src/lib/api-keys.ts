@@ -17,6 +17,7 @@ const MINIMAX_GROUP_ID_STORAGE = "wolfcha_minimax_group_id";
 const CUSTOM_KEY_ENABLED_STORAGE = "wolfcha_custom_key_enabled";
 const SELECTED_MODELS_STORAGE = "wolfcha_selected_models";
 const PLAYER_MODEL_POOL_STORAGE = "wolfcha_player_model_pool";
+const TOKENDANCE_BASE_URL_STORAGE = "wolfcha_tokendance_base_url";
 const GENERATOR_MODEL_STORAGE = "wolfcha_generator_model";
 const SUMMARY_MODEL_STORAGE = "wolfcha_summary_model";
 const REVIEW_MODEL_STORAGE = "wolfcha_review_model";
@@ -76,7 +77,7 @@ export function getTokendanceApiKey(): string {
 }
 
 export function getTokendanceBaseUrl(): string {
-  return TOKENDANCE_BASE_URL;
+  return readStorage(TOKENDANCE_BASE_URL_STORAGE) || TOKENDANCE_BASE_URL;
 }
 
 export function setMinimaxApiKey(key: string) {
@@ -107,8 +108,14 @@ export function setTokenPayConnected(connected: boolean) {
   );
 }
 
-export function setTokendanceBaseUrl() {
-  // TokenDance gateway URL is fixed for custom-key gameplay.
+export function setTokendanceBaseUrl(url: string) {
+  // 空字串（或等於預設值）就清掉覆寫，回到出廠預設 gateway。
+  const trimmed = (url ?? "").trim().replace(/\/+$/, "");
+  if (!trimmed || trimmed === TOKENDANCE_BASE_URL) {
+    if (canUseStorage()) window.localStorage.removeItem(TOKENDANCE_BASE_URL_STORAGE);
+    return;
+  }
+  writeStorage(TOKENDANCE_BASE_URL_STORAGE, trimmed);
 }
 
 export function getMinimaxGroupId(): string {
@@ -148,11 +155,11 @@ export function setValidatedTokendanceKey(key: string) {
 }
 
 export function getValidatedTokendanceBaseUrl(): string {
-  return TOKENDANCE_BASE_URL;
+  return getTokendanceBaseUrl();
 }
 
-export function setValidatedTokendanceBaseUrl() {
-  // TokenDance gateway URL is fixed for custom-key gameplay.
+export function setValidatedTokendanceBaseUrl(url: string) {
+  setTokendanceBaseUrl(url);
 }
 
 export function hasDashscopeKey(): boolean {
