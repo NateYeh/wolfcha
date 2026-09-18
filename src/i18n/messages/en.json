@@ -406,6 +406,13 @@
     "selectDifficulty": "Select difficulty",
     "playerCountLabel": "Player count",
     "selectPlayerCount": "Select player count",
+"modelPool": {
+        "title": "AI player model pool",
+        "description": "Pick which models may appear this round (unchecked ones are never drawn for AI players); takes effect next game",
+        "all": "All",
+        "minOne": "Keep at least one model — unchecking all falls back to \"all\"",
+        "summary": "Active this round: {count}/{total} models"
+      },
     "soundLabel": "Sound",
     "difficulty": {
       "easyDesc": "Relaxed atmosphere, great for first-timers",

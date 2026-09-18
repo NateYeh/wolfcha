@@ -23,7 +23,8 @@ import {
   saveCustomScenarioRemote,
 } from "@/lib/character-pool-api";
 import type { CharacterPoolStatus } from "@/lib/character-pool-refill";
-import type { GameScenario, Role } from "@/types/game";
+import { getPlayerModelPool, setPlayerModelPool } from "@/lib/api-keys";
+import { PLAYER_MODELS, filterPlayerModels, type GameScenario, type Role } from "@/types/game";
 
 /** Return the unique roles present in the default configuration for a given player count. */
 function getAvailableRoles(playerCount: number): Role[] {
@@ -136,6 +137,30 @@ export function GameSetupModal({
 
   // 情境選擇與自訂情境表單：選定後按「換情境重建」生效。
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>("random");
+  // AI 玩家模型池：存放使用者在「設定」裡勾選的模型 id（空＝全部可用）。
+  // 惰性初始化直接讀 localStorage；之後每次變更都同步寫回，因此不需要 effect 同步。
+  const [modelPool, setModelPool] = useState<string[]>(() => getPlayerModelPool());
+  const [modelPoolNotice, setModelPoolNotice] = useState("");
+  const playerModelOptions = useMemo(() => filterPlayerModels(PLAYER_MODELS), []);
+
+  const applyModelPool = (next: string[]) => {
+    // 全選時收斂成空陣列（＝全部），避免與「未勾選」語意混淆。
+    const allSelected = playerModelOptions.length > 0 && next.length >= playerModelOptions.length;
+    const stored = allSelected ? [] : next;
+    setPlayerModelPool(stored);
+    setModelPool(stored);
+  };
+
+  const toggleModel = (model: string) => {
+    const current = modelPool.length === 0 ? playerModelOptions.map((ref) => ref.model) : modelPool;
+    const next = current.includes(model) ? current.filter((item) => item !== model) : [...current, model];
+    if (next.length === 0) {
+      setModelPoolNotice(t("gameSetup.modelPool.minOne"));
+      return;
+    }
+    setModelPoolNotice("");
+    applyModelPool(next);
+  };
   const [customScenarios, setCustomScenarios] = useState<GameScenario[]>([]);
   const [customName, setCustomName] = useState("");
   const [customDesc, setCustomDesc] = useState("");
@@ -433,6 +458,52 @@ export function GameSetupModal({
               {characterPoolError
                 ? t("gameSetup.characterPool.failed")
                 : t("gameSetup.characterPool.hint")}
+            </div>
+          </div>
+
+          <div className="border-t border-[var(--border-color)] pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-medium text-[var(--text-primary)]">{t("gameSetup.modelPool.title")}</div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => { setModelPoolNotice(""); applyModelPool([]); }}
+              >
+                {t("gameSetup.modelPool.all")}
+              </Button>
+            </div>
+            <div className="mt-1 text-xs text-[var(--text-muted)]">
+              {t("gameSetup.modelPool.description")}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {playerModelOptions.map((ref) => {
+                const active = modelPool.length === 0 || modelPool.includes(ref.model);
+                return (
+                  <button
+                    key={`${ref.provider}:${ref.model}`}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => toggleModel(ref.model)}
+                    className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                      active
+                        ? "border-[var(--color-accent)] text-[var(--text-primary)]"
+                        : "border-[var(--border-color)] text-[var(--text-muted)] opacity-60"
+                    }`}
+                  >
+                    {ref.model}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-2 text-xs text-[var(--text-muted)]">
+              {modelPoolNotice
+                ? <span className="text-[var(--color-warning,#c0392b)]">{modelPoolNotice}</span>
+                : t("gameSetup.modelPool.summary", {
+                    count: modelPool.length === 0 ? playerModelOptions.length : modelPool.length,
+                    total: playerModelOptions.length,
+                  })}
             </div>
           </div>
 

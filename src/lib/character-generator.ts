@@ -18,6 +18,7 @@ import {
 } from "@/types/game";
 import {
   getGeneratorModel,
+  getPlayerModelPool,
   getSelectedModels,
   hasDashscopeKey,
   hasTokendanceKey,
@@ -92,8 +93,23 @@ export const sampleModelRefs = (count: number): ModelRef[] => {
       ? PLAYER_MODELS
       : [getModelRefForModel(GENERATOR_MODEL)];
 
+  // 內建（專案／TokenPay）模式：模型清單寫死在 PLAYER_MODELS，
+  // 使用者可在「設定 → AI 玩家模型池」勾選本輪要用的模型（空＝全部）。
+  // 全選項都失效時退回全部，並留下紀錄（不靜默吞掉）。
+  const applyPlayerPoolFilter = (pool: ModelRef[]): ModelRef[] => {
+    const selected = getPlayerModelPool();
+    if (selected.length === 0) return pool;
+    const selectedSet = new Set(selected);
+    const filtered = pool.filter((ref) => selectedSet.has(ref.model));
+    if (filtered.length === 0) {
+      console.warn("[sampleModelRefs] 勾選的模型都不在可用池子里，改用全部模型:", selected);
+      return pool;
+    }
+    return filtered;
+  };
+
   const pool = (() => {
-    if (!isCustomKeyEnabled()) return defaultPool;
+    if (!isCustomKeyEnabled()) return applyPlayerPoolFilter(defaultPool);
 
     // When custom key is enabled, use ALL_MODELS as the full available pool
     const fullPool = ALL_MODELS.length > 0 ? ALL_MODELS : defaultPool;

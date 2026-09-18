@@ -16,6 +16,7 @@ const MINIMAX_API_KEY_STORAGE = "wolfcha_minimax_api_key";
 const MINIMAX_GROUP_ID_STORAGE = "wolfcha_minimax_group_id";
 const CUSTOM_KEY_ENABLED_STORAGE = "wolfcha_custom_key_enabled";
 const SELECTED_MODELS_STORAGE = "wolfcha_selected_models";
+const PLAYER_MODEL_POOL_STORAGE = "wolfcha_player_model_pool";
 const GENERATOR_MODEL_STORAGE = "wolfcha_generator_model";
 const SUMMARY_MODEL_STORAGE = "wolfcha_summary_model";
 const REVIEW_MODEL_STORAGE = "wolfcha_review_model";
@@ -292,6 +293,38 @@ export function setSelectedModels(models: string[]) {
     return;
   }
   window.localStorage.setItem(SELECTED_MODELS_STORAGE, JSON.stringify(normalized));
+}
+
+/**
+ * AI 玩家模型池：清單本身寫死在程式碼（PLAYER_MODELS），這裡只記錄「這一輪要抽哪些」。
+ * 空陣列＝全部可用（維持舊行為）；至少保留一個模型由 UI 把關。
+ * 與自訂 key 的 wolfcha_selected_models 分開，兩者語意不重疊。
+ */
+export function getPlayerModelPool(): string[] {
+  if (!canUseStorage()) return [];
+  const raw = window.localStorage.getItem(PLAYER_MODEL_POOL_STORAGE);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) => String(item ?? "").trim()).filter(Boolean);
+  } catch (error) {
+    // 不得靜默失敗：存檔壞掉時退回「全部模型」，並留下可追查的紀錄。
+    console.warn("[api-keys] 玩家模型池解析失敗，本輪改用全部模型", error);
+    return [];
+  }
+}
+
+export function setPlayerModelPool(models: string[]) {
+  if (!canUseStorage()) return;
+  const normalized = Array.from(
+    new Set(models.map((model) => String(model ?? "").trim()).filter(Boolean)),
+  );
+  if (normalized.length === 0) {
+    window.localStorage.removeItem(PLAYER_MODEL_POOL_STORAGE);
+    return;
+  }
+  window.localStorage.setItem(PLAYER_MODEL_POOL_STORAGE, JSON.stringify(normalized));
 }
 
 export function getGeneratorModel(): string {

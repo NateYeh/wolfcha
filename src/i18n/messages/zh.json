@@ -406,6 +406,13 @@
     "selectDifficulty": "选择难度",
     "playerCountLabel": "人数",
     "selectPlayerCount": "选择人数",
+"modelPool": {
+        "title": "AI 玩家模型池",
+        "description": "勾选这一局允许出场的模型（没勾的不会被抽到 AI 玩家）；下一局生效",
+        "all": "全部",
+        "minOne": "至少要留一个模型，全关会退回「全部」",
+        "summary": "本局生效：{count}/{total} 个模型"
+      },
     "soundLabel": "声音",
     "difficulty": {
       "easyDesc": "轻松氛围，适合初次体验",
