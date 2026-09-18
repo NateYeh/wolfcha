@@ -145,8 +145,8 @@ test("警徽报名批处理为每个玩家建立独立 Prompt，并按返回顺�
     assert.doesNotMatch(guardPrompt, /<your_seer_checks>/);
     assert.match(seerPrompt, /警徽竞选报名环节/);
     assert.match(guardPrompt, /警徽竞选报名环节/);
-    assert.match(seerPrompt, /\{"signup":true\}/);
-    assert.match(guardPrompt, /\{"signup":false\}/);
+    assert.match(seerPrompt, /\{"signup":true,"reason":"/);
+    assert.match(guardPrompt, /\{"signup":false,"reason":"/);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -186,6 +186,54 @@ test("警徽报名单个响应非法或失败时只将对应玩家判为不上�
     const result = await generateAIBadgeSignupBatch(state, players);
     assert.deepEqual(result, { p1: true, p2: false, p3: false });
   } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("警徽报名：reason 一併解析並記進 log", async () => {
+  const [{ aiLogger }, { generateAIBadgeSignupBatch }, { getI18n }] = await Promise.all([
+    import("./ai-logger"),
+    import("./game-master"),
+    import("@/i18n/translator"),
+  ]);
+  getI18n(); // 觸發語系初始化（setLocale 已在檔頭執行）
+  const players = [
+    makePlayer("p1", 0, "Seer"),
+    makePlayer("p2", 1, "Guard"),
+  ];
+  const state = makeState(players);
+  const originalFetch = globalThis.fetch;
+  const logs: Array<{ response: { parsed?: { signup?: boolean; reason?: string } } }> = [];
+  const unsubscribe = aiLogger.subscribe((entry) => {
+    if (entry.type === "badge_signup") logs.push(entry as { response: { parsed?: { signup?: boolean; reason?: string } } });
+  });
+
+  globalThis.fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body)) as {
+      requests: Array<{ messages: Array<{ content: string | unknown[] }> }>;
+    };
+    return new Response(JSON.stringify({
+      results: body.requests.map((_, index) => ({
+        ok: true,
+        data: {
+          id: `badge-reason-${index}`,
+          choices: [{
+            message: { role: "assistant", content: JSON.stringify({ signup: index === 0, reason: index === 0 ? "我有查验要第一时间报" : "手上没东西，先不上警" }) },
+            finish_reason: "stop",
+          }],
+        },
+      })),
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  try {
+    const result = await generateAIBadgeSignupBatch(state, players);
+    assert.deepEqual(result, { p1: true, p2: false });
+    assert.equal(logs.length, 2);
+    assert.deepEqual(logs[0].response.parsed, { signup: true, reason: "我有查验要第一时间报" });
+    assert.deepEqual(logs[1].response.parsed, { signup: false, reason: "手上没东西，先不上警" });
+  } finally {
+    unsubscribe();
     globalThis.fetch = originalFetch;
   }
 });

@@ -59,7 +59,7 @@ export class BadgePhase extends GamePhase {
         options: alivePlayers
           .map((p) => t("prompts.badge.option", { seat: p.seat + 1, name: p.displayName }))
           .join(t("promptUtils.gameContext.listSeparator")),
-        jsonFormat: JSON.stringify({ seat: exampleSeat }),
+        jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "一句话说明你为什么把警徽票投给他" }),
       }) +
       // 警徽票纪律：仅狼人可见。无对跳时警徽票默认投唯一跳预言家的人，
       // 不投需有能公开说出口的理由，否则复盘时「警徽票没投预言家」会直接暴露。

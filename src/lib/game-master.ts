@@ -1278,7 +1278,7 @@ function seatSelectionResponseFormat(
   validSeats: number[]
 ): NonNullable<GenerateOptions["response_format"]> {
   // 夜間行動（查验/出刀/守護）與白天放逐投票一樣帶 reason：留一句思路供日誌除錯與賽後復盤。
-  const withReason = ["day_vote", "seer_action", "wolf_action", "guard_action"].includes(name);
+  const withReason = ["day_vote", "seer_action", "wolf_action", "guard_action", "badge_vote"].includes(name);
   return structuredResponseFormat(modelRef, name, {
     type: "object",
     properties: {
@@ -1350,8 +1350,8 @@ export async function generateAIBadgeSignupBatch(
         temperature: GAME_TEMPERATURE.BADGE_SIGNUP,
         response_format: structuredResponseFormat(modelRef, "badge_signup", {
           type: "object",
-          properties: { signup: { type: "boolean" } },
-          required: ["signup"],
+          properties: { signup: { type: "boolean" }, reason: { type: "string" } },
+          required: ["signup", "reason"],
           additionalProperties: false,
         }),
       },
@@ -1362,10 +1362,14 @@ export async function generateAIBadgeSignupBatch(
   );
   const startTime = Date.now();
 
-  const parseBadgeSignupDecision = (content: string): boolean | null => {
+  const parseBadgeSignupDecision = (content: string): { signup: boolean; reason: string } | null => {
     const cleaned = stripMarkdownCodeFences(String(content ?? "")).trim();
-    const parsed = parseLLMJson<{ signup?: unknown }>(cleaned);
-    return typeof parsed?.signup === "boolean" ? parsed.signup : null;
+    const parsed = parseLLMJson<{ signup?: unknown; reason?: unknown }>(cleaned);
+    if (typeof parsed?.signup !== "boolean") return null;
+    return {
+      signup: parsed.signup,
+      reason: typeof parsed.reason === "string" ? parsed.reason : "",
+    };
   };
 
   try {
@@ -1374,7 +1378,7 @@ export async function generateAIBadgeSignupBatch(
       requests.map(async ({ player, messages }, index) => {
         const result = results[index];
         const decision = result?.ok ? parseBadgeSignupDecision(result.content) : null;
-        if (decision !== null) parsedByPlayer[player.playerId] = decision;
+        if (decision !== null) parsedByPlayer[player.playerId] = decision.signup;
 
         await aiLogger.log({
           type: "badge_signup",
@@ -1394,12 +1398,12 @@ export async function generateAIBadgeSignupBatch(
                 raw: result.raw.choices?.[0]?.message?.content,
                 rawResponse: JSON.stringify(result.raw, null, 2),
                 finishReason: result.raw.choices?.[0]?.finish_reason,
-                parsed: decision ?? false,
+                parsed: { signup: decision?.signup ?? false, reason: decision?.reason ?? "" },
                 duration: Date.now() - startTime,
               }
             : {
                 content: "",
-                parsed: false,
+                parsed: { signup: false, reason: "" },
                 duration: Date.now() - startTime,
               },
           ...(!result?.ok
@@ -1427,7 +1431,7 @@ export async function generateAIBadgeSignupBatch(
           },
           response: {
             content: "",
-            parsed: false,
+            parsed: { signup: false, reason: "" },
             duration: Date.now() - startTime,
           },
           error: String(error),
@@ -1449,6 +1453,8 @@ export async function generateAIBadgeVote(
     .filter((p) => p.alive && p.playerId !== player.playerId)
     .filter((p) => (candidates.length > 0 ? candidates.includes(p.seat) : true));
   const startTime = Date.now();
+  // 警徽投票也要 reason：與放逐投票同一把尺，供覆盤「警徽票為什麼這樣投」。
+  let parsedReason = "";
   const { messages } = buildMessagesForPrompt(prompt);
   const validSeats = alivePlayers.map((p) => p.seat);
 
@@ -1464,6 +1470,8 @@ export async function generateAIBadgeVote(
         response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "badge_vote", validSeats),
       }),
       (cleaned) => {
+        const parsedObject = parseLLMJson<{ reason?: unknown }>(cleaned);
+        parsedReason = typeof parsedObject?.reason === "string" ? parsedObject.reason : "";
         const parsedSeat = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "vote"]);
         return parsedSeat === null ? parseFail() : parseOk(parsedSeat);
       }
@@ -1482,7 +1490,7 @@ export async function generateAIBadgeVote(
         raw: completion.result.content,
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
-        parsed: { targetSeat: parsedSeat, attempts: completion.attempts },
+        parsed: { targetSeat: parsedSeat, reason: parsedReason, attempts: completion.attempts },
         duration: Date.now() - startTime,
       },
     });

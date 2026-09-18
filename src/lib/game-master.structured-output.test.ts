@@ -183,3 +183,51 @@ test("警徽移交：reason 欄位一併解析並記進 log", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("警徽投票：reason 欄位一併解析並記進 log", async () => {
+  const [{ aiLogger }, { createInitialGameState, generateAIBadgeVote, BADGE_VOTE_ABSTAIN }] = await Promise.all([
+    import("./ai-logger"),
+    import("./game-master"),
+  ]);
+  const voter = makePlayer("voter", 0, "qwen3-max");
+  const candidate = makePlayer("candidate", 1, "qwen3-max");
+  const state: GameState = {
+    ...createInitialGameState(),
+    phase: "DAY_BADGE_ELECTION",
+    day: 1,
+    players: [voter, candidate],
+    badge: {
+      holderSeat: null,
+      candidates: [candidate.seat],
+      signup: {},
+      votes: {},
+      allVotes: {},
+      history: {},
+      revoteCount: 0,
+    },
+  } as unknown as GameState;
+  const originalFetch = globalThis.fetch;
+  const logs: AILogEntry[] = [];
+  const unsubscribe = aiLogger.subscribe((entry) => {
+    if (entry.type === "badge_vote") logs.push(entry);
+  });
+
+  globalThis.fetch = async (input) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url === "/api/demo-config") return Response.json({ active: false, enabled: false });
+    return completionResponse('{"seat": 2, "reason": "他有查验在身，警徽该归他"}');
+  };
+
+  try {
+    const seat = await generateAIBadgeVote(state, voter);
+    assert.notEqual(seat, BADGE_VOTE_ABSTAIN);
+    assert.equal(seat, candidate.seat);
+    assert.equal(logs.length, 1);
+    const parsed = logs[0].response.parsed as { targetSeat?: number; reason?: string };
+    assert.equal(parsed.targetSeat, candidate.seat);
+    assert.equal(parsed.reason, "他有查验在身，警徽该归他");
+  } finally {
+    unsubscribe();
+    globalThis.fetch = originalFetch;
+  }
+});
