@@ -480,7 +480,7 @@ test("職業白天指引：預言家/女巫/守衛各得報帳守則，村民無
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
   const state = fresh("DAY_SPEECH");
-  // 讓預言家私有段出現（seerHistory 空會提早 return）
+  // 預言家私有段（現在首驗也會出現，這裡照樣帶一筆歷史）
   state.nightActions = { seerHistory: [{ day: 1, targetSeat: 8, isWolf: false }] };
   const seer = state.players.find((p) => p.role === "Seer")!;
   const witch = state.players.find((p) => p.role === "Witch")!;
@@ -533,6 +533,35 @@ test("職業白天指引：預言家/女巫/守衛各得報帳守則，村民無
   nightWolfState.currentSpeakerSeat = nightWolf.seat;
   const nightWolfPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightWolfState }, nightWolf)!;
   assert.doesNotMatch(nightWolfPrompt.user, /【预言家线的读法】/);
+});
+
+test("預言家：白天拿到警上三件事（警徽流／查殺先講／沒拿到警徽怎麼打），夜間拿到選驗指引", () => {
+  const day = fresh("DAY_BADGE_SPEECH");
+  const daySeer = day.players.find((p) => p.role === "Seer")!;
+  const dayContext = buildGameContext(day, daySeer);
+  assert.match(dayContext, /【警上怎么讲/);
+  assert.match(dayContext, /打警徽流/);
+  assert.match(dayContext, /我倒了警徽给 X 号/);
+  assert.match(dayContext, /白狼王白天能自爆带人、跳过投票/);
+  assert.match(dayContext, /没拿到警徽、或者有人跟你对跳/);
+  assert.match(dayContext, /说话前后连不起来的/);
+  assert.match(dayContext, /怎么权衡你自己决定/);
+  assert.doesNotMatch(dayContext, /查验对象怎么选/);
+
+  const night = fresh("NIGHT_SEER_ACTION");
+  const nightSeer = night.players.find((p) => p.role === "Seer")!;
+  const nightContext = buildGameContext(night, nightSeer);
+  assert.match(nightContext, /【查验对象怎么选/);
+  // 首驗（history 空）不可整段跳過私有段：選人指引就在裡面。
+  assert.match(nightContext, /<your_seer_checks>/);
+  assert.match(nightContext, /还没有查验记录/);
+  assert.match(nightContext, /别拿角色名字、气质、气场当依据/);
+  assert.match(nightContext, /能接棒带队的人/);
+  assert.doesNotMatch(nightContext, /警上怎么讲/);
+
+  // 其他角色拿不到預言家的兩塊知識
+  const villager = day.players.find((p) => p.role === "Villager")!;
+  assert.doesNotMatch(buildGameContext(day, villager), /警上怎么讲/);
 });
 
 test("悍跳守则／警长职责／线索独立守则：分眾拼装与排序", async () => {

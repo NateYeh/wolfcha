@@ -722,13 +722,15 @@ const buildRolePrivateInfo = (
     areNightResultsVisible(state, day) && (!options?.excludePendingDeaths || day < state.day);
   if (player.role === "Seer") {
     const history = state.nightActions.seerHistory || [];
-    if (history.length === 0) return null;
-    
-    const checks = history.map((record) => {
-      const target = state.players.find((p) => p.seat === record.targetSeat);
-      const resultEmoji = record.isWolf ? "🐺 狼人" : "✓ 好人";
-      return `  第${record.day}夜 → ${record.targetSeat + 1}号${target?.displayName || ""} = ${resultEmoji}`;
-    });
+    // 首驗（history 空）不得整段跳過：夜間查驗行動的選人指引就在這一段裡，
+    // 提早 return 會讓預言家第一次查驗完全沒有策略提示（曾導致「隨機／名字帶邪氣」當理由）。
+    const checks = history.length > 0
+      ? history.map((record) => {
+          const target = state.players.find((p) => p.seat === record.targetSeat);
+          const resultEmoji = record.isWolf ? "🐺 狼人" : "✓ 好人";
+          return `  第${record.day}夜 → ${record.targetSeat + 1}号${target?.displayName || ""} = ${resultEmoji}`;
+        })
+      : [t("promptUtils.gameContext.seerHistoryEmpty")];
     
     let seerInfo = `<your_seer_checks>
 【你的查验记录】
@@ -736,6 +738,11 @@ ${checks.join("\n")}`;
     // 白天（含警徽競選 DAY_BADGE_*）才需要公布決策指引：跳/不跳/何時跳；夜間查验行動有自己的提示。
     if (state.phase.includes("DAY")) {
       seerInfo += `\n${t("promptUtils.gameContext.seerClaimGuidance")}`;
+      // 警上三件事：報查驗、打警徽流、聊心路歷程（含沒拿到警徽/被對跳後怎麼打）。
+      seerInfo += `\n${t("promptUtils.gameContext.seerCampaignNote")}`;
+    } else {
+      // 夜間：首驗選人本身就是策略（別用名字氣場當依據）。
+      seerInfo += `\n${t("promptUtils.gameContext.seerCheckChoiceNote")}`;
     }
     seerInfo += `\n</your_seer_checks>`;
     return seerInfo;
