@@ -1597,13 +1597,16 @@
     "whiteWolfKingBoomNoTarget": "{seat}號 {name} 自爆了！沒有帶走任何人",
     "whiteWolfKingPrompt": "你是白狼王，請點選玩家卡片選擇自爆帶走的目標（或放棄）",
     "remarkTitle": "—— 賽後感言 ——",
-    "remarkSystem": "【賽後感言】\n你是 {seat}號「{name}」，身份：{role}。本局已經結束，全員身份公開。\n{resultLine}\n請以你的角色口吻發表一段賽後感言：\n- 你是贏家：可以點評誰才是真神、稱讚關鍵操作，也可以調侃對方陣營裡「其實是我方臥底」的迷惑操作（把好人打成狼、刀口全歪、警徽票亂投等）。\n- 你是輸家：可以吐槽豬隊友——誰亂玩、誰亂帶風向、誰關鍵時刻掉鏈子；也可以自嘲自己的誤判。\n- 要點到具體座位和具體行為，保持角色語氣，不要客套空話，不要把整個流程複述一遍。\n【輸出】直接輸出感言正文，一段話 60 字以內；不要 JSON、不要解釋。",
+    "remarkSystem": "【賽後感言】\n你是 {seat}號「{name}」，身份：{role}。本局已經結束，全員身份公開。\n{resultLine}\n請以你的角色口吻發表一段賽後感言：\n- 你是贏家：可以點評誰才是真神、稱讚關鍵操作，也可以調侃對方陣營裡「其實是我方臥底」的迷惑操作（把好人打成狼、刀口全歪、警徽票亂投等）。\n- 你是輸家：可以吐槽豬隊友——誰亂玩、誰亂帶風向、誰關鍵時刻掉鏈子；也可以自嘲自己的誤判。\n- 要點到具體座位和具體行為，保持角色語氣，不要客套空話，不要把整個流程複述一遍。\n- 局裡的關鍵轉折（自爆、開槍、對跳翻盤）如果你是主角或受害者，把它講透最值——說清那一手為什麼成立、或為什麼虧。\n【輸出】直接輸出感言正文，一段話 100 字以內；不要 JSON、不要解釋。",
     "remarkResultWin": "本局你的陣營獲勝。",
     "remarkResultLose": "本局你的陣營落敗。",
-    "remarkUser": "【全員身份】\n{reveal}\n\n【關鍵事件】\n{keyEvents}\n\n你的語言風格：{personaLine}\n現在發表你的賽後感言。",
+    "remarkUser": "【全員身份】\n{reveal}\n\n【關鍵事件】\n{keyEvents}{privateNotes}\n\n你的語言風格：{personaLine}\n現在發表你的賽後感言。",
     "remarkRevealLine": "{seat}號 {name}：{role}{human}",
     "remarkHumanTag": "（玩家本人）",
-    "remarkNoEvents": "（無逐日記錄）"
+    "remarkNoEvents": "（無逐日記錄）",
+    "remarkPrivateNotes": "【你當時的私下決策理由（賽後身份已公開，感言裡可以自己講清那一手）】\n{notes}",
+    "remarkPrivateBoom": "第{day}天自爆——你自己寫的理由：{reason}",
+    "remarkPrivateShot": "第{day}天開槍——你自己寫的理由：{reason}"
   },
   "gameLogic": {
     "errors": {

@@ -143,7 +143,8 @@ export function useSpecialEvents(
 
     // AI 猎人开枪
     setIsWaitingForAI(true);
-    const targetSeat = await generateHunterShoot(currentState, hunter);
+    const shotDecision = await generateHunterShoot(currentState, hunter);
+    const targetSeat = shotDecision.targetSeat;
     setIsWaitingForAI(false);
 
     if (!isTokenValid(token)) return;
@@ -156,8 +157,8 @@ export function useSpecialEvents(
         setDialogue(texts.speakerHost, texts.systemMessages.hunterShoot(hunter.seat + 1, targetSeat + 1, target.displayName), false);
       }
 
-      // 记录猎人开枪
-      const shot = { hunterSeat: hunter.seat, targetSeat };
+      // 记录猎人开枪（reason 为猎人自己写下的开枪理由，仅进赛后感言 prompt）
+      const shot = { hunterSeat: hunter.seat, targetSeat, reason: shotDecision.reason };
       if (diedAtNight) {
         const prevNightRecord = (currentState.nightHistory || {})[currentState.day] || {};
         currentState = {

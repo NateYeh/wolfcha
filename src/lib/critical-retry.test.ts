@@ -178,10 +178,11 @@ test("關鍵決策（獵人開槍）：兩次都逾時才放棄，log 明確標�
   try {
     const { generateHunterShoot } = await import("./game-master");
     const players = [makePlayer(0, "Villager"), makePlayer(1, "Villager"), makePlayer(2, "Hunter")];
-    const target = await generateHunterShoot(makeState(players), players[2]);
+    const shot = await generateHunterShoot(makeState(players), players[2]);
 
     assert.equal(mock.calls, 2, "逾時只重試一次，不無限重打");
-    assert.equal(target, null, "重試後仍逾時＝這槍沒了（呼叫端據此不動作）");
+    assert.equal(shot.targetSeat, null, "重試後仍逾時＝這槍沒了（呼叫端據此不動作）");
+    assert.equal(shot.reason, "", "逾時沒有理由可記");
 
     const log = entries.find((e) => e.type === "hunter_shoot") as
       | { response?: { attempts?: number; failure?: string }; error?: string }
@@ -207,10 +208,10 @@ test("關鍵決策：AI 自己選擇不開槍時不會標記失敗（與逾時�
   try {
     const { generateHunterShoot } = await import("./game-master");
     const players = [makePlayer(0, "Villager"), makePlayer(1, "Villager"), makePlayer(2, "Hunter")];
-    const target = await generateHunterShoot(makeState(players), players[2]);
+    const shot = await generateHunterShoot(makeState(players), players[2]);
 
     assert.equal(mock.calls, 1, "一次就拿到回應，不重試");
-    assert.equal(target, null);
+    assert.equal(shot.targetSeat, null);
 
     const log = entries.find((e) => e.type === "hunter_shoot") as
       | { response?: { attempts?: number; failure?: string } }

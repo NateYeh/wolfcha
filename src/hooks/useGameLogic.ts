@@ -725,7 +725,7 @@ export function useGameLogic() {
         ...currentState,
         dayHistory: {
           ...(currentState.dayHistory || {}),
-          [currentState.day]: { ...prevDayRecord, whiteWolfKingBoom: { boomSeat: wwk.seat, targetSeat } },
+          [currentState.day]: { ...prevDayRecord, whiteWolfKingBoom: { boomSeat: wwk.seat, targetSeat, reason: boomDecision.reason } },
         },
       };
     } else {

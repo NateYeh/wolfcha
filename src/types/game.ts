@@ -245,7 +245,7 @@ export interface GameState {
       seerTarget?: number;
       seerResult?: { targetSeat: number; isWolf: boolean };
       deaths?: Array<{ seat: number; reason: "wolf" | "poison" | "milk" }>;
-      hunterShot?: { hunterSeat: number; targetSeat: number };
+      hunterShot?: { hunterSeat: number; targetSeat: number; reason?: string };
     }
   >;
   dayHistory?: Record<
@@ -255,8 +255,8 @@ export interface GameState {
       voteTie?: boolean;
       /** 当日放逐投票发生时的警长座位；null 表示当时无警长。 */
       sheriffSeatAtVote?: number | null;
-      hunterShot?: { hunterSeat: number; targetSeat: number };
-      whiteWolfKingBoom?: { boomSeat: number; targetSeat: number };
+      hunterShot?: { hunterSeat: number; targetSeat: number; reason?: string };
+      whiteWolfKingBoom?: { boomSeat: number; targetSeat: number; reason?: string };
       idiotRevealed?: { seat: number };
     }
   >;

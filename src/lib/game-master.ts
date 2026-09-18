@@ -1998,7 +1998,7 @@ export async function generateGuardAction(
 export async function generateHunterShoot(
   state: GameState,
   player: Player
-): Promise<number | null> {
+): Promise<{ targetSeat: number | null; reason: string }> {
   const prompt = resolvePhasePrompt("HUNTER_SHOOT", state, player);
   const alivePlayers = state.players.filter(
     (p) => p.alive && p.playerId !== player.playerId
@@ -2045,6 +2045,7 @@ export async function generateHunterShoot(
       },
     );
     const parsedTarget = completion.parsed;
+    const shotReason = extractActionReason(completion.cleaned);
 
     await aiLogger.log({
       type: "hunter_shoot",
@@ -2058,13 +2059,13 @@ export async function generateHunterShoot(
         raw: completion.result.content,
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
-        parsed: { targetSeat: parsedTarget, reason: extractActionReason(completion.cleaned) },
+        parsed: { targetSeat: parsedTarget, reason: shotReason },
         attempts,
         duration: Date.now() - startTime,
       },
     });
 
-    return parsedTarget;
+    return { targetSeat: parsedTarget, reason: shotReason };
   } catch (error) {
     console.warn("[wolfcha] generateHunterShoot failed, passing hunter shot:", error);
     await aiLogger.log({
@@ -2076,14 +2077,14 @@ export async function generateHunterShoot(
       },
       response: {
         content: "",
-        parsed: { targetSeat: null },
+        parsed: { targetSeat: null, reason: "" },
         attempts,
         duration: Date.now() - startTime,
         failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
       },
       error: String(error),
     });
-    return null;
+    return { targetSeat: null, reason: "" };
   }
 }
 
@@ -2120,6 +2121,29 @@ export async function generateGameEndRemark(
     ? persona.voiceRules.join(t("promptUtils.gameContext.listSeparator"))
     : "";
 
+  // 私有决策回顾：本人当时写下的决策理由（白狼王自爆／猎人开枪）。
+  // 这些理由赛中从未公开，但赛后全员身份公开，自己的感言可以讲清「那一手为什么这么做」。
+  const privateNotes: string[] = [];
+  for (const [day, record] of Object.entries(state.dayHistory ?? {})) {
+    const boom = record.whiteWolfKingBoom;
+    if (boom && boom.boomSeat === player.seat && boom.reason) {
+      privateNotes.push(t("specialEvents.remarkPrivateBoom", { day, reason: boom.reason }));
+    }
+    const shot = record.hunterShot;
+    if (shot && shot.hunterSeat === player.seat && shot.reason) {
+      privateNotes.push(t("specialEvents.remarkPrivateShot", { day, reason: shot.reason }));
+    }
+  }
+  for (const [day, record] of Object.entries(state.nightHistory ?? {})) {
+    const shot = record.hunterShot;
+    if (shot && shot.hunterSeat === player.seat && shot.reason) {
+      privateNotes.push(t("specialEvents.remarkPrivateShot", { day, reason: shot.reason }));
+    }
+  }
+  const privateNotesSection = privateNotes.length
+    ? "\n\n" + t("specialEvents.remarkPrivateNotes", { notes: privateNotes.join("\n") })
+    : "";
+
   const prompt: PromptResult = {
     system: t("specialEvents.remarkSystem", {
       seat: player.seat + 1,
@@ -2133,6 +2157,7 @@ export async function generateGameEndRemark(
     user: t("specialEvents.remarkUser", {
       reveal,
       keyEvents: keyEvents || t("specialEvents.remarkNoEvents"),
+      privateNotes: privateNotesSection,
       personaLine,
     }),
   };
@@ -2152,7 +2177,7 @@ export async function generateGameEndRemark(
       .replace(/```[a-z]*\n?/gi, "")
       .replace(/[`\n]+/g, " ")
       .trim()
-      .slice(0, 160);
+      .slice(0, 300);
 
     await aiLogger.log({
       type: "game_end_remark",
