@@ -853,6 +853,15 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
     return guardInfo;
   }
   
+  if (player.role === "Hunter") {
+    // 獵人沒有可報的帳（無查驗、無用藥記錄），白天要的是打法與帶隊時機；
+    // 出局當下的一槍走 prompts.hunter.shootingRules，不在這裡重複。
+    if (state.phase.includes("DAY")) {
+      return `<your_gun>\n${t("promptUtils.gameContext.hunterPlayNote")}\n</your_gun>`;
+    }
+    return null;
+  }
+
   if (isWolfRole(player.role)) {
     const allWolves = state.players.filter((p) => isWolfRole(p.role));
     const aliveWolves = allWolves.filter((p) => p.alive);

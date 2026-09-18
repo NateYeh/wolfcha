@@ -564,6 +564,36 @@ test("預言家：白天拿到警上三件事（警徽流／查殺先講／沒�
   assert.doesNotMatch(buildGameContext(day, villager), /警上怎么讲/);
 });
 
+test("獵人：白天拿到打法／帶隊時機（藏或亮、槍徽流、被毒悶槍），其他角色拿不到", () => {
+  const day = fresh("DAY_SPEECH");
+  const hunter = day.players.find((p) => p.role === "Hunter")!;
+  const ctx = buildGameContext(day, hunter);
+  assert.match(ctx, /<your_gun>/);
+  assert.match(ctx, /【猎人怎么打/);
+  assert.match(ctx, /先想好出局时要带走谁/);
+  assert.match(ctx, /发言好坏参半/);
+  assert.match(ctx, /回头把带头推你的那个带走/);
+  assert.match(ctx, /我今晚要是被刀，枪口对准 X 号/);
+  assert.match(ctx, /有人跳猎人：先算轮次/);
+  assert.match(ctx, /被女巫毒死会闷枪/);
+  assert.match(ctx, /怎么权衡你自己决定/);
+
+  const villager = day.players.find((p) => p.role === "Villager")!;
+  assert.doesNotMatch(buildGameContext(day, villager), /【猎人怎么打/);
+
+  // 夜間不重複拼入（夜間只有出局當下的一槍，走 prompts.hunter.shootingRules）
+  const night: GameState = { ...day, phase: "NIGHT_WOLF_ACTION" as Phase };
+  const nightHunter = night.players.find((p) => p.role === "Hunter")!;
+  assert.doesNotMatch(buildGameContext(night, nightHunter) ?? "", /【猎人怎么打/);
+});
+
+test("獵人開槍思路：被推出去時要看「誰在推你」，帶頭又給不出理由的最該打", async () => {
+  const { getI18n } = await import("@/i18n/translator");
+  const rules = getI18n().t("prompts.hunter.shootingRules");
+  assert.match(rules, /看谁在推你/);
+  assert.match(rules, /带头的那个如果拿不出可核对的理由/);
+});
+
 test("悍跳守则／警长职责／线索独立守则：分眾拼装与排序", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
