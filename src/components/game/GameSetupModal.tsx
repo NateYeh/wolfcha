@@ -23,7 +23,12 @@ import {
   saveCustomScenarioRemote,
 } from "@/lib/character-pool-api";
 import type { CharacterPoolStatus } from "@/lib/character-pool-refill";
-import { getPlayerModelPool, setPlayerModelPool } from "@/lib/api-keys";
+import {
+  getGatewayModels,
+  getPlayerModelPool,
+  setGatewayModels,
+  setPlayerModelPool,
+} from "@/lib/api-keys";
 import {
   getTokendanceApiKey,
   getTokendanceBaseUrl,
@@ -156,8 +161,15 @@ export function GameSetupModal({
     return current === DEFAULT_GATEWAY_BASE_URL ? "" : current;
   });
   const [gatewayKey, setGatewayKeyState] = useState(() => getTokendanceApiKey());
+  // 自帶 gateway 回報的模型清單（抓過才有）；用來標示哪些模型這台閘道器沒有。
+  const [gatewayModels, setGatewayModelsState] = useState<string[]>(() => getGatewayModels());
   const [connectionState, setConnectionState] = useState<"idle" | "testing" | "ok" | "fail">("idle");
   const [connectionMessage, setConnectionMessage] = useState("");
+  // gateway 有清單、但內建模型池裡沒有的模型（只做提示，暫不列入模型池）。
+  const gatewayOnlyModels = useMemo(
+    () => gatewayModels.filter((model) => !playerModelOptions.some((ref) => ref.model === model)),
+    [gatewayModels, playerModelOptions],
+  );
   const baseUrlCheck = useMemo(
     () => normalizeGatewayBaseUrl(gatewayBaseUrl.trim() || DEFAULT_GATEWAY_BASE_URL),
     [gatewayBaseUrl],
@@ -194,7 +206,9 @@ export function GameSetupModal({
     setConnectionState("testing");
     setConnectionMessage("");
     try {
-      const response = await fetch("/api/validate-key", {
+      // 連線測試改抓模型清單（GET /models）：不會因為「探針模型不在道閘道器上」誤判失敗，
+      // 順便拿到該閘道器實際提供的模型，可用來更新模型池。
+      const response = await fetch("/api/gateway-models", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -202,16 +216,25 @@ export function GameSetupModal({
           "X-Tokendance-Base-Url": check.url,
         },
       });
-      const data = (await response.json().catch(() => null)) as { valid?: boolean; error?: string } | null;
-      if (response.ok && data?.valid) {
+      const data = (await response.json().catch(() => null)) as
+        | { ok?: boolean; error?: string; models?: string[]; count?: number }
+        | null;
+      if (data?.ok && data.models?.length) {
+        setGatewayModels(data.models);
+        setGatewayModelsState(data.models);
         setConnectionState("ok");
-        setConnectionMessage(t("gameSetup.connection.ok"));
+        setConnectionMessage(t("gameSetup.connection.okWithModels", { count: data.models.length }));
+        // 已勾選但閘道器沒有的模型要剔除，否則開局一定會打不通。
+        if (modelPool.length > 0) {
+          const available = modelPool.filter((model) => data.models?.includes(model));
+          if (available.length !== modelPool.length) applyModelPool(available);
+        }
         return;
       }
       setConnectionState("fail");
       setConnectionMessage(data?.error || t("gameSetup.connection.fail"));
     } catch (error) {
-      console.error("[GameSetupModal] 連線測試失敗", error);
+      console.error("[GameSetupModal] 讀取模型清單失敗", error);
       setConnectionState("fail");
       setConnectionMessage(t("gameSetup.connection.fail"));
     }
@@ -226,6 +249,10 @@ export function GameSetupModal({
   };
 
   const toggleModel = (model: string) => {
+    if (gatewayModels.length > 0 && !gatewayModels.includes(model)) {
+      setModelPoolNotice(t("gameSetup.connection.missingOnGateway"));
+      return;
+    }
     const current = modelPool.length === 0 ? playerModelOptions.map((ref) => ref.model) : modelPool;
     const next = current.includes(model) ? current.filter((item) => item !== model) : [...current, model];
     if (next.length === 0) {
@@ -570,7 +597,7 @@ export function GameSetupModal({
                   disabled={connectionState === "testing" || !gatewayKey.trim() || !baseUrlCheck.ok}
                   onClick={() => void handleTestConnection()}
                 >
-                  {connectionState === "testing" ? t("gameSetup.connection.testing") : t("gameSetup.connection.test")}
+                  {connectionState === "testing" ? t("gameSetup.connection.testing") : t("gameSetup.connection.testAndFetch")}
                 </Button>
                 {connectionMessage ? (
                   <span className={connectionState === "ok" ? "text-xs text-[var(--color-success)]" : "text-xs text-[var(--color-warning,#c0392b)]"}>
@@ -581,6 +608,11 @@ export function GameSetupModal({
               {!baseUrlCheck.ok && gatewayBaseUrl.trim() ? (
                 <div className="text-xs text-[var(--color-warning,#c0392b)]">
                   {t(`gameSetup.connection.invalid.${baseUrlCheck.reason}`)}
+                </div>
+              ) : null}
+              {gatewayModels.length > 0 ? (
+                <div className="text-xs text-[var(--text-muted)]">
+                  {t("gameSetup.connection.listHint", { count: gatewayModels.length })}
                 </div>
               ) : null}
             </div>
@@ -604,17 +636,22 @@ export function GameSetupModal({
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {playerModelOptions.map((ref) => {
-                const active = modelPool.length === 0 || modelPool.includes(ref.model);
+                const missingOnGateway = gatewayModels.length > 0 && !gatewayModels.includes(ref.model);
+                const active = !missingOnGateway && (modelPool.length === 0 || modelPool.includes(ref.model));
                 return (
                   <button
                     key={`${ref.provider}:${ref.model}`}
                     type="button"
+                    disabled={missingOnGateway}
+                    title={missingOnGateway ? t("gameSetup.connection.missingOnGateway") : undefined}
                     aria-pressed={active}
                     onClick={() => toggleModel(ref.model)}
                     className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                      active
-                        ? "border-[var(--color-accent)] text-[var(--text-primary)]"
-                        : "border-[var(--border-color)] text-[var(--text-muted)] opacity-60"
+                      missingOnGateway
+                        ? "cursor-not-allowed border-[var(--border-color)] text-[var(--text-muted)] line-through opacity-50"
+                        : active
+                          ? "border-[var(--color-accent)] text-[var(--text-primary)]"
+                          : "border-[var(--border-color)] text-[var(--text-muted)] opacity-60"
                     }`}
                   >
                     {ref.model}
@@ -622,6 +659,11 @@ export function GameSetupModal({
                 );
               })}
             </div>
+            {gatewayOnlyModels.length > 0 ? (
+              <div className="mt-1 text-xs text-[var(--text-muted)]">
+                {t("gameSetup.connection.gatewayOnly", { models: gatewayOnlyModels.join("、") })}
+              </div>
+            ) : null}
             <div className="mt-2 text-xs text-[var(--text-muted)]">
               {modelPoolNotice
                 ? <span className="text-[var(--color-warning,#c0392b)]">{modelPoolNotice}</span>

@@ -83,10 +83,10 @@
       "cta": "UPVOTE",
       "ariaLabel": "Open Wolfcha on Product Hunt (vote)"
     },
-"localMode": {
-        "badge": "Local mode (no sign-in)",
-        "hint": "No account needed: set the server base URL, API key and model pool in Settings"
-      },
+    "localMode": {
+      "badge": "Local mode (no sign-in)",
+      "hint": "No account needed: set the server base URL, API key and model pool in Settings"
+    },
     "sponsor": {
       "title": "Become a sponsor",
       "subtitle": "Your support keeps Wolfcha running smoothly and free for everyone.",
@@ -410,30 +410,36 @@
     "selectDifficulty": "Select difficulty",
     "playerCountLabel": "Player count",
     "selectPlayerCount": "Select player count",
-"connection": {
-    "title": "AI service connection",
-    "description": "Leave blank to use the built-in gateway; with your own base URL and key the game calls your gateway (stored only in this browser, never committed)",
-    "baseUrlLabel": "Server base URL",
-    "keyLabel": "API Key",
-    "keyPlaceholder": "sk-...",
-    "test": "Test connection",
-    "testing": "Testing…",
-    "ok": "Connection OK",
-    "fail": "Connection failed (check URL, key, and whether the gateway allows local calls)",
-    "invalid": {
-      "empty": "Enter a server base URL",
-      "invalid": "Invalid URL — a full URL is required (e.g. https://host/v1)",
-      "protocol": "Only http/https URLs are supported",
-      "insecure": "http is only allowed for localhost or private LAN addresses; use https otherwise"
-    }
-  },
-"modelPool": {
-        "title": "AI player model pool",
-        "description": "Pick which models may appear this round (unchecked ones are never drawn for AI players); takes effect next game",
-        "all": "All",
-        "minOne": "Keep at least one model — unchecking all falls back to \"all\"",
-        "summary": "Active this round: {count}/{total} models"
+    "connection": {
+      "title": "AI service connection",
+      "description": "Leave blank to use the built-in gateway; with your own base URL and key the game calls your gateway (stored only in this browser, never committed)",
+      "baseUrlLabel": "Server base URL",
+      "keyLabel": "API Key",
+      "keyPlaceholder": "sk-...",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "ok": "Connection OK",
+      "fail": "Connection failed (check URL, key, and whether the gateway allows local calls)",
+      "invalid": {
+        "empty": "Enter a server base URL",
+        "invalid": "Invalid URL — a full URL is required (e.g. https://host/v1)",
+        "protocol": "Only http/https URLs are supported",
+        "insecure": "http is only allowed for localhost or private LAN addresses; use https otherwise"
       },
+      "testAndFetch": "Test connection & fetch model list",
+      "okWithModels": "Connected: the gateway offers {count} models",
+      "listHint": "Gateway model list loaded ({count}); models the gateway lacks are struck out below",
+      "missingOnGateway": "The gateway does not offer this model — the game would fail",
+      "missingTag": "not on gateway",
+      "gatewayOnly": "Also offered by the gateway (not built in yet, not selectable): {models}"
+    },
+    "modelPool": {
+      "title": "AI player model pool",
+      "description": "Pick which models may appear this round (unchecked ones are never drawn for AI players); takes effect next game",
+      "all": "All",
+      "minOne": "Keep at least one model — unchecking all falls back to \"all\"",
+      "summary": "Active this round: {count}/{total} models"
+    },
     "soundLabel": "Sound",
     "difficulty": {
       "easyDesc": "Relaxed atmosphere, great for first-timers",
@@ -1116,8 +1122,8 @@
         "voteLine": "- Seat {seat} ({name}) wants to kill: Seat {targetSeat}{targetName}",
         "task": "【Werewolf Skill】\nEach night wolves collectively decide to kill one player. Can kill good players, teammates (self-kill), or skip (no kill).\n\n【Task】\nChoose one player to kill.\n{teammateVotesSection}\n\nOptions: {options}\n",
         "user": "{context}\n\nWhich seat do you want to kill?\n{guardNote}\n{knifeNote}\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text:\n{jsonFormat}\nUse the reason field for one short sentence on why you kill him (under 30 words).",
-      "guardMindGame": "【Guard mind games】Before knifing, work out who the guard will protect tonight, so you do not hand the knife to him.\n1. The guard most likely protects: publicly claimed power roles (seer, witch), the sheriff, gold water, and whoever survived the previous knife.\n2. Target X who was knifed last night but survived: either the guard saved X (he cannot protect X tonight — no two nights in a row), or the witch did (her antidote is spent). So re-knifing X tonight usually has the highest hit rate, unless the witch might still hold an antidote.\n3. If you switch targets, avoid the seats the guard most likely protects per point 1, and prefer key good players he cannot reach.",
-      "knifePriority": "【Knife priority】Judge the knife by payoff, not only by who is easiest to kill.\n1. A public seer claimant, the badge holder, and anyone still reporting checks are the good side's information core, usually the top knife target — even more so once they have checked (or might check) your teammates; leave a real seer alive and the wolf team gets ground down one check at a time.\n2. Exception: when you have concrete reason to believe the seer claimant is your own faking teammate (you would never mistake your own). Otherwise do not give up because «the guard might protect him» — losing a knife to the guard costs one knife; keeping the information source alive can cost a teammate every night.\n3. Before re-knifing a saved target, weigh the payoff: the saved player may be a power role (who shoots back when killed) or an ordinary villager (knifing again wastes a night); the highest hit rate is not automatically profit.\n4. A self-defence knife (killing whoever suspects you) feels good for a moment but usually pays less than a winning knife (the information source, the badge) — judge knives by the wolf team's overall payoff, not by personal pressure."
+        "guardMindGame": "【Guard mind games】Before knifing, work out who the guard will protect tonight, so you do not hand the knife to him.\n1. The guard most likely protects: publicly claimed power roles (seer, witch), the sheriff, gold water, and whoever survived the previous knife.\n2. Target X who was knifed last night but survived: either the guard saved X (he cannot protect X tonight — no two nights in a row), or the witch did (her antidote is spent). So re-knifing X tonight usually has the highest hit rate, unless the witch might still hold an antidote.\n3. If you switch targets, avoid the seats the guard most likely protects per point 1, and prefer key good players he cannot reach.",
+        "knifePriority": "【Knife priority】Judge the knife by payoff, not only by who is easiest to kill.\n1. A public seer claimant, the badge holder, and anyone still reporting checks are the good side's information core, usually the top knife target — even more so once they have checked (or might check) your teammates; leave a real seer alive and the wolf team gets ground down one check at a time.\n2. Exception: when you have concrete reason to believe the seer claimant is your own faking teammate (you would never mistake your own). Otherwise do not give up because «the guard might protect him» — losing a knife to the guard costs one knife; keeping the information source alive can cost a teammate every night.\n3. Before re-knifing a saved target, weigh the payoff: the saved player may be a power role (who shoots back when killed) or an ordinary villager (knifing again wastes a night); the highest hit rate is not automatically profit.\n4. A self-defence knife (killing whoever suspects you) feels good for a moment but usually pays less than a winning knife (the information source, the badge) — judge knives by the wolf team's overall payoff, not by personal pressure."
       },
       "guard": {
         "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{winCondition}",

@@ -18,6 +18,7 @@ const CUSTOM_KEY_ENABLED_STORAGE = "wolfcha_custom_key_enabled";
 const SELECTED_MODELS_STORAGE = "wolfcha_selected_models";
 const PLAYER_MODEL_POOL_STORAGE = "wolfcha_player_model_pool";
 const TOKENDANCE_BASE_URL_STORAGE = "wolfcha_tokendance_base_url";
+const GATEWAY_MODELS_STORAGE = "wolfcha_gateway_models";
 const GENERATOR_MODEL_STORAGE = "wolfcha_generator_model";
 const SUMMARY_MODEL_STORAGE = "wolfcha_summary_model";
 const REVIEW_MODEL_STORAGE = "wolfcha_review_model";
@@ -332,6 +333,34 @@ export function setPlayerModelPool(models: string[]) {
     return;
   }
   window.localStorage.setItem(PLAYER_MODEL_POOL_STORAGE, JSON.stringify(normalized));
+}
+
+/**
+ * 自帶 gateway 的模型清單（來自 gateway 的 GET /models）。
+ * 空陣列＝還沒抓過或抓失敗；UI 用「有沒有清單」決定要不要標示「閘道器沒有這個模型」。
+ */
+export function getGatewayModels(): string[] {
+  if (!canUseStorage()) return [];
+  const raw = window.localStorage.getItem(GATEWAY_MODELS_STORAGE);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) => String(item ?? "").trim()).filter(Boolean);
+  } catch (error) {
+    console.warn("[api-keys] gateway 模型清單解析失敗，改用內建清單", error);
+    return [];
+  }
+}
+
+export function setGatewayModels(models: string[]) {
+  if (!canUseStorage()) return;
+  const normalized = Array.from(new Set(models.map((m) => String(m ?? "").trim()).filter(Boolean)));
+  if (normalized.length === 0) {
+    window.localStorage.removeItem(GATEWAY_MODELS_STORAGE);
+    return;
+  }
+  window.localStorage.setItem(GATEWAY_MODELS_STORAGE, JSON.stringify(normalized));
 }
 
 export function getGeneratorModel(): string {

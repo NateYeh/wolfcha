@@ -119,7 +119,7 @@ function getTokendanceUrl(baseUrl: string): string {
   return toChatCompletionsUrl(baseUrl);
 }
 
-async function validateTokendanceKey(apiKey: string, baseUrl: string): Promise<ValidationResult> {
+async function validateTokendanceKey(apiKey: string, baseUrl: string, probeModel: string): Promise<ValidationResult> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), VALIDATION_TIMEOUT_MS);
 
@@ -141,7 +141,7 @@ async function validateTokendanceKey(apiKey: string, baseUrl: string): Promise<V
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: TOKENDANCE_VALIDATION_MODEL,
+        model: probeModel,
         messages: [{ role: "user", content: "hi" }],
         max_tokens: 1,
       }),
@@ -172,6 +172,17 @@ async function validateTokendanceKey(apiKey: string, baseUrl: string): Promise<V
         valid: false,
         error: "API Key 无效或已过期",
         errorCode: "invalid_key",
+      };
+    }
+
+    if (response.status === 404 || response.status === 503 || /no available upstream/i.test(errorMessage)) {
+      // gpt-load 等閘道器在上游沒有該模型／通道時回 503 No available upstream candidate。
+      // 這不是 Key 或位址錯，而是探針模型不在該閘道器上，必須說清楚。
+      return {
+        provider: "tokendance",
+        valid: false,
+        error: `网关没有「${probeModel}」这个模型的上游通道（请改用网关实际提供的模型）`,
+        errorCode: "model_unavailable",
       };
     }
 
@@ -330,6 +341,10 @@ export async function POST(request: NextRequest) {
     const dashscopeKey = request.headers.get("x-dashscope-api-key")?.trim() || "";
     const tokendanceKey = request.headers.get("x-tokendance-api-key")?.trim() || "";
     const tokendanceBaseUrl = request.headers.get("x-tokendance-base-url")?.trim() || DEFAULT_GATEWAY_BASE_URL;
+    // 連線測試要用「使用者實際會用的模型」當探針：不同閘道器提供的模型不同，
+    // 固定用內建驗證模型（minimax-m2.7）會讓自架閘道器一律回 503。
+    const requestedProbeModel = (request.headers.get("x-validation-model") ?? "").trim().slice(0, 128);
+    const tokendanceProbeModel = requestedProbeModel || TOKENDANCE_VALIDATION_MODEL;
 
     if (!zenmuxKey && !dashscopeKey && !tokendanceKey) {
       return NextResponse.json(
@@ -348,7 +363,7 @@ export async function POST(request: NextRequest) {
       validationPromises.push(validateDashscopeKey(dashscopeKey));
     }
     if (tokendanceKey) {
-      validationPromises.push(validateTokendanceKey(tokendanceKey, tokendanceBaseUrl));
+      validationPromises.push(validateTokendanceKey(tokendanceKey, tokendanceBaseUrl, tokendanceProbeModel));
     }
 
     const settled = await Promise.all(validationPromises);
