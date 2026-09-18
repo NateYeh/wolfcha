@@ -916,6 +916,9 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
       // （評估今晚刀誰、自稱守衛的人怎麼處理、算刀數時怎麼算被守住的機率）。
       wolfInfo += `\n${t("promptUtils.gameContext.wolfGuardAwarenessNote")}`;
       wolfInfo += `\n${t("promptUtils.gameContext.wolfTeamPrinciples")}`;
+      // 衝鋒／倒勾分工與白天讀神民：都是發言與站邊層面的知識，夜間無關。
+      wolfInfo += `\n${t("promptUtils.gameContext.wolfChargeHookNote")}`;
+      wolfInfo += `\n${t("promptUtils.gameContext.wolfGodVillagerReadingNote")}`;
       // 悍跳守則：白天想跳預言家的狼需要一套不容易被證偽的假查验打法；夜間無關。
       wolfInfo += `\n${t("promptUtils.gameContext.wolfFakeSeerGuidance")}`;
     }
