@@ -28,7 +28,7 @@ import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
 
 const MAX_SPEECH_ITEMS_PER_PHASE = 30;
 const MAX_SPEECH_CONTENT_LENGTH = 280;
-export const GAME_ANALYSIS_VERSION = 2;
+export const GAME_ANALYSIS_VERSION = 3;
 
 const ROLE_ALIGNMENT: Record<Role, Alignment> = {
   Werewolf: "wolf",
@@ -1400,7 +1400,7 @@ export async function generateGameAnalysis(
   const timeline = buildTimeline(state, aiSpeechSummaries);
 
   const tags = evaluateTag(humanPlayer, state, ctx);
-  const aiData = await generateAIAnalysisData(state, humanPlayer, resolvedModel);
+  const aiData = await generateAIAnalysisData(state, humanPlayer, resolvedModel, aiSpeechSummaries);
   
   const humanSpeeches = state.messages
     .filter(m => m.playerName === humanPlayer.displayName && !m.isSystem)
@@ -1458,10 +1458,22 @@ interface AIAnalysisResult {
   };
 }
 
+/** 把發言摘要壓成按天逐人的文本，供 MVP/SVP 評選看見實際發言而不只是結構化事實。 */
+function formatSpeechSummaries(speeches: AISpeechSummaryResult, state: GameState): string {
+  const lines: string[] = [];
+  for (const [day, entries] of Object.entries(speeches.discussion)) {
+    if (!Array.isArray(entries) || entries.length === 0) continue;
+    lines.push(`第${day}天：`);
+    for (const entry of entries) lines.push(`- ${formatSeatName(state, entry.seat)}：${entry.content}`);
+  }
+  return lines.join("\n") || "（无发言记录）";
+}
+
 async function generateAIAnalysisData(
   state: GameState,
   humanPlayer: Player,
-  model: string
+  model: string,
+  speechSummaries: AISpeechSummaryResult
 ): Promise<AIAnalysisResult> {
   const winnerSide = state.winner === "wolf" ? "狼人" : "好人";
   const loserSide = state.winner === "wolf" ? "好人" : "狼人";
@@ -1518,6 +1530,9 @@ ${historyText}
 ## 玩家（${humanPlayer.displayName}）的全部发言
 ${allHumanSpeeches || "（无发言记录）"}
 
+## 各玩家公开发言摘要（按天）
+${formatSpeechSummaries(speechSummaries, state)}
+
 请输出JSON格式的分析数据：
 {
   "awards": {
@@ -1555,7 +1570,7 @@ ${allHumanSpeeches || "（无发言记录）"}
 
 要求：
 1. MVP从${winnerSide}阵营选，SVP从${loserSide}阵营选
-2. 【重要】优先考虑将玩家「${humanPlayer.displayName}」评为MVP或SVP（如果他在对应阵营且表现不差）
+2. 评选只看实际表现：MVP、SVP 的 reason 必须引用具体行为（投票、查验、守护、刀口、开枪、关键发言），不得空泛，不得偏袒任何玩家（包括真人玩家）；SVP 的理由同样要说明他对败方的贡献，而不是罗列他的失误
 3. reviews必须包含2条队友评价（ally，从「${alliesText}」中选择）和1条对手评价（enemy，从「${enemiesText}」中选择）
 4. 【重要】队友是指同一阵营的玩家，对手是指敌对阵营的玩家。${humanAlignmentText}的队友只能是${humanAlignmentText}的其他成员！
 5. highlightQuote必须是玩家的原话，从上面的发言记录中选取，如果无发言记录则返回空字符串""
@@ -1578,7 +1593,7 @@ ${allHumanSpeeches || "（无发言记录）"}
     const result = await generateJSON<AIAnalysisResult>({
       model,
       messages: analysisMessages,
-      temperature: 0.7,
+      temperature: 0.2,
       max_tokens: 2000,
       response_format: { type: "json_object" },
       onRawContent: (content) => { rawContent = content; },
