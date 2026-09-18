@@ -100,15 +100,19 @@ export function getGameAnalysisSourceFingerprint(state: GameState): string {
     dayHistory: state.dayHistory,
     dailySummaries: state.dailySummaries,
     dailySummaryVoteData: state.dailySummaryVoteData,
-    messages: state.messages.map((m) => ({
-      id: m.id,
-      playerId: m.playerId,
-      content: m.content,
-      day: m.day,
-      phase: m.phase,
-      isSystem: m.isSystem,
-      isLastWords: m.isLastWords,
-    })),
+    messages: state.messages
+      // 賽後感言等 GAME_END 階段訊息屬於遊戲結束後的閒聊，不影響分析素材；
+      // 排除後感言逐一加入不會改動 fingerprint，避免分析重跑、MVP 隨機改判。
+      .filter((m) => m.phase !== "GAME_END")
+      .map((m) => ({
+        id: m.id,
+        playerId: m.playerId,
+        content: m.content,
+        day: m.day,
+        phase: m.phase,
+        isSystem: m.isSystem,
+        isLastWords: m.isLastWords,
+      })),
   };
   return hashString(JSON.stringify(normalizeForFingerprint(source)));
 }
