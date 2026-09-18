@@ -31,7 +31,8 @@
   "gameEnd": {
     "wins": "胜利",
     "mvpTitle": "本局MVP",
-    "mvpLoading": "MVP 评选中…"
+    "mvpLoading": "MVP 评选中…",
+    "svpTitle": "本局SVP"
   },
   "welcome": {
     "group": {
@@ -763,7 +764,8 @@
     "selfRole": "这是你的角色",
     "statsGames": "参赛 {games} 场",
     "statsWinRate": "胜率 {rate}%",
-    "statsMvp": "MVP {mvps} 次"
+    "statsMvp": "MVP {mvps} 次",
+    "statsSvp": "SVP {svps} 次"
   },
   "tutorialModal": {
     "title": "新手教学：狼人杀怎么玩？",

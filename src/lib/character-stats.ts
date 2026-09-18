@@ -13,6 +13,8 @@ export interface CharacterStatRecord {
   alignment: "wolf" | "village";
   won: boolean;
   mvp: boolean;
+  /** 舊記錄可能無此欄位，parse 時預設 false。 */
+  svp: boolean;
 }
 
 /** 解析一行 JSONL 统计记录；格式不符返回 null（坏行直接跳过，不让一个坏记录毁掉全部聚合）。 */
@@ -36,6 +38,7 @@ export function parseStatLine(raw: string): CharacterStatRecord | null {
     alignment: rec.alignment,
     won: rec.won,
     mvp: rec.mvp,
+    svp: rec.svp === true,
   };
 }
 
@@ -47,10 +50,11 @@ export function serializeStatRecord(record: CharacterStatRecord): string {
 export function aggregateCharacterStats(records: CharacterStatRecord[]): Record<string, CharacterStat> {
   const stats: Record<string, CharacterStat> = {};
   for (const rec of records) {
-    const entry = stats[rec.name] ?? { games: 0, wins: 0, mvps: 0 };
+    const entry = stats[rec.name] ?? { games: 0, wins: 0, mvps: 0, svps: 0 };
     entry.games += 1;
     if (rec.won) entry.wins += 1;
     if (rec.mvp) entry.mvps += 1;
+    if (rec.svp) entry.svps += 1;
     stats[rec.name] = entry;
   }
   return stats;

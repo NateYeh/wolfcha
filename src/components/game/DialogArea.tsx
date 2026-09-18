@@ -285,6 +285,8 @@ interface DialogAreaProps {
   isAnalysisLoading?: boolean;
   /** 本局 MVP（賽後感言區顯示；分析完成前為 undefined）。 */
   gameMvp?: PlayerAward;
+  /** 本局 SVP（敗方最佳；分析完成前為 undefined）。 */
+  gameSvp?: PlayerAward;
   isEventLogOpen?: boolean;
   onEventLogOpenChange?: (open: boolean) => void;
 }
@@ -401,6 +403,7 @@ export function DialogArea({
   onViewAnalysis,
   isAnalysisLoading = false,
   gameMvp,
+  gameSvp,
   isEventLogOpen = false,
   onEventLogOpenChange,
 }: DialogAreaProps) {
@@ -1227,8 +1230,8 @@ export function DialogArea({
                       <>GG! <span className="text-[var(--color-wolf)] font-semibold">{t("alignment.wolf")}</span> {t("gameEnd.wins")}!</>
                     )}
                   </div>
-                  {/* 本局 MVP：分析完成後顯示（生成中先顯示佔位） */}
-                  {gameMvp ? (
+                  {/* 本局 MVP／SVP：分析完成後顯示（生成中先顯示佔位） */}
+                  {gameMvp && (
                     <div className="flex items-center gap-3 mt-3 px-3 py-2.5 rounded-lg border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/10">
                       <img
                         src={buildSimpleAvatarUrl(gameMvp.avatar, { gender: gameMvp.gender, style: gameMvp.avatarStyle })}
@@ -1247,13 +1250,32 @@ export function DialogArea({
                         )}
                       </div>
                     </div>
-                  ) : (
-                    isAnalysisLoading && (
-                      <div className="flex items-center gap-2 mt-3 px-3 py-2 text-xs text-[var(--text-muted)]">
-                        <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-                        {t("gameEnd.mvpLoading")}
+                  )}
+                  {gameSvp && (
+                    <div className="flex items-center gap-3 mt-2 px-3 py-2.5 rounded-lg border border-white/10 bg-black/5 dark:bg-white/5">
+                      <img
+                        src={buildSimpleAvatarUrl(gameSvp.avatar, { gender: gameSvp.gender, style: gameSvp.avatarStyle })}
+                        alt={gameSvp.playerName}
+                        className="w-10 h-10 rounded-full border-2 border-white/20 object-cover"
+                      />
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-[var(--text-secondary)] flex items-center gap-2">
+                          <span className="text-[var(--text-muted)]">{t("gameEnd.svpTitle")}</span>
+                          <span>{gameSvp.playerName}</span>
+                        </div>
+                        {gameSvp.reason && (
+                          <div className="text-xs text-[var(--text-muted)] truncate" title={gameSvp.reason}>
+                            {gameSvp.reason}
+                          </div>
+                        )}
                       </div>
-                    )
+                    </div>
+                  )}
+                  {!gameMvp && !gameSvp && isAnalysisLoading && (
+                    <div className="flex items-center gap-2 mt-3 px-3 py-2 text-xs text-[var(--text-muted)]">
+                      <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                      {t("gameEnd.mvpLoading")}
+                    </div>
                   )}
                   <div className={`flex items-center justify-between mt-4 pt-3 border-t ${isNight ? "border-white/10" : "border-black/5"}`}>
                     <span className="text-xs text-[var(--text-muted)]">{t("dialog.playAgainHint")}</span>

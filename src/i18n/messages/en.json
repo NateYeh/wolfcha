@@ -31,7 +31,8 @@
   "gameEnd": {
     "wins": "win",
     "mvpTitle": "Game MVP",
-    "mvpLoading": "Counting MVP votes…"
+    "mvpLoading": "Counting MVP votes…",
+    "svpTitle": "Game SVP"
   },
   "welcome": {
     "group": {
@@ -763,7 +764,8 @@
     "selfRole": "This is your role",
     "statsGames": "{games} games",
     "statsWinRate": "{rate}% win",
-    "statsMvp": "{mvps} MVP"
+    "statsMvp": "{mvps} MVP",
+    "statsSvp": "{svps} SVP"
   },
   "tutorialModal": {
     "title": "Beginner Guide: How to Play Werewolf",

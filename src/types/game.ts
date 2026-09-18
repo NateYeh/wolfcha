@@ -112,6 +112,7 @@ export interface CharacterStat {
   games: number;
   wins: number;
   mvps: number;
+  svps: number;
 }
 
 export interface PlayerMind {

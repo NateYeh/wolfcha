@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     if (!name) continue;
     if (rec.alignment !== "wolf" && rec.alignment !== "village") continue;
     if (typeof rec.won !== "boolean" || typeof rec.mvp !== "boolean") continue;
-    records.push({ gameId, name, alignment: rec.alignment, won: rec.won, mvp: rec.mvp });
+    records.push({ gameId, name, alignment: rec.alignment, won: rec.won, mvp: rec.mvp, svp: rec.svp === true });
   }
   if (records.length === 0) {
     return NextResponse.json({ error: "no valid records" }, { status: 400 });

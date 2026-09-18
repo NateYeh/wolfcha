@@ -479,7 +479,7 @@ test("熟人局：注入其他玩家的印象与交手记录；关闭或无素�
   // 有印象+有交手记录：真人标真人＋交手记录；AI 标底层模型＋印象；本人不列
   const state: GameState = { ...dayState, isAcquaintanceGame: true };
   // 真人（players[0] isHuman=true，无 agentProfile）：只有真人标记＋交手记录
-  state.characterStats = { [state.players[0].displayName]: { games: 12, wins: 7, mvps: 2 } };
+  state.characterStats = { [state.players[0].displayName]: { games: 12, wins: 7, mvps: 2, svps: 1 } };
   // AI（players[1]）：persona＋playerMind＋底层模型
   state.players[1] = {
     ...state.players[1],

@@ -113,6 +113,12 @@ export function PlayerDetailModal({ player, isOpen, onClose }: PlayerDetailModal
                     <span>{t("playerDetail.statsWinRate", { rate: Math.round((careerStats.wins / careerStats.games) * 100) })}</span>
                     <span className="text-[var(--text-muted)]">｜</span>
                     <span>{t("playerDetail.statsMvp", { mvps: careerStats.mvps })}</span>
+                    {(careerStats.svps ?? 0) > 0 && (
+                      <>
+                        <span className="text-[var(--text-muted)]">｜</span>
+                        <span>{t("playerDetail.statsSvp", { svps: careerStats.svps })}</span>
+                      </>
+                    )}
                   </div>
                 )}
 
