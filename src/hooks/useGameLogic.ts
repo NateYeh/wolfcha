@@ -36,8 +36,8 @@ import {
   getRandomHumanSeat,
   generateWhiteWolfKingBoomDecision,
 } from "@/lib/game-master";
-import { buildGenshinModelRefs, generateCharacters, generateGenshinModeCharacters, sampleModelRefs, type GeneratedCharacter } from "@/lib/character-generator";
-import { takeServerPoolCharacters } from "@/lib/character-pool-api";
+import { buildGenshinModelRefs, generateGenshinModeCharacters, sampleModelRefs, type GeneratedCharacter } from "@/lib/character-generator";
+import { sampleRosterCharacters } from "@/lib/character-roster";
 import { fetchCharacterStats } from "@/lib/character-stats";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { getRandomScenario } from "@/lib/scenarios";
@@ -1402,7 +1402,6 @@ export function useGameLogic() {
       isGenshinMode = false,
       isSpectatorMode = false,
       isAcquaintanceGame = false,
-      customCharacters = [],
       preferredRole,
     } = options ?? {};
 
@@ -1451,7 +1450,7 @@ export function useGameLogic() {
 
       const systemMessages = getSystemMessages();
       // 角色池會綁定情境，抽用成功時改寫成池的情境（見下方 pooledCharacters）。
-      let scenario = isGenshinMode ? undefined : getRandomScenario();
+      const scenario = isGenshinMode ? undefined : getRandomScenario();
       const makeId = () => generateUUID();
 
       // 普通模式每局只随机一次人类座位；之后 UI、阶段推进和 Prompt 都读取同一个 seat。
@@ -1510,95 +1509,7 @@ export function useGameLogic() {
       let genshinModelRefs: ModelRef[] | undefined = undefined;
       const numAiPlayers = isSpectatorMode ? totalPlayers : totalPlayers - 1;
 
-      // Convert custom characters to GeneratedCharacter format
-      const customCharsToUse = customCharacters.slice(0, numAiPlayers);
-      const customGeneratedCharacters: GeneratedCharacter[] = customCharsToUse.map((cc) => ({
-        displayName: cc.display_name,
-        persona: {
-          styleLabel: "",
-          voiceRules: cc.style_label?.trim() ? [cc.style_label.trim()] : [],
-          mbti: cc.mbti || "",
-          gender: cc.gender,
-          age: cc.age,
-          basicInfo: cc.basic_info?.trim() || undefined,
-          voiceId: undefined,
-        },
-        avatarSeed: cc.avatar_seed || undefined,
-      }));
-
-      const applyCustomCharactersToState = (customList: GeneratedCharacter[]) => {
-        if (customList.length === 0) return;
-        const seatMap = new Map<number, { character: GeneratedCharacter; index: number }>();
-        customList.forEach((character, index) => {
-          const seat = aiSeatOrder[index] ?? aiSeats[index] ?? index;
-          if (Number.isFinite(seat)) {
-            seatMap.set(seat, { character, index });
-          }
-        });
-        if (seatMap.size === 0) return;
-        setGameState((prev) => {
-          const nextPlayers = prev.players.map((pl) => {
-            const match = seatMap.get(pl.seat);
-            if (!match || pl.isHuman) return pl;
-            return {
-              ...pl,
-              displayName: match.character.displayName,
-              avatarSeed: match.character.avatarSeed ?? pl.avatarSeed ?? pl.playerId,
-              avatarStyle: match.character.avatarStyle ?? pl.avatarStyle,
-              agentProfile: {
-                modelRef: aiModelRefs[match.index] ?? getRandomModelRef(),
-                persona: match.character.persona,
-                playerMind: match.character.playerMind,
-              },
-            };
-          });
-          return { ...prev, players: nextPlayers };
-        });
-      };
-
-      // Use custom characters if provided, otherwise generate
-      const hasCustomCharacters = customGeneratedCharacters.length > 0;
-
-      if (hasCustomCharacters) {
-        applyCustomCharactersToState(customGeneratedCharacters);
-        // Fill remaining slots with generated characters if needed
-        const remainingCount = numAiPlayers - customGeneratedCharacters.length;
-        if (remainingCount > 0) {
-          const extraCharacters = await generateCharacters(remainingCount, scenario, {});
-          characters = [...customGeneratedCharacters, ...extraCharacters];
-        } else {
-          characters = customGeneratedCharacters;
-        }
-        
-        // Custom characters appear immediately (no delay), generated ones animate in
-        const customCount = customGeneratedCharacters.length;
-        characters.forEach((character, index) => {
-          const seat = aiSeatOrder[index] ?? aiSeats[index] ?? index;
-          const isCustom = index < customCount;
-          const delay = isCustom ? 0 : 200 + (index - customCount) * 180;
-          
-          scheduleCancellableTimeout(characterAnimationGeneration, () => {
-            setGameState((prev) => {
-              const nextPlayers = prev.players.map((pl) => {
-                if (pl.seat !== seat) return pl;
-                if (pl.isHuman) return pl;
-                return {
-                  ...pl,
-                  displayName: character.displayName,
-                  avatarSeed: character.avatarSeed ?? pl.avatarSeed ?? pl.playerId,
-                  avatarStyle: character.avatarStyle ?? pl.avatarStyle,
-                  agentProfile: {
-                    modelRef: aiModelRefs[index] ?? getRandomModelRef(),
-                    persona: character.persona,
-                    playerMind: character.playerMind,
-                  },
-                };
-              });
-              return { ...prev, players: nextPlayers };
-            });
-          }, delay);
-        });
-      } else if (isGenshinMode) {
+      if (isGenshinMode) {
         genshinModelRefs = buildGenshinModelRefs(numAiPlayers);
         characters = await generateGenshinModeCharacters(numAiPlayers, genshinModelRefs);
         
@@ -1626,56 +1537,8 @@ export function useGameLogic() {
           }, 200 + index * 180); // 逐个出现，每个间隔 180ms
         });
       } else {
-        // 先抽伺服器上的預生成角色池：命中就省下約 50 秒的角色生成。
-        // 未命中（首次開局或池不足）才即時生成，行為與以往相同。
-        const pooled = await takeServerPoolCharacters(numAiPlayers);
-        if (pooled) {
-          scenario = pooled.scenario;
-          characters = pooled.characters;
-          console.info(
-            `[character-pool] 本局使用預生成角色 ${pooled.characters.length} 名（情境：${pooled.scenario.title}）`,
-          );
-        } else {
-          characters = await generateCharacters(numAiPlayers, scenario, {
-            onBaseProfiles: (profiles) => {
-              profiles.forEach((p, i) => {
-                const seat = aiSeatOrder[i] ?? aiSeats[i] ?? i;
-                scheduleCancellableTimeout(characterAnimationGeneration, () => {
-                  setGameState((prev) => {
-                    const nextPlayers = prev.players.map((pl) => {
-                      if (pl.seat === seat) return { ...pl, displayName: p.displayName };
-                      return pl;
-                    });
-                    return { ...prev, players: nextPlayers };
-                  });
-                }, 420 + i * 260);
-              });
-            },
-            onCharacter: (index, character) => {
-              const seat = aiSeatOrder[index] ?? aiSeats[index] ?? index;
-              scheduleCancellableTimeout(characterAnimationGeneration, () => {
-                setGameState((prev) => {
-                  const nextPlayers = prev.players.map((pl) => {
-                    if (pl.seat !== seat) return pl;
-                    if (pl.isHuman) return pl;
-                    return {
-                      ...pl,
-                      displayName: character.displayName,
-                      avatarSeed: pl.avatarSeed ?? pl.playerId,
-                      avatarStyle: character.avatarStyle,
-                      agentProfile: {
-                        modelRef: aiModelRefs[index] ?? getRandomModelRef(),
-                        persona: character.persona,
-                        playerMind: character.playerMind,
-                      },
-                    };
-                  });
-                  return { ...prev, players: nextPlayers };
-                });
-              }, 120);
-            },
-          });
-        }
+        // 固定班底：直接抽用內建金庸群俠名單，開局不再 AI 生成、不再查角色池。
+        characters = sampleRosterCharacters(numAiPlayers);
       }
 
       if (sessionId) {

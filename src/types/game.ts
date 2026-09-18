@@ -11,17 +11,6 @@ export type SpeechDirection = "clockwise" | "counterclockwise";
 
 export type DevPreset = "MILK_POISON_TEST" | "LAST_WORDS_TEST";
 
-export interface CustomCharacterData {
-  id: string;
-  display_name: string;
-  gender: "male" | "female" | "nonbinary";
-  age: number;
-  mbti: string;
-  basic_info?: string;
-  style_label?: string;
-  avatar_seed?: string;
-}
-
 export interface StartGameOptions {
   fixedRoles?: Role[];
   devPreset?: DevPreset;
@@ -32,7 +21,6 @@ export interface StartGameOptions {
   isSpectatorMode?: boolean;
   /** 熟人局：AI 互相认识（注入印象与交手记录），供读人参考。 */
   isAcquaintanceGame?: boolean;
-  customCharacters?: CustomCharacterData[];
   preferredRole?: Role;
 }
 

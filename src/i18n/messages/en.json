@@ -481,33 +481,6 @@
       "title": "Spectator Mode",
       "description": "Watch AI players only, without participating. Tap player cards to reveal their true role"
     },
-    "characterPool": {
-      "title": "Character pool",
-      "status": "{unused}/{target} unused pre-generated characters (scenario: {scenario})",
-      "empty": "Not built yet. Characters will be generated when the game starts (about 50s)",
-      "refill": "Add a batch",
-      "refilling": "Generating...",
-      "rebuild": "New scenario",
-      "hint": "Refills itself up to three games' worth while you stay on this screen; starting a game draws from the pool instead of waiting.",
-      "failed": "The last refill failed (see the browser console). The game will generate characters on the spot instead.",
-      "scenarioLabel": "Scenario",
-      "scenarioRandom": "Random scenario (new on each rebuild)",
-      "scenarioSelectHint": "Pick a scenario then press Rebuild to apply; rebuilding clears the pool and refills to three games' worth in the background.",
-      "builtinGroup": "Built-in scenarios",
-      "customGroup": "Custom scenarios",
-      "customHeading": "Custom scenario",
-      "customName": "Scenario name",
-      "customDesc": "World description",
-      "customRoles": "Role types and tone",
-      "customNamePlaceholder": "e.g. Jin Yong heroes",
-      "customDescPlaceholder": "e.g. A heroes' summit on Mount Hua; old grudges erupt over wine.",
-      "customRolesPlaceholder": "e.g. Sect leaders, swordswomen, an evil-cult master, beggar-clan elders. Wuxia tone, honour-bound.",
-      "customAdd": "Save & rebuild",
-      "customDelete": "Delete",
-      "lockedTitle": "Fixed roster",
-      "lockedDescription": "When on, no new characters are generated; only the current roster is used",
-      "lockedOn": "Fixed roster on: no new characters, just the current list"
-    },
     "rolePreference": {
       "label": "Role Preference",
       "random": "Random",
@@ -1647,105 +1620,10 @@
     "fullPersonasPrompt": "You are a Werewolf game character designer.\n\n【Scenario】\n{title} - {description}\nNote: The scenario is only for identity/background/name flavor. Everyone is now playing a live Werewolf game, so all speech should stay at the table: reads, pressure, doubt, voting, claims, silence, and survival.\n\n【Roster】\n{roster}\n\n【Task】\nCreate both persona and playerMind for each player.\n- persona describes surface identity and speech texture.\n- playerMind describes how this person actually plays Werewolf under pressure.\nThe goal is a believable table: some players are bold, some cautious; some remember votes, some remember tone; some speak in one or two sentences, and some expand when pressured.\n\n【persona hidden profile fields】\n- werewolfExperience: natural description of how this person understands Werewolf, without label-like tiers\n- vocabularyStyle: everyday wording and speech texture; plain everyday speech first, Werewolf jargon at most a light touch, close to real players\n- reasoningStyle: what they naturally notice first: tone, votes, claims, incentives, seat positions, interactions, or odd wording\n- speechLengthHabit: how their speech length changes across normal turns, pressure, and final pushes; natural language only, no numeric character ranges\n- pressureStyle: how they react when named or suspected\n- uncertaintyStyle: how they hedge, change reads, or avoid overcommitting\n- mistakePattern: believable wrong reads or blind spots\n- wolfDeceptionStyle: how they pretend to hold a town perspective when assigned a wolf role\n\n【playerMind fields】\n- courage: how willing they are to bluff, hard push, counterattack, vote boldly, or take a public risk\n- memoryBias: what they remember most: votes, contradictions, tone, claims, quiet seats, or timing\n- suspicionThreshold: how many clues make them change sides, and what kind of clue matters most\n- selfProtection: what they do when attacked: explain, counterattack, play wronged, joke, go quiet, or redirect\n- logicDepth: whether they mostly catch single points or can connect several players and vote patterns\n- tablePresence: whether they take space, speak briefly, interrupt softly, wait, lurk, or become loud only at key moments\n\n【Important constraints】\n- These hidden fields are only for AI prompts and must not be shown in the UI\n- Use natural descriptions, not enum labels like high/low/aggressive/passive or beginner/expert/pro\n- Avoid numeric character ranges\n- Make some people capable of one-sentence turns; some people can be medium-length; a few can ramble when stressed\n- A small number may have tiny micro-actions, short reactions, or emoji habits in voiceRules; most should sound like ordinary speech\n- voiceRules should describe tone, rhythm, sentence shape, and small verbal habits; avoid job-related analogies or jargon\n- Keep wording plain and conversational; avoid community slang; game jargon at most a light touch that any player understands\n- Preserve diversity while keeping everyone realistic and playable\n- Use English only; do not use Chinese characters\n\n【Output requirements】\n1. Must output JSON: '{ \"characters\": [...] }'\n2. Must have exactly {count} characters, with names and order matching the roster\n3. Every character must include all persona hidden fields and all playerMind fields\n\n【Output structure】\n'{'\n  \"characters\": [\n{schema}\n  ]\n'}'\n\nNow output:"
   },
   "scenarios": {
-    "high_school_reunion": {
-      "title": "Class reunion",
-      "description": "Ten years later, old classmates reunite. Some made it, some didn't; past and present collide.",
-      "rolesHint": "Roles: class president, top student, popular kid, honest type, social butterfly. Tone: casual, nostalgic, a bit competitive."
-    },
-    "family_dinner": {
-      "title": "New Year's dinner",
-      "description": "A big family dinner on New Year's Eve. Peaceful on the surface, but some topics spark conflict.",
-      "rolesHint": "Roles: elders, younger relatives, spouses. Tone: homey, caring but sharp, peacekeeping."
-    },
-    "wedding_banquet": {
-      "title": "Wedding banquet",
-      "description": "A joyous wedding banquet, but old grudges simmer among relatives and friends.",
-      "rolesHint": "Roles: couple, both parents, bridesmaids/groomsmen, ex, troublemaking aunt. Tone: polite with passive aggression."
-    },
-    "community_committee": {
-      "title": "Homeowners meeting",
-      "description": "A community meeting about maintenance fees turns heated as owners clash.",
-      "rolesHint": "Roles: enthusiastic owner, property manager, recording uncle, mom with kids. Tone: group chat bickering."
-    },
-    "tech_startup": {
-      "title": "Startup company",
-      "description": "A team-building event for a startup. Team spirit on the surface, office politics underneath.",
-      "rolesHint": "Roles: founder, engineer, PM, intern, admin. Tone: tech jargon, complaints."
-    },
-    "hospital_oncall": {
-      "title": "ER on-call night",
-      "description": "An on-call ER night; a tough case puts everyone on edge.",
-      "rolesHint": "Roles: attending doctor, resident, head nurse, family member. Tone: professional, stressed."
-    },
-    "esports_house": {
-      "title": "Esports team",
-      "description": "The team is underperforming; practice devolves into blame.",
-      "rolesHint": "Roles: players, coach, agent, substitute. Tone: esports slang, fast-paced."
-    },
-    "cooking_competition": {
-      "title": "Cooking competition",
-      "description": "Backstage at the finals, contestants smile while competing fiercely.",
-      "rolesHint": "Roles: favorite, newcomer, judge, producer. Tone: polite but calculating."
-    },
-    "detective_noir": {
-      "title": "Detective agency",
-      "description": "People tied to a cold case gather; everyone hides secrets.",
-      "rolesHint": "Roles: detective, client, suspect, witness, assistant. Tone: restrained, probing, lots of questions."
-    },
-    "cruise_ship": {
-      "title": "Cruise party",
-      "description": "A VIP disappears on a luxury cruise. The ship has left port—no one can leave.",
-      "rolesHint": "Roles: tycoon, captain, staff, mysterious passenger. Tone: upper-class social, insinuations."
-    },
-    "subway_night_shift": {
-      "title": "Last subway",
-      "description": "The last train stalls in a tunnel; passengers grow suspicious.",
-      "rolesHint": "Roles: driver, office worker, student, security, mysterious rider. Tone: urban, anxious."
-    },
-    "museum_night": {
-      "title": "Museum night shift",
-      "description": "After closing, cameras glitch; footsteps echo and keys go missing.",
-      "rolesHint": "Roles: guard, curator, restorer, intern. Tone: cautious, interrogative."
-    },
-    "co_working_space": {
-      "title": "Co-working space",
-      "description": "A sudden blackout hits the co-working space before launch; everyone looks for someone to blame.",
-      "rolesHint": "Roles: founder, freelancer, ops, investor, intern. Tone: businesslike, tense."
-    },
-    "escape_room": {
-      "title": "Escape room",
-      "description": "An escape room prop goes missing and the group gets stuck; suspicion rises.",
-      "rolesHint": "Roles: leader, timid teammate, veteran, staff, random joiner. Tone: tense, detective, venting."
-    },
-    "music_festival_backstage": {
-      "title": "Music festival backstage",
-      "description": "A last-minute equipment failure sparks a standoff between organizers and artists.",
-      "rolesHint": "Roles: band member, organizer, stage director, lighting tech, fan rep. Tone: fast, emotional."
-    },
-    "airport_delay": {
-      "title": "Airport delays",
-      "description": "Massive flight delays trigger frustration and conflict.",
-      "rolesHint": "Roles: ground staff, passengers, lawyer, parent with kids. Tone: realistic, complaint-heavy."
-    },
-    "train_sleeping_car": {
-      "title": "Sleeper train",
-      "description": "Late at night, someone rummages through bags; passengers accuse each other.",
-      "rolesHint": "Roles: attendant, vendor, backpacker, uncles/aunties. Tone: everyday, suspicious."
-    },
-    "retirement_home": {
-      "title": "Senior center",
-      "description": "In the activity room, seniors compete in brain games and refuse to back down.",
-      "rolesHint": "Roles: retired cadre, dance leader, wealthy elder, gossiping grandma. Tone: verbose, seniority-driven."
-    },
-    "livestream_house": {
-      "title": "Streamer house",
-      "description": "Streamers living together get hit by a scandal leak; everyone suspects each other.",
-      "rolesHint": "Roles: streamer, operator, fan, editor. Tone: internet memes, PR talk."
-    },
-    "campfire_summer": {
-      "title": "Summer camp",
-      "description": "After the bonfire, a theft occurs; campers accuse one another.",
-      "rolesHint": "Roles: instructor, camp leader, quiet kid, tattletale. Tone: youthful, sassy."
+    "jin_yong": {
+      "title": "Jin Yong Heroes",
+      "description": "Heroes of Jin Yong's wuxia world at one table - the Beggar Clan chief, the Sun-Moon Cult priestess, the Emei abbess, the Mongol princess. Old feuds follow them to the game, and nobody yields an inch.",
+      "rolesHint": "Characters are Jianghu figures from Jin Yong's novels (fixed roster), speaking with wuxia flavor but no battle cries - just martial artists playing a parlor game."
     }
   },
   "promptUtils": {
@@ -2466,79 +2344,6 @@
     "amount": "Amount: {value}",
     "expiresAt": "Expires {value}",
     "oauthError": "TokenPay connection was not completed. Please try again."
-  },
-  "customCharacter": {
-    "title": "Custom Characters",
-    "createTitle": "Create Character",
-    "editTitle": "Edit Character",
-    "description": "{count}/{max} characters created",
-    "createDescription": "Create your own game character",
-    "editDescription": "Modify character info",
-    "emptyState": "No custom characters yet. Click to add one.",
-    "selectionHint": "{count} character(s) selected to join (click to select/deselect)",
-    "noInfo": "Not set",
-    "addNew": "Add",
-    "mbtiNotSet": "Not set",
-    "ageUnit": " yrs",
-    "limitReached": "Limit reached",
-    "randomizeAvatar": "Randomize avatar",
-    "entryButton": "Custom Characters",
-    "entryHint": "Create your own characters",
-    "gender": {
-      "male": "Male",
-      "female": "Female",
-      "nonbinary": "Other"
-    },
-    "fields": {
-      "displayName": "Name",
-      "gender": "Gender",
-      "age": "Age",
-      "basicInfo": "Background",
-      "styleLabel": "Speech style"
-    },
-    "placeholders": {
-      "displayName": "Character name (1-20 chars)",
-      "basicInfo": "Brief character background (optional)",
-      "styleLabel": "e.g., talkative, cold, calm (optional)"
-    },
-    "actions": {
-      "create": "Create Character",
-      "saving": "Saving...",
-      "import": "Import Characters",
-      "aiPrompt": "AI Generate Characters",
-      "viewDetail": "View details"
-    },
-    "import": {
-      "title": "Import characters",
-      "description": "Paste JSON below. We'll import up to your remaining slots.",
-      "placeholder": "Paste JSON (array / single object / {\"characters\": [...]} are supported)",
-      "hint": "Remaining import slots: {count}",
-      "confirm": "Import"
-    },
-    "aiPrompt": {
-      "title": "AI generate characters",
-      "description": "Copy this prompt and send it to any AI tool to generate importable character JSON.",
-      "copy": "Copy prompt"
-    },
-    "detail": {
-      "title": "Character details",
-      "description": "View full info and copy JSON for this character.",
-      "copyJson": "Copy JSON"
-    },
-    "errors": {
-      "nameRequired": "Please enter a character name",
-      "importInvalid": "Invalid JSON. Common issues: code fences, trailing commas, smart quotes, or extra text."
-    },
-    "toast": {
-      "createSuccess": "Character created",
-      "updateSuccess": "Character updated",
-      "deleteSuccess": "Character deleted",
-      "importSuccess": "Imported {count} characters",
-      "importPartial": "Imported {imported}, skipped {skipped}",
-      "importFailed": "Import failed",
-      "copied": "Copied to clipboard",
-      "copyFailed": "Copy failed"
-    }
   },
   "lowCreditModal": {
     "title": "Running Low on Credits",

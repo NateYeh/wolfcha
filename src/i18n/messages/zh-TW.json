@@ -481,33 +481,6 @@
       "title": "純鬥蛐蛐模式",
       "description": "不參與遊戲，只看 AI 玩兒。點選玩家卡片可檢視真實身份"
     },
-    "characterPool": {
-      "title": "角色池",
-      "status": "已預生成 {unused}/{target} 名未使用角色（情境：{scenario}）",
-      "empty": "尚未建立。開局時需即時生成角色，約需 50 秒",
-      "refill": "補充一批",
-      "refilling": "生成中…",
-      "rebuild": "換情境重建",
-      "hint": "停留在歡迎畫面時會自動補到三局份；開局直接從池中抽用，省下角色生成的等待。",
-      "failed": "上一次補充失敗（詳見瀏覽器 console）；開局時將即時生成，不影響遊戲。",
-      "scenarioLabel": "情境",
-      "scenarioRandom": "隨機情境（每次重建換新的）",
-      "scenarioSelectHint": "選情境後按「換情境重建」生效；重建會清空現有池，背景補到三局份。",
-      "builtinGroup": "內建情境",
-      "customGroup": "自訂情境",
-      "customHeading": "自訂情境",
-      "customName": "情境名稱",
-      "customDesc": "世界觀描述",
-      "customRoles": "角色型別與對話調性",
-      "customNamePlaceholder": "例：金庸群俠",
-      "customDescPlaceholder": "例：華山之巔英雄大會，各派高手齊聚一堂，酒過三巡恩怨爆發。",
-      "customRolesPlaceholder": "例：掌門、俠女、魔教教主、丐幫長老。對話風格：武俠腔、恩怨分明。",
-      "customAdd": "儲存並重建",
-      "customDelete": "刪除",
-      "lockedTitle": "固定班底",
-      "lockedDescription": "開啟後不再自動生成新角色，只用手動指定的名單輪替",
-      "lockedOn": "固定班底中：不會生成新角色，只輪替目前名單"
-    },
     "rolePreference": {
       "label": "身份偏好",
       "random": "隨機分配",
@@ -1647,105 +1620,10 @@
     "fullPersonasPrompt": "你是狼人殺遊戲的角色設計師。\n\n【場景】\n{title} - {description}\n說明：上述場景只用於角色身份、名字和背景風味；當前所有人正在玩一局即時狼人殺，發言內容應停留在桌上：判斷、懷疑、試探、站邊、投票、身份資訊、沉默和自保。\n\n【全員檔案】\n{roster}\n\n【任務】\n為每個角色生成 persona 和 playerMind。\n- persona 描述表層人設和說話質感。\n- playerMind 描述這個人真實打狼人殺時的穩定心智。\n目標是一桌真實玩家：有人大膽，有人謹慎；有人記票型，有人記聽感；有人一兩句帶過，有人壓力下會展開解釋。\n\n【persona 隱藏畫像欄位】\n- werewolfExperience：這個人怎麼理解狼人殺，用自然描述，不寫等級標籤\n- vocabularyStyle：常用詞和說話質感，以日常口語為主，狼人殺行話最多點到為止，需貼近真實玩家\n- reasoningStyle：最先注意什麼，比如聽感、票型、身份收益、位置、互動、奇怪措辭\n- speechLengthHabit：平時、被質疑、歸票時的長短變化，用自然語言描述，不寫字數區間\n- pressureStyle：被點名或被懷疑時的反應方式\n- uncertaintyStyle：如何表達不確定、保留意見或臨時改站邊\n- mistakePattern：常見誤判點，讓玩家有真實缺陷\n- wolfDeceptionStyle：拿到狼牌時怎樣偽裝成好人視角\n\n【playerMind 欄位】\n- courage：敢不敢詐、硬推、反打、衝票或承擔公開風險\n- memoryBias：更記得票型、矛盾、語氣、身份宣告、沉默位還是關鍵時機\n- suspicionThreshold：幾條線索會讓他改站邊，哪類線索最能打動他\n- selfProtection：被攻擊時會解釋、反打、裝委屈、開玩笑、沉默還是轉移焦點\n- logicDepth：更會抓單點，還是能串起多名玩家和票型關係\n- tablePresence：是佔據話語、短促發言、輕輕插話、等待觀察、潛水，還是關鍵時刻才變強勢\n\n【重要約束】\n- 這些隱藏欄位只用於 AI 提示，不展示在 UI 裡\n- 全部用自然描述，不要寫 high/low/aggressive/passive 或“新手/高手/專家/等級”這類標籤\n- 不要寫數字字數區間\n- 有些人可以只說一句話，有些人中等長度，少數人壓力下會變長\n- 少數人可以在 voiceRules 裡擁有很輕的小動作、短反應或 emoji 習慣，多數人保持普通口語\n- voiceRules 只寫語氣、節奏、句式和小口頭習慣，避免職業類比或行業術語\n- 發言用詞以日常口語為主，別用圈內黑話（蓋戳、划水、焊跳這類詞不要出現）；行話最多輕輕帶一下，以觀眾聽得懂為準\n- 保留差異，但每個人都要真實、可玩、能參與狼人殺討論\n\n【輸出要求】\n1. 必須輸出 JSON：'{ \"characters\": [...] }'\n2. 必須恰好 {count} 個角色，名字和順序與檔案一致\n3. 每個角色都必須包含所有 persona 隱藏畫像欄位和所有 playerMind 欄位\n\n【輸出結構】\n'{'\n  \"characters\": [\n{schema}\n  ]\n'}'\n\n現在輸出："
   },
   "scenarios": {
-    "high_school_reunion": {
-      "title": "同學聚會",
-      "description": "十年後的同學聚會，老同學們重逢。有人混得好，有人不如意，往事和現實交織。",
-      "rolesHint": "角色型別：班長、學霸、班花/班草、老實人、社牛。對話風格：生活化、懷舊、偶爾攀比。"
-    },
-    "family_dinner": {
-      "title": "年夜飯",
-      "description": "一大家子圍坐年夜飯，表面和氣，但總有些話題容易擦槍走火。",
-      "rolesHint": "角色型別：長輩、晚輩、親戚、配偶。對話風格：家常、關心中帶刺、愛勸和。"
-    },
-    "wedding_banquet": {
-      "title": "婚禮酒席",
-      "description": "婚禮現場喜氣洋洋，但親友之間的老賬新仇都在酒杯裡。",
-      "rolesHint": "角色型別：新人、雙方父母、伴郎伴娘、前任、愛挑事的親戚。對話風格：客套、陰陽怪氣。"
-    },
-    "community_committee": {
-      "title": "業委會開會",
-      "description": "小區業委會開會討論物業費，業主們各執一詞，火藥味十足。",
-      "rolesHint": "角色型別：熱心業主、物業經理、愛錄音的大爺、帶娃寶媽。對話風格：群聊語氣、互懟。"
-    },
-    "tech_startup": {
-      "title": "創業公司",
-      "description": "創業公司團建，表面增強凝聚力，實則職場政治暗流湧動。",
-      "rolesHint": "角色型別：創始人、程式設計師、產品經理、實習生、行政。對話風格：網際網路黑話、吐槽。"
-    },
-    "hospital_oncall": {
-      "title": "醫院急診",
-      "description": "急診室值班夜，一起棘手的病例讓所有人神經繃緊。",
-      "rolesHint": "角色型別：主治醫生、實習醫生、護士長、患者家屬。對話風格：專業、壓力大。"
-    },
-    "esports_house": {
-      "title": "電競戰隊",
-      "description": "電競戰隊成績下滑，訓練賽變成互相甩鍋的現場。",
-      "rolesHint": "角色型別：選手、教練、經紀人、替補。對話風格：電競黑話、節奏快。"
-    },
-    "cooking_competition": {
-      "title": "廚藝比賽",
-      "description": "廚藝比賽決賽後臺，選手們表面客氣，暗中較勁。",
-      "rolesHint": "角色型別：奪冠熱門、新人、評委、導演。對話風格：客氣但算計。"
-    },
-    "detective_noir": {
-      "title": "偵探事務所",
-      "description": "偵探事務所裡，一樁懸案的相關人員聚集。每個人都有不願說的秘密。",
-      "rolesHint": "角色型別：偵探、委託人、嫌疑人、證人、助手。對話風格：剋制、愛試探、反問多。"
-    },
-    "cruise_ship": {
-      "title": "郵輪派對",
-      "description": "豪華郵輪上，一位重要乘客失蹤。船已離港，沒人能下船。",
-      "rolesHint": "角色型別：富豪、船長、服務生、神秘乘客。對話風格：上流社交、暗示。"
-    },
-    "subway_night_shift": {
-      "title": "地鐵末班車",
-      "description": "末班地鐵因故障停在隧道里，乘客們開始互相猜疑。",
-      "rolesHint": "角色型別：司機、上班族、學生、保安、神秘乘客。對話風格：都市口語、焦慮。"
-    },
-    "museum_night": {
-      "title": "博物館夜班",
-      "description": "博物館閉館後，監控出現異常。展廳裡有腳步聲，鑰匙不翼而飛。",
-      "rolesHint": "角色型別：保安、館員、修復師、實習生。對話風格：謹慎、互相盤問。"
-    },
-    "co_working_space": {
-      "title": "共享辦公",
-      "description": "共享辦公區突發停電，專案臨近釋出，大家都在找責任人。",
-      "rolesHint": "角色型別：創業者、自由職業者、運維、投資人、實習生。對話風格：商務口吻、暗含火藥味。"
-    },
-    "escape_room": {
-      "title": "密室逃脫",
-      "description": "密室逃脫進行到一半，有道具丟失導致卡關，玩家開始互相懷疑。",
-      "rolesHint": "角色型別：帶隊玩家、膽小隊友、老玩家、店員、臨時拼團。對話風格：緊張、推理、吐槽。"
-    },
-    "music_festival_backstage": {
-      "title": "音樂節後臺",
-      "description": "演出臨近，裝置突然出故障，主辦方與藝人團隊緊急對峙。",
-      "rolesHint": "角色型別：樂隊成員、主辦方、舞臺總監、燈光師、粉絲代表。對話風格：快節奏、情緒起伏。"
-    },
-    "airport_delay": {
-      "title": "機場延誤",
-      "description": "航班大面積延誤，旅客情緒爆炸，各種矛盾集中爆發。",
-      "rolesHint": "角色型別：地勤、乘客、律師、帶娃家長。對話風格：現實口語、投訴。"
-    },
-    "train_sleeping_car": {
-      "title": "火車臥鋪",
-      "description": "長途臥鋪車廂裡，深夜有人翻箱倒櫃，乘客們互相猜疑。",
-      "rolesHint": "角色型別：乘務員、商販、背包客、大叔大媽。對話風格：生活化、疑心重。"
-    },
-    "retirement_home": {
-      "title": "養老院",
-      "description": "養老院活動室裡，大爺大媽們進行腦力活動，誰也不服誰。",
-      "rolesHint": "角色型別：退休幹部、廣場舞領隊、富豪、八卦老太。對話風格：囉嗦、倚老賣老。"
-    },
-    "livestream_house": {
-      "title": "主播合租屋",
-      "description": "幾位主播合租直播，突然有人被曝黑料，互相懷疑是誰洩露的。",
-      "rolesHint": "角色型別：主播、運營、粉絲、剪輯師。對話風格：網路梗、公關話術。"
-    },
-    "campfire_summer": {
-      "title": "夏令營",
-      "description": "夏令營篝火晚會後，營地出現失竊事件，大家互相指責。",
-      "rolesHint": "角色型別：教官、孩子王、透明人、告狀精。對話風格：少年感、嘴硬。"
+    "jin_yong": {
+      "title": "金庸群俠",
+      "description": "金庸武俠群俠同坐一桌——丐幫幫主、魔教聖姑、峨眉掌門、蒙古郡主齊聚，江湖恩怨帶進牌局，各懷心思互不相讓。",
+      "rolesHint": "角色都是金庸筆下的江湖人物（名單固定在角色班底裡），語氣帶武俠味但不喊打喊殺，就當一群會武功的現代人在打牌。"
     }
   },
   "promptUtils": {
@@ -2466,79 +2344,6 @@
     "amount": "金額：{value}",
     "expiresAt": "有效期至 {value}",
     "oauthError": "TokenPay 連線未完成，請重試。"
-  },
-  "customCharacter": {
-    "title": "自定義角色",
-    "createTitle": "建立角色",
-    "editTitle": "編輯角色",
-    "description": "已建立 {count}/{max} 個角色",
-    "createDescription": "建立一個屬於你的遊戲角色",
-    "editDescription": "修改角色資訊",
-    "emptyState": "還沒有自定義角色，點選新增按鈕建立",
-    "selectionHint": "已選擇 {count} 個角色參戰（點選選擇/取消）",
-    "noInfo": "未設定",
-    "addNew": "新增",
-    "mbtiNotSet": "不設定",
-    "ageUnit": "歲",
-    "limitReached": "已達上限",
-    "randomizeAvatar": "換一個頭像",
-    "entryButton": "自定義角色",
-    "entryHint": "建立你的專屬角色",
-    "gender": {
-      "male": "男",
-      "female": "女",
-      "nonbinary": "其他"
-    },
-    "fields": {
-      "displayName": "名稱",
-      "gender": "性別",
-      "age": "年齡",
-      "basicInfo": "背景介紹",
-      "styleLabel": "說話風格"
-    },
-    "placeholders": {
-      "displayName": "角色名稱（1-20字）",
-      "basicInfo": "簡單描述角色的背景（可選）",
-      "styleLabel": "如：話癆、高冷、沉穩（可選）"
-    },
-    "actions": {
-      "create": "建立角色",
-      "saving": "儲存中...",
-      "import": "匯入角色",
-      "aiPrompt": "AI 生成角色",
-      "viewDetail": "檢視詳情"
-    },
-    "import": {
-      "title": "匯入角色",
-      "description": "把 JSON 貼上到下面，確認後會按剩餘名額匯入。",
-      "placeholder": "貼上 JSON（陣列 / 單個物件 / {\"characters\": [...]} 都支援）",
-      "hint": "剩餘可匯入名額：{count}",
-      "confirm": "開始匯入"
-    },
-    "aiPrompt": {
-      "title": "AI 生成角色",
-      "description": "複製下面的提示詞傳送給任意 AI 工具，讓它生成可匯入的角色 JSON。",
-      "copy": "複製提示詞"
-    },
-    "detail": {
-      "title": "角色詳情",
-      "description": "這裡展示該角色的完整資訊，並支援複製 JSON。",
-      "copyJson": "複製 JSON"
-    },
-    "errors": {
-      "nameRequired": "請輸入角色名稱",
-      "importInvalid": "JSON 解析失敗。常見原因：程式碼塊、尾隨逗號、智慧引號或夾雜說明。"
-    },
-    "toast": {
-      "createSuccess": "角色建立成功",
-      "updateSuccess": "角色更新成功",
-      "deleteSuccess": "角色已刪除",
-      "importSuccess": "已匯入 {count} 個角色",
-      "importPartial": "已匯入 {imported} 個，跳過 {skipped} 個",
-      "importFailed": "匯入失敗",
-      "copied": "已複製到剪貼簿",
-      "copyFailed": "複製失敗"
-    }
   },
   "lowCreditModal": {
     "title": "額度即將用盡",

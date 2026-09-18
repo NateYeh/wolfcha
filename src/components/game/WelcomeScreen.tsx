@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { FingerprintSimple, PawPrint, Sparkle, Wrench, GearSix, UserCircle, GithubLogo, Star, EnvelopeSimple, Handshake, DotsThreeOutlineVertical, Users, UsersFour } from "@phosphor-icons/react";
+import { FingerprintSimple, PawPrint, Sparkle, Wrench, GearSix, UserCircle, GithubLogo, Star, EnvelopeSimple, Handshake, DotsThreeOutlineVertical, Users } from "@phosphor-icons/react";
 import { WerewolfIcon } from "@/components/icons/FlatIcons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,9 +19,6 @@ import { ResetPasswordModal } from "@/components/game/ResetPasswordModal";
 import { UserProfileModal } from "@/components/game/UserProfileModal";
 import { LowCreditModal, LOW_CREDIT_THRESHOLD } from "@/components/game/LowCreditModal";
 import { LocaleSwitcher } from "@/components/game/LocaleSwitcher";
-import { CustomCharacterModal } from "@/components/game/CustomCharacterModal";
-import { useCustomCharacters } from "@/hooks/useCustomCharacters";
-import { useCharacterPool } from "@/hooks/useCharacterPool";
 import { useCredits, type ConsumeCreditResult } from "@/hooks/useCredits";
 import { difficultyAtom, playerCountAtom, preferredRoleAtom } from "@/store/settings";
 import {
@@ -64,7 +61,6 @@ type SponsorCardProps = {
   children?: React.ReactNode;
 };
 
-const CUSTOM_CHARACTER_SELECTION_STORAGE_KEY = "wolfcha_custom_character_selection";
 
 // 本機／自架模式（WOLFCHA_LOCAL_NO_AUTH=1）：不提供帳號登入按鈕，
 // 玩家改用「設定」裡的服務連線（伺服器位址＋Key）與模型池。
@@ -307,7 +303,6 @@ export function WelcomeScreen({
   const [isGroupOpen, setIsGroupOpen] = useState(false);
   const [groupImgOk, setGroupImgOk] = useState<boolean | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isCustomCharacterOpen, setIsCustomCharacterOpen] = useState(false);
   const [isLowCreditOpen, setIsLowCreditOpen] = useState(false);
   const [userProfileDefaultTab, setUserProfileDefaultTab] = useState<string | undefined>(undefined);
   const [tokenPayConnected, setTokenPayConnectedState] = useState(false);
@@ -317,39 +312,10 @@ export function WelcomeScreen({
     promise: Promise<boolean | null>;
   } | null>(null);
   const tokenPayQueryHandledRef = useRef(false);
-  const selectionStorageKey = useMemo(() => {
-    return user?.id
-      ? `${CUSTOM_CHARACTER_SELECTION_STORAGE_KEY}:${user.id}`
-      : CUSTOM_CHARACTER_SELECTION_STORAGE_KEY;
-  }, [user?.id]);
 
-  const readSelectionFromStorage = useCallback(() => {
-    if (typeof window === "undefined") return new Set<string>();
-    try {
-      const raw = window.localStorage.getItem(selectionStorageKey);
-      if (!raw) return new Set<string>();
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return new Set<string>();
-      return new Set(parsed.filter((item): item is string => typeof item === "string"));
-    } catch {
-      return new Set<string>();
-    }
-  }, [selectionStorageKey]);
-
-  const selectionStorageKeyRef = useRef<string | null>(null);
-  const [selectedCharacterIds, setSelectedCharacterIds] = useState<Set<string>>(() =>
-    readSelectionFromStorage()
-  );
-
-  const customCharacters = useCustomCharacters(user);
   const [difficulty, setDifficulty] = useAtom(difficultyAtom);
   const [playerCount, setPlayerCount] = useAtom(playerCountAtom);
   const [preferredRole, setPreferredRole] = useAtom(preferredRoleAtom);
-  // 角色池：只要還在欢迎画面（非 genshin）就背景預生成，開局直接抽用。
-  const characterPool = useCharacterPool(
-    isSpectatorMode ? playerCount : Math.max(1, playerCount - 1),
-    !isGenshinMode,
-  );
   const [githubStars, setGithubStars] = useState<number | null>(null);
   const springCampaignRemainingQuota = springCampaign?.remainingQuota ?? 0;
   const springCampaignTotalQuota = springCampaign?.totalQuota ?? 0;
@@ -413,28 +379,6 @@ export function WelcomeScreen({
     setIsSpringFestivalOpen(true);
   }, [springCampaignActiveNow, springFestivalSeenKey]);
 
-  useEffect(() => {
-    selectionStorageKeyRef.current = selectionStorageKey;
-    setSelectedCharacterIds(readSelectionFromStorage());
-  }, [readSelectionFromStorage, selectionStorageKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (selectionStorageKeyRef.current !== selectionStorageKey) return;
-    const ids = Array.from(selectedCharacterIds);
-    window.localStorage.setItem(selectionStorageKey, JSON.stringify(ids));
-  }, [selectedCharacterIds, selectionStorageKey]);
-
-  useEffect(() => {
-    if (customCharacters.loading) return;
-    const validIds = new Set(customCharacters.characters.map((char) => char.id));
-    const filtered = new Set(
-      Array.from(selectedCharacterIds).filter((id) => validIds.has(id))
-    );
-    if (filtered.size !== selectedCharacterIds.size) {
-      setSelectedCharacterIds(filtered);
-    }
-  }, [customCharacters.characters, customCharacters.loading, selectedCharacterIds]);
 
   const [modelSource, setModelSourceState] = useState<ModelSource>(() => getModelSource());
 
@@ -623,7 +567,6 @@ export function WelcomeScreen({
     (SPRING_CAMPAIGN_ENABLED && isSpringFestivalOpen) ||
     isGroupOpen ||
     isMobileMenuOpen ||
-    isCustomCharacterOpen ||
     isLowCreditOpen ||
     isDevConsoleOpen;
 
@@ -769,26 +712,12 @@ export function WelcomeScreen({
   const buildStartOptions = (gameSessionId?: string | null): StartGameOptions => {
     const roles = devTab === "roles" && devRoleOverrideEnabled && roleConfigValid ? (fixedRoles as Role[]) : undefined;
     const preset = devTab === "preset" && devPreset ? (devPreset as DevPreset) : undefined;
-    const selectedCustomChars = customCharacters.characters
-      .filter(c => selectedCharacterIds.has(c.id))
-      .map(c => ({
-        id: c.id,
-        display_name: c.display_name,
-        gender: c.gender,
-        age: c.age,
-        mbti: c.mbti,
-        basic_info: c.basic_info,
-        style_label: c.style_label,
-        avatar_seed: c.avatar_seed,
-      }));
-
     return {
       fixedRoles: roles,
       devPreset: preset,
       difficulty,
       playerCount,
       gameSessionId: gameSessionId || undefined,
-      customCharacters: selectedCustomChars,
       preferredRole: preferredRole || undefined,
     };
   };
@@ -961,12 +890,6 @@ export function WelcomeScreen({
         <GameSetupModal
           open={isSetupOpen}
           onOpenChange={setIsSetupOpen}
-          characterPool={characterPool.status}
-          characterPoolError={characterPool.error}
-          onRefillCharacterPool={() => void characterPool.refillNow()}
-          onRebuildCharacterPool={characterPool.rebuild}
-          onRebuildWithScenario={characterPool.rebuildWithScenario}
-          onCharacterPoolLockChange={characterPool.setLocked}
           playerCount={playerCount}
           onPlayerCountChange={setPlayerCount}
           preferredRole={preferredRole}
@@ -1029,19 +952,6 @@ export function WelcomeScreen({
             totalReferrals={totalReferrals}
           />
         )}
-        <CustomCharacterModal
-          open={isCustomCharacterOpen}
-          onOpenChange={setIsCustomCharacterOpen}
-          characters={customCharacters.characters}
-          loading={customCharacters.loading}
-          canAddMore={customCharacters.canAddMore}
-          remainingSlots={customCharacters.remainingSlots}
-          selectedIds={selectedCharacterIds}
-          onSelectionChange={setSelectedCharacterIds}
-          onCreateCharacter={customCharacters.createCharacter}
-          onUpdateCharacter={customCharacters.updateCharacter}
-          onDeleteCharacter={customCharacters.deleteCharacter}
-        />
 
         <Dialog
           open={locale === "en" ? false : isGroupOpen}
@@ -1575,29 +1485,6 @@ export function WelcomeScreen({
                 </div>
               </div>
             </div>
-
-
-            {/* Custom Character Entry */}
-            {user && (
-              <button
-                type="button"
-                onClick={() => setIsCustomCharacterOpen(true)}
-                className="mt-6 mx-auto flex items-center gap-2 px-3 py-1.5 rounded-md border-2 border-dashed border-[var(--border-color)] text-xs text-[var(--text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
-              >
-                <UsersFour size={14} />
-                <span>{t("customCharacter.entryButton")}</span>
-                {selectedCharacterIds.size > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-[var(--color-accent)] text-white text-[10px] font-medium">
-                    {selectedCharacterIds.size}
-                  </span>
-                )}
-                {customCharacters.characters.length > 0 && selectedCharacterIds.size === 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-[var(--text-muted)]/20 text-[var(--text-muted)] text-[10px] font-medium">
-                    {customCharacters.characters.length}
-                  </span>
-                )}
-              </button>
-            )}
 
             <div className="mt-4 flex flex-col items-center gap-3">
               <div className="wc-seal-hint">
