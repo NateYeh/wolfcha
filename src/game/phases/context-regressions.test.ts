@@ -577,6 +577,15 @@ test("預言家：警徽流要依據（前置位先報驗人計劃）、對跳�
   assert.match(ctx, /是好人徽给1号、是狼徽给X号/);
 });
 
+test("徽流要理由：全員白天聽徽流時拿到核對指引（badgeNote）", () => {
+  const day = fresh("DAY_SPEECH");
+  const villager = day.players.find((p) => p.role === "Villager")!;
+  const ctx = buildGameContext(day, villager);
+  assert.match(ctx, /活人宣布的徽流当场就要核对/);
+  assert.match(ctx, /报了名字，理由呢？/);
+  assert.match(ctx, /说不出理由的承诺本身就值得记上一笔/);
+});
+
 test("狼人：白天拿到衝鋒／倒勾分工與讀神民，悍跳守則含輪次前提與心路歷程", () => {
   const day = fresh("DAY_SPEECH");
   const wolf = day.players.find((p) => p.role === "Werewolf")!;
@@ -589,6 +598,10 @@ test("狼人：白天拿到衝鋒／倒勾分工與讀神民，悍跳守則含�
   assert.match(ctx, /多半是民；自信、敢四处给压力找狼/);
   assert.match(ctx, /跳之前先看形势/);
   assert.match(ctx, /心路历程要跟你前几天的发言对得上/);
+  assert.match(ctx, /悍跳的徽流也要有理由/);
+  assert.match(ctx, /别把理由往后拖/);
+  assert.match(ctx, /别顺手给狼队友/);
+  assert.match(ctx, /这把尺全桌共用/);
 
   const night: GameState = { ...day, phase: "NIGHT_WOLF_ACTION" as Phase };
   const nightWolf = night.players.find((p) => p.role === "Werewolf")!;
