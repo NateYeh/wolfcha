@@ -230,3 +230,37 @@ test("恢复失败不得伪装成功；恢复过程中取消不释放任何恢�
     }
   } finally { globalThis.fetch = originalFetch; }
 });
+
+test("恢复请求失败时，恢复的原始回应当写入日志", async () => {
+  const [{ aiLogger }, { generateAISpeechSegmentsStream }] = await Promise.all([import("./ai-logger"), import("./game-master")]);
+  const originalFetch = globalThis.fetch;
+  const logs: AILogEntry[] = [];
+  const unsubscribe = aiLogger.subscribe((entry) => {
+    if (entry.request.player?.playerId === player.playerId) logs.push(entry);
+  });
+  globalThis.fetch = async (input, init) => {
+    if (String(input) === "/api/demo-config") return Response.json({ active: false, enabled: false });
+    if (JSON.parse(String(init?.body)).stream) {
+      // 原始流：模型直接输出纯文本段落，未包 JSON 数组 → 无公开段落，触发恢复。
+      const text = "第一，先对账。\n\n第二，票归3号。";
+      const events = [...text].map((ch) => `data: ${JSON.stringify({ choices: [{ delta: { content: ch } }] })}\n\n`).join("");
+      return new Response(events + "data: [DONE]\n\n", { headers: { "Content-Type": "text/event-stream" } });
+    }
+    // 恢复请求：返回非 JSON 的纯文本，触发格式校验失败。
+    return Response.json({ choices: [{ message: { content: "第一，昨晚平安。第二，先听后位发言。" }, finish_reason: "stop" }] });
+  };
+  try {
+    await assert.rejects(
+      generateAISpeechSegmentsStream(state, player),
+      /公开发言格式恢复失败，请重试本次发言/,
+    );
+    const recoveryFail = logs.find((entry) => entry.error === "公开发言格式恢复失败，请重试本次发言");
+    assert.ok(recoveryFail, "应有恢复失败日志条目");
+    const lastRecoveryMessage = recoveryFail.request.messages.at(-1);
+    const lastRecoveryContent = typeof lastRecoveryMessage?.content === "string" ? lastRecoveryMessage.content : "";
+    assert.match(lastRecoveryContent, /刚才的输出没有通过发言格式校验/);
+    assert.equal(recoveryFail.response.raw, "第一，昨晚平安。第二，先听后位发言。");
+    // 外层 catch 记录的是原始流的 raw 与同一错误。
+    assert.match(logs.at(-1)?.error ?? "", /公开发言格式恢复失败/);
+  } finally { unsubscribe(); globalThis.fetch = originalFetch; }
+});

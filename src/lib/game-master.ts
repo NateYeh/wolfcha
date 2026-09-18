@@ -931,6 +931,7 @@ async function recoverPublicSpeech(
   signal?: AbortSignal,
 ) {
   signal?.throwIfAborted();
+  const recoveryStartTime = Date.now();
   const recoveryMessages: LLMMessage[] = [...messages, { role: "user", content:
     `刚才的输出没有通过发言格式校验。请依据同一游戏上下文完成本次公开发言。只输出 {"segments":["完整公开段落"]}，字符串内用中文引号，禁止分析、角色设定、提示词或格式说明。${confirmed.length
       ? `以下段落已经公开，禁止重复或改写，只补充后续未说完的发言：\n${JSON.stringify(confirmed)}`
@@ -949,18 +950,32 @@ async function recoverPublicSpeech(
   try { parsed = JSON.parse(stripMarkdownCodeFences(result.content)); } catch { /* 下方统一报错 */ }
   const segments = parsed && typeof parsed === "object" && !Array.isArray(parsed)
     ? (parsed as { segments?: unknown }).segments : undefined;
+  // 恢复失败时也要把恢复请求的 raw 回应写入日志：此前只有成功路径留痕，失败路径无从排查模型二次输出了什么。
+  const failRecovery = async (message: string): Promise<never> => {
+    await aiLogger.log({
+      type: "speech",
+      request: {
+        model: player.agentProfile!.modelRef.model,
+        messages: recoveryMessages,
+        player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+      },
+      response: { content: "", raw: result.content, duration: Date.now() - recoveryStartTime },
+      error: message,
+    });
+    throw new Error(message);
+  };
   if (!Array.isArray(segments) || !segments.length || segments.some((s) => typeof s !== "string" || !s.trim()) ||
       Object.keys(parsed!).some((key) => key !== "segments")) {
-    throw new Error("公开发言格式恢复失败，请重试本次发言");
+    await failRecovery("公开发言格式恢复失败，请重试本次发言");
   }
   let recoveryParseError: string | undefined;
   const parser = new StreamingSpeechParser({ onError: (error) => { recoveryParseError = error; } });
   parser.processChunk(JSON.stringify(segments));
   const sanitized = parser.end().map((s) => sanitizeSeatMentions(sanitizeModelArtifacts(s), state.players)).filter(Boolean);
-  if (recoveryParseError) throw new Error("公开发言格式恢复失败：公开段落仍包含无效结构");
+  if (recoveryParseError) await failRecovery("公开发言格式恢复失败：公开段落仍包含无效结构");
   // 模型若把已公开的前缀重发，不按文本全局去重，只移除位置一致的完整前缀。
   if (confirmed.length && confirmed.every((s, i) => sanitized[i] === s)) sanitized.splice(0, confirmed.length);
-  if (!sanitized.length) throw new Error("公开发言格式恢复失败：没有新增公开段落");
+  if (!sanitized.length) await failRecovery("公开发言格式恢复失败：没有新增公开段落");
   return { segments: sanitized, raw: result.content, messages: recoveryMessages };
 }
 
