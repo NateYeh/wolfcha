@@ -22,6 +22,7 @@ import {
   fetchCustomScenariosRemote,
   saveCustomScenarioRemote,
 } from "@/lib/character-pool-api";
+import { hasBuiltInParams, resolveAvailableModelRefs } from "@/lib/model-pool";
 import type { CharacterPoolStatus } from "@/lib/character-pool-refill";
 import {
   getGatewayModels,
@@ -153,22 +154,28 @@ export function GameSetupModal({
   // 惰性初始化直接讀 localStorage；之後每次變更都同步寫回，因此不需要 effect 同步。
   const [modelPool, setModelPool] = useState<string[]>(() => getPlayerModelPool());
   const [modelPoolNotice, setModelPoolNotice] = useState("");
-  const playerModelOptions = useMemo(() => filterPlayerModels(PLAYER_MODELS), []);
-
   // AI 服務連線：自帶 gateway（伺服器位址 + Key），同樣只存在本機瀏覽器。
   const [gatewayBaseUrl, setGatewayBaseUrlState] = useState(() => {
     const current = getTokendanceBaseUrl();
     return current === DEFAULT_GATEWAY_BASE_URL ? "" : current;
   });
   const [gatewayKey, setGatewayKeyState] = useState(() => getTokendanceApiKey());
-  // 自帶 gateway 回報的模型清單（抓過才有）；用來標示哪些模型這台閘道器沒有。
+  // 自帶 gateway 回報的模型清單（抓過才有）；這份清單就是模型池的來源。
   const [gatewayModels, setGatewayModelsState] = useState<string[]>(() => getGatewayModels());
+
+  // 模型池來源：抓過閘道器清單就以它為準（閘道器之後新增模型不必再改程式碼），
+  // 還沒抓過才用內建清單；未內建的模型走自帶閘道器通道並使用預設參數。
+  const builtinModelOptions = useMemo(() => filterPlayerModels(PLAYER_MODELS), []);
+  const playerModelOptions = useMemo(
+    () => resolveAvailableModelRefs(gatewayModels, builtinModelOptions),
+    [gatewayModels, builtinModelOptions],
+  );
   const [connectionState, setConnectionState] = useState<"idle" | "testing" | "ok" | "fail">("idle");
   const [connectionMessage, setConnectionMessage] = useState("");
-  // gateway 有清單、但內建模型池裡沒有的模型（只做提示，暫不列入模型池）。
+  // gateway 有清單、但沒有內建參數的模型（會用預設 temperature／reasoning）。
   const gatewayOnlyModels = useMemo(
-    () => gatewayModels.filter((model) => !playerModelOptions.some((ref) => ref.model === model)),
-    [gatewayModels, playerModelOptions],
+    () => gatewayModels.filter((model) => !hasBuiltInParams(model)),
+    [gatewayModels],
   );
   const baseUrlCheck = useMemo(
     () => normalizeGatewayBaseUrl(gatewayBaseUrl.trim() || DEFAULT_GATEWAY_BASE_URL),
@@ -249,10 +256,6 @@ export function GameSetupModal({
   };
 
   const toggleModel = (model: string) => {
-    if (gatewayModels.length > 0 && !gatewayModels.includes(model)) {
-      setModelPoolNotice(t("gameSetup.connection.missingOnGateway"));
-      return;
-    }
     const current = modelPool.length === 0 ? playerModelOptions.map((ref) => ref.model) : modelPool;
     const next = current.includes(model) ? current.filter((item) => item !== model) : [...current, model];
     if (next.length === 0) {
@@ -636,22 +639,17 @@ export function GameSetupModal({
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {playerModelOptions.map((ref) => {
-                const missingOnGateway = gatewayModels.length > 0 && !gatewayModels.includes(ref.model);
-                const active = !missingOnGateway && (modelPool.length === 0 || modelPool.includes(ref.model));
+                const active = modelPool.length === 0 || modelPool.includes(ref.model);
                 return (
                   <button
                     key={`${ref.provider}:${ref.model}`}
                     type="button"
-                    disabled={missingOnGateway}
-                    title={missingOnGateway ? t("gameSetup.connection.missingOnGateway") : undefined}
                     aria-pressed={active}
                     onClick={() => toggleModel(ref.model)}
                     className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                      missingOnGateway
-                        ? "cursor-not-allowed border-[var(--border-color)] text-[var(--text-muted)] line-through opacity-50"
-                        : active
-                          ? "border-[var(--color-accent)] text-[var(--text-primary)]"
-                          : "border-[var(--border-color)] text-[var(--text-muted)] opacity-60"
+                      active
+                        ? "border-[var(--color-accent)] text-[var(--text-primary)]"
+                        : "border-[var(--border-color)] text-[var(--text-muted)] opacity-60"
                     }`}
                   >
                     {ref.model}

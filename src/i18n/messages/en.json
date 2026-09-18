@@ -429,9 +429,7 @@
       "testAndFetch": "Test connection & fetch model list",
       "okWithModels": "Connected: the gateway offers {count} models",
       "listHint": "Gateway model list loaded ({count}); models the gateway lacks are struck out below",
-      "missingOnGateway": "The gateway does not offer this model — the game would fail",
-      "missingTag": "not on gateway",
-      "gatewayOnly": "Also offered by the gateway (not built in yet, not selectable): {models}"
+      "gatewayOnly": "Models without built-in params (default temperature/reasoning): {models}"
     },
     "modelPool": {
       "title": "AI player model pool",

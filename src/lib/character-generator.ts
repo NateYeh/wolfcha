@@ -18,6 +18,7 @@ import {
 } from "@/types/game";
 import {
   getGeneratorModel,
+  getGatewayModels,
   getPlayerModelPool,
   getSelectedModels,
   hasDashscopeKey,
@@ -26,6 +27,7 @@ import {
   isCustomKeyEnabled,
   isTokenPayActive,
 } from "@/lib/api-keys";
+import { resolveAvailableModelRefs, withGatewayModels } from "./model-pool";
 import { aiLogger } from "./ai-logger";
 import { GAME_TEMPERATURE } from "./ai-config";
 import { getRandomScenario } from "./scenarios";
@@ -87,15 +89,17 @@ function getModelRefForModel(model: string): ModelRef {
 }
 
 export const sampleModelRefs = (count: number): ModelRef[] => {
-  // Default pool when custom key is not enabled
-  const defaultPool =
+  // 內建備援池：還沒抓過閘道器清單時使用。
+  const builtinPool =
     PLAYER_MODELS.length > 0
       ? PLAYER_MODELS
       : [getModelRefForModel(GENERATOR_MODEL)];
+  // 抓過閘道器清單就以它為準（閘道器新增模型不必改程式碼）；未內建的模型走
+  // 自帶閘道器通道並用預設參數。
+  const gatewayRefs = resolveAvailableModelRefs(getGatewayModels(), builtinPool);
 
-  // 內建（專案／TokenPay）模式：模型清單寫死在 PLAYER_MODELS，
-  // 使用者可在「設定 → AI 玩家模型池」勾選本輪要用的模型（空＝全部）。
-  // 全選項都失效時退回全部，並留下紀錄（不靜默吞掉）。
+  // 內建（專案／TokenPay）模式：使用者可在「設定 → AI 玩家模型池」勾選本輪要用
+  // 的模型（空＝全部）。全選項都失效時退回全部，並留下紀錄（不靜默吞掉）。
   const applyPlayerPoolFilter = (pool: ModelRef[]): ModelRef[] => {
     const selected = getPlayerModelPool();
     if (selected.length === 0) return pool;
@@ -109,22 +113,25 @@ export const sampleModelRefs = (count: number): ModelRef[] => {
   };
 
   const pool = (() => {
-    if (!isCustomKeyEnabled()) return applyPlayerPoolFilter(defaultPool);
+    if (!isCustomKeyEnabled()) return applyPlayerPoolFilter(gatewayRefs);
 
     // When custom key is enabled, use ALL_MODELS as the full available pool
-    const fullPool = ALL_MODELS.length > 0 ? ALL_MODELS : defaultPool;
+    const fullPool = withGatewayModels(
+      ALL_MODELS.length > 0 ? ALL_MODELS : builtinPool,
+      getGatewayModels(),
+    );
 
     const allowedProviders = new Set<ModelRef["provider"]>();
     if (hasZenmuxKey()) allowedProviders.add("zenmux");
     if (hasDashscopeKey()) allowedProviders.add("dashscope");
     if (hasTokendanceKey()) allowedProviders.add("tokendance");
-    if (allowedProviders.size === 0) return defaultPool;
+    if (allowedProviders.size === 0) return builtinPool;
 
     // Filter by allowed providers, then exclude non-player models
     const allowedPool = filterPlayerModels(
       fullPool.filter((ref) => allowedProviders.has(ref.provider))
     );
-    if (allowedPool.length === 0) return defaultPool;
+    if (allowedPool.length === 0) return builtinPool;
 
     // Filter by user's selected models - STRICTLY respect user selection
     const selectedModels = getSelectedModels();

@@ -1,5 +1,6 @@
 import {
   getDashscopeApiKey,
+  getGatewayModels,
   getTokendanceApiKey,
   getTokendanceBaseUrl,
   getZenmuxApiKey,
@@ -48,7 +49,10 @@ function getProviderForModel(model: string): Provider {
   const modelRef =
     ALL_MODELS.find((ref) => ref.model === model) ??
     PROJECT_MODELS.find((ref) => ref.model === model);
-  return modelRef?.provider ?? "zenmux";
+  if (modelRef?.provider) return modelRef.provider;
+  // 自帶閘道器提供的模型（未內建）一律走閘道器通道。
+  if (getGatewayModels().includes(model)) return "tokendance";
+  return "zenmux";
 }
 
 // When using built-in keys (custom disabled), only project-key models are allowed.
@@ -56,8 +60,12 @@ function getProviderForModel(model: string): Provider {
 // model to avoid requiring a user-supplied key after the toggle is turned off.
 function resolveModelForBuiltin(model: string): string {
   if (PROJECT_MODELS.some((r) => r.model === model)) return model;
+  // 自帶閘道器清單裡的模型直接放行：閘道器之後新增模型不必再改程式碼。
+  if (getGatewayModels().includes(model)) return model;
   const m =
     AVAILABLE_MODELS.find((r) => r.provider === "zenmux") ?? AVAILABLE_MODELS[0];
+  // 不得靜默替換模型：換了就要留下紀錄。
+  console.warn("[llm] 模型不在自帶 gateway 清單，改用預設模型:", model, "→", m?.model);
   return m?.model ?? model;
 }
 

@@ -20,7 +20,8 @@ import { useLocalStorageState } from "ahooks";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
-import { ALL_MODELS, PLAYER_MODELS, PROJECT_MODELS, isWolfRole, type GameState, type Player, type Phase, type Role, type DevPreset, type ModelRef, type StartGameOptions } from "@/types/game";
+import { getGatewayModels } from "@/lib/api-keys";
+import { PLAYER_MODELS, isWolfRole, type GameState, type Player, type Phase, type Role, type DevPreset, type ModelRef, type StartGameOptions } from "@/types/game";
 import { gameStateAtom, isValidTransition, clearPersistedGameState, isRestorableGameState } from "@/store/game-machine";
 import { getGeneratorModel, getModelSource } from "@/lib/api-keys";
 import {
@@ -57,17 +58,14 @@ import { isQuotaExhaustedMessage } from "@/lib/llm";
 import { aiLogger } from "@/lib/ai-logger";
 
 // 子模块
+import { toModelRef } from "@/lib/model-pool";
 import { useDialogueManager, type DialogueState } from "./useDialogueManager";
 import { useDayPhase } from "./game-phases/useDayPhase";
 import { useBadgePhase } from "./game-phases/useBadgePhase";
 import { useSpecialEvents } from "./game-phases/useSpecialEvents";
 
 function getModelRefForModel(model: string): ModelRef {
-  return (
-    PROJECT_MODELS.find((ref) => ref.model === model) ??
-    ALL_MODELS.find((ref) => ref.model === model) ??
-    { provider: "zenmux" as const, model }
-  );
+  return toModelRef(model, getGatewayModels());
 }
 
 function getRandomModelRef(): ModelRef {

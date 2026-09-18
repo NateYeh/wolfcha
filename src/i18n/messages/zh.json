@@ -429,9 +429,7 @@
       "testAndFetch": "测试连接并读取模型列表",
       "okWithModels": "连接成功：网关提供 {count} 个模型",
       "listHint": "已读取网关模型清单（{count} 个），下面模型池里网关没有的会划掉",
-      "missingOnGateway": "这个模型网关没有，选了开不了局",
-      "missingTag": "网关没有",
-      "gatewayOnly": "网关还提供（未内建，暂不列入模型池）：{models}"
+      "gatewayOnly": "未内建参数的模型（用预设 temperature／reasoning）：{models}"
     },
     "modelPool": {
       "title": "AI 玩家模型池",

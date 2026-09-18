@@ -78,3 +78,34 @@ test("玩家模型池：內建模式只抽被勾選的模型，勾選全失效�
     await restore();
   }
 });
+
+test("玩家模型池：抓過 gateway 清單後，抽模型改以該清單為準（含未內建模型）", async () => {
+  const restore = setupBrowserEnv();
+  try {
+    const { setGatewayModels, setPlayerModelPool } = await import("@/lib/api-keys");
+    const { sampleModelRefs } = await import("@/lib/character-generator");
+
+    // gateway 只提供兩個模型，其中一個未內建（模擬上游新增模型，不需改程式碼）
+    setGatewayModels(["glm-5.2:cloud", "brand-new-model:v3"]);
+    setPlayerModelPool([]);
+    const refs = sampleModelRefs(4);
+    assert.deepEqual(
+      Array.from(new Set(refs.map((ref) => ref.model))).sort(),
+      ["brand-new-model:v3", "glm-5.2:cloud"],
+    );
+    // 未內建的模型必須走自帶 gateway 通道，否則會被送到 zenmux
+    assert.ok(refs.every((ref) => ref.provider === "tokendance"));
+
+    // 只勾 gateway 上的某一個模型
+    setPlayerModelPool(["brand-new-model:v3"]);
+    assert.deepEqual(Array.from(new Set(sampleModelRefs(4).map((ref) => ref.model))), ["brand-new-model:v3"]);
+
+    // 勾了 gateway 沒有的模型 → 不會被抽到（退回全部 gateway 模型並留 warning）
+    setPlayerModelPool(["gemma4:31b-cloud"]);
+    const fallback = sampleModelRefs(4).map((ref) => ref.model);
+    assert.ok(fallback.length === 4);
+    assert.ok(fallback.every((m) => m === "glm-5.2:cloud" || m === "brand-new-model:v3"));
+  } finally {
+    await restore();
+  }
+});
