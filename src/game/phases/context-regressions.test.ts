@@ -564,6 +564,19 @@ test("預言家：白天拿到警上三件事（警徽流／查殺先講／沒�
   assert.doesNotMatch(buildGameContext(day, villager), /警上怎么讲/);
 });
 
+test("預言家：警徽流要依據（前置位先報驗人計劃）、對跳者不得進徽流", () => {
+  const day = fresh("DAY_BADGE_SPEECH");
+  const seer = day.players.find((p) => p.role === "Seer")!;
+  const ctx = buildGameContext(day, seer);
+  assert.match(ctx, /有依据时明确说出/);
+  assert.match(ctx, /前置位还没听到任何人发言时/);
+  assert.match(ctx, /今晚打算验谁、为什么/);
+  assert.match(ctx, /警徽流的名单要有依据/);
+  assert.match(ctx, /还没听过的名字别凭空报进去/);
+  assert.match(ctx, /永远进不了徽流/);
+  assert.match(ctx, /是好人徽给1号、是狼徽给X号/);
+});
+
 test("狼人：白天拿到衝鋒／倒勾分工與讀神民，悍跳守則含輪次前提與心路歷程", () => {
   const day = fresh("DAY_SPEECH");
   const wolf = day.players.find((p) => p.role === "Werewolf")!;
