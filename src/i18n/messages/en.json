@@ -1164,7 +1164,7 @@
       },
       "transfer": {
         "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{winCondition}",
-        "task": "【Task】\nYou are eliminated. Transfer the badge to a living player or tear it.\n\nOptions: {options}\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text.\nTransfer example: {jsonFormat}\nTear example: {tearJsonFormat}",
+        "task": "【Task】\nYou are eliminated. Transfer the badge to a living player or tear it.\n\nOptions: {options}\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text.\nTransfer example: {jsonFormat}\nTear example: {tearJsonFormat}\nreason is required: one sentence on why you hand the badge to him (his verified gold water, his judgement, whether he can lead after taking the badge) - for tearing, state why you tear it as well.",
         "noTranscript": "(None)",
         "user": "{context}\n\n【Today's discussion】\n{todayTranscript}\n\nWhich seat do you transfer the badge to? (Reply \"0\" to tear it)"
       }

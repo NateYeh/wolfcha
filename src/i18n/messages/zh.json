@@ -1164,7 +1164,7 @@
       },
       "transfer": {
         "base": "【身份】\n你是 {seat}号「{name}」\n身份: {role}\n\n{winCondition}",
-        "task": "【任务】\n你已经出局，需要将警徽移交给一名存活的玩家或选择撕毁警徽。\n\n可选: {options}\n\n【格式】\n严格返回 JSON 对象，不要代码块，不要解释，不要多余文字。\n移交示例：{jsonFormat}\n撕毁示例：{tearJsonFormat}",
+        "task": "【任务】\n你已经出局，需要将警徽移交给一名存活的玩家或选择撕毁警徽。\n\n可选: {options}\n\n【格式】\n严格返回 JSON 对象，不要代码块，不要解释，不要多余文字。\n移交示例：{jsonFormat}\n撕毁示例：{tearJsonFormat}\nreason 必填：写一句你为什么把徽交给他（他验过的金水、判断力、接徽后能不能带队），撕毁也一样写明原因。",
         "noTranscript": "（无）",
         "user": "{context}\n\n【本日讨论记录】\n{todayTranscript}\n\n你把警徽移交给几号？（回复\"0\"表示撕毁警徽）"
       }

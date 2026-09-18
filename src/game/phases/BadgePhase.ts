@@ -136,8 +136,8 @@ export class BadgePhase extends GamePhase {
       options: alivePlayers
         .map((p) => t("prompts.badge.option", { seat: p.seat + 1, name: p.displayName }))
         .join(t("promptUtils.gameContext.listSeparator")),
-      jsonFormat: JSON.stringify({ seat: exampleSeat }),
-      tearJsonFormat: JSON.stringify({ action: "tear" }),
+      jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "一句话说明你为什么把徽交给他" }),
+      tearJsonFormat: JSON.stringify({ action: "tear", reason: "一句话说明你为什么撕徽" }),
     });
     const systemParts: SystemPromptPart[] = [
       { text: cacheableContent, cacheable: true, ttl: "1h" },

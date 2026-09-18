@@ -1521,6 +1521,8 @@ export async function generateBadgeTransfer(
   const startTime = Date.now();
   // 關鍵決策：上游逾時會自動重試一次；這裡記錄實際發出幾次請求，寫進 log 分辨「逾時」與「AI 自己的選擇」。
   let attempts = 0;
+  // 給徽要有理由：模型回傳的 reason 一併記進 log（跟 wolf_action/vote 同一把尺）。
+  let parsedReason = "";
   const { messages } = buildMessagesForPrompt(prompt);
   const validSeats = alivePlayers.map((p) => p.seat);
 
@@ -1547,9 +1549,10 @@ export async function generateBadgeTransfer(
             response_format: { type: "json_object" },
           }),
           (cleaned) => {
-            const parsedTransfer = parseLLMJson<{ seat?: unknown; targetSeat?: unknown; target?: unknown; transfer?: unknown; action?: unknown }>(cleaned);
+            const parsedTransfer = parseLLMJson<{ seat?: unknown; targetSeat?: unknown; target?: unknown; transfer?: unknown; action?: unknown; reason?: unknown }>(cleaned);
             if (!parsedTransfer || typeof parsedTransfer !== "object" || Array.isArray(parsedTransfer)) return parseFail();
 
+            parsedReason = typeof parsedTransfer.reason === "string" ? parsedTransfer.reason : "";
             const action = String(parsedTransfer.action ?? "").toLowerCase();
             const rawSeat = parsedTransfer.seat ?? parsedTransfer.targetSeat ?? parsedTransfer.target ?? parsedTransfer.transfer;
             const wantsTear =
@@ -1585,7 +1588,7 @@ export async function generateBadgeTransfer(
         raw: completion.result.content,
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
-        parsed: { targetSeat: parsedSeat },
+        parsed: { targetSeat: parsedSeat, reason: parsedReason },
         attempts,
         duration: Date.now() - startTime,
       }

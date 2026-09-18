@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { AILogEntry } from "./ai-logger";
 import { setLocale } from "@/i18n/locale-store";
 import type { ChatMessage, GameState, Player } from "@/types/game";
 
@@ -141,6 +142,44 @@ test("通用 JSON 解析失败时不静默重放付费请求", async () => {
     }));
     assert.equal(calls, 1);
   } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("警徽移交：reason 欄位一併解析並記進 log", async () => {
+  const [{ aiLogger }, { createInitialGameState, generateBadgeTransfer }] = await Promise.all([
+    import("./ai-logger"),
+    import("./game-master"),
+  ]);
+  const sheriff = { ...makePlayer("sheriff", 0, "test-model"), role: "Seer" as Player["role"], alignment: "village" as Player["alignment"] };
+  const mate = makePlayer("mate", 1, "qwen3-max");
+  const state: GameState = {
+    ...createInitialGameState(),
+    phase: "BADGE_TRANSFER",
+    day: 2,
+    players: [sheriff, mate],
+  };
+  const originalFetch = globalThis.fetch;
+  const logs: AILogEntry[] = [];
+  const unsubscribe = aiLogger.subscribe((entry) => {
+    if (entry.type === "badge_transfer") logs.push(entry);
+  });
+
+  globalThis.fetch = async (input) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url === "/api/demo-config") return Response.json({ active: false, enabled: false });
+    return completionResponse('{"seat": 2, "reason": "他验过我做金水，判断力靠得住"}');
+  };
+
+  try {
+    const seat = await generateBadgeTransfer(state, sheriff);
+    assert.equal(seat, 1); // 顯示座位 2 → raw seat 1
+    assert.equal(logs.length, 1);
+    const parsed = logs[0].response.parsed as { targetSeat?: number; reason?: string };
+    assert.equal(parsed.targetSeat, 1);
+    assert.equal(parsed.reason, "他验过我做金水，判断力靠得住");
+  } finally {
+    unsubscribe();
     globalThis.fetch = originalFetch;
   }
 });
