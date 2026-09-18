@@ -20,7 +20,7 @@ import { UserProfileModal } from "@/components/game/UserProfileModal";
 import { LowCreditModal, LOW_CREDIT_THRESHOLD } from "@/components/game/LowCreditModal";
 import { LocaleSwitcher } from "@/components/game/LocaleSwitcher";
 import { useCredits, type ConsumeCreditResult } from "@/hooks/useCredits";
-import { difficultyAtom, playerCountAtom, preferredRoleAtom } from "@/store/settings";
+import { difficultyAtom, playerCountAtom, preferredRoleAtom, rosterPoolIdAtom } from "@/store/settings";
 import {
   getGeneratorModel,
   getModelSource,
@@ -316,6 +316,7 @@ export function WelcomeScreen({
   const [difficulty, setDifficulty] = useAtom(difficultyAtom);
   const [playerCount, setPlayerCount] = useAtom(playerCountAtom);
   const [preferredRole, setPreferredRole] = useAtom(preferredRoleAtom);
+  const [rosterPoolId, setRosterPoolId] = useAtom(rosterPoolIdAtom);
   const [githubStars, setGithubStars] = useState<number | null>(null);
   const springCampaignRemainingQuota = springCampaign?.remainingQuota ?? 0;
   const springCampaignTotalQuota = springCampaign?.totalQuota ?? 0;
@@ -719,6 +720,7 @@ export function WelcomeScreen({
       playerCount,
       gameSessionId: gameSessionId || undefined,
       preferredRole: preferredRole || undefined,
+      rosterPoolId,
     };
   };
 
@@ -896,6 +898,8 @@ export function WelcomeScreen({
           onPreferredRoleChange={setPreferredRole}
           isGenshinMode={isGenshinMode}
           onGenshinModeChange={onGenshinModeChange}
+          rosterPoolId={rosterPoolId}
+          onRosterPoolChange={setRosterPoolId}
           isSpectatorMode={isSpectatorMode}
           onSpectatorModeChange={onSpectatorModeChange}
           isAcquaintanceGame={isAcquaintanceGame}

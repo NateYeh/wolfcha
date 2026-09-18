@@ -936,17 +936,36 @@ const ROSTER_ZH_TW: GeneratedCharacter[] = [
   }
 ];
 
-/** 名單人數。 */
-export const ROSTER_SIZE = ROSTER_ZH.length;
-
-/** 依目前語系回傳固定班底。 */
-export function getFixedRoster(): GeneratedCharacter[] {
-  return getLocale() === "zh-TW" ? ROSTER_ZH_TW : ROSTER_ZH;
+/**
+ * 角色池：一個 id 對一組班底角色。
+ * 新增池（如三國志、其他系列）時：在 buildPools 加一筆、ROSTER_POOL_IDS 同步加 id、
+ * i18n 補 rosterPools.<id>.name 三語即可，UI 下拉自動出現。
+ */
+export interface RosterPool {
+  id: string;
+  characters: GeneratedCharacter[];
 }
 
-/** 隨機抽 count 名班底角色；名單不足時循環補齊（正常 8-10 人局不會觸發）。 */
-export function sampleRosterCharacters(count: number): GeneratedCharacter[] {
-  const roster = getFixedRoster();
+/** 依目前語系組出池清單（zh-TW 用繁中版，其餘用 zh-CN 文案）。 */
+function buildPools(): RosterPool[] {
+  const characters = getLocale() === "zh-TW" ? ROSTER_ZH_TW : ROSTER_ZH;
+  return [{ id: "jin_yong", characters }];
+}
+
+/** 可選池 id（UI 下拉與設定正規化用）。 */
+export const ROSTER_POOL_IDS = ["jin_yong"] as const;
+
+const DEFAULT_POOL_ID = ROSTER_POOL_IDS[0]!;
+
+/** 取指定池；id 無效或未帶時退回第一個池。 */
+export function getRosterPool(poolId?: string): RosterPool {
+  const pools = buildPools();
+  return pools.find((pool) => pool.id === poolId) ?? pools[0]!;
+}
+
+/** 隨機抽 count 名班底角色；名單不足時循環補齊（正常 8-12 人局不會觸發）。 */
+export function sampleRosterCharacters(count: number, poolId?: string): GeneratedCharacter[] {
+  const roster = getRosterPool(poolId).characters;
   const shuffled = [...roster];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));

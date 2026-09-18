@@ -1402,6 +1402,7 @@ export function useGameLogic() {
       isGenshinMode = false,
       isSpectatorMode = false,
       isAcquaintanceGame = false,
+      rosterPoolId,
       preferredRole,
     } = options ?? {};
 
@@ -1538,7 +1539,7 @@ export function useGameLogic() {
         });
       } else {
         // 固定班底：直接抽用內建金庸群俠名單，開局不再 AI 生成、不再查角色池。
-        characters = sampleRosterCharacters(numAiPlayers);
+        characters = sampleRosterCharacters(numAiPlayers, rosterPoolId);
       }
 
       if (sessionId) {

@@ -500,6 +500,9 @@
     "acquaintanceMode": {
       "title": "熟人局",
       "description": "AI 之间互相认识：把平时观察到的发言习惯、压力反应，以及各角色历史胜率与 MVP 次数带给彼此参考。"
+    },
+    "rosterPool": {
+      "label": "角色池"
     }
   },
   "authModal": {
@@ -2356,5 +2359,10 @@
     "recharge": "充值游戏额度",
     "startGame": "继续开始游戏",
     "startGameNoCredits": "充值游戏额度"
+  },
+  "rosterPools": {
+    "jin_yong": {
+      "name": "金庸群侠"
+    }
   }
 }

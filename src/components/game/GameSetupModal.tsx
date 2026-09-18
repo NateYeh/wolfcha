@@ -16,6 +16,7 @@ import { SoundSettingsSection } from "@/components/game/SettingsModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTranslations } from "next-intl";
+import { ROSTER_POOL_IDS } from "@/lib/character-roster";
 import { hasBuiltInParams, resolveAvailableModelRefs } from "@/lib/model-pool";
 import {
   getGatewayModels,
@@ -53,6 +54,8 @@ interface GameSetupModalProps {
   onPreferredRoleChange: (value: Role | "") => void;
   isGenshinMode: boolean;
   onGenshinModeChange: (value: boolean) => void;
+  rosterPoolId: string;
+  onRosterPoolChange: (value: string) => void;
   isSpectatorMode: boolean;
   onSpectatorModeChange: (value: boolean) => void;
   isAcquaintanceGame: boolean;
@@ -77,6 +80,8 @@ export function GameSetupModal({
   onPreferredRoleChange,
   isGenshinMode,
   onGenshinModeChange,
+  rosterPoolId,
+  onRosterPoolChange,
   isSpectatorMode,
   onSpectatorModeChange,
   isAcquaintanceGame,
@@ -283,6 +288,22 @@ export function GameSetupModal({
               </SelectContent>
             </Select>
           </div>
+
+          {!isGenshinMode && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-[var(--text-primary)]">{t("gameSetup.rosterPool.label")}</div>
+              <Select value={rosterPoolId} onValueChange={onRosterPoolChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("gameSetup.rosterPool.label")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROSTER_POOL_IDS.map((poolId) => (
+                    <SelectItem key={poolId} value={poolId} label={t(`rosterPools.${poolId}.name`)} />
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {!isSpectatorMode && (
             <div className="space-y-2">

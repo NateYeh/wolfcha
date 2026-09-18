@@ -21,6 +21,8 @@ export interface StartGameOptions {
   isSpectatorMode?: boolean;
   /** 熟人局：AI 互相认识（注入印象与交手记录），供读人参考。 */
   isAcquaintanceGame?: boolean;
+  /** 角色池 id：一般模式从指定班底池抽角色（Genshin 模式忽略）。 */
+  rosterPoolId?: string;
   preferredRole?: Role;
 }
 

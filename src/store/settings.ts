@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
+import { ROSTER_POOL_IDS } from "@/lib/character-roster";
 import type { DifficultyLevel, Role } from "@/types/game";
 
 export interface AudioSettings {
@@ -101,6 +102,20 @@ const normalizeDifficulty = (value: DifficultyLevel) =>
   DIFFICULTY_OPTIONS.includes(value) ? value : DEFAULT_DIFFICULTY;
 
 const rawDifficultyAtom = atomWithStorage<DifficultyLevel>("wolfcha.settings.difficulty", DEFAULT_DIFFICULTY);
+
+const normalizeRosterPoolId = (value: string) =>
+  (ROSTER_POOL_IDS as readonly string[]).includes(value) ? value : ROSTER_POOL_IDS[0]!;
+
+const rawRosterPoolIdAtom = atomWithStorage<string>("wolfcha.settings.rosterPool", ROSTER_POOL_IDS[0]!);
+
+export const rosterPoolIdAtom = atom(
+  (get) => normalizeRosterPoolId(get(rawRosterPoolIdAtom)),
+  (get, set, update: string | ((prev: string) => string)) => {
+    const prev = normalizeRosterPoolId(get(rawRosterPoolIdAtom));
+    const next = typeof update === "function" ? update(prev) : update;
+    set(rawRosterPoolIdAtom, normalizeRosterPoolId(next));
+  }
+);
 
 export const difficultyAtom = atom(
   (get) => normalizeDifficulty(get(rawDifficultyAtom)),
