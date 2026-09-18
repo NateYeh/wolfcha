@@ -943,6 +943,7 @@ test("女巫解药时机：首夜救人 vs 留药自救的取舍要带进 prompt
   assert.match(ctx, /你被刀就没人能救你/);
   assert.match(ctx, /看不到之后的刀口/);
 
+
   const villager = state.players.find((p) => p.role === "Villager")!;
   assert.doesNotMatch(buildGameContext(state, villager), /【解药什么时候该用】/);
 });
@@ -955,6 +956,12 @@ test("女巫保命：白天要带「药在人活」指引（票压上来跳女�
   assert.match(dayContext, /票已经压到你身上/);
   assert.match(dayContext, /完整药帐/);
   assert.match(dayContext, /别急着亮身份/);
+  // 帶隊／跳身份時機（攻略 1.3-2）：資訊荒主動跳、雙藥要藏、毒藥當籌碼、悍跳女巫怎麼處理。
+  assert.match(dayContext, /跳不跳看局势/);
+  assert.match(dayContext, /信息荒/);
+  assert.match(dayContext, /双药在身时反而要藏/);
+  assert.match(dayContext, /我今晚就毒谁/);
+  assert.match(dayContext, /悍跳狼多半是临时起意/);
 
   const night: GameState = { ...day, phase: "NIGHT_WITCH_ACTION" as Phase };
   const nightWitch = night.players.find((p) => p.role === "Witch")!;
@@ -976,6 +983,9 @@ test("女巫毒药时机：夜间出药提示要带用药时机知识，其他�
   // 毒藥代價：獵人槍不會響、收網階段留藥邊際價值低。
   assert.match(witchContext, /毒到猎人等于白废一把枪/);
   assert.match(witchContext, /留药的边际价值已经很低/);
+
+  // 毒的優先順序（攻略 1.3-1）：悍跳女巫最優先。
+  assert.match(witchContext, /悍跳女巫的狼最优先/);
   // 真正送進模型的夜間用藥提示也要帶到（role block 要進 prompt.user，不能只存在 buildGameContext）。
   const prompt = new PhaseManager().getPrompt("NIGHT_WITCH_ACTION", { state }, witch)!;
   assert.match(prompt.user, /【毒药什么时候该用】/);
