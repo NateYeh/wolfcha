@@ -950,3 +950,50 @@ test("女巫毒药时机：夜间出药提示要带用药时机知识，其他�
   const villager = state.players.find((p) => p.role === "Villager")!;
   assert.doesNotMatch(buildGameContext(state, villager), /【毒药什么时候该用】/);
 });
+
+test("守人取舍：夜間守衛拿得到（狼隊會反制、連守限制是線索），白天與其他角色拿不到", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const night = fresh("NIGHT_GUARD_ACTION");
+  const guard = night.players.find((p) => p.role === "Guard")!;
+  const nightContext = buildGameContext(night, guard);
+  assert.match(nightContext, /【守人的取舍】/);
+  assert.match(nightContext, /让狼队这一刀落空/);
+  assert.match(nightContext, /连守限制是你自己交出去的线索/);
+  assert.match(nightContext, /收网阶段先算刀数/);
+  assert.match(nightContext, /怎么权衡你自己决定/);
+  // 真正送進模型的夜間守人提示也要帶到（role block 要進 prompt.user）。
+  night.currentSpeakerSeat = guard.seat;
+  const prompt = new PhaseManager().getPrompt("NIGHT_GUARD_ACTION", { state: night }, guard)!;
+  assert.match(prompt.user, /【守人的取舍】/);
+
+  // 白天沒有選人決策，要的是報帳指引。
+  const day = fresh("DAY_SPEECH");
+  const dayGuard = day.players.find((p) => p.role === "Guard")!;
+  const dayContext = buildGameContext(day, dayGuard);
+  assert.doesNotMatch(dayContext, /【守人的取舍】/);
+  assert.match(dayContext, /守护公布指引/);
+
+  const villager = night.players.find((p) => p.role === "Villager")!;
+  assert.doesNotMatch(buildGameContext(night, villager), /【守人的取舍】/);
+});
+
+test("守衛刀口帳：狼白天拿得到，夜間走既有守衛博弈，好人拿不到", () => {
+  const day = fresh("DAY_SPEECH");
+  const wolf = day.players.find((p) => p.role === "Werewolf")!;
+  const wwk = day.players.find((p) => p.role === "WhiteWolfKing")!;
+  const dayContext = buildGameContext(day, wolf);
+  assert.match(dayContext, /【守卫在场时的刀口账】/);
+  assert.match(dayContext, /自称守卫/);
+  assert.match(dayContext, /刀口前排/);
+  assert.match(dayContext, /就算被守住，损失也最小/);
+  // 白狼王自爆決策也在白天，同樣要拿得到。
+  assert.match(buildGameContext(day, wwk), /【守卫在场时的刀口账】/);
+
+  // 夜間出刀已經有 prompts.night.wolf.guardMindGame，不重複拼入。
+  const night: GameState = { ...day, phase: "NIGHT_WOLF_ACTION" as Phase };
+  assert.doesNotMatch(buildGameContext(night, wolf), /【守卫在场时的刀口账】/);
+
+  const villager = day.players.find((p) => p.role === "Villager")!;
+  assert.doesNotMatch(buildGameContext(day, villager), /【守卫在场时的刀口账】/);
+});

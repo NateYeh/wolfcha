@@ -830,9 +830,12 @@ ${checks.join("\n")}`;
 【守护记录】${records.length ? `\n${records.join("\n")}` : "暂无已记录的守护行动"}
 【记录含义】守护目标未出局不代表全场平安夜，也不能证明守护生效或目标被狼人袭击。以每夜全场公开结果为准，不得为维护先前发言而改写死亡日期。
 ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.displayName || ""}\n【今晚限制】不能连续守护 ${lastSeat + 1}号` : "【今晚限制】无，可以守护任何存活玩家"}`;
-    // 白天才需要報帳指引（報什麼、怎麼報）；夜間守護決策有自己的提示。
+    // 白天要的是報帳指引（報什麼、怎麼報）；夜間是選人決策——狼隊會反制
+    // （繞開明牌預言家、利用連守限制、收網階段刀守衛），這些是選人時要擺進去的帳。
     if (state.phase.includes("DAY")) {
       guardInfo += `\n${t("promptUtils.gameContext.guardAccountGuidance")}`;
+    } else {
+      guardInfo += `\n${t("promptUtils.gameContext.guardProtectChoiceNote")}`;
     }
     guardInfo += `\n</your_guard_info>`;
     return guardInfo;
@@ -879,6 +882,9 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
     // 白天才有保人与切割的取舍：队友劣势时无脑硬保会把狼队绑成一条线一起暴露。
     // 夜间出刀与本原则无关，因此只在白天阶段拼入。
     if (state.phase.includes("DAY")) {
+      // 守衛刀口帳：夜間出刀已有 prompts.night.wolf.guardMindGame，這裡補白天
+      // （評估今晚刀誰、自稱守衛的人怎麼處理、算刀數時怎麼算被守住的機率）。
+      wolfInfo += `\n${t("promptUtils.gameContext.wolfGuardAwarenessNote")}`;
       wolfInfo += `\n${t("promptUtils.gameContext.wolfTeamPrinciples")}`;
       // 悍跳守則：白天想跳預言家的狼需要一套不容易被證偽的假查验打法；夜間無關。
       wolfInfo += `\n${t("promptUtils.gameContext.wolfFakeSeerGuidance")}`;
