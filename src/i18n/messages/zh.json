@@ -412,7 +412,7 @@
     "selectPlayerCount": "选择人数",
     "connection": {
       "title": "AI 服务连接",
-      "description": "留空就用内建网关；填了自己的地址与 Key 就用你自己的网关（只保存在本机浏览器，不进版本库）",
+      "description": "服务器不提供网关：请填入你自己的服务器地址与 API Key（只保存在本机浏览器，不会上传）",
       "baseUrlLabel": "服务器地址",
       "keyLabel": "API Key",
       "keyPlaceholder": "sk-...",
@@ -428,8 +428,9 @@
       },
       "testAndFetch": "测试连接并读取模型列表",
       "okWithModels": "连接成功：网关提供 {count} 个模型",
-      "listHint": "已读取网关模型清单（{count} 个），下面模型池里网关没有的会划掉",
-      "gatewayOnly": "未内建参数的模型（用预设 temperature／reasoning）：{models}"
+      "listHint": "已读取网关模型清单（{count} 个），模型池以下面清单为准",
+      "gatewayOnly": "未内建参数的模型（使用默认 temperature／reasoning）：{models}",
+      "notConfigured": "还没设置：AI 玩家会无法回应，请填入服务器地址与 API Key（建议先按「测试连接并读取模型列表」）"
     },
     "modelPool": {
       "title": "AI 玩家模型池",

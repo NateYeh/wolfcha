@@ -412,7 +412,7 @@
     "selectPlayerCount": "Select player count",
     "connection": {
       "title": "AI service connection",
-      "description": "Leave blank to use the built-in gateway; with your own base URL and key the game calls your gateway (stored only in this browser, never committed)",
+      "description": "No gateway is provided by the server: enter your own base URL and API key (kept in this browser only)",
       "baseUrlLabel": "Server base URL",
       "keyLabel": "API Key",
       "keyPlaceholder": "sk-...",
@@ -428,8 +428,9 @@
       },
       "testAndFetch": "Test connection & fetch model list",
       "okWithModels": "Connected: the gateway offers {count} models",
-      "listHint": "Gateway model list loaded ({count}); models the gateway lacks are struck out below",
-      "gatewayOnly": "Models without built-in params (default temperature/reasoning): {models}"
+      "listHint": "Loaded the gateway model list ({count} models); the pool below follows it",
+      "gatewayOnly": "Models without built-in params (default temperature/reasoning): {models}",
+      "notConfigured": "Not configured yet: AI players will not respond. Enter the base URL and key (use “Test & load models”)."
     },
     "modelPool": {
       "title": "AI player model pool",

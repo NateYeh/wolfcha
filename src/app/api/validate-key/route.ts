@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DASHSCOPE_VALIDATION_MODEL, TOKENDANCE_VALIDATION_MODEL, ZENMUX_VALIDATION_MODEL } from "@/types/game";
-import { DEFAULT_GATEWAY_BASE_URL, toChatCompletionsUrl } from "@/lib/gateway-url";
+import { normalizeGatewayBaseUrl, toChatCompletionsUrl } from "@/lib/gateway-url";
 import { getTokenPayAppUrl } from "@/lib/tokenpay";
 
 const ZENMUX_API_URL = "https://zenmux.ai/api/v1/chat/completions";
@@ -340,7 +340,8 @@ export async function POST(request: NextRequest) {
     const zenmuxKey = request.headers.get("x-zenmux-api-key")?.trim() || "";
     const dashscopeKey = request.headers.get("x-dashscope-api-key")?.trim() || "";
     const tokendanceKey = request.headers.get("x-tokendance-api-key")?.trim() || "";
-    const tokendanceBaseUrl = request.headers.get("x-tokendance-base-url")?.trim() || DEFAULT_GATEWAY_BASE_URL;
+    // 伺服器不提供閘道器位址：要驗 TokenDance Key 就必須同時帶上使用者自己的位址。
+    const tokendanceBaseUrl = request.headers.get("x-tokendance-base-url")?.trim() || "";
     // 連線測試要用「使用者實際會用的模型」當探針：不同閘道器提供的模型不同，
     // 固定用內建驗證模型（minimax-m2.7）會讓自架閘道器一律回 503。
     const requestedProbeModel = (request.headers.get("x-validation-model") ?? "").trim().slice(0, 128);
@@ -363,7 +364,19 @@ export async function POST(request: NextRequest) {
       validationPromises.push(validateDashscopeKey(dashscopeKey));
     }
     if (tokendanceKey) {
-      validationPromises.push(validateTokendanceKey(tokendanceKey, tokendanceBaseUrl, tokendanceProbeModel));
+      const baseUrlCheck = normalizeGatewayBaseUrl(tokendanceBaseUrl);
+      validationPromises.push(
+        baseUrlCheck.ok
+          ? validateTokendanceKey(tokendanceKey, baseUrlCheck.url, tokendanceProbeModel)
+          : Promise.resolve({
+              provider: "tokendance" as const,
+              valid: false,
+              error: baseUrlCheck.reason === "empty"
+                ? "请先填入服务器地址（服务器不提供网关地址）"
+                : `服务器地址不合法：${baseUrlCheck.reason}`,
+              errorCode: "missing_base_url",
+            }),
+      );
     }
 
     const settled = await Promise.all(validationPromises);

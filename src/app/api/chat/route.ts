@@ -237,16 +237,22 @@ async function trackedStreamResponse(response: Response, context: AttemptContext
  * 2. 位址通過 gateway-url 規則（https，或 http 的 localhost／內網）。
  * 不合法或不可信時直接忽略，改用伺服器設定的閘道器。
  */
+/** 未設定自帶 gateway 時的回應：伺服器不提供位址與金鑰，要使用者自己去設定填。 */
+const GATEWAY_NOT_CONFIGURED_MESSAGE =
+  "尚未设置 AI 服务连接：请在「设置 → AI 服务连接」填入服务器地址与 API Key";
+
 function resolveTokendanceBaseUrl(
   headerBaseUrl: string | null | undefined,
   headerKey: string | null | undefined,
 ): string {
   const candidate = (headerBaseUrl ?? "").trim();
-  if (!candidate || !(headerKey ?? "").trim()) return getTokenPayGatewayUrl();
+  // 伺服器不再提供閘道器位址：沒帶位址（或沒同時帶 Key，避免把伺服器金鑰送到別人家）
+  // 就當作未設定，回空字串讓呼叫端給出明確指引。
+  if (!candidate || !(headerKey ?? "").trim()) return "";
   const check = normalizeGatewayBaseUrl(candidate);
   if (!check.ok) {
     console.warn("[chat] 忽略不合法的客戶端 gateway 位址:", candidate, check.reason);
-    return getTokenPayGatewayUrl();
+    return "";
   }
   return check.url;
 }
@@ -684,10 +690,10 @@ async function runBatchItem(
     if (hasAnyCustomKeyHeader && !headerTokendanceKey) {
       return { ok: false, status: 401, error: "已启用自定义 Key，但未提供 TokenDance Key（已拒绝回退到系统 Key）" };
     }
-    const tokendanceApiKey = headerTokendanceKey || process.env.TOKENDANCE_API_KEY;
+    const tokendanceApiKey = headerTokendanceKey || "";
     const tokendanceBaseUrl = resolveTokendanceBaseUrl(headerTokendanceBaseUrl, headerTokendanceKey);
     if (!tokendanceApiKey || !tokendanceBaseUrl) {
-      return { ok: false, status: 500, error: "TOKENDANCE_API_KEY or TOKENDANCE_BASE_URL not configured on server" };
+      return { ok: false, status: 401, error: GATEWAY_NOT_CONFIGURED_MESSAGE };
     }
 
     const tokendanceUrl = getTokendanceUrl(tokendanceBaseUrl);
@@ -1151,13 +1157,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const tokendanceApiKey = headerTokendanceKey || process.env.TOKENDANCE_API_KEY;
+      const tokendanceApiKey = headerTokendanceKey || "";
       const tokendanceBaseUrl = resolveTokendanceBaseUrl(headerTokendanceBaseUrl, headerTokendanceKey);
       if (!tokendanceApiKey || !tokendanceBaseUrl) {
-        return NextResponse.json(
-          { error: "TOKENDANCE_API_KEY or TOKENDANCE_BASE_URL not configured on server" },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: GATEWAY_NOT_CONFIGURED_MESSAGE }, { status: 401 });
       }
 
       const tokendanceUrl = getTokendanceUrl(tokendanceBaseUrl);

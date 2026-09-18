@@ -28,6 +28,7 @@ import {
   getSelectedModels,
   getSummaryModel,
   getTokendanceApiKey,
+  getTokendanceBaseUrl,
   getReviewModel,
   getZenmuxApiKey,
   getValidatedZenmuxKey,
@@ -370,6 +371,12 @@ import type { SpringCampaignSnapshot } from "@/lib/spring-campaign";
       headers["X-Dashscope-Api-Key"] = key;
     } else if (provider === "tokendance") {
       headers["X-Tokendance-Api-Key"] = key;
+      // 伺服器不提供閘道器位址，驗 Key 要用使用者自己填的位址。
+      const baseUrl = getTokendanceBaseUrl();
+      if (!baseUrl) {
+        throw new Error(t("gameSetup.connection.invalid.empty"));
+      }
+      headers["X-Tokendance-Base-Url"] = baseUrl;
     }
 
     const response = await fetch("/api/validate-key", {

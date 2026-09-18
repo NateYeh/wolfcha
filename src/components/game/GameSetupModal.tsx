@@ -155,10 +155,7 @@ export function GameSetupModal({
   const [modelPool, setModelPool] = useState<string[]>(() => getPlayerModelPool());
   const [modelPoolNotice, setModelPoolNotice] = useState("");
   // AI 服務連線：自帶 gateway（伺服器位址 + Key），同樣只存在本機瀏覽器。
-  const [gatewayBaseUrl, setGatewayBaseUrlState] = useState(() => {
-    const current = getTokendanceBaseUrl();
-    return current === DEFAULT_GATEWAY_BASE_URL ? "" : current;
-  });
+  const [gatewayBaseUrl, setGatewayBaseUrlState] = useState(() => getTokendanceBaseUrl());
   const [gatewayKey, setGatewayKeyState] = useState(() => getTokendanceApiKey());
   // 自帶 gateway 回報的模型清單（抓過才有）；這份清單就是模型池的來源。
   const [gatewayModels, setGatewayModelsState] = useState<string[]>(() => getGatewayModels());
@@ -177,17 +174,17 @@ export function GameSetupModal({
     () => gatewayModels.filter((model) => !hasBuiltInParams(model)),
     [gatewayModels],
   );
-  const baseUrlCheck = useMemo(
-    () => normalizeGatewayBaseUrl(gatewayBaseUrl.trim() || DEFAULT_GATEWAY_BASE_URL),
-    [gatewayBaseUrl],
-  );
+  // 空字串＝還沒設定（不是錯誤）；其餘才驗格式。
+  const baseUrlCheck = useMemo(() => normalizeGatewayBaseUrl(gatewayBaseUrl.trim()), [gatewayBaseUrl]);
+  // 伺服器不再提供位址與金鑰：兩者都填了才算設定完成。
+  const gatewayConfigured = baseUrlCheck.ok && gatewayKey.trim().length > 0;
 
   const handleBaseUrlChange = (value: string) => {
     setGatewayBaseUrlState(value);
     setConnectionState("idle");
     setConnectionMessage("");
     if (!value.trim()) {
-      // 清空＝回到出廠預設 gateway
+      // 清空＝沒有設定 gateway
       setTokendanceBaseUrl("");
       return;
     }
@@ -204,7 +201,7 @@ export function GameSetupModal({
   };
 
   const handleTestConnection = async () => {
-    const check = normalizeGatewayBaseUrl(gatewayBaseUrl.trim() || DEFAULT_GATEWAY_BASE_URL);
+    const check = normalizeGatewayBaseUrl(gatewayBaseUrl.trim());
     if (!check.ok) {
       setConnectionState("fail");
       setConnectionMessage(t(`gameSetup.connection.invalid.${check.reason}`));
@@ -608,9 +605,14 @@ export function GameSetupModal({
                   </span>
                 ) : null}
               </div>
-              {!baseUrlCheck.ok && gatewayBaseUrl.trim() ? (
+              {gatewayBaseUrl.trim() && !baseUrlCheck.ok ? (
                 <div className="text-xs text-[var(--color-warning,#c0392b)]">
                   {t(`gameSetup.connection.invalid.${baseUrlCheck.reason}`)}
+                </div>
+              ) : null}
+              {!gatewayConfigured && (!gatewayBaseUrl.trim() || baseUrlCheck.ok) ? (
+                <div className="text-xs text-[var(--color-warning,#c0392b)]">
+                  {t("gameSetup.connection.notConfigured")}
                 </div>
               ) : null}
               {gatewayModels.length > 0 ? (

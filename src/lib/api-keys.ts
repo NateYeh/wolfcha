@@ -25,7 +25,6 @@ const REVIEW_MODEL_STORAGE = "wolfcha_review_model";
 const VALIDATED_ZENMUX_KEY_STORAGE = "wolfcha_validated_zenmux_key";
 const VALIDATED_DASHSCOPE_KEY_STORAGE = "wolfcha_validated_dashscope_key";
 const VALIDATED_TOKENDANCE_KEY_STORAGE = "wolfcha_validated_tokendance_key";
-export const TOKENDANCE_BASE_URL = "https://tokendance.space/gateway/v1";
 export const MODEL_SOURCE_CHANGE_EVENT = "wolfcha:model-source-change";
 
 export type ModelSource = "project" | "tokenpay" | "custom";
@@ -77,8 +76,10 @@ export function getTokendanceApiKey(): string {
   return readStorage(TOKENDANCE_API_KEY_STORAGE);
 }
 
+// gateway 位址沒有出廠預設值：伺服器不提供，一律由使用者自行填寫；
+// 沒填就是沒填（送出請求時不會帶位址標頭，伺服器會回明確的未設定錯誤）。
 export function getTokendanceBaseUrl(): string {
-  return readStorage(TOKENDANCE_BASE_URL_STORAGE) || TOKENDANCE_BASE_URL;
+  return readStorage(TOKENDANCE_BASE_URL_STORAGE);
 }
 
 export function setMinimaxApiKey(key: string) {
@@ -110,13 +111,8 @@ export function setTokenPayConnected(connected: boolean) {
 }
 
 export function setTokendanceBaseUrl(url: string) {
-  // 空字串（或等於預設值）就清掉覆寫，回到出廠預設 gateway。
-  const trimmed = (url ?? "").trim().replace(/\/+$/, "");
-  if (!trimmed || trimmed === TOKENDANCE_BASE_URL) {
-    if (canUseStorage()) window.localStorage.removeItem(TOKENDANCE_BASE_URL_STORAGE);
-    return;
-  }
-  writeStorage(TOKENDANCE_BASE_URL_STORAGE, trimmed);
+  // 空字串＝清除設定（writeStorage 遇空字串會移除項目）。
+  writeStorage(TOKENDANCE_BASE_URL_STORAGE, (url ?? "").trim().replace(/\/+$/, ""));
 }
 
 export function getMinimaxGroupId(): string {

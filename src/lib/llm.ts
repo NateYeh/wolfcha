@@ -115,9 +115,7 @@ function buildModelSourceHeaders(source: ModelSource): Record<string, string> {
   const tokendanceBaseUrl = getTokendanceBaseUrl();
   const selfHosted = {
     ...(tokendanceApiKey ? { "X-Tokendance-Api-Key": tokendanceApiKey } : {}),
-    ...(tokendanceApiKey && tokendanceBaseUrl
-      ? { "X-Tokendance-Base-Url": tokendanceBaseUrl }
-      : {}),
+    ...(tokendanceBaseUrl ? { "X-Tokendance-Base-Url": tokendanceBaseUrl } : {}),
   };
 
   if (source === "project") return selfHosted;
