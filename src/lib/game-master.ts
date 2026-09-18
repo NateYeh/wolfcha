@@ -19,6 +19,8 @@ import {
 } from "@/types/game";
 import { GAME_TEMPERATURE } from "./ai-config";
 import { sampleModelRefs, type GeneratedCharacter } from "./character-generator";
+import { withCriticalRetry } from "@/lib/critical-retry";
+import { isUpstreamTimeoutError } from "@/lib/upstream-timeout";
 import { aiLogger } from "./ai-logger";
 import { getGeneratorModel, getSummaryModel } from "@/lib/api-keys";
 import { PhaseManager } from "@/game/core/PhaseManager";
@@ -1517,6 +1519,8 @@ export async function generateBadgeTransfer(
       .map((x) => x.targetSeat)
   );
   const startTime = Date.now();
+  // 關鍵決策：上游逾時會自動重試一次；這裡記錄實際發出幾次請求，寫進 log 分辨「逾時」與「AI 自己的選擇」。
+  let attempts = 0;
   const { messages } = buildMessagesForPrompt(prompt);
   const validSeats = alivePlayers.map((p) => p.seat);
 
@@ -1530,35 +1534,41 @@ export async function generateBadgeTransfer(
       return BADGE_TRANSFER_TORN;
     };
 
-    const completion = await generateCompletionAndParse(
-      mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
-        model: player.agentProfile!.modelRef.model,
-        messages,
-        promptScope: "gameplay",
-        temperature: GAME_TEMPERATURE.ACTION,
-        response_format: { type: "json_object" },
-      }),
-      (cleaned) => {
-        const parsedTransfer = parseLLMJson<{ seat?: unknown; targetSeat?: unknown; target?: unknown; transfer?: unknown; action?: unknown }>(cleaned);
-        if (!parsedTransfer || typeof parsedTransfer !== "object" || Array.isArray(parsedTransfer)) return parseFail();
+    const completion = await withCriticalRetry(
+      "badge_transfer",
+      async () => {
+        attempts += 1;
+        return await generateCompletionAndParse(
+          mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+            model: player.agentProfile!.modelRef.model,
+            messages,
+            promptScope: "gameplay",
+            temperature: GAME_TEMPERATURE.ACTION,
+            response_format: { type: "json_object" },
+          }),
+          (cleaned) => {
+            const parsedTransfer = parseLLMJson<{ seat?: unknown; targetSeat?: unknown; target?: unknown; transfer?: unknown; action?: unknown }>(cleaned);
+            if (!parsedTransfer || typeof parsedTransfer !== "object" || Array.isArray(parsedTransfer)) return parseFail();
 
-        const action = String(parsedTransfer.action ?? "").toLowerCase();
-        const rawSeat = parsedTransfer.seat ?? parsedTransfer.targetSeat ?? parsedTransfer.target ?? parsedTransfer.transfer;
-        const wantsTear =
-          action.includes("tear") ||
-          action.includes("destroy") ||
-          action.includes("撕") ||
-          rawSeat === 0 ||
-          rawSeat === "0";
-        if (wantsTear) return parseOk(BADGE_TRANSFER_TORN);
+            const action = String(parsedTransfer.action ?? "").toLowerCase();
+            const rawSeat = parsedTransfer.seat ?? parsedTransfer.targetSeat ?? parsedTransfer.target ?? parsedTransfer.transfer;
+            const wantsTear =
+              action.includes("tear") ||
+              action.includes("destroy") ||
+              action.includes("撕") ||
+              rawSeat === 0 ||
+              rawSeat === "0";
+            if (wantsTear) return parseOk(BADGE_TRANSFER_TORN);
 
-        const parsedSeat = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "transfer"]);
-        if (parsedSeat === null) return parseFail();
-        if (player.alignment === "village" && player.role === "Seer" && confirmedWolfSeats.has(parsedSeat)) {
-          return parseOk(pickSafeSeat());
-        }
-        return parseOk(parsedSeat);
-      }
+            const parsedSeat = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "transfer"]);
+            if (parsedSeat === null) return parseFail();
+            if (player.alignment === "village" && player.role === "Seer" && confirmedWolfSeats.has(parsedSeat)) {
+              return parseOk(pickSafeSeat());
+            }
+            return parseOk(parsedSeat);
+          }
+        );
+      },
     );
 
     const parsedSeat = completion.parsed ?? BADGE_TRANSFER_TORN;
@@ -1576,6 +1586,7 @@ export async function generateBadgeTransfer(
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
         parsed: { targetSeat: parsedSeat },
+        attempts,
         duration: Date.now() - startTime,
       }
     });
@@ -1593,7 +1604,9 @@ export async function generateBadgeTransfer(
       response: {
         content: "",
         parsed: { targetSeat: BADGE_TRANSFER_TORN },
+        attempts,
         duration: Date.now() - startTime,
+        failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
       },
       error: String(error),
     });
@@ -1631,24 +1644,32 @@ export async function generateSeerAction(
     (p) => p.alive && p.playerId !== player.playerId
   );
   const startTime = Date.now();
+  // 關鍵決策：上游逾時會自動重試一次；這裡記錄實際發出幾次請求，寫進 log 分辨「逾時」與「AI 自己的選擇」。
+  let attempts = 0;
   const { messages } = buildMessagesForPrompt(prompt);
   const validSeats = alivePlayers.map((p) => p.seat);
 
   if (validSeats.length === 0) return undefined;
 
   try {
-    const completion = await generateCompletionAndParse(
-      mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
-        model: player.agentProfile!.modelRef.model,
-        messages,
-        promptScope: "gameplay",
-        temperature: GAME_TEMPERATURE.ACTION,
-        response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "seer_action", validSeats),
-      }),
-      (cleaned) => {
-        const parsedSeat = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "check"]);
-        return parsedSeat === null ? parseFail() : parseOk(parsedSeat);
-      }
+    const completion = await withCriticalRetry(
+      "seer_action",
+      async () => {
+        attempts += 1;
+        return await generateCompletionAndParse(
+          mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+            model: player.agentProfile!.modelRef.model,
+            messages,
+            promptScope: "gameplay",
+            temperature: GAME_TEMPERATURE.ACTION,
+            response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "seer_action", validSeats),
+          }),
+          (cleaned) => {
+            const parsedSeat = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "check"]);
+            return parsedSeat === null ? parseFail() : parseOk(parsedSeat);
+          }
+        );
+      },
     );
     const parsedSeat = completion.parsed ?? undefined;
 
@@ -1665,6 +1686,7 @@ export async function generateSeerAction(
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
         parsed: { targetSeat: parsedSeat, reason: extractActionReason(completion.cleaned) },
+        attempts,
         duration: Date.now() - startTime
       },
     });
@@ -1682,7 +1704,9 @@ export async function generateSeerAction(
       response: {
         content: "",
         parsed: { targetSeat: undefined },
+        attempts,
         duration: Date.now() - startTime,
+        failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
       },
       error: String(error),
     });
@@ -1698,22 +1722,30 @@ export async function generateWolfAction(
   const prompt = resolvePhasePrompt("NIGHT_WOLF_ACTION", state, player, { existingVotes });
   const alivePlayers = state.players.filter((p) => p.alive);
   const startTime = Date.now();
+  // 關鍵決策：上游逾時會自動重試一次；這裡記錄實際發出幾次請求，寫進 log 分辨「逾時」與「AI 自己的選擇」。
+  let attempts = 0;
   const { messages } = buildMessagesForPrompt(prompt);
   const validSeats = alivePlayers.map((p) => p.seat);
 
   try {
-    const completion = await generateCompletionAndParse(
-      mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
-        model: player.agentProfile!.modelRef.model,
-        messages,
-        promptScope: "gameplay",
-        temperature: GAME_TEMPERATURE.ACTION,
-        response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "wolf_action", validSeats),
-      }),
-      (cleaned) => {
-        const parsedSeat = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "kill"]);
-        return parsedSeat === null ? parseFail() : parseOk(parsedSeat);
-      }
+    const completion = await withCriticalRetry(
+      "wolf_action",
+      async () => {
+        attempts += 1;
+        return await generateCompletionAndParse(
+          mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+            model: player.agentProfile!.modelRef.model,
+            messages,
+            promptScope: "gameplay",
+            temperature: GAME_TEMPERATURE.ACTION,
+            response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "wolf_action", validSeats),
+          }),
+          (cleaned) => {
+            const parsedSeat = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "kill"]);
+            return parsedSeat === null ? parseFail() : parseOk(parsedSeat);
+          }
+        );
+      },
     );
     const parsedSeat = completion.parsed ?? undefined;
 
@@ -1730,6 +1762,7 @@ export async function generateWolfAction(
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
         parsed: { targetSeat: parsedSeat, reason: extractActionReason(completion.cleaned) },
+        attempts,
         duration: Date.now() - startTime
       },
     });
@@ -1747,7 +1780,9 @@ export async function generateWolfAction(
       response: {
         content: "",
         parsed: { targetSeat: undefined },
+        attempts,
         duration: Date.now() - startTime,
+        failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
       },
       error: String(error),
     });
@@ -1767,6 +1802,8 @@ export async function generateWitchAction(
 ): Promise<WitchAction> {
   const prompt = resolvePhasePrompt("NIGHT_WITCH_ACTION", state, player, { wolfTarget });
   const startTime = Date.now();
+  // 關鍵決策：上游逾時會自動重試一次；這裡記錄實際發出幾次請求，寫進 log 分辨「逾時」與「AI 自己的選擇」。
+  let attempts = 0;
   const { messages } = buildMessagesForPrompt(prompt);
   const canSave =
     !state.roleAbilities.witchHealUsed &&
@@ -1778,41 +1815,47 @@ export async function generateWitchAction(
   const passAction: WitchAction = { type: "pass" };
 
   try {
-    const completion = await generateCompletionAndParse<WitchAction>(
-      mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
-        model: player.agentProfile!.modelRef.model,
-        messages,
-        promptScope: "gameplay",
-        temperature: GAME_TEMPERATURE.ACTION,
-        response_format: { type: "json_object" },
-      }),
-      (cleaned) => {
-        const parsed = parseLLMJson<unknown>(cleaned);
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return parseFail();
+    const completion = await withCriticalRetry(
+      "witch_action",
+      async () => {
+        attempts += 1;
+        return await generateCompletionAndParse<WitchAction>(
+          mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+            model: player.agentProfile!.modelRef.model,
+            messages,
+            promptScope: "gameplay",
+            temperature: GAME_TEMPERATURE.ACTION,
+            response_format: { type: "json_object" },
+          }),
+          (cleaned) => {
+            const parsed = parseLLMJson<unknown>(cleaned);
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return parseFail();
 
-        const record = parsed as Record<string, unknown>;
-        const action = String(record.action ?? record.type ?? "").trim().toLowerCase();
-        const seatValue = record.seat ?? record.targetSeat ?? record.target ?? record.poison;
-        const wantsPass =
-          action.includes("pass") ||
-          action.includes("skip") ||
-          action.includes("none") ||
-          seatValue === null ||
-          seatValue === 0 ||
-          seatValue === "0";
+            const record = parsed as Record<string, unknown>;
+            const action = String(record.action ?? record.type ?? "").trim().toLowerCase();
+            const seatValue = record.seat ?? record.targetSeat ?? record.target ?? record.poison;
+            const wantsPass =
+              action.includes("pass") ||
+              action.includes("skip") ||
+              action.includes("none") ||
+              seatValue === null ||
+              seatValue === 0 ||
+              seatValue === "0";
 
-        if (wantsPass) return parseOk(passAction);
-        if (action === "save" || action === "heal") {
-          return canSave ? parseOk({ type: "save" }) : parseFail();
-        }
-        if (action === "poison") {
-          if (!canPoison) return parseFail();
-          const target = parseLLMDisplaySeat(cleaned, validPoisonSeats, ["seat", "targetSeat", "target", "poison"]);
-          return target === null ? parseFail() : parseOk({ type: "poison", target });
-        }
+            if (wantsPass) return parseOk(passAction);
+            if (action === "save" || action === "heal") {
+              return canSave ? parseOk({ type: "save" }) : parseFail();
+            }
+            if (action === "poison") {
+              if (!canPoison) return parseFail();
+              const target = parseLLMDisplaySeat(cleaned, validPoisonSeats, ["seat", "targetSeat", "target", "poison"]);
+              return target === null ? parseFail() : parseOk({ type: "poison", target });
+            }
 
-        return parseFail();
-      }
+            return parseFail();
+          }
+        );
+      },
     );
     const parsedAction = completion.parsed ?? passAction;
 
@@ -1829,6 +1872,7 @@ export async function generateWitchAction(
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
         parsed: { ...parsedAction, attempts: completion.attempts, reason: extractActionReason(completion.cleaned) },
+        attempts,
         duration: Date.now() - startTime,
       },
     });
@@ -1846,7 +1890,9 @@ export async function generateWitchAction(
       response: {
         content: "",
         parsed: passAction,
+        attempts,
         duration: Date.now() - startTime,
+        failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
       },
       error: String(error),
     });
@@ -1866,24 +1912,32 @@ export async function generateGuardAction(
     (p) => p.alive && p.seat !== lastTarget
   );
   const startTime = Date.now();
+  // 關鍵決策：上游逾時會自動重試一次；這裡記錄實際發出幾次請求，寫進 log 分辨「逾時」與「AI 自己的選擇」。
+  let attempts = 0;
   const { messages } = buildMessagesForPrompt(prompt);
   const validSeats = alivePlayers.map((p) => p.seat);
 
   if (validSeats.length === 0) return undefined;
 
   try {
-    const completion = await generateCompletionAndParse(
-      mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
-        model: player.agentProfile!.modelRef.model,
-        messages,
-        promptScope: "gameplay",
-        temperature: GAME_TEMPERATURE.ACTION,
-        response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "guard_action", validSeats),
-      }),
-      (cleaned) => {
-        const parsedSeat = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "protect"]);
-        return parsedSeat === null ? parseFail() : parseOk(parsedSeat);
-      }
+    const completion = await withCriticalRetry(
+      "guard_action",
+      async () => {
+        attempts += 1;
+        return await generateCompletionAndParse(
+          mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+            model: player.agentProfile!.modelRef.model,
+            messages,
+            promptScope: "gameplay",
+            temperature: GAME_TEMPERATURE.ACTION,
+            response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "guard_action", validSeats),
+          }),
+          (cleaned) => {
+            const parsedSeat = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "protect"]);
+            return parsedSeat === null ? parseFail() : parseOk(parsedSeat);
+          }
+        );
+      },
     );
     const parsedSeat = completion.parsed ?? undefined;
 
@@ -1900,6 +1954,7 @@ export async function generateGuardAction(
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
         parsed: { targetSeat: parsedSeat, reason: extractActionReason(completion.cleaned) },
+        attempts,
         duration: Date.now() - startTime,
       },
     });
@@ -1917,7 +1972,9 @@ export async function generateGuardAction(
       response: {
         content: "",
         parsed: { targetSeat: undefined },
+        attempts,
         duration: Date.now() - startTime,
+        failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
       },
       error: String(error),
     });
@@ -1936,37 +1993,45 @@ export async function generateHunterShoot(
     (p) => p.alive && p.playerId !== player.playerId
   );
   const startTime = Date.now();
+  // 關鍵決策：上游逾時會自動重試一次；這裡記錄實際發出幾次請求，寫進 log 分辨「逾時」與「AI 自己的選擇」。
+  let attempts = 0;
   const { messages } = buildMessagesForPrompt(prompt);
   const validSeats = alivePlayers.map((p) => p.seat);
 
   try {
-    const completion = await generateCompletionAndParse<number | null>(
-      mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
-        model: player.agentProfile!.modelRef.model,
-        messages,
-        promptScope: "gameplay",
-        temperature: GAME_TEMPERATURE.ACTION,
-        response_format: { type: "json_object" },
-      }),
-      (cleaned) => {
-        const parsed = parseLLMJson<{ seat?: unknown; targetSeat?: unknown; target?: unknown; shoot?: unknown; action?: unknown }>(cleaned);
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return parseFail();
+    const completion = await withCriticalRetry(
+      "hunter_shoot",
+      async () => {
+        attempts += 1;
+        return await generateCompletionAndParse<number | null>(
+          mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+            model: player.agentProfile!.modelRef.model,
+            messages,
+            promptScope: "gameplay",
+            temperature: GAME_TEMPERATURE.ACTION,
+            response_format: { type: "json_object" },
+          }),
+          (cleaned) => {
+            const parsed = parseLLMJson<{ seat?: unknown; targetSeat?: unknown; target?: unknown; shoot?: unknown; action?: unknown }>(cleaned);
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return parseFail();
 
-        const action = String(parsed.action ?? "").toLowerCase();
-        const rawSeat = parsed.seat ?? parsed.targetSeat ?? parsed.target ?? parsed.shoot;
-        const wantsPass =
-          action.includes("pass") ||
-          action.includes("skip") ||
-          action.includes("不开") ||
-          rawSeat === null ||
-          rawSeat === 0 ||
-          rawSeat === "0" ||
-          rawSeat === "pass";
-        if (wantsPass) return parseOk(null);
+            const action = String(parsed.action ?? "").toLowerCase();
+            const rawSeat = parsed.seat ?? parsed.targetSeat ?? parsed.target ?? parsed.shoot;
+            const wantsPass =
+              action.includes("pass") ||
+              action.includes("skip") ||
+              action.includes("不开") ||
+              rawSeat === null ||
+              rawSeat === 0 ||
+              rawSeat === "0" ||
+              rawSeat === "pass";
+            if (wantsPass) return parseOk(null);
 
-        const parsedTarget = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "shoot"]);
-        return parsedTarget === null ? parseFail() : parseOk(parsedTarget);
-      }
+            const parsedTarget = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "shoot"]);
+            return parsedTarget === null ? parseFail() : parseOk(parsedTarget);
+          }
+        );
+      },
     );
     const parsedTarget = completion.parsed;
 
@@ -1983,6 +2048,7 @@ export async function generateHunterShoot(
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
         parsed: { targetSeat: parsedTarget, reason: extractActionReason(completion.cleaned) },
+        attempts,
         duration: Date.now() - startTime,
       },
     });
@@ -2000,7 +2066,9 @@ export async function generateHunterShoot(
       response: {
         content: "",
         parsed: { targetSeat: null },
+        attempts,
         duration: Date.now() - startTime,
+        failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
       },
       error: String(error),
     });
@@ -2120,46 +2188,54 @@ export async function generateWhiteWolfKingBoomDecision(
     (p) => p.alive && p.playerId !== player.playerId
   );
   const startTime = Date.now();
+  // 關鍵決策：上游逾時會自動重試一次；這裡記錄實際發出幾次請求，寫進 log 分辨「逾時」與「AI 自己的選擇」。
+  let attempts = 0;
   const { messages } = buildMessagesForPrompt(prompt);
   const validSeats = alivePlayers.map((p) => p.seat);
 
   if (validSeats.length === 0) return { targetSeat: null, farewell: "", reason: "" };
 
   try {
-    const completion = await generateCompletionAndParse<number | null>(
-      mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
-        model: player.agentProfile!.modelRef.model,
-        messages,
-        promptScope: "gameplay",
-        temperature: GAME_TEMPERATURE.ACTION,
-        response_format: { type: "json_object" },
-      }),
-      (cleaned) => {
-        const parsed = parseLLMJson<unknown>(cleaned);
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return parseFail();
+    const completion = await withCriticalRetry(
+      "wwk_boom_decision",
+      async () => {
+        attempts += 1;
+        return await generateCompletionAndParse<number | null>(
+          mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+            model: player.agentProfile!.modelRef.model,
+            messages,
+            promptScope: "gameplay",
+            temperature: GAME_TEMPERATURE.ACTION,
+            response_format: { type: "json_object" },
+          }),
+          (cleaned) => {
+            const parsed = parseLLMJson<unknown>(cleaned);
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return parseFail();
 
-        const record = parsed as Record<string, unknown>;
-        const action = String(record.action ?? record.type ?? "").trim().toLowerCase();
-        const seatValue = record.seat ?? record.targetSeat ?? record.target ?? record.boom;
-        const wantsPass =
-          action.includes("pass") ||
-          action.includes("skip") ||
-          action.includes("none") ||
-          seatValue === null ||
-          seatValue === 0 ||
-          seatValue === "0";
+            const record = parsed as Record<string, unknown>;
+            const action = String(record.action ?? record.type ?? "").trim().toLowerCase();
+            const seatValue = record.seat ?? record.targetSeat ?? record.target ?? record.boom;
+            const wantsPass =
+              action.includes("pass") ||
+              action.includes("skip") ||
+              action.includes("none") ||
+              seatValue === null ||
+              seatValue === 0 ||
+              seatValue === "0";
 
-        if (wantsPass) return parseOk(null);
-        const wantsBoom =
-          action === "" ||
-          action.includes("boom") ||
-          action.includes("explode") ||
-          action.includes("self");
-        if (!wantsBoom) return parseFail();
+            if (wantsPass) return parseOk(null);
+            const wantsBoom =
+              action === "" ||
+              action.includes("boom") ||
+              action.includes("explode") ||
+              action.includes("self");
+            if (!wantsBoom) return parseFail();
 
-        const target = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "boom"]);
-        return target === null ? parseFail() : parseOk(target);
-      }
+            const target = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "boom"]);
+            return target === null ? parseFail() : parseOk(target);
+          }
+        );
+      },
     );
     const parsedTarget = completion.parsed;
     const farewell = extractJsonTextField(completion.cleaned, "farewell", 400);
@@ -2178,6 +2254,7 @@ export async function generateWhiteWolfKingBoomDecision(
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
         parsed: { targetSeat: parsedTarget, attempts: completion.attempts, reason: boomReason, farewell },
+        attempts,
         duration: Date.now() - startTime,
       },
     });
@@ -2195,7 +2272,9 @@ export async function generateWhiteWolfKingBoomDecision(
       response: {
         content: "",
         parsed: { targetSeat: null, farewell: "", reason: "" },
+        attempts,
         duration: Date.now() - startTime,
+        failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
       },
       error: String(error),
     });

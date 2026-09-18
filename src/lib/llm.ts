@@ -22,7 +22,7 @@ import { GAME_SESSION_EXPIRED_CODE } from "@/lib/game-session-policy";
 import { parseLLMJson } from "./llm-json";
 import { generateUUID } from "./utils";
 import { withTimeout } from "@/lib/request-timeout";
-import { UPSTREAM_TIMEOUT_HEADER } from "@/lib/upstream-timeout";
+import { UPSTREAM_TIMEOUT_HEADER, UpstreamTimeoutError } from "@/lib/upstream-timeout";
 import type { PromptScope } from "@/lib/deepseek-prompt-scope";
 
 export type LLMContentPart =
@@ -388,6 +388,16 @@ export function readStreamProtocolError(payload: unknown): string | null {
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * 把非 ok 的回應轉成錯誤：route 帶了逾時標頭就丟 UpstreamTimeoutError，
+ * 讓關鍵決策（獵人開槍…）能分辨逾時並自動重試一次。
+ */
+function buildApiError(response: Response, errorText: string): Error {
+  const message = formatApiError(response.status, errorText);
+  if (response.headers.get(UPSTREAM_TIMEOUT_HEADER)) return new UpstreamTimeoutError(message);
+  return new Error(message);
 }
 
 async function fetchWithRetry(
@@ -769,7 +779,7 @@ export async function generateCompletion(
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(formatApiError(response.status, errorText));
+    throw buildApiError(response, errorText);
   }
 
   const result: ChatCompletionResponse = await response.json();
@@ -863,7 +873,7 @@ async function generateCompletionBatchInternal(
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(formatApiError(response.status, errorText));
+    throw buildApiError(response, errorText);
   }
 
   const data: unknown = await response.json();
@@ -973,7 +983,7 @@ export async function* generateCompletionStream(
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(formatApiError(response.status, errorText));
+    throw buildApiError(response, errorText);
   }
 
   const reader = response.body?.getReader();

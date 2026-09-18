@@ -72,6 +72,10 @@ export interface AILogEntry {
     finishReason?: string; // finish_reason from API response
     parsed?: unknown; // Parsed/structured result
     cache?: PromptCacheUsage; // Official provider cache counters normalized for reporting
+    /** 實際向上游發出幾次請求（關鍵決策逾時會自動重試一次，>1 代表重試過）。 */
+    attempts?: number;
+    /** 失敗原因：upstream_timeout＝重試後仍逾時（該決策沒成立）；error＝其他錯誤。 */
+    failure?: "upstream_timeout" | "error";
   };
   error?: string;
   /** 這筆失敗之後會自動重試，不是最終失敗；控制台降級成 warning 顯示。 */
