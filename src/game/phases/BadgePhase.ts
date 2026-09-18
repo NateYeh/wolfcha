@@ -138,7 +138,9 @@ export class BadgePhase extends GamePhase {
         .join(t("promptUtils.gameContext.listSeparator")),
       jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "一句话说明你为什么把徽交给他" }),
       tearJsonFormat: JSON.stringify({ action: "tear", reason: "一句话说明你为什么撕徽" }),
-    });
+    }) +
+      // 警徽移交经验：仅狼人可见。移交是公开动作，好人会从接徽人倒推死者的关系网。
+      (isWolfRole(player.role) ? t("prompts.badge.transfer.wolfTransferExperience") : "");
     const systemParts: SystemPromptPart[] = [
       { text: cacheableContent, cacheable: true, ttl: "1h" },
       { text: dynamicContent },

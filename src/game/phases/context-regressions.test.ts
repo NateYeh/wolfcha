@@ -128,6 +128,22 @@ test("警徽评选：狼人可见警徽票纪律，好人不可见", async () =>
   assert.doesNotMatch(villagerPrompt.system, /警徽票纪律/);
 });
 
+test("警徽移交：狼人可见移交经验，好人不可见", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("BADGE_TRANSFER");
+  const wolf = state.players.find((p) => p.role === "Werewolf")!;
+  state.currentSpeakerSeat = wolf.seat;
+  const wolfPrompt = new PhaseManager().getPrompt("BADGE_TRANSFER", { state }, wolf)!;
+  assert.match(wolfPrompt.system, /【警徽移交经验（仅狼人可见）】/);
+  assert.match(wolfPrompt.system, /接徽的队友通常第一个被点名/);
+  assert.match(wolfPrompt.system, /一条徽链能串出两三只狼/);
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  state.currentSpeakerSeat = villager.seat;
+  const villagerPrompt = new PhaseManager().getPrompt("BADGE_TRANSFER", { state }, villager)!;
+  assert.doesNotMatch(villagerPrompt.system, /警徽移交经验/);
+});
+
 const decisions: Phase[] = ["DAY_BADGE_SIGNUP", "DAY_BADGE_ELECTION", "BADGE_TRANSFER", "DAY_VOTE", "HUNTER_SHOOT", "WHITE_WOLF_KING_BOOM", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"];
 for (const phase of decisions) {
   test(`阶段矩阵：${phase} 必须包含已公开的当天证据`, async () => {
