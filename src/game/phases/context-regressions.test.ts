@@ -930,3 +930,23 @@ test("猎人的枪口风险只给狼看：刀／炸／毒代价不同，好人�
   const villager = state.players.find((p) => p.role === "Villager")!;
   assert.doesNotMatch(buildGameContext(state, villager), /【猎人在场时的刀口风险】/);
 });
+
+test("女巫毒药时机：夜间出药提示要带用药时机知识，其他角色拿不到", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("NIGHT_WITCH_ACTION");
+  const witch = state.players.find((p) => p.role === "Witch")!;
+  state.currentSpeakerSeat = witch.seat;
+  const witchContext = buildGameContext(state, witch);
+  assert.match(witchContext, /【毒药什么时候该用】/);
+  assert.match(witchContext, /留到死的毒药等于没有毒药/);
+  assert.match(witchContext, /盲毒算的是期望值/);
+  // 真正送進模型的夜間用藥提示也要帶到（role block 要進 prompt.user，不能只存在 buildGameContext）。
+  const prompt = new PhaseManager().getPrompt("NIGHT_WITCH_ACTION", { state }, witch)!;
+  assert.match(prompt.user, /【毒药什么时候该用】/);
+  // 「不必等到确认」寫在夜間任務文案（system）裡，兩個位置都要帶到。
+  assert.match(prompt.system, /不必等到确认/);
+
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  assert.doesNotMatch(buildGameContext(state, villager), /【毒药什么时候该用】/);
+});

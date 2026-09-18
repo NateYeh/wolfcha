@@ -799,6 +799,8 @@ ${checks.join("\n")}`;
     }
     // 用藥記錄的讀法：救過的人＝狼當晚目標（偏好人），日夜都用得到，兩邊都拼。
     witchInfo += `\n${t("promptUtils.gameContext.witchPotionReadingNote")}`;
+    // 毒藥的時機：修正「等確認的狼人才用」導致毒藥留到死的傾向，日夜都拼（白天也要盤算）。
+    witchInfo += `\n${t("promptUtils.gameContext.witchPoisonTimingNote")}`;
     // 白天才需要報帳指引（何時公開、報什麼）；夜間用藥決策有自己的提示。
     if (state.phase.includes("DAY")) {
       witchInfo += `\n${t("promptUtils.gameContext.witchAccountGuidance")}`;
