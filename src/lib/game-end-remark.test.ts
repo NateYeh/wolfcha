@@ -141,3 +141,14 @@ test("赛后感言：本人自爆/开枪的私下理由注入自己的感言 pro
     globalThis.fetch = originalFetch;
   }
 });
+
+test("赛后感言清理：丢掉字数自检与重复段，只保留正文", async () => {
+  const { sanitizeGameEndRemark } = await import("@/lib/game-master");
+  // 实测泄漏样例：模型先说「~86字，符合要求」，再输出标题并重复整段
+  const leak = "10号自爆摘了12号预言家，等于揭了我方天灵盖；问一句，我守的到底是门还是窗？   ~86字，符合要求。   【賽後感言】   10号自爆摘了12号预言家，等于揭了我方天灵盖；问一句，我守的到底是门还是窗？";
+  assert.equal(sanitizeGameEndRemark(leak), "10号自爆摘了12号预言家，等于揭了我方天灵盖；问一句，我守的到底是门还是窗？");
+  // 尾巴才出現自檢、且沒有標題的情況
+  assert.equal(sanitizeGameEndRemark("好人全把票投歪了。约98字，符合要求"), "好人全把票投歪了。");
+  // 正常感言不得被改動
+  assert.equal(sanitizeGameEndRemark("这局多亏对面把好人投光了，我就是纯民。"), "这局多亏对面把好人投光了，我就是纯民。");
+});

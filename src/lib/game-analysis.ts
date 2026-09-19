@@ -28,7 +28,7 @@ import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
 
 const MAX_SPEECH_ITEMS_PER_PHASE = 30;
 const MAX_SPEECH_CONTENT_LENGTH = 280;
-export const GAME_ANALYSIS_VERSION = 3;
+export const GAME_ANALYSIS_VERSION = 4;
 
 const ROLE_ALIGNMENT: Record<Role, Alignment> = {
   Werewolf: "wolf",
@@ -1570,7 +1570,10 @@ ${formatSpeechSummaries(speechSummaries, state)}
 
 要求：
 1. MVP从${winnerSide}阵营选，SVP从${loserSide}阵营选
-2. 评选只看实际表现：MVP、SVP 的 reason 必须引用具体行为（投票、查验、守护、刀口、开枪、关键发言），不得空泛，不得偏袒任何玩家（包括真人玩家）；SVP 的理由同样要说明他对败方的贡献，而不是罗列他的失误
+2. 评选只看实际表现：MVP、SVP 的 reason 必须引用具体行为（投票、查验、守护、刀口、开枪、关键发言），不得空泛，不得偏袒任何玩家（包括真人玩家）
+2-1. SVP 的 reason 必须写「他对败方的贡献」——只写有实际收益的正面行为（毒中狼、票中狼、查中狼、守住关键刀口、挡住刀口、把票线带到正确方向），并说清这条收益替败方换到了什么
+2-2. 严禁把误判写成功绩：reason 里出现「放逐／投出／带票」某人时，必须同时说明那人是狼；把好人被投出去写成成就（例：「带票放逐4号」而4号是好人／村民）一律不合格；也不得用「报了身份」「发言很多」这类没有收益的行为凑数
+2-3. MVP 同理：不得把「刀错人」「误判好人」写成功绩；获胜阵营 MVP 的贡献要落在可核对的结果上（骗到票、带崩对方的判断、票中狼、活到最后）
 3. reviews必须包含2条队友评价（ally，从「${alliesText}」中选择）和1条对手评价（enemy，从「${enemiesText}」中选择）
 4. 【重要】队友是指同一阵营的玩家，对手是指敌对阵营的玩家。${humanAlignmentText}的队友只能是${humanAlignmentText}的其他成员！
 5. highlightQuote必须是玩家的原话，从上面的发言记录中选取，如果无发言记录则返回空字符串""

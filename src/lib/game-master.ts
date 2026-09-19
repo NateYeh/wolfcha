@@ -88,6 +88,19 @@ function sanitizeModelArtifacts(text: string): string {
     .trim();
 }
 
+/** 賽後感言清理：模型偶爾會吐出字數自檢、標題或重複整段，這裡只保留正文。 */
+export function sanitizeGameEndRemark(text: string): string {
+  let out = sanitizeModelArtifacts(text).replace(/```[a-z]*\n?/gi, "");
+  const header = "【賽後感言】";
+  if (out.includes(header)) out = out.slice(out.lastIndexOf(header) + header.length);
+  return out
+    .replace(/~?\s*[约約]?\s*\d+\s*字[數数]?[，,]?\s*(?:符合要求|自检通过|自檢通過)?[。]?/g, " ")
+    .replace(/符合要求[。]?/g, " ")
+    .replace(/[`\n]+/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function sanitizeSeatMentions(text: string, players: Player[]): string {
   if (!text) return text;
   const totalSeats = players.length;
@@ -2188,11 +2201,7 @@ export async function generateGameEndRemark(
         temperature: GAME_TEMPERATURE.SPEECH,
       })
     );
-    const remark = sanitizeModelArtifacts(result.content)
-      .replace(/```[a-z]*\n?/gi, "")
-      .replace(/[`\n]+/g, " ")
-      .trim()
-      .slice(0, 300);
+    const remark = sanitizeGameEndRemark(result.content).slice(0, 300);
 
     await aiLogger.log({
       type: "game_end_remark",
