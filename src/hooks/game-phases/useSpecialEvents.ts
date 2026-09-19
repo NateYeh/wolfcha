@@ -24,7 +24,6 @@ export interface SpecialEventsCallbacks {
   setIsWaitingForAI: (waiting: boolean) => void;
   waitForUnpause: () => Promise<void>;
   isTokenValid: (token: FlowToken) => boolean;
-  getAccessToken: () => string | null;
   prepareFinalState?: (state: GameState) => Promise<GameState>;
 }
 

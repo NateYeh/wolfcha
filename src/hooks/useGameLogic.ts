@@ -499,6 +499,7 @@ export function useGameLogic() {
   // 特殊事件处理
   // ============================================
   // 缓存 access token 用于游戏会话保存
+  // 注意：beforeunload 的 sendBeacon 不能 await，所以必须事先同步快取 token。
   const accessTokenRef = useRef<string | null>(null);
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -508,10 +509,6 @@ export function useGameLogic() {
       accessTokenRef.current = session?.access_token ?? null;
     });
     return () => subscription.unsubscribe();
-  }, []);
-
-  const getAccessToken = useCallback((): string | null => {
-    return accessTokenRef.current;
   }, []);
 
   // 监听页面卸载，记录中断的游戏会话
@@ -548,7 +545,6 @@ export function useGameLogic() {
     setIsWaitingForAI,
     waitForUnpause,
     isTokenValid,
-    getAccessToken,
     prepareFinalState: (state) => maybeGenerateDailySummary(state, { force: true }),
   });
 
