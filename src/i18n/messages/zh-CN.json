@@ -762,10 +762,12 @@
     "background": "背景",
     "voiceStyle": "说话风格",
     "selfRole": "这是你的角色",
-    "statsGames": "参赛 {games} 场",
-    "statsWinRate": "胜率 {rate}%",
-    "statsMvp": "MVP {mvps} 次",
-    "statsSvp": "SVP {svps} 次"
+    "statGamesValue": "{games} 场",
+    "statCountValue": "{count} 次",
+    "statGamesLabel": "参赛",
+    "statWinRateLabel": "胜率",
+    "statMvpLabel": "MVP",
+    "statSvpLabel": "SVP"
   },
   "tutorialModal": {
     "title": "新手教学：狼人杀怎么玩？",

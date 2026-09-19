@@ -762,10 +762,12 @@
     "background": "Background",
     "voiceStyle": "Voice style",
     "selfRole": "This is your role",
-    "statsGames": "{games} games",
-    "statsWinRate": "{rate}% win",
-    "statsMvp": "{mvps} MVP",
-    "statsSvp": "{svps} SVP"
+    "statGamesValue": "{games}",
+    "statCountValue": "{count}",
+    "statGamesLabel": "Games",
+    "statWinRateLabel": "Win rate",
+    "statMvpLabel": "MVP",
+    "statSvpLabel": "SVP"
   },
   "tutorialModal": {
     "title": "Beginner Guide: How to Play Werewolf",
