@@ -1105,6 +1105,9 @@ alive_count: ${alivePlayers.length}
   const goldWaterNote = isDayPhase ? t("promptUtils.gameContext.goldWaterNote") : "";
   // 有人跳獵人怎麼讀：獵人報身份沒有可核對的帳目（不像查驗、用藥），白天推理用；夜間不拼入。
   const hunterClaimReadingNote = isDayPhase ? t("promptUtils.gameContext.hunterClaimReadingNote") : "";
+  // 守衛規則與自報怎麼讀：連守限制是全場規則（不只守衛自己知道），否則好人會拿「前晚守過、昨晚卻死」
+  // 當矛盾去砸真守衛；只在白天拼入。
+  const guardClaimReadingNote = isDayPhase ? t("promptUtils.gameContext.guardClaimReadingNote") : "";
   // 場上現況（誰自稱預言家、有無對跳）：只陳述公開事實，不下指令。
   const seerClaimStateNote = isDayPhase ? buildSeerClaimStateLine(state) : "";
   // 警長職責：只有拿徽者收到，避免狼警長免費收割「跟警徽走」的權威；僅白天拼入。
@@ -1160,6 +1163,9 @@ alive_count: ${alivePlayers.length}
   }
   if (hunterClaimReadingNote) {
     rulesText += `\n${hunterClaimReadingNote}`;
+  }
+  if (guardClaimReadingNote) {
+    rulesText += `\n${guardClaimReadingNote}`;
   }
   // 警長職責放最後：對拿徽者是最直接的行動指令（歸票）。
   if (sheriffDutyNote) {

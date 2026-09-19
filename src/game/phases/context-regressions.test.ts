@@ -1113,7 +1113,7 @@ test("有人跳猎人：白天知識區塊說明獵人自報沒有可核對的�
   const dayContext = buildGameContext(state, villager);
   assert.match(dayContext, /【有人跳猎人时怎么读】/);
   assert.match(dayContext, /悍跳猎人很常见/);
-  assert.match(dayContext, /只能当声明，不能当证据/);
+  assert.match(dayContext, /守卫的自报（我守了谁）同属这一类，见【守卫的规则与自报怎么读】/);
 
   const nightState: GameState = { ...state, phase: "NIGHT_WOLF_ACTION" as Phase };
   const wolf = state.players.find((p) => p.role === "Werewolf")!;
@@ -1245,4 +1245,28 @@ test("守衛刀口帳：狼白天拿得到，夜間走既有守衛博弈，好�
 
   const villager = day.players.find((p) => p.role === "Villager")!;
   assert.doesNotMatch(buildGameContext(day, villager), /【守卫在场时的刀口账】/);
+});
+
+test("守卫连守规则：白天所有角色的规则区块都讲清「不能连续两晚守同一人」，夜間不拼入", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_SPEECH");
+  // 村民视角：以前拿不到这条规则，才会把「前晚守过、昨晚却死」当成硬矛盾去砸真守卫。
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  state.currentSpeakerSeat = villager.seat;
+  const dayPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
+  assert.match(dayPrompt.user, /【守卫的规则与自报怎么读】/);
+  assert.match(dayPrompt.user, /不能连续两晚守同一人/);
+  assert.match(dayPrompt.user, /前晚守了 X、X 昨晚死了」不是矛盾/);
+  // 反過來也要講：自報守了誰＝告訴全場那人今晚沒人守。
+  assert.match(dayPrompt.user, /等于告诉全场：X 今晚一定没人守/);
+  // 獵人區塊不再重複守衛細節，改成指向新區塊。
+  assert.match(dayPrompt.user, /守卫的自报（我守了谁）同属这一类，见【守卫的规则与自报怎么读】/);
+
+  // 夜間沒有推理需求（狼人出刀另有守衛博弈區塊），不拼入。
+  const nightState = fresh("NIGHT_WOLF_ACTION");
+  const wolf = nightState.players.find((p) => p.role === "Werewolf")!;
+  nightState.currentSpeakerSeat = wolf.seat;
+  const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, wolf)!;
+  assert.doesNotMatch(nightPrompt.user, /【守卫的规则与自报怎么读】/);
 });
