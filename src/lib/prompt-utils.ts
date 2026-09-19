@@ -975,6 +975,8 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
       // （評估今晚刀誰、自稱守衛的人怎麼處理、算刀數時怎麼算被守住的機率）。
       wolfInfo += `\n${t("promptUtils.gameContext.wolfGuardAwarenessNote")}`;
       wolfInfo += `\n${t("promptUtils.gameContext.wolfTeamPrinciples")}`;
+      // 落後局（人数落后、悍跳队友被翻牌）跟領先局的打法不同：硬撑只会整队暴露。
+      wolfInfo += `\n${t("promptUtils.gameContext.wolfLosingPositionNote")}`;
       // 衝鋒／倒勾分工與白天讀神民：都是發言與站邊層面的知識，夜間無關。
       wolfInfo += `\n${t("promptUtils.gameContext.wolfChargeHookNote")}`;
       wolfInfo += `\n${t("promptUtils.gameContext.wolfGodVillagerReadingNote")}`;

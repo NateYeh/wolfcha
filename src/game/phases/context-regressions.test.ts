@@ -128,6 +128,51 @@ test("警徽评选：狼人可见警徽票纪律，好人不可见", async () =>
   assert.doesNotMatch(villagerPrompt.system, /警徽票纪律/);
 });
 
+test("放逐票：狼人可见票型纪律，好人不可见", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_VOTE");
+  const wolf = state.players.find((p) => p.role === "Werewolf")!;
+  const wolfPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, wolf)!;
+  assert.match(wolfPrompt.system, /【放逐票的票型纪律（仅狼人可见）】/);
+  // 别跟队友把票压在同一个目标上（本局 D2 两狼同投 3 号的教训）
+  assert.match(wolfPrompt.system, /别跟队友把票压在同一个目标上/);
+  // 队友挡不住票时跟大部队弃车，比另开战场安全
+  assert.match(wolfPrompt.system, /跟大部队投他（弃车保帅）比另开一个战场安全/);
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  const villagerPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
+  assert.doesNotMatch(villagerPrompt.system, /放逐票的票型纪律/);
+});
+
+test("落后局站位：狼人白天可见，好人不可见", async () => {
+  const state = fresh("DAY_SPEECH");
+  const wolf = state.players.find((p) => p.role === "Werewolf")!;
+  const wolfContext = buildGameContext(state, wolf);
+  assert.match(wolfContext, /【落后局的站位/);
+  // 神位账对上时硬咬等于把自己绑上狼位
+  assert.match(wolfContext, /神位的账已经对上时别硬咬/);
+  // 站过悍跳队友的线被翻牌要认账归队，而不是反手咬神
+  assert.match(wolfContext, /站过悍跳队友那条线又被翻牌/);
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  assert.doesNotMatch(buildGameContext(state, villager), /落后局的站位/);
+});
+
+test("狼人遗言：狼人可见遗言纪律，好人不可见", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_LAST_WORDS");
+  const wolf = state.players.find((p) => p.role === "Werewolf")!;
+  state.currentSpeakerSeat = wolf.seat;
+  const wolfPrompt = new PhaseManager().getPrompt("DAY_LAST_WORDS", { state }, wolf)!;
+  assert.match(wolfPrompt.system, /【狼人的遗言纪律（仅狼人可见）】/);
+  // 遗言点队友＝替好人点出两人一伙（6 号遗言点 7 号的教训）
+  assert.match(wolfPrompt.system, /别在遗言里点队友、给队友递话/);
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  state.currentSpeakerSeat = villager.seat;
+  const villagerPrompt = new PhaseManager().getPrompt("DAY_LAST_WORDS", { state }, villager)!;
+  assert.doesNotMatch(villagerPrompt.system, /狼人的遗言纪律/);
+});
+
 test("警徽移交：狼人可见移交经验，好人不可见", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");

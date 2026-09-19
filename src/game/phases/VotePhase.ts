@@ -1,5 +1,5 @@
 import { recordVoteRound } from "@/lib/vote-rounds";
-import type { GameState, Player } from "@/types/game";
+import { isWolfRole, type GameState, type Player } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "../core/types";
 import {
@@ -160,9 +160,11 @@ export class VotePhase extends GamePhase {
       role: getRoleText(player.role),
       winCondition: getWinCondition(player.role),
     });
+    // 放逐票和警徽票一樣事後必被復盤；狼隊最容易在票型上整隊暴露，
+    // 因此把票型紀律只拼給狼人（好人沒有這個問題，多給反而稀釋其他指引）。
     const dynamicContent = t("prompts.vote.task", {
       options: alivePlayers.map((p) => t("prompts.vote.option", { seat: p.seat + 1, name: p.displayName })).join(", "),
-    });
+    }) + (isWolfRole(player.role) ? `\n${t("prompts.vote.wolfVoteDiscipline")}` : "");
     const systemParts: SystemPromptPart[] = [
       { text: cacheableContent, cacheable: true, ttl: "1h" },
       { text: dynamicContent },

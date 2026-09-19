@@ -16,6 +16,7 @@ import {
   generateGameAnalysis,
   getGameAnalysisSourceFingerprint,
 } from "@/lib/game-analysis";
+import { isCurrentAnalysis } from "@/lib/analysis-cache";
 import { gameStatsTracker } from "@/hooks/useGameStats";
 import { getReviewModel } from "@/lib/api-keys";
 import { recordCharacterStats, type CharacterStatRecord } from "@/lib/character-stats";
@@ -98,8 +99,12 @@ export function useGameAnalysis() {
     setError(null);
   }, [setAnalysisData, setError]);
 
+  // 分析快取存在 localStorage、跨局共用：gameId（或版本）對不上時它就是上一局的資料。
+  // 對外一律回 null，否則新局結算的瞬間會先閃出上一局的 MVP／SVP 卡片。
+  const currentAnalysis = isCurrentAnalysis(analysisData, gameState.gameId, GAME_ANALYSIS_VERSION) ? analysisData : null;
+
   return {
-    analysisData,
+    analysisData: currentAnalysis,
     isLoading,
     error,
     triggerAnalysis,
@@ -108,7 +113,10 @@ export function useGameAnalysis() {
 }
 
 export function useAnalysisData() {
-  return useAtomValue(gameAnalysisAtom);
+  const analysisData = useAtomValue(gameAnalysisAtom);
+  const gameState = useAtomValue(gameStateAtom);
+  // 同 useGameAnalysis：跨局共用的快取要按 gameId／版本過濾，避免顯示上一局的分析。
+  return isCurrentAnalysis(analysisData, gameState.gameId, GAME_ANALYSIS_VERSION) ? analysisData : null;
 }
 
 export function useAnalysisLoading() {
