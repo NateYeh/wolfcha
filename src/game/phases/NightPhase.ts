@@ -142,15 +142,19 @@ export class NightPhase extends GamePhase {
       return currentState;
     }
 
-    const guardTarget = await generateGuardAction(currentState, guard);
+    const guardOutcome = await generateGuardAction(currentState, guard);
     await runtime.waitForUnpause();
 
     if (!runtime.isTokenValid(runtime.token)) return currentState;
 
-    if (guardTarget !== undefined) {
+    if (guardOutcome !== undefined) {
       currentState = {
         ...currentState,
-        nightActions: { ...currentState.nightActions, guardTarget },
+        nightActions: {
+          ...currentState.nightActions,
+          guardTarget: guardOutcome.targetSeat,
+          ...(guardOutcome.reason ? { guardReason: guardOutcome.reason } : {}),
+        },
       };
     }
     runtime.setGameState(currentState);
@@ -205,7 +209,8 @@ export class NightPhase extends GamePhase {
       try {
         // 简化逻辑：第一个狼人决定目标，其他狼人自动达成共识
         const firstWolf = wolves[0];
-        const targetSeat = await generateWolfAction(currentState, firstWolf, {});
+        const wolfOutcome = await generateWolfAction(currentState, firstWolf, {});
+        const targetSeat = wolfOutcome?.targetSeat;
         
         await runtime.waitForUnpause();
         if (!runtime.isTokenValid(runtime.token)) return currentState;
@@ -223,6 +228,7 @@ export class NightPhase extends GamePhase {
             ...currentState.nightActions,
             wolfVotes,
             ...(targetSeat !== undefined ? { wolfTarget: targetSeat } : {}),
+            ...(wolfOutcome?.reason ? { wolfReason: wolfOutcome.reason } : {}),
           },
         };
         runtime.setGameState(currentState);
@@ -294,13 +300,21 @@ export class NightPhase extends GamePhase {
     if (witchAction.type === "save") {
       currentState = {
         ...currentState,
-        nightActions: { ...currentState.nightActions, witchSave: true },
+        nightActions: {
+          ...currentState.nightActions,
+          witchSave: true,
+          ...(witchAction.reason ? { witchSaveReason: witchAction.reason } : {}),
+        },
         roleAbilities: { ...currentState.roleAbilities, witchHealUsed: true },
       };
     } else if (witchAction.type === "poison" && witchAction.target !== undefined) {
       currentState = {
         ...currentState,
-        nightActions: { ...currentState.nightActions, witchPoison: witchAction.target },
+        nightActions: {
+          ...currentState.nightActions,
+          witchPoison: witchAction.target,
+          ...(witchAction.reason ? { witchPoisonReason: witchAction.reason } : {}),
+        },
         roleAbilities: { ...currentState.roleAbilities, witchPoisonUsed: true },
       };
     }
@@ -341,16 +355,17 @@ export class NightPhase extends GamePhase {
       return currentState;
     }
 
-    const targetSeat = await generateSeerAction(currentState, seer);
+    const seerOutcome = await generateSeerAction(currentState, seer);
     if (!runtime.isTokenValid(runtime.token)) return currentState;
 
-    if (targetSeat === undefined) {
+    if (seerOutcome === undefined) {
       runtime.setGameState(currentState);
       runtime.setIsWaitingForAI(false);
       await playNarrator("seerClose");
       return currentState;
     }
 
+    const targetSeat = seerOutcome.targetSeat;
     const targetPlayer = currentState.players.find((p) => p.seat === targetSeat);
     const isWolf = targetPlayer ? targetPlayer.alignment === "wolf" : false;
 
@@ -362,6 +377,7 @@ export class NightPhase extends GamePhase {
         seerTarget: targetSeat,
         seerResult: { targetSeat, isWolf: isWolf || false },
         seerHistory: [...seerHistory, { targetSeat, isWolf: isWolf || false, day: currentState.day }],
+        ...(seerOutcome.reason ? { seerReason: seerOutcome.reason } : {}),
       },
     };
     runtime.setGameState(currentState);

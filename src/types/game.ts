@@ -266,6 +266,12 @@ export interface GameState {
       seerResult?: { targetSeat: number; isWolf: boolean };
       deaths?: Array<{ seat: number; reason: "wolf" | "poison" | "milk" }>;
       hunterShot?: { hunterSeat: number; targetSeat: number; reason?: string };
+      /** 夜間行動者本人寫下的決策理由；賽中從不公開，只供本人賽後感言引用。 */
+      guardReason?: string;
+      wolfReason?: string;
+      witchSaveReason?: string;
+      witchPoisonReason?: string;
+      seerReason?: string;
     }
   >;
   dayHistory?: Record<
@@ -292,6 +298,12 @@ export interface GameState {
     witchPoison?: number;        // 女巫毒谁
     seerTarget?: number;
     seerResult?: { targetSeat: number; isWolf: boolean };
+    /** 夜間行動的私有理由（本人視角的一句話）；結算時寫入 nightHistory 供賽後感言引用。 */
+    guardReason?: string;
+    wolfReason?: string;
+    witchSaveReason?: string;
+    witchPoisonReason?: string;
+    seerReason?: string;
     seerHistory?: Array<{ targetSeat: number; isWolf: boolean; day: number }>; // 查验历史
     pendingWolfVictim?: number;  // 待公布的狼人击杀目标（警长竞选后公布）
     pendingPoisonVictim?: number; // 待公布的女巫毒杀目标（警长竞选后公布）

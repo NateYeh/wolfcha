@@ -273,6 +273,12 @@ export function useSpecialEvents(
           seerResult: currentState.nightActions.seerResult,
           deaths: nightDeaths,
           resultsAnnounced: false,
+          // 本人的私有決策理由：賽中不公開，只備賽後感言引用。
+          guardReason: currentState.nightActions.guardReason,
+          wolfReason: currentState.nightActions.wolfReason,
+          witchSaveReason: currentState.nightActions.witchSaveReason,
+          witchPoisonReason: currentState.nightActions.witchPoisonReason,
+          seerReason: currentState.nightActions.seerReason,
         },
       },
     };

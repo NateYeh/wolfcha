@@ -29,6 +29,7 @@ import type { PromptResult } from "@/game/core/types";
 import { buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildGameContext, getRoleText, getWinCondition } from "./prompt-utils";
 import { parseLLMJson } from "./llm-json";
 import { getI18n } from "@/i18n/translator";
+import { buildPublicRecordForRemark } from "@/lib/public-record";
 import { getRoleConfiguration } from "@/lib/role-configuration";
 import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
 
@@ -1675,10 +1676,16 @@ function extractJsonTextField(cleaned: string, field: string, maxLen = 200): str
   }
 }
 
+/** 單人夜間行動結果：座位＋本人寫下的理由（理由只進本人賽後感言，賽中不公開）。 */
+export interface NightActionOutcome {
+  targetSeat: number;
+  reason: string;
+}
+
 export async function generateSeerAction(
   state: GameState,
   player: Player
-): Promise<number | undefined> {
+): Promise<NightActionOutcome | undefined> {
   const prompt = resolvePhasePrompt("NIGHT_SEER_ACTION", state, player);
   const alivePlayers = state.players.filter(
     (p) => p.alive && p.playerId !== player.playerId
@@ -1731,7 +1738,7 @@ export async function generateSeerAction(
       },
     });
 
-    return parsedSeat;
+    return parsedSeat === undefined ? undefined : { targetSeat: parsedSeat, reason: extractActionReason(completion.cleaned) };
   } catch (error) {
     console.warn("[wolfcha] generateSeerAction failed, skipping seer check:", error);
     await aiLogger.log({
@@ -1758,7 +1765,7 @@ export async function generateWolfAction(
   state: GameState,
   player: Player,
   existingVotes: Record<string, number> = {}
-): Promise<number | undefined> {
+): Promise<NightActionOutcome | undefined> {
   const prompt = resolvePhasePrompt("NIGHT_WOLF_ACTION", state, player, { existingVotes });
   const alivePlayers = state.players.filter((p) => p.alive);
   const startTime = Date.now();
@@ -1807,7 +1814,7 @@ export async function generateWolfAction(
       },
     });
 
-    return parsedSeat;
+    return parsedSeat === undefined ? undefined : { targetSeat: parsedSeat, reason: extractActionReason(completion.cleaned) };
   } catch (error) {
     console.warn("[wolfcha] generateWolfAction failed, skipping wolf kill:", error);
     await aiLogger.log({
@@ -2102,9 +2109,9 @@ export async function generateWolfTeamPlan(
 }
 
 export type WitchAction =
-  | { type: "save" }
-  | { type: "poison"; target: number }
-  | { type: "pass" };
+  | { type: "save"; reason?: string }
+  | { type: "poison"; target: number; reason?: string }
+  | { type: "pass"; reason?: string };
 
 export async function generateWitchAction(
   state: GameState,
@@ -2168,7 +2175,12 @@ export async function generateWitchAction(
         );
       },
     );
-    const parsedAction = completion.parsed ?? passAction;
+    const baseAction = completion.parsed ?? passAction;
+    const actionReason = extractActionReason(completion.cleaned);
+    const parsedAction: WitchAction =
+      baseAction.type === "poison"
+        ? { type: "poison", target: baseAction.target, reason: actionReason }
+        : { type: baseAction.type, reason: actionReason };
 
     await aiLogger.log({
       type: "witch_action",
@@ -2182,7 +2194,7 @@ export async function generateWitchAction(
         raw: completion.result.content,
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
-        parsed: { ...parsedAction, attempts: completion.attempts, reason: extractActionReason(completion.cleaned) },
+        parsed: { ...parsedAction, attempts: completion.attempts, reason: actionReason },
         attempts,
         duration: Date.now() - startTime,
       },
@@ -2216,7 +2228,7 @@ export async function generateWitchAction(
 export async function generateGuardAction(
   state: GameState,
   player: Player
-): Promise<number | undefined> {
+): Promise<NightActionOutcome | undefined> {
   const prompt = resolvePhasePrompt("NIGHT_GUARD_ACTION", state, player);
   const lastTarget = state.nightActions.lastGuardTarget;
   const alivePlayers = state.players.filter(
@@ -2270,7 +2282,7 @@ export async function generateGuardAction(
       },
     });
 
-    return parsedSeat;
+    return parsedSeat === undefined ? undefined : { targetSeat: parsedSeat, reason: extractActionReason(completion.cleaned) };
   } catch (error) {
     console.warn("[wolfcha] generateGuardAction failed, skipping guard protection:", error);
     await aiLogger.log({
@@ -2388,6 +2400,75 @@ export async function generateHunterShoot(
   }
 }
 
+/** 私有決策理由的種類；賽中從不公開，只在本人賽後感言中還原。 */
+export type PrivateActionNoteType =
+  | "boom"
+  | "shot"
+  | "guard"
+  | "wolf"
+  | "witchSave"
+  | "witchPoison"
+  | "seer";
+
+/** 單筆私有決策理由（結構化；reason 為行動者當時寫下的一句話）。 */
+export interface PrivateActionNote {
+  day: number;
+  type: PrivateActionNoteType;
+  /** 該行動指向的座位（0 基）：自爆／開槍為帶走的人，其餘為用藥、查驗、守人、刀口目標。 */
+  targetSeat: number;
+  reason: string;
+}
+
+/** 私有理由→ i18n key（賽後感言用）。 */
+const PRIVATE_ACTION_NOTE_KEYS: Record<PrivateActionNoteType, string> = {
+  boom: "specialEvents.remarkPrivateBoom",
+  shot: "specialEvents.remarkPrivateShot",
+  guard: "specialEvents.remarkPrivateGuard",
+  wolf: "specialEvents.remarkPrivateWolf",
+  witchSave: "specialEvents.remarkPrivateWitchSave",
+  witchPoison: "specialEvents.remarkPrivateWitchPoison",
+  seer: "specialEvents.remarkPrivateSeer",
+};
+
+/** 私有理由長度上限：避免賽後 prompt 被長句撐爆（與其他 reason 欄位一致）。 */
+const PRIVATE_NOTE_REASON_MAX = 120;
+
+/**
+ * 蒐集「本人」在賽中寫下的私有決策理由，供賽後感言還原「那一手為什麼這麼做」。
+ * 只還原本人參與的行動（夜間行動只有本人知道自己的動機）；人類玩家的行動不記理由，故自然為空。
+ */
+export function collectPrivateActionNotes(state: GameState, seat: number): PrivateActionNote[] {
+  const notes: PrivateActionNote[] = [];
+  const push = (day: number, type: PrivateActionNoteType, targetSeat: number | undefined, reason: string | undefined): void => {
+    if (targetSeat === undefined || !reason) return;
+    const trimmed = reason.trim().slice(0, PRIVATE_NOTE_REASON_MAX);
+    if (!trimmed) return;
+    notes.push({ day, type, targetSeat, reason: trimmed });
+  };
+  for (const [dayStr, record] of Object.entries(state.dayHistory ?? {})) {
+    const day = Number(dayStr);
+    const boom = record.whiteWolfKingBoom;
+    if (boom && boom.boomSeat === seat) push(day, "boom", boom.targetSeat, boom.reason);
+    const shot = record.hunterShot;
+    if (shot && shot.hunterSeat === seat) push(day, "shot", shot.targetSeat, shot.reason);
+  }
+  const role = state.players.find((p) => p.seat === seat)?.role;
+  for (const [dayStr, record] of Object.entries(state.nightHistory ?? {})) {
+    const day = Number(dayStr);
+    const shot = record.hunterShot;
+    if (shot && shot.hunterSeat === seat) push(day, "shot", shot.targetSeat, shot.reason);
+    if (role === "Guard") push(day, "guard", record.guardTarget, record.guardReason);
+    if (role && isWolfRole(role)) push(day, "wolf", record.wolfTarget, record.wolfReason);
+    if (role === "Witch") {
+      // 解藥救的是狼刀目標（存活的那一位），毒藥毒的是自己選的目標。
+      push(day, "witchSave", record.wolfTarget, record.witchSaveReason);
+      push(day, "witchPoison", record.witchPoison, record.witchPoisonReason);
+    }
+    if (role === "Seer") push(day, "seer", record.seerTarget, record.seerReason);
+  }
+  return notes.sort((a, b) => a.day - b.day);
+}
+
 /**
  * 赛后感言：游戏结束、全员身份公开后，单个 AI 角色的复盘发言。
  * 赢家点评真神/调侃对方「卧底」，输家吐槽猪队友；失败返回空串（调用方跳过）。
@@ -2421,25 +2502,18 @@ export async function generateGameEndRemark(
     ? persona.voiceRules.join(t("promptUtils.gameContext.listSeparator"))
     : "";
 
-  // 私有决策回顾：本人当时写下的决策理由（白狼王自爆／猎人开枪）。
+  // 私有决策回顾：本人当时写下的决策理由（白狼王自爆／猎人开枪／用药／查验／守人／刀口）。
   // 这些理由赛中从未公开，但赛后全员身份公开，自己的感言可以讲清「那一手为什么这么做」。
-  const privateNotes: string[] = [];
-  for (const [day, record] of Object.entries(state.dayHistory ?? {})) {
-    const boom = record.whiteWolfKingBoom;
-    if (boom && boom.boomSeat === player.seat && boom.reason) {
-      privateNotes.push(t("specialEvents.remarkPrivateBoom", { day, reason: boom.reason }));
-    }
-    const shot = record.hunterShot;
-    if (shot && shot.hunterSeat === player.seat && shot.reason) {
-      privateNotes.push(t("specialEvents.remarkPrivateShot", { day, reason: shot.reason }));
-    }
-  }
-  for (const [day, record] of Object.entries(state.nightHistory ?? {})) {
-    const shot = record.hunterShot;
-    if (shot && shot.hunterSeat === player.seat && shot.reason) {
-      privateNotes.push(t("specialEvents.remarkPrivateShot", { day, reason: shot.reason }));
-    }
-  }
+  const privateNotes = collectPrivateActionNotes(state, player.seat).map((note) =>
+    t(PRIVATE_ACTION_NOTE_KEYS[note.type] as Parameters<typeof t>[0], {
+      day: note.day,
+      target: note.targetSeat + 1,
+      reason: note.reason,
+    })
+  );
+  // 主持人公開記錄：只列客觀結果（出局、放逐、自爆、開槍、翻牌），不帶任何玩家說詞。
+  const publicFacts = buildPublicRecordForRemark(state).join("\n").slice(0, 1200);
+  const publicFactsSection = publicFacts ? t("specialEvents.remarkPublicFactsTitle") + publicFacts + "\n\n" : "";
   const privateNotesSection = privateNotes.length
     ? "\n\n" + t("specialEvents.remarkPrivateNotes", { notes: privateNotes.join("\n") })
     : "";
@@ -2456,7 +2530,9 @@ export async function generateGameEndRemark(
     }),
     user: t("specialEvents.remarkUser", {
       reveal,
+      publicFactsSection,
       keyEvents: keyEvents || t("specialEvents.remarkNoEvents"),
+      claimsRule: t("specialEvents.remarkClaimsRule"),
       privateNotes: privateNotesSection,
       personaLine,
     }),

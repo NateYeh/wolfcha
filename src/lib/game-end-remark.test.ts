@@ -45,7 +45,10 @@ test("赛后感言：prompt 含全员身份公开、胜负立场与输出限制�
     assert.match(requestBody, /吐槽猪队友/);
     // user：全员身份公开、关键事件、语言风格
     assert.match(requestBody, /【全员身份】/);
-    assert.match(requestBody, /【关键事件】/);
+    assert.match(requestBody, /【关键事件/);
+    assert.match(requestBody, /【主持人公开记录（客观事实）】/);
+    assert.match(requestBody, /第1夜：平安夜/);
+    assert.match(requestBody, /以上摘要记的是各方当时的说词，不是已确认的事实/);
     assert.match(requestBody, /8号被放逐/);
     assert.match(requestBody, /你的语言风格：说话直接/);
     // 返回值即模型正文（已清理换行与代码围栏，保留完整内容）
@@ -151,4 +154,47 @@ test("赛后感言清理：丢掉字数自检与重复段，只保留正文", as
   assert.equal(sanitizeGameEndRemark("好人全把票投歪了。约98字，符合要求"), "好人全把票投歪了。");
   // 正常感言不得被改動
   assert.equal(sanitizeGameEndRemark("这局多亏对面把好人投光了，我就是纯民。"), "这局多亏对面把好人投光了，我就是纯民。");
+});
+
+test("赛后感言：夜间行动（用毒／查验）的私有理由只进本人的 prompt，不进别人的", async () => {
+  const { generateGameEndRemark } = await import("@/lib/game-master");
+  const { createSinglePlayerContextAuditState } = await import(
+    "../../scripts/single-player-context-audit"
+  );
+  const state = createSinglePlayerContextAuditState() as unknown as GameState;
+  state.winner = "wolf";
+  state.nightHistory = {
+    2: {
+      wolfTarget: 10,
+      witchPoison: 9,
+      witchPoisonReason: "他悍跳嫌疑最大，毒他最值",
+      seerTarget: 9,
+      seerReason: "想先拿一根柱子接棒带队",
+      deaths: [{ seat: 10, reason: "wolf" }, { seat: 9, reason: "poison" }],
+      resultsAnnounced: true,
+    },
+  };
+  state.dayHistory = {};
+
+  const originalFetch = globalThis.fetch;
+  const bodies: string[] = [];
+  globalThis.fetch = async (input, init) => {
+    if (String(input) === "/api/demo-config") return Response.json({ active: false, enabled: false });
+    bodies.push(String(init?.body));
+    return Response.json({ id: "t", choices: [{ message: { role: "assistant", content: "那瓶药我认。" }, finish_reason: "stop" }] });
+  };
+
+  try {
+    const witch = state.players.find((p: Player) => p.role === "Witch" && !p.isHuman)!;
+    await generateGameEndRemark(state, witch, "wolf");
+    assert.match(bodies[0], /第2夜你用毒药毒了10号——你自己写的理由：他悍跳嫌疑最大，毒他最值/);
+    assert.doesNotMatch(bodies[0], /你查验的是/);
+
+    const seer = state.players.find((p: Player) => p.role === "Seer" && !p.isHuman)!;
+    await generateGameEndRemark(state, seer, "wolf");
+    assert.match(bodies[1], /第2夜你查验的是10号——你自己写的理由：想先拿一根柱子接棒带队/);
+    assert.doesNotMatch(bodies[1], /你用毒药毒了/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

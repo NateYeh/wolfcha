@@ -152,7 +152,7 @@ test("關鍵決策（守衛）：第一次上游逾時會自動重試一次，�
     const target = await generateGuardAction(makeState(players), players[0]);
 
     assert.equal(mock.calls, 2, "逾時後應該再發一次請求");
-    assert.equal(target, 2, "重試成功後仍要採用模型選的守人目標（畫面 3 號＝raw 2）");
+    assert.equal(target?.targetSeat, 2, "重試成功後仍要採用模型選的守人目標（畫面 3 號＝raw 2）");
 
     const log = entries.find((e) => e.type === "guard_action") as
       | { response?: { attempts?: number; failure?: string }; error?: string }
