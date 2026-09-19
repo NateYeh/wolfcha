@@ -13,10 +13,9 @@ import {
 } from "@/lib/game-master";
 import { getSystemMessages } from "@/lib/game-texts";
 import { getI18n } from "@/i18n/translator";
-import { DELAY_CONFIG, getRoleName } from "@/lib/game-constants";
+import { DELAY_CONFIG } from "@/lib/game-constants";
 import { delay, type FlowToken } from "@/lib/game-flow-controller";
 import { playNarrator } from "@/lib/narrator-audio-player";
-import { gameStatsTracker } from "@/hooks/useGameStats";
 import { gameSessionTracker } from "@/lib/game-session-tracker";
 import { addPlayerMessage, generateGameEndRemark } from "@/lib/game-master";
 
@@ -31,7 +30,6 @@ export interface SpecialEventsCallbacks {
 
 export interface SpecialEventsActions {
   handleHunterDeath: (state: GameState, hunter: Player, diedAtNight: boolean, token: FlowToken, afterHunter: (state: GameState) => Promise<void>) => Promise<void>;
-  handleHumanHunterShoot: (targetSeat: number, diedAtNight: boolean) => Promise<GameState>;
   endGame: (state: GameState, winner: Alignment) => Promise<void>;
   resolveNight: (state: GameState, token: FlowToken, afterResolve: (state: GameState) => Promise<void>) => Promise<void>;
 }
@@ -54,7 +52,7 @@ export function useSpecialEvents(
   };
   const [, setGameState] = useAtom(gameStateAtom);
 
-  const { setDialogue, setIsWaitingForAI, waitForUnpause, isTokenValid, getAccessToken, prepareFinalState } = callbacks;
+  const { setDialogue, setIsWaitingForAI, waitForUnpause, isTokenValid, prepareFinalState } = callbacks;
 
   /** 游戏结束 */
   const endGame = useCallback(async (state: GameState, winner: Alignment) => {
@@ -194,15 +192,6 @@ export function useSpecialEvents(
     await afterHunter(currentState);
   }, [setGameState, setDialogue, setIsWaitingForAI, waitForUnpause, isTokenValid, endGame]);
 
-  /** 人类猎人开枪 */
-  const handleHumanHunterShoot = useCallback(async (
-    targetSeat: number,
-    diedAtNight: boolean
-  ): Promise<GameState> => {
-    // 这个函数返回更新后的状态，由主 hook 处理后续流程
-    return {} as GameState; // 占位，实际逻辑在主 hook 中
-  }, []);
-
   /** 结算夜晚 */
   const resolveNight = useCallback(async (
     state: GameState,
@@ -309,7 +298,6 @@ export function useSpecialEvents(
 
   return {
     handleHunterDeath,
-    handleHumanHunterShoot,
     endGame,
     resolveNight,
   };
