@@ -11,6 +11,7 @@ import {
   type ChatMessage,
   type Alignment,
   type DailySummaryVoteData,
+  type WolfTeamPlan,
   isWolfRole,
   ALL_MODELS,
   PLAYER_MODELS,
@@ -25,7 +26,7 @@ import { aiLogger } from "./ai-logger";
 import { getGeneratorModel, getSummaryModel } from "@/lib/api-keys";
 import { PhaseManager } from "@/game/core/PhaseManager";
 import type { PromptResult } from "@/game/core/types";
-import { buildCachedSystemMessageFromParts, getRoleText } from "./prompt-utils";
+import { buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildGameContext, getRoleText, getWinCondition } from "./prompt-utils";
 import { parseLLMJson } from "./llm-json";
 import { getI18n } from "@/i18n/translator";
 import { getRoleConfiguration } from "@/lib/role-configuration";
@@ -1826,6 +1827,277 @@ export async function generateWolfAction(
       error: String(error),
     });
     return undefined;
+  }
+}
+
+/** 主導狼計畫的原始模型輸出（未驗證）。 */
+export type RawWolfTeamPlan = {
+  jumpSeat?: unknown;
+  signupSeats?: unknown;
+  postures?: unknown;
+  reason?: unknown;
+};
+
+export interface WolfTeamPlanInput {
+  /** 存活狼座位（0 基）。 */
+  wolfSeats: number[];
+  /** 真人狼座位（0 基）——不可被指定悍跳。 */
+  humanSeats: number[];
+  captainSeat: number;
+  day: number;
+}
+
+/**
+ * 驗證並標準化主導狼計畫：座位一律轉回 0 基索引。
+ * - jumpSeat 限制在存活 AI 狼内；0 或非法值＝本局不跳
+ * - signupSeats 限定存活狼；悍跳者必上警（系統自動補上）
+ * - postures 代碼白名單外的降為 deep；非悍跳者卻領 jump 的重映射
+ * - 無存活狼時回傳 null（無從商定）
+ */
+export function normalizeWolfTeamPlan(
+  raw: RawWolfTeamPlan,
+  input: WolfTeamPlanInput
+): WolfTeamPlan | null {
+  const validSeats = new Set(input.wolfSeats);
+  const humanSeats = new Set(input.humanSeats);
+  if (validSeats.size === 0) return null;
+
+  const rawJump = Number(raw.jumpSeat ?? 0);
+  const jumpSeat =
+    Number.isInteger(rawJump) &&
+    rawJump - 1 >= 0 &&
+    validSeats.has(rawJump - 1) &&
+    !humanSeats.has(rawJump - 1)
+      ? rawJump - 1
+      : null;
+
+  const signupSeats = Array.isArray(raw.signupSeats)
+    ? [
+        ...new Set(
+          raw.signupSeats
+            .map((s) => Number(s))
+            .filter((s) => Number.isInteger(s) && validSeats.has(s - 1))
+            .map((s) => s - 1),
+        ),
+      ]
+    : [];
+  if (jumpSeat !== null && !signupSeats.includes(jumpSeat)) {
+    signupSeats.push(jumpSeat);
+  }
+
+  const allowed = new Set<string>(["jump", "charge", "hook", "deep"]);
+  const rawPostures =
+    typeof raw.postures === "object" && raw.postures !== null
+      ? (raw.postures as Record<string, unknown>)
+      : {};
+  const postures: WolfTeamPlan["postures"] = {};
+  for (const seat of input.wolfSeats) {
+    const code = rawPostures[String(seat + 1)];
+    const normalized: WolfTeamPlan["postures"][string] =
+      typeof code === "string" && allowed.has(code) ? (code as WolfTeamPlan["postures"][string]) : "deep";
+    postures[String(seat)] = normalized;
+  }
+  if (jumpSeat !== null) {
+    for (const [key, code] of Object.entries(postures)) {
+      if (code === "jump" && Number(key) !== jumpSeat) postures[key] = "charge";
+    }
+  } else {
+    for (const [key, code] of Object.entries(postures)) {
+      if (code === "jump") postures[key] = "deep";
+    }
+  }
+
+  const reason =
+    typeof raw.reason === "string" ? raw.reason.trim().slice(0, 120) : "";
+
+  return {
+    captainSeat: input.captainSeat,
+    jumpSeat,
+    signupSeats,
+    postures,
+    reason,
+    day: input.day,
+  };
+}
+
+/**
+ * 狼隊夜間商議（第一夜）：隨機挑一隻 AI 狼當主導狼，商定白天分工
+ * （誰悍跳、誰上警、誰衝鋒/倒勾/潛伏）。計畫不編假查殺脚本——
+ * 查殺對象與警徽流由悍跳者臨場自己定，與真人局一致。
+ * 失敗或無 AI 狼時回傳 null：全場照舊無協調，不攝錯——協調是增強，不是必要步驟。
+ */
+export async function generateWolfTeamPlan(
+  state: GameState
+): Promise<WolfTeamPlan | null> {
+  const { t } = getI18n();
+  const aliveWolves = state.players.filter((p) => isWolfRole(p.role) && p.alive);
+  const aiWolves = aliveWolves.filter((p) => !p.isHuman);
+  if (aiWolves.length === 0) return null;
+  const captain = aiWolves[Math.floor(Math.random() * aiWolves.length)];
+
+  const teammates = aliveWolves
+    .map((wolf) => `${wolf.seat + 1}号${wolf.displayName}`)
+    .join("、");
+  const humanWolves = aliveWolves.filter((p) => p.isHuman);
+  const humanNote =
+    humanWolves.length > 0
+      ? t("prompts.night.wolfTeamPlan.humanNote", {
+          seats: humanWolves.map((p) => p.seat + 1).join("、"),
+        })
+      : "";
+  const knifeTarget =
+    state.nightActions.wolfTarget !== undefined
+      ? state.players.find((p) => p.seat === state.nightActions.wolfTarget)
+      : undefined;
+  const knifeLine = knifeTarget
+    ? t("prompts.night.wolfTeamPlan.knifeLine", {
+        seat: knifeTarget.seat + 1,
+        name: knifeTarget.displayName,
+      })
+    : t("prompts.night.wolfTeamPlan.knifeLineNone");
+  // 範例填真實座位、postures 輪換展示四種代碼；悍跳與否由主導狼自己定。
+  const postureCodes = ["jump", "charge", "hook", "deep"] as const;
+  const jsonFormat = JSON.stringify({
+    jumpSeat: aliveWolves[0].seat + 1,
+    signupSeats: aliveWolves.map((wolf) => wolf.seat + 1),
+    postures: Object.fromEntries(
+      aliveWolves.map((wolf, index) => [
+        String(wolf.seat + 1),
+        postureCodes[index % postureCodes.length],
+      ])
+    ),
+    reason: "一句话讲给队友听的计划意图",
+  });
+
+  const base = t("prompts.night.wolfTeamPlan.base", {
+    seat: captain.seat + 1,
+    name: captain.displayName,
+    role: getRoleText(captain.role),
+    winCondition: getWinCondition(captain.role),
+    teammates,
+  });
+  const knowledge = t("prompts.night.wolfTeamPlan.knowledge");
+  const task = t("prompts.night.wolfTeamPlan.task", { knifeLine, jsonFormat });
+  const system = buildSystemTextFromParts([
+    { text: base },
+    { text: knowledge },
+    { text: task },
+  ]);
+  const user = t("prompts.night.wolfTeamPlan.user", {
+    context: buildGameContext(state, captain),
+    humanNote,
+    jsonFormat,
+  });
+  const { messages } = buildMessagesForPrompt({ system, user });
+
+  const validSeats = aliveWolves.map((wolf) => wolf.seat + 1);
+  const startTime = Date.now();
+  let attempts = 0;
+
+  try {
+    const completion = await withCriticalRetry(
+      "wolf_team_plan",
+      async () => {
+        attempts += 1;
+        return await generateCompletionAndParse(
+          mergeOptionsFromModelRef(captain.agentProfile!.modelRef, {
+            model: captain.agentProfile!.modelRef.model,
+            messages,
+            promptScope: "gameplay",
+            temperature: GAME_TEMPERATURE.BADGE_SIGNUP,
+            response_format: structuredResponseFormat(
+              captain.agentProfile!.modelRef,
+              "wolf_team_plan",
+              {
+                type: "object",
+                properties: {
+                  jumpSeat: { type: "integer", enum: [0, ...validSeats] },
+                  signupSeats: {
+                    type: "array",
+                    items: { type: "integer", enum: validSeats },
+                  },
+                  postures: {
+                    type: "object",
+                    properties: Object.fromEntries(
+                      validSeats.map((seat) => [
+                        String(seat),
+                        { type: "string", enum: ["jump", "charge", "hook", "deep"] },
+                      ])
+                    ),
+                    required: validSeats.map(String),
+                    additionalProperties: false,
+                  },
+                  reason: { type: "string" },
+                },
+                required: ["jumpSeat", "signupSeats", "postures", "reason"],
+                additionalProperties: false,
+              }
+            ),
+          }),
+          (cleaned) => {
+            const raw = parseLLMJson<RawWolfTeamPlan>(cleaned);
+            if (!raw) return parseFail();
+            const plan = normalizeWolfTeamPlan(raw, {
+              wolfSeats: aliveWolves.map((wolf) => wolf.seat),
+              humanSeats: humanWolves.map((wolf) => wolf.seat),
+              captainSeat: captain.seat,
+              day: state.day,
+            });
+            return plan ? parseOk(plan) : parseFail();
+          }
+        );
+      }
+    );
+    const plan = completion.parsed;
+
+    await aiLogger.log({
+      type: "wolf_chat",
+      request: {
+        model: captain.agentProfile!.modelRef.model,
+        messages,
+        player: {
+          playerId: captain.playerId,
+          displayName: captain.displayName,
+          seat: captain.seat,
+          role: captain.role,
+        },
+      },
+      response: {
+        content: completion.cleaned,
+        raw: completion.result.content,
+        rawResponse: JSON.stringify(completion.result.raw, null, 2),
+        finishReason: completion.result.raw.choices?.[0]?.finish_reason,
+        parsed: plan,
+        attempts,
+        duration: Date.now() - startTime,
+      },
+    });
+
+    return plan;
+  } catch (error) {
+    console.warn("[wolfcha] generateWolfTeamPlan failed, wolves stay uncoordinated:", error);
+    await aiLogger.log({
+      type: "wolf_chat",
+      request: {
+        model: captain.agentProfile!.modelRef.model,
+        messages,
+        player: {
+          playerId: captain.playerId,
+          displayName: captain.displayName,
+          seat: captain.seat,
+          role: captain.role,
+        },
+      },
+      response: {
+        content: "",
+        parsed: null,
+        attempts,
+        duration: Date.now() - startTime,
+        failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
+      },
+      error: String(error),
+    });
+    return null;
   }
 }
 

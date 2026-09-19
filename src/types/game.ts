@@ -192,6 +192,22 @@ export interface VoteRound {
   outcome: "elected" | "executed" | "idiot-revealed" | "tie" | "no-votes";
 }
 
+/** 狼隊第一夜商定的分工（主導狼計畫）：夜裡商定、白天注入狼視角；座位一律存 0 基索引。 */
+export interface WolfTeamPlan {
+  /** 主導狼座位。 */
+  captainSeat: number;
+  /** 悍跳者座位；null＝本局商定不跳。 */
+  jumpSeat: number | null;
+  /** 商定上警的狼座位（含悍跳者）。 */
+  signupSeats: number[];
+  /** 各狼分工代碼：jump=悍跳 charge=衝鋒 hook=倒勾 deep=潛伏；鍵為座位索引字串。 */
+  postures: Record<string, "jump" | "charge" | "hook" | "deep">;
+  /** 主導狼講給隊友的一句話計畫意圖。 */
+  reason: string;
+  /** 商定時的天數（第一夜＝1）。 */
+  day: number;
+}
+
 export interface GameState {
   gameId: string;
   /** 数据库单人游戏会话的唯一身份；进行中的可恢复状态必须存在。 */
@@ -280,6 +296,8 @@ export interface GameState {
     pendingWolfVictim?: number;  // 待公布的狼人击杀目标（警长竞选后公布）
     pendingPoisonVictim?: number; // 待公布的女巫毒杀目标（警长竞选后公布）
   };
+  /** 第一夜狼隊商定的分工（主導狼計畫）；生成失敗或無 AI 狼時為 undefined，全場照舊無協調。 */
+  wolfTeamPlan?: WolfTeamPlan;
   // 角色能力使用记录
   roleAbilities: {
     witchHealUsed: boolean;      // 女巫解药是否已用

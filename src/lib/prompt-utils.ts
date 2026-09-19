@@ -1,5 +1,5 @@
 import { areNightResultsVisible } from "./night-visibility";
-import type { ChatMessage, GameState, Persona, Phase, Player, Role } from "@/types/game";
+import type { ChatMessage, GameState, Persona, Phase, Player, Role, WolfTeamPlan } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import type { SystemPromptPart } from "@/game/core/types";
 import type { LLMMessage } from "./llm";
@@ -965,6 +965,10 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
     if (killRecords.length > 0) {
       wolfInfo += `\n【狼队出刀记录】\n${killRecords.join("\n")}`;
     }
+    // 第一夜商定的分工：夜裡的事實，注入所有狼視角（報名、發言、投票都看得到）。
+    if (state.wolfTeamPlan) {
+      wolfInfo += `\n${buildWolfTeamPlanSection(state, state.wolfTeamPlan, player)}`;
+    }
     // 獵人的槍口風險：夜間刀口、白狼王自爆、白天要不要碰自稱獵人的人都要算這筆帳，
     // 日夜都拼入（處理獵人的三種方式代價不同）。
     wolfInfo += `\n${t("promptUtils.gameContext.hunterGunThreatNote")}`;
@@ -988,6 +992,56 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
   }
   
   return null;
+};
+
+/** 狼隊夜裡商定的分工：注入狼視角的計畫區塊。 */
+const buildWolfTeamPlanSection = (
+  state: GameState,
+  plan: WolfTeamPlan,
+  self: Player
+): string => {
+  const { t } = getI18n();
+  const captain = state.players.find((p) => p.seat === plan.captainSeat);
+  const postureKeyByCode: Record<string, string> = {
+    jump: "wolfTeamPlanPostureJump",
+    charge: "wolfTeamPlanPostureCharge",
+    hook: "wolfTeamPlanPostureHook",
+    deep: "wolfTeamPlanPostureDeep",
+  };
+  const lines: string[] = [
+    t("promptUtils.gameContext.wolfTeamPlanHeader", {
+      day: plan.day,
+      captainSeat: plan.captainSeat + 1,
+      captainName: captain?.displayName ?? "",
+    }),
+  ];
+  const seats = Object.keys(plan.postures)
+    .map(Number)
+    .filter((seat) => Number.isInteger(seat))
+    .sort((a, b) => a - b);
+  for (const seat of seats) {
+    const member = state.players.find((p) => p.seat === seat);
+    const lineArgs = {
+      seat: seat + 1,
+      name: member?.displayName ?? "",
+      posture: t(`promptUtils.gameContext.${postureKeyByCode[plan.postures[String(seat)]]}` as Parameters<typeof t>[0]),
+      signup: plan.signupSeats.includes(seat)
+        ? t("promptUtils.gameContext.wolfTeamPlanSignupYes")
+        : t("promptUtils.gameContext.wolfTeamPlanSignupNo"),
+    };
+    lines.push(
+      seat === self.seat
+        ? t("promptUtils.gameContext.wolfTeamPlanSelfLine", lineArgs)
+        : t("promptUtils.gameContext.wolfTeamPlanMemberLine", lineArgs)
+    );
+  }
+  if (plan.reason) {
+    lines.push(
+      t("promptUtils.gameContext.wolfTeamPlanReasonLine", { reason: plan.reason })
+    );
+  }
+  lines.push(t("promptUtils.gameContext.wolfTeamPlanAdvisory"));
+  return lines.join("\n");
 };
 
 export const buildGameContext = (

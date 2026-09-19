@@ -16,6 +16,7 @@ import {
   generateSeerAction,
   generateWitchAction,
   generateWolfAction,
+  generateWolfTeamPlan,
   transitionPhase as rawTransitionPhase,
 } from "@/lib/game-master";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
@@ -249,7 +250,20 @@ export class NightPhase extends GamePhase {
     const uiText = getUiText();
     const witch = state.players.find((p) => p.role === "Witch" && p.alive);
     const canWitchAct = witch && (!state.roleAbilities.witchHealUsed || !state.roleAbilities.witchPoisonUsed);
-    let currentState = this.transitionPhase(state, "NIGHT_WITCH_ACTION");
+    let currentState = state;
+    // 第一夜狼隊商議（主導狼計畫）：刀口落定後、天亮公佈前生成一次，
+    // 之後全程注入狼視角；失敗時全場照舊無協調（不攝錯——協調是增強，不是必要步驟）。
+    // 所有夜間路徑（純 AI、真人守衛、真人狼）都匯流到這裡，掛點唯一。
+    if (currentState.day === 1 && !currentState.wolfTeamPlan) {
+      const plan = await generateWolfTeamPlan(currentState);
+      await runtime.waitForUnpause();
+      if (!runtime.isTokenValid(runtime.token)) return currentState;
+      if (plan) {
+        currentState = { ...currentState, wolfTeamPlan: plan };
+        runtime.setGameState(currentState);
+      }
+    }
+    currentState = this.transitionPhase(currentState, "NIGHT_WITCH_ACTION");
     currentState = addSystemMessage(currentState, systemMessages.witchActionStart);
     runtime.setGameState(currentState);
 
