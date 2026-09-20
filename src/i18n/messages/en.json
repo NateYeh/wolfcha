@@ -505,7 +505,8 @@
       "description": "AIs know each other: shares speech habits, pressure responses, and each character's historical win rate and MVP count as reference."
     },
     "rosterPool": {
-      "label": "Character pool"
+      "label": "Character pool",
+      "optionLabel": "{name} ({count} characters)"
     }
   },
   "authModal": {

@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { getRosterPool, ROSTER_POOL_IDS, sampleRosterCharacters } from "@/lib/character-roster";
+import { getRosterPool, getRosterPoolSize, ROSTER_POOL_IDS, sampleRosterCharacters } from "@/lib/character-roster";
 import { setLocale } from "@/i18n/locale-store";
 
 /** 池子人數：改動 src/data/jin-yong-pool.*.json 時一起更新。 */
-const POOL_SIZE = 46;
+const POOL_SIZE = 121;
 
 describe("character-roster 角色池", () => {
   it("ROSTER_POOL_IDS 內含金庸池", () => {
@@ -24,7 +24,14 @@ describe("character-roster 角色池", () => {
     assert.equal(new Set(pool.characters.map((c) => c.displayName)).size, POOL_SIZE);
   });
 
-  it("sampleRosterCharacters：數量正確且角色不重複（46 人名單抽 11）", () => {
+  it("getRosterPoolSize 與池子實際人數一致（設定 UI 顯示用）", () => {
+    for (const poolId of ROSTER_POOL_IDS) {
+      assert.equal(getRosterPoolSize(poolId), getRosterPool(poolId).characters.length);
+    }
+    assert.equal(getRosterPoolSize("jin_yong"), POOL_SIZE);
+  });
+
+  it("sampleRosterCharacters：數量正確且角色不重複（121 人名單抽 11）", () => {
     const sampled = sampleRosterCharacters(11, "jin_yong");
     assert.equal(sampled.length, 11);
     const names = new Set(sampled.map((c) => c.displayName));
@@ -39,12 +46,12 @@ describe("character-roster 角色池", () => {
     for (const c of sampled) assert.ok(poolNames.has(c.displayName));
   });
 
-  it("抽樣涵蓋全池：連抽 100 次（每次 11 人）所有人都出現過", () => {
-    // 池子 46 人抽 11，某角色 100 次都沒被抽到的機率約 1e-12——不會偽陽性，
+  it("抽樣涵蓋全池：連抽 400 次（每次 11 人）所有人都出現過", () => {
+    // 池子 121 人抽 11，某角色 400 次都沒被抽到的機率約 1e-38——不會偽陽性，
     // 但若哪天又變回「只有固定幾人可抽」，這個測試會直接紅。
     const pool = getRosterPool("jin_yong");
     const seen = new Set<string>();
-    for (let i = 0; i < 100; i += 1) {
+    for (let i = 0; i < 400; i += 1) {
       for (const c of sampleRosterCharacters(11, "jin_yong")) seen.add(c.displayName);
     }
     const missing = pool.characters.filter((c) => !seen.has(c.displayName)).map((c) => c.displayName);

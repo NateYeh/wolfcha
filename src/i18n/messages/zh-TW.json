@@ -505,7 +505,8 @@
       "description": "AI 之間互相認識：把平時觀察到的發言習慣、壓力反應，以及各角色歷史勝率與 MVP 次數帶給彼此參考。"
     },
     "rosterPool": {
-      "label": "角色池"
+      "label": "角色池",
+      "optionLabel": "{name}（{count} 人）"
     }
   },
   "authModal": {

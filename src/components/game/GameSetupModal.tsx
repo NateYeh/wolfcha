@@ -5,9 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -17,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTranslations } from "next-intl";
 import { ROSTER_POOL_IDS } from "@/lib/roster-pool-ids";
+import { getRosterPoolSize } from "@/lib/character-roster";
 import { hasBuiltInParams, resolveAvailableModelRefs } from "@/lib/model-pool";
 import {
   getGatewayModels,
@@ -298,7 +297,14 @@ export function GameSetupModal({
                 </SelectTrigger>
                 <SelectContent>
                   {ROSTER_POOL_IDS.map((poolId) => (
-                    <SelectItem key={poolId} value={poolId} label={t(`rosterPools.${poolId}.name`)} />
+                    <SelectItem
+                      key={poolId}
+                      value={poolId}
+                      label={t("gameSetup.rosterPool.optionLabel", {
+                        name: t(`rosterPools.${poolId}.name`),
+                        count: getRosterPoolSize(poolId),
+                      })}
+                    />
                   ))}
                 </SelectContent>
               </Select>

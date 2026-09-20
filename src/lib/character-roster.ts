@@ -5,10 +5,10 @@ import POOL_ZH_CN from "@/lib/character-pool/jin-yong-pool.zh-CN.json";
 import POOL_ZH_TW from "@/lib/character-pool/jin-yong-pool.zh-TW.json";
 
 /**
- * 角色池：金庸群俠（46 人）。
+ * 角色池：金庸群俠（121 人）。
  *
  * 角色資料在 src/lib/character-pool/jin-yong-pool.zh-*.json：
- * - zh-CN：手寫班底 12 人 ＋ 角色池生成內容 34 人（含每人 voiceId，供 TTS 依角色選聲）。
+ * - zh-CN：手寫班底 12 人 ＋ 生成角色 109 人（45 人來自舊角色池、75 人為補角色批次）。
  * - zh-TW：由 OpenCC s2twp 轉換產生（產物，勿手改；要改請改來源後重跑轉換）。
  * - en 使用 zh-CN 文案（角色本為武俠人物）。
  *
@@ -41,6 +41,11 @@ export { ROSTER_POOL_IDS, DEFAULT_POOL_ID, type RosterPoolId } from "./roster-po
 export function getRosterPool(poolId: string = DEFAULT_POOL_ID): RosterPool {
   const pools = buildPools();
   return pools.find((pool) => pool.id === poolId) ?? pools[0]!;
+}
+
+/** 角色池人數（設定 UI 顯示用）。 */
+export function getRosterPoolSize(poolId: string = DEFAULT_POOL_ID): number {
+  return getRosterPool(poolId).characters.length;
 }
 
 /** 從角色池隨機抽 count 名角色；池子不足時循環補齊（正常 8-12 人局不會觸發）。 */
