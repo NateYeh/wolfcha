@@ -834,6 +834,38 @@ test("全域动机与人味：每个玩家阶段都收到（想赢、允许不�
   assert.match(dayPrompt.system, /严禁编造不存在的发言/);
 });
 
+test("游戏基本盘：每个玩家阶段都收到（这是什么游戏、通用规则、角色技能一览）", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const manager = new PhaseManager();
+
+  // 玩家要拿主意的阶段都要帶著基本盤：不知道自己在玩什麼、規則有哪些，後面的推理都會歪。
+  const playerPhases: Array<[Phase, string]> = [
+    ["DAY_SPEECH", "Villager"],
+    ["DAY_VOTE", "Villager"],
+    ["DAY_BADGE_SPEECH", "Villager"],
+    ["NIGHT_WOLF_ACTION", "Werewolf"],
+    ["NIGHT_SEER_ACTION", "Seer"],
+    ["NIGHT_WITCH_ACTION", "Witch"],
+    ["NIGHT_GUARD_ACTION", "Guard"],
+    ["HUNTER_SHOOT", "Hunter"],
+  ];
+
+  for (const [phase, role] of playerPhases) {
+    const state = fresh(phase);
+    const actor = state.players.find((p) => p.role === role)!;
+    state.currentSpeakerSeat = actor.seat;
+    const prompt = manager.getPrompt(phase, { state }, actor)!;
+    assert.match(prompt.system, /【这是一局什么游戏】/, `${phase} 缺少遊戲基本盤`);
+    assert.match(prompt.system, /【通用规则/, `${phase} 缺少通用規則`);
+    assert.match(prompt.system, /【角色与技能/, `${phase} 缺少角色技能一覽`);
+    assert.match(prompt.system, /警长（拿警徽的人）的票算 1\.5 票/, `${phase} 基本盤內容不完整`);
+    assert.match(prompt.system, /遗言：被投票放逐的人有遗言/, `${phase} 基本盤缺少遺言規則`);
+    // 基本盤是公開規則，不能沾到任何人的私有資訊
+    assert.doesNotMatch(prompt.system, /【你的查验记录】|【你的药水状态】|【守护记录】/, `${phase} 基本盤混進了私有資訊`);
+  }
+});
+
 test("新補提示（不限制）：女巫用藥記錄讀法、死人遺言兩種讀法、跟大流不構成狼證", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");

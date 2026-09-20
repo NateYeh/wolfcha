@@ -6,6 +6,8 @@
 import type { GameState, Player, Role, Alignment, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { getSummaryModel } from "@/lib/api-keys";
+import { getGameFundamentals } from "@/lib/prompt-utils";
+
 import type {
   GameAnalysisData,
   TimelineEntry,
@@ -25,6 +27,17 @@ import { generateJSON } from "@/lib/llm";
 import type { LLMMessage } from "@/lib/llm";
 import { aiLogger } from "@/lib/ai-logger";
 import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
+
+/**
+ * 復盤用的系統提示：遊戲基本盤（這是什麼遊戲、規則有哪些、角色技能與限制）在前，角色任務在後。
+ * 抽成函式是為了讓測試能守住「基本盤必須在」這條契約。
+ */
+export const buildSpeechSummarySystemPrompt = (): string =>
+  [getGameFundamentals(), "你是狼人杀游戏记录员，擅长分析场上局势和压缩玩家发言。"].join("\n\n");
+
+/** 評價用的系統提示：同樣帶基本盤，避免分析者對規則與角色做出錯誤推論。 */
+export const buildAnalysisSystemPrompt = (): string =>
+  [getGameFundamentals(), "你是专业的狼人杀游戏分析师，擅长评价玩家表现并生成有趣的复盘内容。"].join("\n\n");
 
 const MAX_SPEECH_ITEMS_PER_PHASE = 30;
 const MAX_SPEECH_CONTENT_LENGTH = 280;
@@ -952,7 +965,7 @@ ${electionText ? `【竞选阶段发言】\n${electionText}\n\n` : ""}${discussi
       }>({
         model,
         messages: [
-          { role: "system", content: "你是狼人杀游戏记录员，擅长分析场上局势和压缩玩家发言。" },
+          { role: "system", content: buildSpeechSummarySystemPrompt() },
           { role: "user", content: prompt },
         ],
         temperature: 0.3,
@@ -1585,7 +1598,8 @@ ${formatSpeechSummaries(speechSummaries, state)}
    - 如果无发言记录，两项均给50分`;
 
   const analysisMessages: LLMMessage[] = [
-    { role: "system", content: "你是专业的狼人杀游戏分析师，擅长评价玩家表现并生成有趣的复盘内容。" },
+    // 復盤分析師也要知道自己在評什麼遊戲：基本盤在前，分析指令在後。
+    { role: "system", content: buildAnalysisSystemPrompt() },
     { role: "user", content: prompt },
   ];
   // 解析失敗時要留下原始回覆才能事後對帳（JSON 修復無效的那種）。

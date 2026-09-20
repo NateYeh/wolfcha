@@ -7,7 +7,7 @@ import {
   buildTodayTranscript,
   buildPlayerTodaySpeech,
   getRoleText,
-  getWinCondition,
+  getRolePromptCore,
   buildSystemTextFromParts,
   buildDecisionGrounding,
 } from "@/lib/prompt-utils";
@@ -158,7 +158,7 @@ export class VotePhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      winCondition: getWinCondition(player.role),
+      coreRules: getRolePromptCore(player.role),
     });
     // 放逐票和警徽票一樣事後必被復盤；狼隊最容易在票型上整隊暴露，
     // 因此把票型紀律只拼給狼人（好人沒有這個問題，多給反而稀釋其他指引）。

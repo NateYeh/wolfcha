@@ -4,7 +4,7 @@ import type { GameContext, PromptResult, SystemPromptPart } from "../core/types"
 import {
   buildDecisionContext,
   getRoleText,
-  getWinCondition,
+  getRolePromptCore,
   buildSystemTextFromParts,
 } from "@/lib/prompt-utils";
 import { getI18n } from "@/i18n/translator";
@@ -50,7 +50,7 @@ export class HunterPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      winCondition: getWinCondition("Hunter"),
+      coreRules: getRolePromptCore("Hunter"),
     });
     const options = alivePlayers
       .map((p) => t("prompts.night.option", { seat: p.seat + 1, name: p.displayName }))

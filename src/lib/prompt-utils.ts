@@ -38,13 +38,30 @@ export const getRoleText = (role: string) => {
   }
 };
 
-/** 勝負條件＋兩個全域區塊（想贏的動機、允許不完美），所有玩家階段都會收到。 */
-const withPlayerMindset = (winCondition: string): string => {
+/** 勝負條件＋兩個全域區塊（想贏的動機、允許不完美）。 */
+const withPlayerMindset = (winConditionLine: string): string => {
   const { t } = getI18n();
-  return `${winCondition}\n\n${t("promptUtils.winMotivationNote")}\n\n${t("promptUtils.humannessNote")}`;
+  return `${winConditionLine}\n\n${t("promptUtils.winMotivationNote")}\n\n${t("promptUtils.humannessNote")}`;
 };
 
-export const getWinCondition = (role: string) => {
+/**
+ * 遊戲基本盤：這是什麼遊戲、通用規則、角色與技能一覽（公開知識）。
+ * 所有玩家階段都必須帶上——模型不知道自己在玩什麼、規則有哪些，後面的推理都會歪。
+ * 此區塊與角色無關（純公開規則），可快取；本局實際陣容仍以【本局公開角色配置】為準。
+ */
+export const getGameFundamentals = (): string => {
+  const { t } = getI18n();
+  const keys = ["title", "overview", "basicRules", "roleSkills", "scopeNote"] as const;
+  return keys
+    .map((key) => t(`promptUtils.gameFundamentals.${key}` as Parameters<typeof t>[0]))
+    .join("\n");
+};
+
+/**
+ * {coreRules} 佔位符攜帶的整塊內容：遊戲基本盤＋勝負條件＋心態區塊。
+ * 每個玩家階段的 base 模板都插這個佔位符，所以基本盤會跟著到每一隻玩家手上。
+ */
+export const getRolePromptCore = (role: string) => {
   const { t } = getI18n();
   const raw = ((): string => {
     switch (role) {
@@ -66,7 +83,7 @@ export const getWinCondition = (role: string) => {
         return t("promptUtils.winCondition.villager");
     }
     })();
-  return withPlayerMindset(raw);
+  return `${getGameFundamentals()}\n\n${withPlayerMindset(raw)}`;
 };
 
 const PUBLIC_ROLE_ORDER: Role[] = [

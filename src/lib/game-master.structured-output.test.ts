@@ -117,6 +117,9 @@ test("空日总结不会保存原始 JSON，也不会触发第二次模型调用
     assert.equal(typeof systemPrompt, "string");
     assert.match(String(systemPrompt), /当天未竞选就只写‘当天无警长竞选’/);
     assert.match(String(systemPrompt), /死因未公开/);
+    // 記錄員也要知道自己在記什麼遊戲（遊戲基本盤）
+    assert.match(String(systemPrompt), /【这是一局什么游戏】/);
+    assert.match(String(systemPrompt), /【角色与技能/);
     assert.deepEqual(result.bullets, []);
   } finally {
     globalThis.fetch = originalFetch;

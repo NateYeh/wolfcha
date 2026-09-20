@@ -6,7 +6,7 @@ import {
   buildPersonaSection,
   buildTodayTranscript,
   getRoleText,
-  getWinCondition,
+  getRolePromptCore,
   buildSystemTextFromParts,
 } from "@/lib/prompt-utils";
 import { getI18n } from "@/i18n/translator";
@@ -52,7 +52,7 @@ export class BadgePhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      winCondition: getWinCondition(player.role),
+      coreRules: getRolePromptCore(player.role),
     });
     const dynamicContent =
       t("prompts.badge.election.task", {
@@ -97,7 +97,7 @@ export class BadgePhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      winCondition: getWinCondition(player.role),
+      coreRules: getRolePromptCore(player.role),
       persona,
     });
     // 上警收益/成本知識：教判斷不下命令，報不報名由 AI 自己算帳。
@@ -130,7 +130,7 @@ export class BadgePhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      winCondition: getWinCondition(player.role),
+      coreRules: getRolePromptCore(player.role),
     });
     const dynamicContent = t("prompts.badge.transfer.task", {
       options: alivePlayers

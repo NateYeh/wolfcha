@@ -7,7 +7,7 @@ import {
   buildTodayTranscript,
   buildPlayerTodaySpeech,
   getRoleText,
-  getWinCondition,
+  getRolePromptCore,
   buildSystemTextFromParts,
 } from "@/lib/prompt-utils";
 import {
@@ -552,7 +552,7 @@ export class NightPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText("Seer"),
-      winCondition: getWinCondition("Seer"),
+      coreRules: getRolePromptCore("Seer"),
     });
 
     const dynamicContent = t("prompts.night.seer.task", {
@@ -609,7 +609,7 @@ export class NightPhase extends GamePhase {
       role: getRoleText(player.role),
     });
     const cacheableRules = t("prompts.night.wolf.rules", {
-      winCondition: getWinCondition(player.role),
+      coreRules: getRolePromptCore(player.role),
     });
     const teammateVotesSection = teammateVotesStr
       ? t("prompts.night.wolf.teammateVotes", { lines: teammateVotesStr })
@@ -651,7 +651,7 @@ export class NightPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText("Guard"),
-      winCondition: getWinCondition("Guard"),
+      coreRules: getRolePromptCore("Guard"),
     });
     const eligiblePlayers = alivePlayers.filter((p) => p.seat !== lastTarget);
     const options = eligiblePlayers
@@ -703,7 +703,7 @@ export class NightPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText("Witch"),
-      winCondition: getWinCondition("Witch"),
+      coreRules: getRolePromptCore("Witch"),
     });
     const statusHeal = state.roleAbilities.witchHealUsed
       ? t("promptUtils.gameContext.used")

@@ -5,7 +5,7 @@ import {
   buildDecisionContext,
   buildSeerClaimStateLine,
   getRoleText,
-  getWinCondition,
+  getRolePromptCore,
   buildSystemTextFromParts,
 } from "@/lib/prompt-utils";
 import { getI18n } from "@/i18n/translator";
@@ -28,7 +28,7 @@ export class WhiteWolfKingBoomPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      winCondition: getWinCondition("WhiteWolfKing"),
+      coreRules: getRolePromptCore("WhiteWolfKing"),
     });
     const options = alivePlayers
       .map((p) => t("prompts.night.option", { seat: p.seat + 1, name: p.displayName }))

@@ -26,7 +26,7 @@ import { aiLogger } from "./ai-logger";
 import { getGeneratorModel, getSummaryModel } from "@/lib/api-keys";
 import { PhaseManager } from "@/game/core/PhaseManager";
 import type { PromptResult } from "@/game/core/types";
-import { buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildGameContext, getRoleText, getWinCondition } from "./prompt-utils";
+import { buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildGameContext, getRoleText, getRolePromptCore, getGameFundamentals } from "./prompt-utils";
 import { parseLLMJson } from "./llm-json";
 import { getI18n } from "@/i18n/translator";
 import { buildPublicRecordForRemark } from "@/lib/public-record";
@@ -697,7 +697,8 @@ export async function generateDailySummary(
     .join("\n")
     .slice(0, 15000);
 
-  const system = t("gameMaster.dailySummary.systemPrompt");
+  // 記錄員也要知道自己在記什麼遊戲：遊戲基本盤（規則與角色技能）在前，任務指令在後。
+  const system = [getGameFundamentals(), t("gameMaster.dailySummary.systemPrompt")].join("\n\n");
   const user = t("gameMaster.dailySummary.userPrompt", { day: state.day, transcript });
 
   const messages: LLMMessage[] = [
@@ -1980,7 +1981,7 @@ export async function generateWolfTeamPlan(
     seat: captain.seat + 1,
     name: captain.displayName,
     role: getRoleText(captain.role),
-    winCondition: getWinCondition(captain.role),
+    coreRules: getRolePromptCore(captain.role),
     teammates,
   });
   const knowledge = t("prompts.night.wolfTeamPlan.knowledge");
@@ -2519,15 +2520,19 @@ export async function generateGameEndRemark(
     : "";
 
   const prompt: PromptResult = {
-    system: t("specialEvents.remarkSystem", {
-      seat: player.seat + 1,
-      name: player.displayName,
-      role: getRoleText(player.role),
-      resultLine:
-        (player.alignment === "wolf") === (winner === "wolf")
-          ? t("specialEvents.remarkResultWin")
-          : t("specialEvents.remarkResultLose"),
-    }),
+    // 賽後感言也要知道自己在玩什麼遊戲：基本盤在前，感言指令在後。
+    system: [
+      getGameFundamentals(),
+      t("specialEvents.remarkSystem", {
+        seat: player.seat + 1,
+        name: player.displayName,
+        role: getRoleText(player.role),
+        resultLine:
+          (player.alignment === "wolf") === (winner === "wolf")
+            ? t("specialEvents.remarkResultWin")
+            : t("specialEvents.remarkResultLose"),
+      }),
+    ].join("\n\n"),
     user: t("specialEvents.remarkUser", {
       reveal,
       publicFactsSection,

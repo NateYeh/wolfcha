@@ -37,7 +37,10 @@ test("赛后感言：prompt 含全员身份公开、胜负立场与输出限制�
 
   try {
     const remark = await generateGameEndRemark(state, speaker, "wolf");
-    // system：身份、胜负立场、感言规则
+    // system：遊戲基本盤（這是什麼遊戲、通用規則、角色技能）、身份、胜负立场、感言规则
+    assert.match(requestBody, /【这是一局什么游戏】/);
+    assert.match(requestBody, /【通用规则/);
+    assert.match(requestBody, /【角色与技能/);
     assert.match(requestBody, /【赛后感言】/);
     assert.match(requestBody, /全员身份公开/);
     assert.match(requestBody, /本局你的阵营获胜。/);

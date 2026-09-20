@@ -7,7 +7,7 @@ import {
   buildPlayerTodaySpeech,
   buildTodayTranscript,
   getRoleText,
-  getWinCondition,
+  getRolePromptCore,
   buildSystemTextFromParts,
   buildPublicFactsForPlayer,
   buildDecisionGrounding,
@@ -128,7 +128,7 @@ export class DaySpeechPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      winCondition: getWinCondition(player.role),
+      coreRules: getRolePromptCore(player.role),
       persona,
     });
     const wasVotedOut = isLastWords && state.dayHistory?.[state.day]?.executed?.seat === player.seat;
