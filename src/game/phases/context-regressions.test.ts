@@ -52,12 +52,17 @@ test("夜間行動帶 reason：四職業 prompt 要求一句話理由，jsonForm
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
 
+  // 模型曾照抄範例裡的座位號（範例是「第一個可選玩家」，這局恰好是自己隊友），
+  // 導致狼隊自刀——所以每個帶座位範例的模板都要明說「示例數字只是示意」。
+  const antiCopyRule = /seat 必须是你真正要选的目标[\s\S]*不要照抄/;
+
   const seerState = fresh("NIGHT_SEER_ACTION");
   const seer = seerState.players.find((p) => p.role === "Seer")!;
   seerState.currentSpeakerSeat = seer.seat;
   const seerPrompt = new PhaseManager().getPrompt("NIGHT_SEER_ACTION", { state: seerState }, seer)!;
   assert.match(seerPrompt.user, /reason 字段用一句话说明你为什么查验他（30字内）/);
   assert.match(seerPrompt.user, /"reason":"一句话说明你为什么查验他"/);
+  assert.match(seerPrompt.user, antiCopyRule);
 
   const wolfState = fresh("NIGHT_WOLF_ACTION");
   const wolf = wolfState.players.find((p) => p.role === "Werewolf")!;
@@ -65,6 +70,7 @@ test("夜間行動帶 reason：四職業 prompt 要求一句話理由，jsonForm
   const wolfPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: wolfState }, wolf)!;
   assert.match(wolfPrompt.user, /reason 字段用一句话说明你们为什么刀他（30字内）/);
   assert.match(wolfPrompt.user, /"reason":"一句话说明你们为什么刀他"/);
+  assert.match(wolfPrompt.user, antiCopyRule);
 
   const guardState = fresh("NIGHT_GUARD_ACTION");
   const guard = guardState.players.find((p) => p.role === "Guard")!;
@@ -72,6 +78,7 @@ test("夜間行動帶 reason：四職業 prompt 要求一句話理由，jsonForm
   const guardPrompt = new PhaseManager().getPrompt("NIGHT_GUARD_ACTION", { state: guardState }, guard)!;
   assert.match(guardPrompt.user, /reason 字段用一句话说明你为什么守他（30字内）/);
   assert.match(guardPrompt.user, /"reason":"一句话说明你为什么守他"/);
+  assert.match(guardPrompt.user, antiCopyRule);
 
   const witchState = fresh("NIGHT_WITCH_ACTION");
   const witch = witchState.players.find((p) => p.role === "Witch")!;
@@ -81,6 +88,7 @@ test("夜間行動帶 reason：四職業 prompt 要求一句話理由，jsonForm
   assert.match(witchPrompt.system, /reason 字段用一句话说明你的判断（30字内）/);
   assert.match(witchPrompt.system, /"action":"save","reason"/);
   assert.match(witchPrompt.system, /"action":"poison","seat":\d+,"reason"/);
+  assert.match(witchPrompt.system, antiCopyRule);
 });
 
 test("猎人开枪提示必须包含开枪守则，且排在遗言之后（可推翻遗言目标）", async () => {

@@ -189,3 +189,19 @@ test("buildGameContext: 無計畫時不注入（舊行為不變）", async () =>
   const wolfContext = buildGameContext(state, state.players[1]);
   assert.doesNotMatch(wolfContext, /【狼队夜里商定的分工】/);
 });
+
+test("主導狼刀口提示的時間錨點：死訊在「同一天天亮」公佈，不得寫成明天", async () => {
+  // 這局的「天」是「第N天夜晚 → 第N天白天」：夜裡的刀在同一天天亮公布，
+  // 所以刀口提示不能寫「明天」（多算一天），而且計畫會被後續回合重新讀到，
+  // 相對時間詞必須穩定——只允許以「天亮」為錨點。
+  const { getI18n } = await import("@/i18n/translator");
+  for (const locale of ["zh-CN", "zh-TW"] as const) {
+    setLocale(locale);
+    const line = getI18n().t("prompts.night.wolfTeamPlan.knifeLine", { seat: 4, name: "滅絕師太" });
+    assert.doesNotMatch(line, /明天|次日|明早/, `${locale} 刀口提示不得用「明天」描述同一天天亮的死訊`);
+    assert.match(line, /天亮/, `${locale} 刀口提示要以「天亮」為時間錨點`);
+    assert.match(line, /平安夜/, `${locale} 刀口提示要說明被守護／救下時的結果`);
+  }
+  setLocale("zh-CN");
+  assert.match(getI18n().t("prompts.night.wolfTeamPlan.knifeLineNone"), /空刀/);
+});
