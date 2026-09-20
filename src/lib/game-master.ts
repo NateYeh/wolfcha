@@ -181,6 +181,33 @@ function buildMessagesForPrompt(
   };
 }
 
+/**
+ * 開局狀態要帶的選項。LOBBY 與實際對局（NIGHT_START）必須帶同一組，
+ * 漏一個就會靜默遺失：2026-09-20 的日誌就是 NIGHT_START 漏了 isAcquaintanceGame／
+ * characterStats，導致熟人局資訊在第一次 AI 呼叫前就掉了。
+ */
+export type GameStartStateOptions = Pick<
+  GameState,
+  | "gameSessionId"
+  | "scenario"
+  | "players"
+  | "phase"
+  | "day"
+  | "difficulty"
+  | "isGenshinMode"
+  | "isSpectatorMode"
+  | "isAcquaintanceGame"
+  | "characterStats"
+>;
+
+/**
+ * 用单一建构点产生开局状态（LOBBY 与 NIGHT_START 共用）。
+ * 这样开局选项（尤其熟人局旗标与交手统计）不可能在某一个分支被忘掉。
+ */
+export function buildGameStartState(options: GameStartStateOptions): GameState {
+  return { ...createInitialGameState(), ...options };
+}
+
 export function createInitialGameState(): GameState {
   return {
     gameId: uuidv4(),

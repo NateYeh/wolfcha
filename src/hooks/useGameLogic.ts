@@ -25,6 +25,7 @@ import { PLAYER_MODELS, isWolfRole, type GameState, type Player, type Phase, typ
 import { gameStateAtom, isValidTransition, clearPersistedGameState, isRestorableGameState } from "@/store/game-machine";
 import { getGeneratorModel, getModelSource } from "@/lib/api-keys";
 import {
+  buildGameStartState,
   createInitialGameState,
   setupPlayers,
   addSystemMessage,
@@ -1484,20 +1485,24 @@ export function useGameLogic() {
 
       const seedPlayerIds = initialPlayers.map((p) => p.playerId);
 
-      setGameState({
-        ...createInitialGameState(),
-        gameSessionId: sessionId,
-        scenario,
-        players: initialPlayers,
-        phase: "LOBBY",
-        day: 0,
-        difficulty,
-        isGenshinMode,
-        isSpectatorMode,
-        isAcquaintanceGame,
-        // 熟人局才需要历史交手统计；取不到（首次游玩/接口失败）就静默降级为无记录。
-        characterStats: isAcquaintanceGame ? await fetchCharacterStats() : undefined,
-      });
+      // 熟人局才需要历史交手统计；取不到（首次游玩／接口失败）就静默降级为无记录。
+      // 只取一次：LOBBY 与实际开局（NIGHT_START）必须帶同一份，否则熟人局资讯会掉。
+      const characterStats = isAcquaintanceGame ? await fetchCharacterStats() : undefined;
+
+      setGameState(
+        buildGameStartState({
+          gameSessionId: sessionId,
+          scenario,
+          players: initialPlayers,
+          phase: "LOBBY",
+          day: 0,
+          difficulty,
+          isGenshinMode,
+          isSpectatorMode,
+          isAcquaintanceGame,
+          characterStats,
+        })
+      );
 
       setGameStarted(true);
       setShowTable(true);
@@ -1556,8 +1561,7 @@ export function useGameLogic() {
         preferredRole
       );
 
-      let newState: GameState = {
-        ...createInitialGameState(),
+      let newState: GameState = buildGameStartState({
         gameSessionId: sessionId,
         scenario,
         players,
@@ -1566,7 +1570,9 @@ export function useGameLogic() {
         difficulty,
         isGenshinMode,
         isSpectatorMode,
-      };
+        isAcquaintanceGame,
+        characterStats,
+      });
 
       newState = addSystemMessage(newState, systemMessages.gameStart);
       newState = addSystemMessage(newState, systemMessages.nightFall(1));

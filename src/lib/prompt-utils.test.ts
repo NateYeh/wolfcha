@@ -520,3 +520,42 @@ test("熟人局：注入其他玩家的印象与交手记录；关闭或无素�
   // 本人（3号）不列入名单
   assert.doesNotMatch(ctx, /- 3号玩家3：/);
 });
+
+test("開局建構點：LOBBY 與 NIGHT_START 都要帶上熟人局旗標（漏一個就會靜默掉）", async () => {
+  const { buildGameStartState } = await import("./game-master");
+  const base = makeState();
+  const characterStats = { [base.players[0].displayName]: { games: 5, wins: 3, mvps: 1, svps: 0 } };
+
+  // 實際對局那份（NIGHT_START）過去漏帶這兩個欄位，導致第一次 AI 呼叫前就掉了。
+  const nightState = buildGameStartState({
+    gameSessionId: "session-1",
+    players: base.players,
+    phase: "NIGHT_START",
+    day: 1,
+    difficulty: base.difficulty,
+    isGenshinMode: false,
+    isSpectatorMode: false,
+    isAcquaintanceGame: true,
+    characterStats,
+  });
+  assert.equal(nightState.isAcquaintanceGame, true);
+  assert.deepEqual(nightState.characterStats, characterStats);
+
+  const lobbyState = buildGameStartState({
+    gameSessionId: "session-1",
+    players: base.players,
+    phase: "LOBBY",
+    day: 0,
+    difficulty: base.difficulty,
+    isGenshinMode: false,
+    isSpectatorMode: false,
+    isAcquaintanceGame: true,
+    characterStats,
+  });
+  assert.equal(lobbyState.isAcquaintanceGame, true);
+  assert.deepEqual(lobbyState.characterStats, characterStats);
+
+  // 端到端：這份開局狀態進到 prompt 後，熟人局區塊真的存在
+  const actor = nightState.players[2];
+  assert.match(buildGameContext(nightState, actor), /<acquaintance_notes>/);
+});
