@@ -1662,7 +1662,7 @@
     "jin_yong": {
       "title": "Jin Yong Heroes",
       "description": "Heroes of Jin Yong's wuxia world at one table - the Beggar Clan chief, the Sun-Moon Cult priestess, the Emei abbess, the Mongol princess. Old feuds follow them to the game, and nobody yields an inch.",
-      "rolesHint": "Characters are Jianghu figures from Jin Yong's novels (fixed roster), speaking with wuxia flavor but no battle cries - just martial artists playing a parlor game."
+      "rolesHint": "Characters are Jianghu figures from Jin Yong's novels (drawn at random from the character pool, so the cast changes), speaking with wuxia flavor but no battle cries - just martial artists playing a parlor game."
     }
   },
   "promptUtils": {

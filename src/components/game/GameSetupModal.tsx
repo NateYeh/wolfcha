@@ -16,7 +16,7 @@ import { SoundSettingsSection } from "@/components/game/SettingsModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTranslations } from "next-intl";
-import { ROSTER_POOL_IDS } from "@/lib/character-roster";
+import { ROSTER_POOL_IDS } from "@/lib/roster-pool-ids";
 import { hasBuiltInParams, resolveAvailableModelRefs } from "@/lib/model-pool";
 import {
   getGatewayModels,

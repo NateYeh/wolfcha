@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-import { ROSTER_POOL_IDS } from "@/lib/character-roster";
+import { ROSTER_POOL_IDS } from "@/lib/roster-pool-ids";
 import type { DifficultyLevel, Role } from "@/types/game";
 
 export interface AudioSettings {

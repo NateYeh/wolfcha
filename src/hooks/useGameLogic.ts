@@ -1539,7 +1539,7 @@ export function useGameLogic() {
           }, 200 + index * 180); // 逐个出现，每个间隔 180ms
         });
       } else {
-        // 固定班底：直接抽用內建金庸群俠名單，開局不再 AI 生成、不再查角色池。
+        // 一般模式：從金庸角色池隨機抽人，開局不 AI 生成角色。
         characters = sampleRosterCharacters(numAiPlayers, rosterPoolId);
       }
 
