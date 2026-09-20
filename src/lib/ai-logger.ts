@@ -33,6 +33,18 @@ function buildLogFileName(gameKey?: string | null, startedAt?: number | null): s
 
 const AI_LOGGER_PAGE_LOAD_CLEAR_FLAG = "__wolfcha_ai_logger_page_load_cleared__";
 
+/**
+ * 重試等待。日誌落盤是 best-effort：在 Node（測試／SSR）下把計時器 unref，
+ * 否則一串失敗重試（例如測試連續寫 400 筆，每筆 ~0.9s 退避）會讓行程
+ * 跑完測試後仍被計時器釘住不退出。瀏覽器的 setTimeout 回傳數字，unref 不存在。
+ */
+function waitForRetry(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms) as unknown as { unref?: () => void };
+    timer.unref?.();
+  });
+}
+
 function canUseStorage(): boolean {
   return process.env.NODE_ENV !== "production" &&
     typeof window !== "undefined" &&
@@ -229,7 +241,7 @@ class AILogger {
       });
     } catch {
       if (attempt < 2) {
-        await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+        await waitForRetry(300 * (attempt + 1));
         return this.postEntryWithRetry(payload, attempt + 1);
       }
     }

@@ -2,6 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { AILogEntry } from "./ai-logger";
 
+/**
+ * 落盤會對 /api/dev-ai-logs POST。測試環境沒有伺服器，若讓它走真 fetch，
+ * 每筆都會失敗並進入 300/600ms 退避重試（靠 fileWriteChain 序列排隊），
+ * 跑完測試後還留著數百個計時器讓行程不退出——先前「連續跑全套會停滯」
+ * 就是這個原因。stub 成成功回應，落盤路徑立刻走完。
+ */
+globalThis.fetch = (async () => new Response("{}", { status: 200 })) as typeof fetch;
+
 process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "ai-logger-test-key";
 
