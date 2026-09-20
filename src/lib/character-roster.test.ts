@@ -5,7 +5,7 @@ import { getRosterPool, getRosterPoolSize, ROSTER_POOL_IDS, sampleRosterCharacte
 import { setLocale } from "@/i18n/locale-store";
 
 /** 池子人數：改動 src/data/jin-yong-pool.*.json 時一起更新。 */
-const POOL_SIZE = 121;
+const POOL_SIZE = 127;
 
 describe("character-roster 角色池", () => {
   it("ROSTER_POOL_IDS 內含金庸池", () => {
@@ -31,7 +31,7 @@ describe("character-roster 角色池", () => {
     assert.equal(getRosterPoolSize("jin_yong"), POOL_SIZE);
   });
 
-  it("sampleRosterCharacters：數量正確且角色不重複（121 人名單抽 11）", () => {
+  it("sampleRosterCharacters：數量正確且角色不重複（127 人名單抽 11）", () => {
     const sampled = sampleRosterCharacters(11, "jin_yong");
     assert.equal(sampled.length, 11);
     const names = new Set(sampled.map((c) => c.displayName));
@@ -47,7 +47,7 @@ describe("character-roster 角色池", () => {
   });
 
   it("抽樣涵蓋全池：連抽 400 次（每次 11 人）所有人都出現過", () => {
-    // 池子 121 人抽 11，某角色 400 次都沒被抽到的機率約 1e-38——不會偽陽性，
+    // 池子 127 人抽 11，某角色 400 次都沒被抽到的機率約 1e-40——不會偽陽性，
     // 但若哪天又變回「只有固定幾人可抽」，這個測試會直接紅。
     const pool = getRosterPool("jin_yong");
     const seen = new Set<string>();
