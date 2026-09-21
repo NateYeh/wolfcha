@@ -1269,6 +1269,9 @@ export function DialogArea({
                       <>GG! <span className="text-[var(--color-wolf)] font-semibold">{t("alignment.wolf")}</span> {t("gameEnd.wins")}!</>
                     )}
                   </div>
+                  {/* 戰績／投票明細可很長（多人並列＋每位投票者的理由）：中段獨立可滾動；
+                      標題（GG）與底部按鈕固定，避免整個面板撐破 h-screen 又無法滾動。 */}
+                  <div className="max-h-[45vh] overflow-y-auto pr-1">
                   {/* 本局 MVP／SVP：分析完成後顯示（同票並列時可能多人；生成中先顯示佔位） */}
                   {gameMvps && gameMvps.length > 0 && (
                     <div className="mt-3 space-y-2">
@@ -1336,6 +1339,7 @@ export function DialogArea({
                       {t("gameEnd.mvpLoading")}
                     </div>
                   )}
+                  </div>
                   <div className={`flex items-center justify-between mt-4 pt-3 border-t ${isNight ? "border-white/10" : "border-black/5"}`}>
                     <span className="text-xs text-[var(--text-muted)]">{t("dialog.playAgainHint")}</span>
                     <div className="flex items-center gap-2">
