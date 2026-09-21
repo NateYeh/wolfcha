@@ -882,7 +882,7 @@ function buildAuthoritativeHistoryText(state: GameState): string {
   return lines.join("\n");
 }
 
-interface AISpeechSummaryResult {
+export interface AISpeechSummaryResult {
   discussion: Record<number, PlayerSpeech[]>;
   election: Record<number, PlayerSpeech[]>;
   daySummaries: Record<number, string>;
@@ -1499,12 +1499,20 @@ interface AIAnalysisResult {
 }
 
 /** 把發言摘要壓成按天逐人的文本，供 MVP/SVP 評選看見實際發言而不只是結構化事實。 */
-function formatSpeechSummaries(speeches: AISpeechSummaryResult, state: GameState): string {
+export function formatSpeechSummaries(speeches: AISpeechSummaryResult, state: GameState): string {
   const lines: string[] = [];
   for (const [day, entries] of Object.entries(speeches.discussion)) {
     if (!Array.isArray(entries) || entries.length === 0) continue;
+    // PlayerSpeech.seat 是 1-based（與 extractSpeeches／extractSpeechesFromMessages 一致），
+    // 不能直接餵給吃 0-based 的 formatSeatName，否則整體位移一號、最後多出一個不存在的座位號。
+    const dayLines = entries.flatMap((entry) => {
+      const player = state.players.find((p) => p.seat === entry.seat - 1);
+      // 防禦：AI 回傳不存在的座位號時直接略過，不得印出幽靈座位。
+      return player ? [`- ${entry.seat}号 ${player.displayName}：${entry.content}`] : [];
+    });
+    if (dayLines.length === 0) continue;
     lines.push(`第${day}天：`);
-    for (const entry of entries) lines.push(`- ${formatSeatName(state, entry.seat)}：${entry.content}`);
+    lines.push(...dayLines);
   }
   return lines.join("\n") || "（无发言记录）";
 }
