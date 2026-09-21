@@ -457,6 +457,35 @@ export function DialogArea({
   const voiceRecorderRef = useRef<VoiceRecorderHandle | null>(null);
 
   const [talkingPlayerId, setTalkingPlayerId] = useState<string | null>(null);
+  // 結算面板的戰績區高度：可拖曳上方把手縮放，避免擋住賽後感言；null = 預設高度。
+  const gameEndAwardsRef = useRef<HTMLDivElement>(null);
+  const [gameEndAwardsHeight, setGameEndAwardsHeight] = useState<number | null>(null);
+  const handleGameEndResizeStart = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const el = gameEndAwardsRef.current;
+    if (!el) return;
+    event.preventDefault();
+    const startY = event.clientY;
+    // 用目前解析後的 max-height 當基準（內容較短時才不會以內容高度為基準抖動）
+    const computedMax = window.getComputedStyle(el).maxHeight;
+    const startHeight = computedMax && computedMax !== "none"
+      ? parseFloat(computedMax)
+      : el.getBoundingClientRect().height;
+    const minHeight = 72;
+    const maxHeight = Math.max(minHeight, window.innerHeight * 0.75);
+    const onMove = (moveEvent: PointerEvent) => {
+      // 往上拖變高、往下拖變矮
+      const next = Math.min(Math.max(startHeight + (startY - moveEvent.clientY), minHeight), maxHeight);
+      setGameEndAwardsHeight(next);
+    };
+    const onEnd = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onEnd);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("pointercancel", onEnd);
+  }, []);
 
   // 初始化音频管理器
   useEffect(() => {
@@ -1270,8 +1299,20 @@ export function DialogArea({
                     )}
                   </div>
                   {/* 戰績／投票明細可很長（多人並列＋每位投票者的理由）：中段獨立可滾動；
-                      標題（GG）與底部按鈕固定，避免整個面板撐破 h-screen 又無法滾動。 */}
-                  <div className="max-h-[45vh] overflow-y-auto pr-1">
+                      標題（GG）與底部按鈕固定。可拖曳上方把手縮放高度，避免擋住賽後感言。 */}
+                  <div
+                    onPointerDown={handleGameEndResizeStart}
+                    onDoubleClick={() => setGameEndAwardsHeight(null)}
+                    title={t("gameEnd.resizeHint")}
+                    className="group my-2 flex h-4 cursor-ns-resize touch-none select-none items-center justify-center"
+                  >
+                    <span className="h-1 w-12 rounded-full bg-[var(--border-color)] transition-colors group-hover:bg-[var(--color-accent)]" />
+                  </div>
+                  <div
+                    ref={gameEndAwardsRef}
+                    className="overflow-y-auto pr-1"
+                    style={{ maxHeight: gameEndAwardsHeight === null ? "32vh" : gameEndAwardsHeight }}
+                  >
                   {/* 本局 MVP／SVP：分析完成後顯示（同票並列時可能多人；生成中先顯示佔位） */}
                   {gameMvps && gameMvps.length > 0 && (
                     <div className="mt-3 space-y-2">

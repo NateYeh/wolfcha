@@ -36,7 +36,8 @@
     "voteBreakdownTitle": "投票明细",
     "voteSystemVoter": "系统（客观）",
     "voteWeight": "{weight}票",
-    "voteTarget": "{seat}号 {name}"
+    "voteTarget": "{seat}号 {name}",
+    "resizeHint": "拖曳上方把手调整高度，双击复原"
   },
   "welcome": {
     "group": {

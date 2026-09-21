@@ -36,7 +36,8 @@
     "voteBreakdownTitle": "Vote breakdown",
     "voteSystemVoter": "System (objective)",
     "voteWeight": "{weight} vote(s)",
-    "voteTarget": "Seat {seat} {name}"
+    "voteTarget": "Seat {seat} {name}",
+    "resizeHint": "Drag the handle above to resize; double-click to reset"
   },
   "welcome": {
     "group": {
