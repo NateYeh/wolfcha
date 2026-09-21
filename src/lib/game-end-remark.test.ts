@@ -49,6 +49,8 @@ test("赛后感言：prompt 含全员身份公开、胜负立场与输出限制�
     // user：全员身份公开、关键事件、语言风格
     assert.match(requestBody, /【全员身份】/);
     assert.match(requestBody, /【关键事件/);
+    assert.match(requestBody, /【本局完整发言记录（逐字）】/);
+    assert.match(requestBody, /5号第一天跳预言家/);
     assert.match(requestBody, /【主持人公开记录（客观事实）】/);
     assert.match(requestBody, /第1夜：平安夜/);
     assert.match(requestBody, /以上摘要记的是各方当时的说词，不是已确认的事实/);
@@ -56,6 +58,48 @@ test("赛后感言：prompt 含全员身份公开、胜负立场与输出限制�
     assert.match(requestBody, /你的语言风格：说话直接/);
     // 返回值即模型正文（已清理换行与代码围栏，保留完整内容）
     assert.equal(remark.remark, "这局多亏对面把好人投光了，我就是纯民。");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("赛后感言：逐字记录排除 GAME_END 阶段，避免后发言者抄前面的感言", async () => {
+  const { generateGameEndRemark } = await import("@/lib/game-master");
+  const { createSinglePlayerContextAuditState } = await import(
+    "../../scripts/single-player-context-audit"
+  );
+  const state = createSinglePlayerContextAuditState() as unknown as GameState;
+  state.winner = "wolf";
+  state.phase = "GAME_END";
+  const firstSpeaker = state.players[0];
+  state.messages.push({
+    id: "previous-remark",
+    playerId: firstSpeaker.playerId,
+    playerName: firstSpeaker.displayName,
+    content: "前一位角色的赛后感想内容",
+    timestamp: Date.now(),
+    day: state.day,
+    phase: "GAME_END",
+    isSystem: false,
+  });
+  const speaker = state.players.find((p: Player) => !p.isHuman)!;
+
+  let requestBody = "";
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = makeFetchMock((body) => {
+    requestBody = body;
+    return Response.json({
+      id: "test",
+      choices: [{ message: { role: "assistant", content: "就这样。" }, finish_reason: "stop" }],
+    });
+  });
+
+  try {
+    await generateGameEndRemark(state, speaker, "wolf");
+    // 公開發言進逐字記錄…
+    assert.match(requestBody, /5号第一天跳预言家/);
+    // …但 GAME_END 階段的感言本身不入記錄。
+    assert.doesNotMatch(requestBody, /前一位角色的赛后感想内容/);
   } finally {
     globalThis.fetch = originalFetch;
   }

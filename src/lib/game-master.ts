@@ -26,7 +26,7 @@ import { aiLogger } from "./ai-logger";
 import { getGeneratorModel, getSummaryModel } from "@/lib/api-keys";
 import { PhaseManager } from "@/game/core/PhaseManager";
 import type { PromptResult } from "@/game/core/types";
-import { buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildGameContext, getRoleText, getRolePromptCore, getGameFundamentals } from "./prompt-utils";
+import { buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildGameContext, buildFullGameTranscript, getRoleText, getRolePromptCore, getGameFundamentals } from "./prompt-utils";
 import { parseLLMJson } from "./llm-json";
 import { getI18n } from "@/i18n/translator";
 import { buildPublicRecordForRemark } from "@/lib/public-record";
@@ -2533,12 +2533,18 @@ export async function generateGameEndRemark(
       })
     )
     .join("\n");
-  // 关键事件：用各日总结压缩成赛后盘点素材，封顶避免 prompt 过长。
+  // 关键事件：用各日总结压缩成赛后盘点素材。封顶放宽到 3200 字，让 5 天以内的逐日摘要完整落进 prompt，
+  // 不再出现最后一天被从中间截断的情况。
   const keyEvents = Object.entries(state.dailySummaries ?? {})
     .sort(([a], [b]) => Number(a) - Number(b))
     .map(([day, bullets]) => `第${day}天：${(bullets ?? []).join("；")}`)
     .join("\n")
-    .slice(0, 1600);
+    .slice(0, 3200);
+  // 完整逐字发言记录：摘要再详细也是二手转述，逐字记录才是原话；赛后感言要点名具体行为，需要原话。
+  const transcript = buildFullGameTranscript(state);
+  const transcriptSection = transcript
+    ? t("specialEvents.remarkTranscriptTitle") + transcript + "\n\n"
+    : "";
   const persona = player.agentProfile?.persona;
   const personaLine = persona?.voiceRules?.length
     ? persona.voiceRules.join(t("promptUtils.gameContext.listSeparator"))
@@ -2579,6 +2585,7 @@ export async function generateGameEndRemark(
       reveal,
       publicFactsSection,
       keyEvents: keyEvents || t("specialEvents.remarkNoEvents"),
+      transcriptSection,
       claimsRule: t("specialEvents.remarkClaimsRule"),
       privateNotes: privateNotesSection,
       personaLine,

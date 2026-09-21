@@ -640,6 +640,38 @@ export const buildTodayTranscript = (
   return transcript;
 };
 
+/**
+ * 賽後感言用的「本局完整發言記錄（逐字）」：逐日列出所有公開發言、遺言與主持人公開系統訊息。
+ *
+ * 為什麼要這份：賽後感言原本只吃各日 AI 摘要（且被硬截 1600 字），模型看不到玩家的原話，
+ * 也容易把摘要作者的理解當成事實。逐字記錄讓角色能引用實際說詞、還原當時的語氣。
+ *
+ * 刻意排除 GAME_END 階段——否則後發言的角色會看到前面角色已發表的感言而互相抄。
+ */
+export const buildFullGameTranscript = (
+  state: GameState,
+  options?: { maxChars?: number }
+): string => {
+  const { t } = getI18n();
+  const maxChars = options?.maxChars ?? 14000;
+  const sections: string[] = [];
+  for (let day = 1; day <= state.day; day++) {
+    const dayMessages = state.messages.filter(
+      (m) => m.day === day && m.phase !== "GAME_END" && !(m.isSystem && m.content.startsWith("["))
+    );
+    if (dayMessages.length === 0) continue;
+    const transcript = formatTranscriptMessages(state, dayMessages);
+    if (!transcript) continue;
+    sections.push(`${t("promptUtils.gameContext.dayLabel", { day })}\n${transcript}`);
+  }
+  const text = sections.join("\n\n");
+  if (text.length > maxChars) {
+    // 超長時保留最近的日子（後段通常與勝負最相關），開頭標明已省略。
+    return `…\n${text.slice(text.length - maxChars)}`;
+  }
+  return text;
+};
+
 /** 发言类消息 phase 集合：用于识别「自称预言家」的公开发言。 */
 const SEER_CLAIM_PHASES = new Set(["DAY_BADGE_SPEECH", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"]);
 /**
