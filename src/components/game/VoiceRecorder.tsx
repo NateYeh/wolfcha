@@ -4,9 +4,51 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Microphone, SpinnerGap, StopCircle } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 type RecorderStatus = "idle" | "recording" | "transcribing";
+
+// 瀏覽器內建語音辨識（Chrome / Edge 的 Web Speech API）。
+// 支援時走即時聽寫，不支援時退回「錄音 → /api/stt 本機服務」。
+type BrowserSpeechResult = { 0: { transcript: string }; isFinal: boolean };
+type BrowserSpeechEvent = { resultIndex: number; results: ArrayLike<BrowserSpeechResult> };
+interface BrowserSpeechRecognition {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start: () => void;
+  stop: () => void;
+  onresult: ((event: BrowserSpeechEvent) => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+}
+type BrowserSpeechCtor = new () => BrowserSpeechRecognition;
+
+function getBrowserSpeechCtor(): BrowserSpeechCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    SpeechRecognition?: BrowserSpeechCtor;
+    webkitSpeechRecognition?: BrowserSpeechCtor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+/** 本機 STT 服務是否可用（探測 /api/stt；同一個 session 只探一次）。 */
+let sttBackendProbe: Promise<boolean> | null = null;
+function probeSttBackend(): Promise<boolean> {
+  if (sttBackendProbe) return sttBackendProbe;
+  sttBackendProbe = fetch("/api/stt", { method: "GET" })
+    .then(async (resp) => (resp.ok ? ((await resp.json()) as { available?: boolean }) : { available: false }))
+    .then((json) => json.available === true)
+    .catch(() => false);
+  return sttBackendProbe;
+}
+
+function speechLangFor(locale: string): string {
+  if (locale.startsWith("zh-TW")) return "zh-TW";
+  if (locale.startsWith("zh")) return "zh-CN";
+  return locale || "en-US";
+}
 
 interface VoiceRecorderProps {
   disabled?: boolean;
@@ -141,7 +183,16 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
 
     const isRecording = status === "recording";
   const isBusy = status !== "idle";
-  const sttEnabled = false;
+  const locale = useLocale();
+  const [backendAvailable, setBackendAvailable] = useState(false);
+  const [liveText, setLiveText] = useState("");
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const finalTranscriptRef = useRef("");
+  const interimTranscriptRef = useRef("");
+  const usingRecognitionRef = useRef(false);
+  // 有瀏覽器聽寫就直接開；否則等探測完本機服務才決定能不能用。
+  const browserSpeechAvailable = useMemo(() => getBrowserSpeechCtor() !== null, []);
+  const sttEnabled = browserSpeechAvailable || backendAvailable;
   const sttDisabled = disabled || !sttEnabled;
 
   const canUse = useMemo(() => {
@@ -188,6 +239,15 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
       recorderRef.current = null;
     }
 
+    if (usingRecognitionRef.current && recognitionRef.current) {
+      recognitionRef.current.onresult = null;
+      recognitionRef.current.onerror = null;
+      recognitionRef.current.onend = null;
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+      usingRecognitionRef.current = false;
+    }
+
     chunksRef.current = [];
   }, []);
 
@@ -199,7 +259,30 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
       cleanupMedia();
       stopStreamNow();
     };
-  }, [cleanupMedia, stopStreamNow, sttEnabled]);
+  }, [cleanupMedia, stopStreamNow, sttEnabled, t]);
+
+  // 沒有瀏覽器聽寫時（Firefox / Safari），才去探本機 STT 服務。
+  useEffect(() => {
+    if (browserSpeechAvailable) return;
+    let cancelled = false;
+    void probeSttBackend().then((available) => {
+      if (!cancelled) setBackendAvailable(available);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [browserSpeechAvailable]);
+
+  const stopRecognition = useCallback(() => {
+    if (!recognitionRef.current) return false;
+    setStatus("transcribing");
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    recognitionRef.current.stop();
+    return true;
+  }, []);
 
   const acquireStream = useCallback(async (): Promise<MediaStream> => {
     if (streamRef.current) {
@@ -216,6 +299,8 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
     if (!canUse) return;
     if (sttDisabled) return;
     if (status === "transcribing") return;
+    // 瀏覽器聽寫自己管麥克風，不需要先預熱串流。
+    if (browserSpeechAvailable) return;
 
     stopRequestedRef.current = false;
 
@@ -226,7 +311,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
       .catch((e) => {
         setError(e instanceof Error ? e.message : t("voiceRecorder.errors.micUnavailable"));
       });
-  }, [acquireStream, canUse, scheduleReleaseStream, status, sttDisabled]);
+  }, [acquireStream, browserSpeechAvailable, canUse, scheduleReleaseStream, status, sttDisabled, t]);
 
   const start = useCallback(async () => {
     if (!canUse) return;
@@ -235,6 +320,61 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
     setError(null);
     setSeconds(0);
     stopRequestedRef.current = false;
+
+    const SpeechCtor = browserSpeechAvailable ? getBrowserSpeechCtor() : null;
+    if (SpeechCtor) {
+      try {
+        const recognition = new SpeechCtor();
+        recognition.lang = speechLangFor(locale);
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        finalTranscriptRef.current = "";
+        interimTranscriptRef.current = "";
+        setLiveText("");
+        recognition.onresult = (event) => {
+          let interim = "";
+          for (let i = event.resultIndex; i < event.results.length; i += 1) {
+            const result = event.results[i];
+            const chunk = result[0]?.transcript ?? "";
+            if (result.isFinal) finalTranscriptRef.current += chunk;
+            else interim += chunk;
+          }
+          interimTranscriptRef.current = interim;
+          setLiveText(`${finalTranscriptRef.current}${interim}`);
+        };
+        recognition.onerror = (event) => {
+          const code = event.error ?? "";
+          if (code === "not-allowed" || code === "service-not-allowed") {
+            setError(t("voiceRecorder.errors.micUnavailable"));
+          } else if (code === "no-speech") {
+            setError(t("voiceRecorder.errors.noAudio"));
+          } else {
+            setError(t("voiceRecorder.errors.sttFailed"));
+          }
+        };
+        recognition.onend = () => {
+          const text = `${finalTranscriptRef.current}${interimTranscriptRef.current}`.trim();
+          recognitionRef.current = null;
+          usingRecognitionRef.current = false;
+          setLiveText("");
+          setStatus("idle");
+          if (text) onTranscript(text);
+          else setError(t("voiceRecorder.errors.noTranscript"));
+        };
+        recognitionRef.current = recognition;
+        usingRecognitionRef.current = true;
+        recognition.start();
+        setStatus("recording");
+        timerRef.current = window.setInterval(() => setSeconds((s) => s + 1), 1000);
+        return;
+      } catch (e) {
+        recognitionRef.current = null;
+        usingRecognitionRef.current = false;
+        setStatus("idle");
+        setError(e instanceof Error ? e.message : t("voiceRecorder.errors.sttFailed"));
+        return;
+      }
+    }
 
     try {
       const stream = await acquireStream();
@@ -328,9 +468,10 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
       cleanupMedia();
       scheduleReleaseStream();
     }
-  }, [acquireStream, canUse, cleanupMedia, isBusy, onTranscript, scheduleReleaseStream, sttDisabled]);
+  }, [acquireStream, browserSpeechAvailable, canUse, cleanupMedia, isBusy, locale, onTranscript, scheduleReleaseStream, sttDisabled, t]);
 
   const stop = useCallback(() => {
+    if (usingRecognitionRef.current && stopRecognition()) return;
     if (status === "idle") return;
     if (status === "transcribing") return;
 
@@ -349,7 +490,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
       cleanupMedia();
       scheduleReleaseStream();
     }
-  }, [cleanupMedia, scheduleReleaseStream, status]);
+  }, [cleanupMedia, scheduleReleaseStream, status, stopRecognition]);
 
   useImperativeHandle(
     ref,
@@ -409,7 +550,16 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
         )}
       </button>
 
-      {error ? (
+      {status === "recording" && liveText ? (
+        <div
+          className={cn(
+            "absolute right-0 -top-5 max-w-[320px] truncate text-[11px]",
+            isNight ? "text-white/55" : "text-[var(--text-muted)]"
+          )}
+        >
+          {liveText}
+        </div>
+      ) : error ? (
         <div
           className={cn(
             "absolute right-0 -top-5 text-[11px] whitespace-nowrap",
