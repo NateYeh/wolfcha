@@ -499,40 +499,6 @@ test("金水知识区块：说明用法与陷阱，但不禁止投票（允许�
   assert.doesNotMatch(nightPrompt.user, /【金水的用法与陷阱】/);
 });
 
-test("场上现状：只陈述谁自称预言家、有无对跳，不附任何行动禁令", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("DAY_VOTE");
-  const seer = state.players.find((p) => p.role === "Seer")!;
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  state.currentSpeakerSeat = villager.seat;
-  // 無人自稱：不顯示現況行
-  const silent = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
-  assert.doesNotMatch(silent.user, /【场上现状】/);
-  // 唯一自稱：陳述事實
-  state.messages = [message(state, "我是预言家，昨晚查了5号是好人。", "DAY_SPEECH", seer.seat)];
-  const lone = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
-  assert.match(lone.user, /【场上现状】/);
-  assert.match(lone.user, /自称预言家，无人对跳/);
-  assert.match(lone.user, new RegExp(`${seer.seat + 1}号`));
-  // 不對跳時也不得下「不得把票投给」這種硬性禁令
-  assert.doesNotMatch(lone.user, /不得把票投给/);
-  assert.doesNotMatch(lone.user, /最终约束/);
-  // 對跳：列出雙方
-  const other = state.players.find((p) => p.role === "Witch")!;
-  state.messages.push(message(state, "我才是预言家，他报的是假查验。", "DAY_SPEECH", other.seat));
-  const two = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
-  assert.match(two.user, /对跳中/);
-  assert.match(two.user, /对跳中）：|对跳中\)：/);
-  // 夜間不拼入
-  const nightState = fresh("NIGHT_WOLF_ACTION");
-  const nightWolf = nightState.players.find((p) => p.role === "Werewolf")!;
-  nightState.currentSpeakerSeat = nightWolf.seat;
-  nightState.messages = [message(nightState, "我是预言家，昨晚查了5号是好人。", "DAY_SPEECH", nightState.players.find((p) => p.role === "Seer")!.seat)];
-  const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, nightWolf)!;
-  assert.doesNotMatch(nightPrompt.user, /【场上现状】/);
-});
-
 test("发言底线规则：未发言者不得被描述发言风格（禁止凭空「说话实」）", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
@@ -943,41 +909,7 @@ test("悍跳引導改為收益／時機（提示不限制）＋狼隊原則補�
   assert.doesNotMatch(vPrompt.user, /切割和抢线是两条路/);
 });
 
-test("自称预言家的辨识：自然跳法要认、第三人称支持不能误判（【场上现状】的事實來源）", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const { findSeerClaimants } = await import("@/lib/prompt-utils");
-
-  const state = fresh("DAY_SPEECH");
-  const [n1, n2, n3] = state.players;
-  state.messages = [
-    // 自然跳法（實際對局出現過的句型）
-    message(state, "得嘞，轮到我了。那我摊牌了，" + `${n1.seat + 1}号${n1.displayName}` + "，预言家。第一夜验的X号，查杀。", "DAY_BADGE_SPEECH", n1.seat),
-    // 第三人稱：支持別人的線、別人的查殺，都不能算自稱
-    message(state, "我跟着1号线走，这预言家我先信了。", "DAY_SPEECH", n2.seat),
-    message(state, "我说句实在的，平安夜还没人跳预言家，这局狼藏得够深。", "DAY_SPEECH", n2.seat),
-    message(state, "1号今天才报我的查杀，这预言家当得可真会挑时候。", "DAY_SPEECH", n2.seat),
-  ];
-  const claimants = findSeerClaimants(state);
-  assert.deepEqual(claimants.map((p) => p.seat), [n1.seat]);
-
-  // 白天 prompt 要拿到這條事實
-  state.currentSpeakerSeat = n3.seat;
-  const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, n3)!;
-  assert.match(prompt.user, /【场上现状】目前只有/);
-  assert.match(prompt.user, /自称预言家，无人对跳/);
-
-  // 第二個人跳 → 對跳中
-  state.messages = [
-    ...state.messages,
-    message(state, `我是${n3.seat + 1}号，我才是预言家，第一夜我查验了X号。`, "DAY_SPEECH", n3.seat),
-  ];
-  assert.equal(findSeerClaimants(state).length, 2);
-  const prompt2 = new PhaseManager().getPrompt("DAY_SPEECH", { state }, state.players[1])!;
-  assert.match(prompt2.user, /【场上现状】目前有 2 人自称预言家（对跳中）/);
-});
-
-test("白狼王自爆：拿得到【场上现状】與自爆算帳知識（純提示、不下命令）", async () => {
+test("白狼王自爆：拿得到自爆算帳知識（純提示、不下命令）", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
 
@@ -990,8 +922,6 @@ test("白狼王自爆：拿得到【场上现状】與自爆算帳知識（純�
   ];
 
   const prompt = new PhaseManager().getPrompt("WHITE_WOLF_KING_BOOM", { state }, wwk)!;
-  // 事實：場上幾條預言家線（自爆划不划算的關鍵輸入）
-  assert.match(prompt.user, /【场上现状】目前只有/);
   // 知識：算帳方式（跳過投票的收益、目標價值、有對跳時炸掉一個＝告訴全場被炸的是真的）
   // 自爆算帳屬於技能說明，與任務同在 system
   assert.match(prompt.system, /【自爆这笔账怎么算（要不要炸，你自己决定）】/);
@@ -1189,7 +1119,6 @@ test("女巫解药时机：首夜救人 vs 留药自救的取舍要带进 prompt
   // 解藥用完的兩個代價都要寫到：救不了自己、看不到刀口。
   assert.match(ctx, /你被刀就没人能救你/);
   assert.match(ctx, /看不到之后的刀口/);
-
 
   const villager = state.players.find((p) => p.role === "Villager")!;
   assert.doesNotMatch(buildGameContext(state, villager), /【解药什么时候该用】/);
