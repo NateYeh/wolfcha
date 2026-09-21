@@ -540,7 +540,7 @@ test("发言底线规则：未发言者不得被描述发言风格（禁止凭�
   const villager = state.players.find((p) => p.role === "Villager")!;
   state.currentSpeakerSeat = villager.seat;
   const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
-  assert.match(prompt.system, /严禁编造不存在的发言/);
+  assert.match(prompt.system, /【底线规则】/);
   assert.match(prompt.system, /不得描述他的发言风格或内容/);
   assert.match(prompt.system, /明说没有依据的直觉/);
 });
@@ -839,7 +839,7 @@ test("全域动机与人味：每个玩家阶段都收到（想赢、允许不�
   assert.match(dayPrompt.system, /立场可以改/);
   assert.doesNotMatch(dayPrompt.system, /保持立场连贯/);
   // 防幻覺底線仍在（不限制玩法，但不准編造事實）
-  assert.match(dayPrompt.system, /严禁编造不存在的发言/);
+  assert.match(dayPrompt.system, /【底线规则】/);
 });
 
 test("游戏基本盘：每个玩家阶段都收到（这是什么游戏、通用规则、角色技能一览）", async () => {
