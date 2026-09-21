@@ -377,7 +377,9 @@ export function useBadgePhase(
     setGameState(currentState);
     clearDialogue();
 
-    const alivePlayers = currentState.players.filter((p) => p.alive);
+    // 已死未公布（夜 1 被刀）的人類玩家不參與報名，也不能讓流程停在等他按按鈕：
+    // handleBadgeSignup 會用 getPendingDeathSeats 擋掉他，若這裡仍視他為「要等他決定」就會互等卡死。
+    const alivePlayers = excludePendingDeathPlayers(currentState, currentState.players.filter((p) => p.alive));
     const human = alivePlayers.find((p) => p.isHuman);
     if (!human) {
       const nextState = await resolveAIBadgeSignup(currentState);

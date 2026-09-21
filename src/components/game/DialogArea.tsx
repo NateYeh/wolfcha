@@ -17,6 +17,7 @@ import { buildSimpleAvatarUrl, getModelLogoUrl } from "@/lib/avatar-config";
 import type { PlayerAward, AwardVote } from "@/types/analysis";
 import { RoleRevealHistoryCard, type RoleRevealEntry } from "@/components/game/RoleRevealHistoryCard";
 import LoadingMiniGame from "./MiniGame/LoadingMiniGame";
+import { getPendingDeathSeats } from "@/lib/game-master";
 import type { GameState, Player, ChatMessage, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { cn } from "@/lib/utils";
@@ -1042,6 +1043,8 @@ export function DialogArea({
   const showGameEnd = phase === "GAME_END";
   const showBadgeSignup = phase === "DAY_BADGE_SIGNUP"
     && humanPlayer?.alive
+    // 已死未公布（夜 1 被刀）者不能報名，別給他按了沒反應的按鈕。
+    && !getPendingDeathSeats(gameState).includes(humanPlayer.seat)
     && typeof gameState.badge.signup?.[humanPlayer.playerId] !== "boolean";
   const showBadgeSignupWaiting = phase === "DAY_BADGE_SIGNUP"
     && isWaitingForAI
