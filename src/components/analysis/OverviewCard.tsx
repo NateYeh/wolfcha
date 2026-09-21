@@ -33,6 +33,7 @@ function PlayerAvatar({ seed, size = 96, gender }: { seed: string; size?: number
 export function OverviewCard({ data, onSelectPlayer }: OverviewCardProps) {
   const isVillageWin = data.result === "village_win";
   const { personalStats, awards } = data;
+  const awardVotes = data.awardVotes;
 
   return (
     <div className="space-y-6">
@@ -120,6 +121,35 @@ export function OverviewCard({ data, onSelectPlayer }: OverviewCardProps) {
           </div>
         </button>
       </section>
+
+      {/* MVP／SVP 投票明细：各 AI 角色 + 系统客观票（1.5 票） */}
+      {awardVotes && (awardVotes.mvp.length > 0 || awardVotes.svp.length > 0) && (
+        <section className="analysis-card rounded-lg p-4 space-y-3">
+          <div className="text-sm font-bold text-[var(--text-primary)]">投票明细</div>
+          {([["最佳表现", awardVotes.mvp], ["虽败犹荣", awardVotes.svp]] as const).map(([label, votes]) =>
+            votes.length > 0 ? (
+              <div key={label}>
+                <div className="text-xs text-[var(--color-gold)] font-bold mb-1">{label}</div>
+                <ul className="space-y-1.5">
+                  {votes.map((vote, index) => (
+                    <li key={`${vote.voterId}-${index}`} className="text-xs leading-tight">
+                      <span className="text-[var(--text-secondary)]">
+                        {vote.isSystem ? "系统（客观）" : `Seat ${vote.voterSeat + 1} ${vote.voterName}`}
+                      </span>
+                      <span className="text-[var(--text-muted)]"> → </span>
+                      <span className="font-medium text-[var(--text-primary)]">{`Seat ${vote.targetSeat + 1} ${vote.targetName}`}</span>
+                      <span className="text-[var(--text-muted)]">（{vote.weight} 票）</span>
+                      {vote.reason && (
+                        <div className="text-[10px] text-[var(--text-muted)] pl-1">{vote.reason}</div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null
+          )}
+        </section>
+      )}
     </div>
   );
 }

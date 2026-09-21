@@ -58,7 +58,7 @@ export function useSpecialEvents(
     const texts = getTexts();
     const finalInputState = prepareFinalState ? await prepareFinalState(state) : state;
     let currentState = transitionPhase(finalInputState, "GAME_END");
-    currentState = { ...currentState, winner };
+    currentState = { ...currentState, winner, endGameVotes: [], endGameVotingDone: false };
 
     currentState = addSystemMessage(currentState, winner === "village" ? texts.systemMessages.villageWin : texts.systemMessages.wolfWin);
     const roleRevealPayload = {
@@ -97,14 +97,31 @@ export function useSpecialEvents(
         .sort((a, b) => a.seat - b.seat);
       for (const speaker of speakers) {
         try {
-          const remark = await generateGameEndRemark(currentState, speaker, winner);
-          if (!remark.trim()) {
+          const result = await generateGameEndRemark(currentState, speaker, winner);
+          // 票先落地：即使感言为空，票仍有效（供系統分析計分）。
+          currentState = {
+            ...currentState,
+            endGameVotes: [
+              ...(currentState.endGameVotes ?? []),
+              {
+                voterId: speaker.playerId,
+                voterName: speaker.displayName,
+                voterRole: speaker.role,
+                mvpPlayerId: result.mvpPlayerId,
+                mvpReason: result.mvpReason,
+                svpPlayerId: result.svpPlayerId,
+                svpReason: result.svpReason,
+              },
+            ],
+          };
+          if (!result.remark.trim()) {
             console.warn("[game-end] 空感言，跳过:", speaker.displayName);
+            setGameState(currentState);
             continue;
           }
-          currentState = addPlayerMessage(currentState, speaker.playerId, remark);
+          currentState = addPlayerMessage(currentState, speaker.playerId, result.remark);
           setGameState(currentState);
-          setDialogue(speaker.displayName, remark, false);
+          setDialogue(speaker.displayName, result.remark, false);
           await delay(DELAY_CONFIG.DIALOGUE);
         } catch (error) {
           console.warn("[game-end] 感言生成失败，跳过:", speaker.displayName, error);
@@ -113,6 +130,9 @@ export function useSpecialEvents(
     } finally {
       setIsWaitingForAI(false);
     }
+    // 投票流程结束（含失败跳过），让系统分析可以开始计票。
+    currentState = { ...currentState, endGameVotingDone: true };
+    setGameState(currentState);
 
     // 播放游戏结束语音
     await playNarrator(winner === "village" ? "villageWin" : "wolfWin");

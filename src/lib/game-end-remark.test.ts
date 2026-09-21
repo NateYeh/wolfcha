@@ -55,7 +55,54 @@ test("赛后感言：prompt 含全员身份公开、胜负立场与输出限制�
     assert.match(requestBody, /8号被放逐/);
     assert.match(requestBody, /你的语言风格：说话直接/);
     // 返回值即模型正文（已清理换行与代码围栏，保留完整内容）
-    assert.equal(remark, "这局多亏对面把好人投光了，我就是纯民。");
+    assert.equal(remark.remark, "这局多亏对面把好人投光了，我就是纯民。");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("赛后感言：模型吐 JSON 时同时解析出 MVP／SVP 票", async () => {
+  const { generateGameEndRemark } = await import("@/lib/game-master");
+  const { createSinglePlayerContextAuditState } = await import(
+    "../../scripts/single-player-context-audit"
+  );
+  const state = createSinglePlayerContextAuditState() as unknown as GameState;
+  state.winner = "wolf";
+  const speaker = state.players.find((p: Player) => !p.isHuman)!;
+  const mvpTarget = state.players.find((p: Player) => p.playerId !== speaker.playerId)!;
+  const svpTarget = state.players.find(
+    (p: Player) => p.playerId !== speaker.playerId && p.playerId !== mvpTarget.playerId
+  )!;
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = makeFetchMock(() =>
+    Response.json({
+      id: "test",
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content: JSON.stringify({
+              remark: "这局就这样。",
+              mvpSeat: mvpTarget.seat + 1,
+              mvpReason: "带票三狼",
+              svpSeat: svpTarget.seat + 1,
+              svpReason: "守住关键刀口",
+            }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+    })
+  );
+
+  try {
+    const result = await generateGameEndRemark(state, speaker, "wolf");
+    assert.equal(result.remark, "这局就这样。");
+    assert.equal(result.mvpPlayerId, mvpTarget.playerId);
+    assert.equal(result.mvpReason, "带票三狼");
+    assert.equal(result.svpPlayerId, svpTarget.playerId);
+    assert.equal(result.svpReason, "守住关键刀口");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -82,7 +129,7 @@ test("赛后感言：输家立场用落败文案；生成失败返回空串且�
   try {
     // 狼胜局 + 好人发言者 → 落败立场
     const remark = await generateGameEndRemark(state, villagerSpeaker, "wolf");
-    assert.match(remark, /自责查人查歪了/);
+    assert.match(remark.remark, /自责查人查歪了/);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -95,7 +142,7 @@ test("赛后感言：输家立场用落败文案；生成失败返回空串且�
   };
   try {
     const empty = await generateGameEndRemark(failureState, failingSpeaker, "village");
-    assert.equal(empty, "");
+    assert.equal(empty.remark, "");
   } finally {
     globalThis.fetch = originalFetch;
   }

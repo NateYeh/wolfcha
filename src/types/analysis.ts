@@ -59,6 +59,25 @@ export interface PlayerAward {
   role: Role;
 }
 
+/** 一筆 MVP／SVP 票（含投票者資訊與理由）；weight：AI = 1、系統客觀票 = 1.5。 */
+export interface AwardVote {
+  voterId: string;
+  voterName: string;
+  /** 投票者角色；系統客觀票為 null（UI 另外標示）。 */
+  voterRole: Role | null;
+  /** 投票者座位（0 基）；系統客觀票為 -1。 */
+  voterSeat: number;
+  /** 被投者的顯示資料；解析失敗的票不會出現在計分列表裡。 */
+  targetPlayerId: string;
+  targetName: string;
+  /** 被投者座位（0 基）。 */
+  targetSeat: number;
+  reason: string;
+  weight: number;
+  /** true = 系統客觀分析票（權重 1.5，同票時多 0.5）。 */
+  isSystem: boolean;
+}
+
 export interface RadarStats {
   logic: number;
   speech: number;
@@ -135,6 +154,12 @@ export interface GameAnalysisData {
   awards: {
     mvp: PlayerAward;
     svp: PlayerAward;
+  };
+
+  /** MVP／SVP 投票明細：各 AI 角色 + 系統客觀票（1.5 票）。 */
+  awardVotes?: {
+    mvp: AwardVote[];
+    svp: AwardVote[];
   };
 
   timeline: TimelineEntry[];

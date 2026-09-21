@@ -27,6 +27,7 @@ import { generateJSON } from "@/lib/llm";
 import type { LLMMessage } from "@/lib/llm";
 import { aiLogger } from "@/lib/ai-logger";
 import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
+import { tallyAwards, type AwardBallot } from "@/lib/awards";
 
 /**
  * 復盤用的系統提示：遊戲基本盤（這是什麼遊戲、規則有哪些、角色技能與限制）在前，角色任務在後。
@@ -41,7 +42,7 @@ export const buildAnalysisSystemPrompt = (): string =>
 
 const MAX_SPEECH_ITEMS_PER_PHASE = 30;
 const MAX_SPEECH_CONTENT_LENGTH = 280;
-export const GAME_ANALYSIS_VERSION = 4;
+export const GAME_ANALYSIS_VERSION = 5;
 
 const ROLE_ALIGNMENT: Record<Role, Alignment> = {
   Werewolf: "wolf",
@@ -113,6 +114,13 @@ export function getGameAnalysisSourceFingerprint(state: GameState): string {
     dayHistory: state.dayHistory,
     dailySummaries: state.dailySummaries,
     dailySummaryVoteData: state.dailySummaryVoteData,
+    // 賽後投票決定 MVP／SVP：票一旦落地就會影響結果，必須進 fingerprint，
+    // 否則重算會拿到不包含票的舊分析。（只記投給誰，理由文字不影響計分。）
+    endGameVotes: (state.endGameVotes ?? []).map((v) => ({
+      voterId: v.voterId,
+      mvpPlayerId: v.mvpPlayerId,
+      svpPlayerId: v.svpPlayerId,
+    })),
     messages: state.messages
       // 賽後感言等 GAME_END 階段訊息屬於遊戲結束後的閒聊，不影響分析素材；
       // 排除後感言逐一加入不會改動 fingerprint，避免分析重跑、MVP 隨機改判。
@@ -1441,6 +1449,23 @@ export async function generateGameAnalysis(
     totalScore,
   };
 
+  // 賽後各 AI 角色的票 + 系統客觀票（1.5 票）合併計分，決定最終 MVP／SVP。
+  const ballots: AwardBallot[] = (state.endGameVotes ?? []).map((vote) => ({
+    voterId: vote.voterId,
+    voterName: vote.voterName,
+    voterRole: vote.voterRole,
+    mvpPlayerId: vote.mvpPlayerId,
+    mvpReason: vote.mvpReason,
+    svpPlayerId: vote.svpPlayerId,
+    svpReason: vote.svpReason,
+  }));
+  const tallied = tallyAwards({
+    ballots,
+    systemMvp: { playerId: aiData.awards.mvp.playerId, reason: aiData.awards.mvp.reason },
+    systemSvp: { playerId: aiData.awards.svp.playerId, reason: aiData.awards.svp.reason },
+    players: state.players,
+  });
+
   return {
     gameId: state.gameId,
     analysisVersion: GAME_ANALYSIS_VERSION,
@@ -1449,7 +1474,8 @@ export async function generateGameAnalysis(
     duration: durationSeconds ?? 0,
     playerCount: state.players.length,
     result: state.winner === "wolf" ? "wolf_win" : "village_win",
-    awards: aiData.awards,
+    awards: { mvp: tallied.mvp, svp: tallied.svp },
+    awardVotes: tallied.awardVotes,
     timeline,
     players: snapshots,
     roundStates,

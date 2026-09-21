@@ -32,7 +32,11 @@
     "wins": "胜利",
     "mvpTitle": "本局MVP",
     "mvpLoading": "MVP 评选中…",
-    "svpTitle": "本局SVP"
+    "svpTitle": "本局SVP",
+    "voteBreakdownTitle": "投票明细",
+    "voteSystemVoter": "系统（客观）",
+    "voteWeight": "{weight}票",
+    "voteTarget": "{seat}号 {name}"
   },
   "welcome": {
     "group": {
@@ -1606,7 +1610,7 @@
     "whiteWolfKingBoomNoTarget": "{seat}号 {name} 自爆了！没有带走任何人",
     "whiteWolfKingPrompt": "你是白狼王，请点击玩家卡片选择自爆带走的目标（或放弃）",
     "remarkTitle": "—— 赛后感言 ——",
-    "remarkSystem": "【赛后感言】\n你是 {seat}号「{name}」，身份：{role}。本局已经结束，全员身份公开。\n{resultLine}\n请以你的角色口吻发表一段赛后感言：\n- 你是赢家：可以点评谁才是真神、称赞关键操作，也可以调侃对方阵营里「其实是我方卧底」的迷惑操作（把好人打成狼、刀口全歪、警徽票乱投等）。\n- 你是输家：可以吐槽猪队友——谁乱玩、谁乱带风向、谁关键时刻掉链子；也可以自嘲自己的误判。\n- 要点到具体座位和具体行为，保持角色语气，不要客套空话，不要把整个流程复述一遍。\n- 局里的关键转折（自爆、开枪、对跳翻盘）如果你是主角或受害者，把它讲透最值——说清那一手为什么成立、或为什么亏。\n【输出】直接输出感言正文，一段话 100 字以内；不要 JSON、不要解释。",
+    "remarkSystem": "【赛后感言】\n你是 {seat}号「{name}」，身份：{role}。本局已经结束，全员身份公开。\n{resultLine}\n请以你的角色口吻发表一段赛后感言：\n- 你是赢家：可以点评谁才是真神、称赞关键操作，也可以调侃对方阵营里「其实是我方卧底」的迷惑操作（把好人打成狼、刀口全歪、警徽票乱投等）。\n- 你是输家：可以吐槽猪队友——谁乱玩、谁乱带风向、谁关键时刻掉链子；也可以自嘲自己的误判。\n- 要点到具体座位和具体行为，保持角色语气，不要客套空话，不要把整个流程复述一遍。\n- 局里的关键转折（自爆、开枪、对跳翻盘）如果你是主角或受害者，把它讲透最值——说清那一手为什么成立、或为什么亏。\n【投票】用同一视角投出本局两张票：MVP 投胜方表现最好的人，SVP 投败方表现最好的人；都用座位号，理由要引用具体行为（投票／查验／守护／刀口／开枪／关键发言），不得空泛。\n【输出】只输出 JSON，不要 markdown、不要额外解释。字段固定：remark＝感言正文（一段话，100字以内）、mvpSeat＝MVP 座位号、mvpReason＝MVP 理由（50字以内）、svpSeat＝SVP 座位号、svpReason＝SVP 理由（50字以内）。示例：{jsonFormat}",
     "remarkResultWin": "本局你的阵营获胜。",
     "remarkResultLose": "本局你的阵营落败。",
     "remarkUser": "【全员身份】\n{reveal}\n\n{publicFactsSection}【关键事件（各日摘要，含各方说词）】\n{keyEvents}\n\n{claimsRule}{privateNotes}\n\n你的语言风格：{personaLine}\n现在发表你的赛后感言。",

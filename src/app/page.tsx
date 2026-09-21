@@ -1605,6 +1605,7 @@ export default function Home() {
                       isAnalysisLoading={isAnalysisLoading}
                       gameMvp={analysisData?.awards?.mvp}
                       gameSvp={analysisData?.awards?.svp}
+                      gameAwardVotes={analysisData?.awardVotes}
                       isEventLogOpen={isEventLogOpen}
                       onEventLogOpenChange={setIsEventLogOpen}
                     />

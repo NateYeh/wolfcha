@@ -310,6 +310,10 @@ export interface GameState {
   };
   /** 第一夜狼隊商定的分工（主導狼計畫）；生成失敗或無 AI 狼時為 undefined，全場照舊無協調。 */
   wolfTeamPlan?: WolfTeamPlan;
+  /** 賽後感言時各 AI 角色的 MVP／SVP 票（含理由）；投票流程跑完前為 []。 */
+  endGameVotes?: EndGameVote[];
+  /** 賽後投票流程是否已跑完（含失敗跳過）；系統分析要等這個旗標才計票。舊存檔為 undefined。 */
+  endGameVotingDone?: boolean;
   // 角色能力使用记录
   roleAbilities: {
     witchHealUsed: boolean;      // 女巫解药是否已用
@@ -336,6 +340,20 @@ export interface DailySummaryFact {
 export interface DailySummaryVoteData {
   sheriff_election?: { winner: number; votes: Record<string, number[]> };
   execution_vote?: { eliminated: number; votes: Record<string, number[]> };
+}
+
+/**
+ * 賽後感言時由 AI 角色投出的 MVP／SVP 票。
+ * 每張票各自帶理由；解析失敗的項目為 null（票不會進計分，但仍保留供 UI 顯示）。
+ */
+export interface EndGameVote {
+  voterId: string;
+  voterName: string;
+  voterRole: Role;
+  mvpPlayerId: string | null;
+  mvpReason: string;
+  svpPlayerId: string | null;
+  svpReason: string;
 }
 
 // Shared model IDs

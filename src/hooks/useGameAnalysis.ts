@@ -77,11 +77,17 @@ export function useGameAnalysis() {
       ? getGameAnalysisSourceFingerprint(gameState)
       : null;
 
+    // 賽後感言投票尚未跑完（endGameVotes 存在但旗標未設）時先不分析，
+    // 否則 MVP／SVP 會少算票。舊存檔沒有 endGameVotes，不受此限。
+    const votingPending =
+      Array.isArray(gameState.endGameVotes) && gameState.endGameVotingDone !== true;
+
     // 触发条件：游戏结束、有胜利方、未加载中
     // 如果缓存来自旧版本或旧状态，也需要重新生成
     const needsAnalysis = gameState.phase === "GAME_END" && 
       gameState.winner && 
       !isLoading &&
+      !votingPending &&
       (
         !analysisData ||
         analysisData.gameId !== gameState.gameId ||

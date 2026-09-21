@@ -2501,11 +2501,24 @@ export function collectPrivateActionNotes(state: GameState, seat: number): Priva
  * 赛后感言：游戏结束、全员身份公开后，单个 AI 角色的复盘发言。
  * 赢家点评真神/调侃对方「卧底」，输家吐槽猪队友；失败返回空串（调用方跳过）。
  */
+/** 賽後感言＋投票的 JSON 範例；放程式碼而不是 i18n，避免 ICU 把大括號當佔位符。 */
+const GAME_END_VOTE_JSON_FORMAT =
+  '{"remark":"...","mvpSeat":1,"mvpReason":"...","svpSeat":2,"svpReason":"..."}';
+
+/** 賽後感言＋投票的一次呼叫結果：感言正文與該角色投出的 MVP／SVP 票。 */
+export interface GameEndRemarkResult {
+  remark: string;
+  mvpPlayerId: string | null;
+  mvpReason: string;
+  svpPlayerId: string | null;
+  svpReason: string;
+}
+
 export async function generateGameEndRemark(
   state: GameState,
   player: Player,
   winner: Alignment
-): Promise<string> {
+): Promise<GameEndRemarkResult> {
   const { t } = getI18n();
   const reveal = state.players
     .slice()
@@ -2558,6 +2571,7 @@ export async function generateGameEndRemark(
           (player.alignment === "wolf") === (winner === "wolf")
             ? t("specialEvents.remarkResultWin")
             : t("specialEvents.remarkResultLose"),
+        jsonFormat: GAME_END_VOTE_JSON_FORMAT,
       }),
     ].join("\n\n"),
     user: t("specialEvents.remarkUser", {
@@ -2571,6 +2585,7 @@ export async function generateGameEndRemark(
   };
   const { messages } = buildMessagesForPrompt(prompt, false);
   const startTime = Date.now();
+  const allSeats = state.players.map((p) => p.seat);
 
   try {
     const result = await generateCompletion(
@@ -2579,9 +2594,38 @@ export async function generateGameEndRemark(
         messages,
         promptScope: "gameplay",
         temperature: GAME_TEMPERATURE.SPEECH,
+        response_format: structuredResponseFormat(player.agentProfile!.modelRef, "game_end_remark", {
+          type: "object",
+          properties: {
+            remark: { type: "string" },
+            mvpSeat: { type: "integer", enum: allSeats.map((s) => s + 1) },
+            mvpReason: { type: "string" },
+            svpSeat: { type: "integer", enum: allSeats.map((s) => s + 1) },
+            svpReason: { type: "string" },
+          },
+          required: ["remark", "mvpSeat", "mvpReason", "svpSeat", "svpReason"],
+          additionalProperties: false,
+        }),
       })
     );
-    const remark = sanitizeGameEndRemark(result.content).slice(0, 300);
+
+    // 模型若不吐 JSON（或吐壞了），仍保留正文當感言，只是這一票作廢。
+    const cleaned = stripMarkdownCodeFences(String(result.content ?? "")).trim();
+    const parsedRaw = parseLLMJson<Record<string, unknown>>(cleaned);
+    const parsed =
+      parsedRaw && typeof parsedRaw === "object" && !Array.isArray(parsedRaw) ? parsedRaw : null;
+    const rawRemark = parsed && typeof parsed.remark === "string" ? parsed.remark : result.content;
+    const remark = sanitizeGameEndRemark(rawRemark).slice(0, 300);
+
+    const mvpSeat = parsed ? parseLLMDisplaySeat(cleaned, allSeats, ["mvpSeat", "mvp"]) : null;
+    const svpSeat = parsed ? parseLLMDisplaySeat(cleaned, allSeats, ["svpSeat", "svp"]) : null;
+    const mvpReason = parsed ? extractJsonTextField(cleaned, "mvpReason", 80) : "";
+    const svpReason = parsed ? extractJsonTextField(cleaned, "svpReason", 80) : "";
+    // 不校正投錯邊：模型投誰就記誰，供賽後 UI 顯示與人工評估。
+    const mvpPlayerId =
+      mvpSeat === null ? null : state.players.find((p) => p.seat === mvpSeat)?.playerId ?? null;
+    const svpPlayerId =
+      svpSeat === null ? null : state.players.find((p) => p.seat === svpSeat)?.playerId ?? null;
 
     await aiLogger.log({
       type: "game_end_remark",
@@ -2595,10 +2639,11 @@ export async function generateGameEndRemark(
         raw: result.content,
         rawResponse: JSON.stringify(result.raw, null, 2),
         finishReason: result.raw.choices?.[0]?.finish_reason,
+        parsed: { mvpSeat, mvpReason, svpSeat, svpReason },
         duration: Date.now() - startTime,
       },
     });
-    return remark;
+    return { remark, mvpPlayerId, mvpReason, svpPlayerId, svpReason };
   } catch (error) {
     console.warn("[wolfcha] generateGameEndRemark failed:", player.displayName, error);
     await aiLogger.log({
@@ -2611,7 +2656,7 @@ export async function generateGameEndRemark(
       response: { content: "", duration: Date.now() - startTime },
       error: String(error),
     });
-    return "";
+    return { remark: "", mvpPlayerId: null, mvpReason: "", svpPlayerId: null, svpReason: "" };
   }
 }
 

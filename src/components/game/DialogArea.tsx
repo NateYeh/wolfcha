@@ -14,7 +14,7 @@ import { TalkingAvatar } from "./TalkingAvatar";
 import { VoiceRecorder, type VoiceRecorderHandle } from "./VoiceRecorder";
 import { EventLog } from "./EventLog";
 import { buildSimpleAvatarUrl, getModelLogoUrl } from "@/lib/avatar-config";
-import type { PlayerAward } from "@/types/analysis";
+import type { PlayerAward, AwardVote } from "@/types/analysis";
 import { RoleRevealHistoryCard, type RoleRevealEntry } from "@/components/game/RoleRevealHistoryCard";
 import LoadingMiniGame from "./MiniGame/LoadingMiniGame";
 import type { GameState, Player, ChatMessage, Phase } from "@/types/game";
@@ -287,6 +287,8 @@ interface DialogAreaProps {
   gameMvp?: PlayerAward;
   /** 本局 SVP（敗方最佳；分析完成前為 undefined）。 */
   gameSvp?: PlayerAward;
+  /** 本局 MVP／SVP 投票明細（各 AI 角色 + 系統客觀票）。 */
+  gameAwardVotes?: { mvp: AwardVote[]; svp: AwardVote[] };
   isEventLogOpen?: boolean;
   onEventLogOpenChange?: (open: boolean) => void;
 }
@@ -371,6 +373,42 @@ function NightActionStatus({ phase, humanRole }: { phase: string; humanRole?: st
   );
 }
 
+/** 賽後 MVP／SVP 投票明細：列出每個 AI 角色投給誰與理由，並標示系統客觀票（1.5 票）。 */
+function AwardVoteBreakdown({ label, votes }: { label: string; votes: AwardVote[] }) {
+  const t = useTranslations();
+  if (votes.length === 0) return null;
+  return (
+    <div className="mt-2 rounded-lg border border-white/10 bg-black/10 dark:bg-white/5 px-3 py-2">
+      <div className="text-[11px] font-bold text-[var(--text-muted)] mb-1.5">
+        {label} · {t("gameEnd.voteBreakdownTitle")}
+      </div>
+      <ul className="space-y-1.5">
+        {votes.map((vote, index) => (
+          <li key={`${vote.voterId}-${index}`} className="text-xs leading-snug">
+            <div>
+              <span className="text-[var(--text-secondary)]">
+                {vote.isSystem
+                  ? t("gameEnd.voteSystemVoter")
+                  : t("gameEnd.voteTarget", { seat: vote.voterSeat + 1, name: vote.voterName })}
+              </span>
+              <span className="text-[var(--text-muted)]"> → </span>
+              <span className="font-medium text-[var(--text-primary)]">
+                {t("gameEnd.voteTarget", { seat: vote.targetSeat + 1, name: vote.targetName })}
+              </span>
+              <span className="text-[var(--text-muted)]">
+                （{t("gameEnd.voteWeight", { weight: vote.weight })}）
+              </span>
+            </div>
+            {vote.reason && (
+              <div className="pl-1 text-[11px] text-[var(--text-muted)]">{vote.reason}</div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function DialogArea({
   gameState,
   humanPlayer,
@@ -404,6 +442,7 @@ export function DialogArea({
   isAnalysisLoading = false,
   gameMvp,
   gameSvp,
+  gameAwardVotes,
   isEventLogOpen = false,
   onEventLogOpenChange,
 }: DialogAreaProps) {
@@ -1270,6 +1309,12 @@ export function DialogArea({
                         )}
                       </div>
                     </div>
+                  )}
+                  {gameAwardVotes && (
+                    <>
+                      <AwardVoteBreakdown label={t("gameEnd.mvpTitle")} votes={gameAwardVotes.mvp} />
+                      <AwardVoteBreakdown label={t("gameEnd.svpTitle")} votes={gameAwardVotes.svp} />
+                    </>
                   )}
                   {!gameMvp && !gameSvp && isAnalysisLoading && (
                     <div className="flex items-center gap-2 mt-3 px-3 py-2 text-xs text-[var(--text-muted)]">
