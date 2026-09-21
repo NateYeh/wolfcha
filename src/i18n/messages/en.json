@@ -436,6 +436,13 @@
       "gatewayOnly": "Models without built-in params (default temperature/reasoning): {models}",
       "notConfigured": "Not configured yet: AI players will not respond. Enter the base URL and key (use “Test & load models”)."
     },
+    "modelConfig": {
+      "title": "Model settings",
+      "description": "Models used for character generation, daily summaries, and the review report; available in every mode (Project / TokenPay / Custom key), and your choice is saved in this browser",
+      "generator": "Character generation model",
+      "summary": "Daily summary model",
+      "review": "Review report model"
+    },
     "modelPool": {
       "title": "AI player model pool",
       "description": "Pick which models may appear this round (unchecked ones are never drawn for AI players); takes effect next game",

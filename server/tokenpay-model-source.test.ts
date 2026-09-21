@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getGeneratorModel,
   resolveAiVoiceAvailability,
   resolveModelSource,
+  setGeneratorModel,
   setModelSource,
 } from "@/lib/api-keys";
-import { ALL_MODELS, AVAILABLE_MODELS, MODEL_IDS, SUMMARY_MODEL, REVIEW_MODEL } from "@/types/game";
+import { AVAILABLE_MODELS, MODEL_IDS, SUMMARY_MODEL, REVIEW_MODEL } from "@/types/game";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL ||= "https://example.supabase.co";
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "test-publishable-key";
@@ -133,32 +135,83 @@ test("legacy key settings migrate to exactly one model source", () => {
   assert.equal(resolveModelSource({}), "project");
 });
 
-test("TokenPay、总结和复盘默认使用 DeepSeek V4.1 Flash", () => {
+test("内置默认：总结与复盘复用同一个内置模型", () => {
   const builtInModel = AVAILABLE_MODELS[0];
-  const selectableModel = ALL_MODELS.find(
-    (model) => model.model === MODEL_IDS.tokendance.deepseekV41Flash,
-  );
 
-  assert.equal(builtInModel.model, "deepseek-v4.1-flash");
   assert.equal(SUMMARY_MODEL, builtInModel.model);
   assert.equal(REVIEW_MODEL, builtInModel.model);
   assert.deepEqual(builtInModel.reasoning, { enabled: false });
-  assert.deepEqual(selectableModel?.reasoning, { enabled: false });
 });
 
-test("TokenPay 会同时归一化旧存档的模型与 Provider", async () => {
+test("TokenPay 尊重已选模型，旧存档的非法模型回退内置默认", async () => {
   const { resolveRequestModelForSource } = await import("@/lib/llm");
+  // 合法的内置模型 → 原样保留（使用者可在 UI 选定）
   assert.deepEqual(
     resolveRequestModelForSource(
       "tokenpay",
-      MODEL_IDS.zenmux.geminiFlashLite,
-      "zenmux",
+      MODEL_IDS.tokendance.glm53Flash,
+      "tokendance",
     ),
     {
-      model: MODEL_IDS.tokendance.deepseekV41Flash,
+      model: MODEL_IDS.tokendance.glm53Flash,
       provider: "tokendance",
     },
   );
+  // 旧存档里的非内置、非闸道器模型 → 回退到内置默认，Provider 跟随最终模型
+  assert.deepEqual(
+    resolveRequestModelForSource(
+      "tokenpay",
+      MODEL_IDS.zenmux.deepseek,
+      "zenmux",
+    ),
+    {
+      model: AVAILABLE_MODELS[0]?.model,
+      provider: "tokendance",
+    },
+  );
+});
+
+test("项目／TokenPay 模式下，UI 選定的產生模型會被記住並生效", () => {
+  const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const values = new Map<string, string>();
+  const fakeWindow = new EventTarget() as EventTarget & { localStorage: Storage };
+  Object.defineProperty(fakeWindow, "localStorage", {
+    configurable: true,
+    value: {
+      get length() {
+        return values.size;
+      },
+      clear: () => values.clear(),
+      getItem: (key: string) => values.get(key) ?? null,
+      key: (index: number) => [...values.keys()][index] ?? null,
+      removeItem: (key: string) => values.delete(key),
+      setItem: (key: string, value: string) => values.set(key, value),
+    } satisfies Storage,
+  });
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: fakeWindow,
+  });
+
+  try {
+    // 沒選過 → 回內建預設
+    setModelSource("project");
+    assert.equal(getGeneratorModel(), AVAILABLE_MODELS[0]?.model);
+
+    // 使用者選定 glm → 記住並回傳 glm
+    setGeneratorModel(MODEL_IDS.tokendance.glm53Flash);
+    assert.equal(getGeneratorModel(), MODEL_IDS.tokendance.glm53Flash);
+
+    // 切到 TokenPay 仍尊重已選模型，不再硬性歸一化
+    setModelSource("tokenpay");
+    assert.equal(getGeneratorModel(), MODEL_IDS.tokendance.glm53Flash);
+  } finally {
+    if (originalWindowDescriptor) {
+      Object.defineProperty(globalThis, "window", originalWindowDescriptor);
+    } else {
+      Reflect.deleteProperty(globalThis, "window");
+    }
+  }
 });
 
 test("自定义 Key 仍保留用户显式选择的 Provider", async () => {

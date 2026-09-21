@@ -4,6 +4,7 @@ import {
   GENERATOR_MODEL,
   SUMMARY_MODEL,
   REVIEW_MODEL,
+  PROJECT_MODELS,
 } from "@/types/game";
 
 const ZENMUX_API_KEY_STORAGE = "wolfcha_zenmux_api_key";
@@ -359,51 +360,65 @@ export function setGatewayModels(models: string[]) {
   window.localStorage.setItem(GATEWAY_MODELS_STORAGE, JSON.stringify(normalized));
 }
 
+/**
+ * 專案／TokenPay 模式：使用者可在 UI 選定產生／摘要／覆盤模型，沒選才回預設值。
+ * 只放行內建模型或自帶 gateway 回報過的模型，避免存到已不存在的模型後每次呼叫都打不通。
+ */
+function resolveStoredModelForBuiltin(stored: string, fallback: string): string {
+  if (!stored) return fallback;
+  if (PROJECT_MODELS.some((ref) => ref.model === stored)) return stored;
+  if (getGatewayModels().includes(stored)) return stored;
+  // 不得靜默替換模型：換了就要留下紀錄。
+  console.warn("[api-keys] 已選模型不在內建或閘道器清單，改用預設模型:", stored, "→", fallback);
+  return fallback;
+}
+
 export function getGeneratorModel(): string {
   const source = getModelSource();
-  if (source === "tokenpay") return AVAILABLE_MODELS[0]?.model ?? GENERATOR_MODEL;
-  if (source !== "custom") return GENERATOR_MODEL;
   const stored = readStorage(GENERATOR_MODEL_STORAGE);
-  return resolveModelForCurrentKeyState(stored, GENERATOR_MODEL, GENERATOR_MODEL_STORAGE);
+  if (source === "custom") {
+    return resolveModelForCurrentKeyState(stored, GENERATOR_MODEL, GENERATOR_MODEL_STORAGE);
+  }
+  if (source === "tokenpay") {
+    return resolveStoredModelForBuiltin(stored, AVAILABLE_MODELS[0]?.model ?? GENERATOR_MODEL);
+  }
+  return resolveStoredModelForBuiltin(stored, GENERATOR_MODEL);
 }
 
 export function setGeneratorModel(model: string) {
-  if (!isCustomKeyEnabled()) {
-    writeStorage(GENERATOR_MODEL_STORAGE, "");
-    return;
-  }
+  // 使用者在任何模式下選定的模型都要記住，不再只限自訂 Key 模式。
   writeStorage(GENERATOR_MODEL_STORAGE, model);
 }
 
 export function getSummaryModel(): string {
   const source = getModelSource();
-  if (source === "tokenpay") return AVAILABLE_MODELS[0]?.model ?? SUMMARY_MODEL;
-  if (source !== "custom") return SUMMARY_MODEL;
   const stored = readStorage(SUMMARY_MODEL_STORAGE);
-  return resolveModelForCurrentKeyState(stored, SUMMARY_MODEL, SUMMARY_MODEL_STORAGE);
+  if (source === "custom") {
+    return resolveModelForCurrentKeyState(stored, SUMMARY_MODEL, SUMMARY_MODEL_STORAGE);
+  }
+  if (source === "tokenpay") {
+    return resolveStoredModelForBuiltin(stored, AVAILABLE_MODELS[0]?.model ?? SUMMARY_MODEL);
+  }
+  return resolveStoredModelForBuiltin(stored, SUMMARY_MODEL);
 }
 
 export function setSummaryModel(model: string) {
-  if (!isCustomKeyEnabled()) {
-    writeStorage(SUMMARY_MODEL_STORAGE, "");
-    return;
-  }
   writeStorage(SUMMARY_MODEL_STORAGE, model);
 }
 
 export function getReviewModel(): string {
   const source = getModelSource();
-  if (source === "tokenpay") return AVAILABLE_MODELS[0]?.model ?? REVIEW_MODEL;
-  if (source !== "custom") return REVIEW_MODEL;
   const stored = readStorage(REVIEW_MODEL_STORAGE);
-  return resolveModelForCurrentKeyState(stored, REVIEW_MODEL, REVIEW_MODEL_STORAGE);
+  if (source === "custom") {
+    return resolveModelForCurrentKeyState(stored, REVIEW_MODEL, REVIEW_MODEL_STORAGE);
+  }
+  if (source === "tokenpay") {
+    return resolveStoredModelForBuiltin(stored, AVAILABLE_MODELS[0]?.model ?? REVIEW_MODEL);
+  }
+  return resolveStoredModelForBuiltin(stored, REVIEW_MODEL);
 }
 
 export function setReviewModel(model: string) {
-  if (!isCustomKeyEnabled()) {
-    writeStorage(REVIEW_MODEL_STORAGE, "");
-    return;
-  }
   writeStorage(REVIEW_MODEL_STORAGE, model);
 }
 

@@ -436,6 +436,13 @@
       "gatewayOnly": "未内建参数的模型（使用默认 temperature／reasoning）：{models}",
       "notConfigured": "还没设置：AI 玩家会无法回应，请填入服务器地址与 API Key（建议先按「测试连接并读取模型列表」）"
     },
+    "modelConfig": {
+      "title": "模型设置",
+      "description": "人物生成、每日总结与复盘报告使用的模型；任何模式（项目／TokenPay／自订 Key）都能在这里调整，选择会保存在本机浏览器",
+      "generator": "人物生成模型",
+      "summary": "每日总结模型",
+      "review": "复盘报告模型"
+    },
     "modelPool": {
       "title": "AI 玩家模型池",
       "description": "勾选这一局允许出场的模型（没勾的不会被抽到 AI 玩家）；下一局生效",

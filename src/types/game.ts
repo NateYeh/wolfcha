@@ -386,10 +386,11 @@ const BUILTIN_GEMMA4_31B_MODEL: ModelRef = {
 
 export const DEFAULT_MODEL_CONFIG = {
   // [LOCAL DEV PATCH] 本地實驗統一使用 tokendance(自架閘道器) 模型，避免依賴 ZenMux Key
-  // 產生／摘要／覆盤原本走 deepseek-v4.1-flash:cloud，因思考過久已改用 glm-5.3-flash:cloud
-  generator: MODEL_IDS.tokendance.glm53Flash,
-  summary: BUILTIN_GLM53_FLASH_MODEL.model,
-  review: BUILTIN_GLM53_FLASH_MODEL.model,
+  // 產生／摘要／覆盤原本走 deepseek-v4.1-flash:cloud，現改用 gemma4:31b-cloud。
+  // 這只是「使用者還沒在 UI 選過」的預設值；實際選擇存 localStorage，可於設定介面調整。
+  generator: MODEL_IDS.tokendance.gemma431b,
+  summary: BUILTIN_GEMMA4_31B_MODEL.model,
+  review: BUILTIN_GEMMA4_31B_MODEL.model,
   validation: {
     zenmux: MODEL_IDS.zenmux.geminiFlashLite,
     dashscope: MODEL_IDS.dashscope.deepseek,
@@ -408,16 +409,17 @@ export const TOKENDANCE_VALIDATION_MODEL = DEFAULT_MODEL_CONFIG.validation.token
 // [LOCAL DEV PATCH] 只保留 glm-5.3-flash:cloud 與 gemma4:31b-cloud；deepseek-v4.1-flash:cloud
 // 因為思考過久（常見 60 秒超時、發言被迫走逾時兜底）已從所有可用池移除。
 export const BUILTIN_PLAYER_MODELS: ModelRef[] = [
-  BUILTIN_GLM53_FLASH_MODEL,
   BUILTIN_GEMMA4_31B_MODEL,
+  BUILTIN_GLM53_FLASH_MODEL,
 ];
 
 // Default built-in models exposed to the app when custom key is not enabled.
 // This list includes system defaults plus the small built-in player pool.
-// 順序有意義：api-keys.ts 在 tokenpay 路徑取 AVAILABLE_MODELS[0] 當產生／摘要／覆盤模型。
+// 順序有意義：使用者沒在 UI 選過時，api-keys.ts 在 tokenpay 路徑取 AVAILABLE_MODELS[0]
+// 當產生／摘要／覆盤的預設模型。
 export const AVAILABLE_MODELS: ModelRef[] = [
-  BUILTIN_GLM53_FLASH_MODEL,
   BUILTIN_GEMMA4_31B_MODEL,
+  BUILTIN_GLM53_FLASH_MODEL,
 ];
 
 // Built-in project-key models that the server may call internally.

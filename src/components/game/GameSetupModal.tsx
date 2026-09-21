@@ -16,12 +16,22 @@ import { Input } from "@/components/ui/input";
 import { useTranslations } from "next-intl";
 import { ROSTER_POOL_IDS } from "@/lib/roster-pool-ids";
 import { getRosterPoolSize } from "@/lib/character-roster";
-import { hasBuiltInParams, resolveAvailableModelRefs } from "@/lib/model-pool";
+import { hasBuiltInParams, resolveAvailableModelRefs, withGatewayModels } from "@/lib/model-pool";
 import {
   getGatewayModels,
+  getGeneratorModel,
   getPlayerModelPool,
+  getReviewModel,
+  getSummaryModel,
+  hasDashscopeKey,
+  hasTokendanceKey,
+  hasZenmuxKey,
+  isCustomKeyEnabled,
   setGatewayModels,
+  setGeneratorModel,
   setPlayerModelPool,
+  setReviewModel,
+  setSummaryModel,
 } from "@/lib/api-keys";
 import {
   getTokendanceApiKey,
@@ -30,7 +40,7 @@ import {
   setTokendanceBaseUrl,
 } from "@/lib/api-keys";
 import { DEFAULT_GATEWAY_BASE_URL, normalizeGatewayBaseUrl } from "@/lib/gateway-url";
-import { PLAYER_MODELS, filterPlayerModels, type Role } from "@/types/game";
+import { ALL_MODELS, PLAYER_MODELS, filterPlayerModels, type ModelRef, type Role } from "@/types/game";
 
 /** Return the unique roles present in the default configuration for a given player count. */
 function getAvailableRoles(playerCount: number): Role[] {
@@ -138,6 +148,10 @@ export function GameSetupModal({
   // 惰性初始化直接讀 localStorage；之後每次變更都同步寫回，因此不需要 effect 同步。
   const [modelPool, setModelPool] = useState<string[]>(() => getPlayerModelPool());
   const [modelPoolNotice, setModelPoolNotice] = useState("");
+  // 產生／摘要／覆盤模型：任何模式（專案／TokenPay／自訂 Key）都能在這裡選，存 localStorage。
+  const [generatorModel, setGeneratorModelState] = useState(() => getGeneratorModel());
+  const [summaryModel, setSummaryModelState] = useState(() => getSummaryModel());
+  const [reviewModel, setReviewModelState] = useState(() => getReviewModel());
   // AI 服務連線：自帶 gateway（伺服器位址 + Key），同樣只存在本機瀏覽器。
   const [gatewayBaseUrl, setGatewayBaseUrlState] = useState(() => getTokendanceBaseUrl());
   const [gatewayKey, setGatewayKeyState] = useState(() => getTokendanceApiKey());
@@ -151,6 +165,37 @@ export function GameSetupModal({
     () => resolveAvailableModelRefs(gatewayModels, builtinModelOptions),
     [gatewayModels, builtinModelOptions],
   );
+
+  // 產生／摘要／覆盤可選的模型：自訂 Key 模式用「已設定 provider 的完整清單」，
+  // 其餘模式與 AI 玩家模型池同一份（內建或自帶 gateway 清單）。
+  const modelConfigOptions = useMemo(() => {
+    if (!isCustomKeyEnabled()) return playerModelOptions;
+    const allowedProviders = new Set<ModelRef["provider"]>();
+    if (hasZenmuxKey()) allowedProviders.add("zenmux");
+    if (hasDashscopeKey()) allowedProviders.add("dashscope");
+    if (hasTokendanceKey()) allowedProviders.add("tokendance");
+    if (allowedProviders.size === 0) return playerModelOptions;
+    return withGatewayModels(
+      ALL_MODELS.filter((ref) => allowedProviders.has(ref.provider)),
+      gatewayModels,
+    );
+  }, [playerModelOptions, gatewayModels]);
+
+  const handleGeneratorModelChange = (model: string) => {
+    setGeneratorModelState(model);
+    setGeneratorModel(model);
+  };
+
+  const handleSummaryModelChange = (model: string) => {
+    setSummaryModelState(model);
+    setSummaryModel(model);
+  };
+
+  const handleReviewModelChange = (model: string) => {
+    setReviewModelState(model);
+    setReviewModel(model);
+  };
+
   const [connectionState, setConnectionState] = useState<"idle" | "testing" | "ok" | "fail">("idle");
   const [connectionMessage, setConnectionMessage] = useState("");
   // gateway 有清單、但沒有內建參數的模型（會用預設 temperature／reasoning）。
@@ -431,6 +476,55 @@ export function GameSetupModal({
                   {t("gameSetup.connection.listHint", { count: gatewayModels.length })}
                 </div>
               ) : null}
+            </div>
+          </div>
+
+          <div className="border-t border-[var(--border-color)] pt-4">
+            <div className="text-sm font-medium text-[var(--text-primary)]">{t("gameSetup.modelConfig.title")}</div>
+            <div className="mt-1 text-xs text-[var(--text-muted)]">{t("gameSetup.modelConfig.description")}</div>
+            <div className="mt-2 space-y-2">
+              <div className="space-y-1">
+                <div className="text-xs text-[var(--text-muted)]">{t("gameSetup.modelConfig.generator")}</div>
+                <Select
+                  value={modelConfigOptions.some((ref) => ref.model === generatorModel) ? generatorModel : ""}
+                  onValueChange={handleGeneratorModelChange}
+                >
+                  <SelectTrigger><SelectValue placeholder={t("customKey.selectModel")} /></SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {modelConfigOptions.map((ref) => (
+                      <SelectItem key={`${ref.provider}:${ref.model}`} value={ref.model} label={ref.model} />
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs text-[var(--text-muted)]">{t("gameSetup.modelConfig.summary")}</div>
+                <Select
+                  value={modelConfigOptions.some((ref) => ref.model === summaryModel) ? summaryModel : ""}
+                  onValueChange={handleSummaryModelChange}
+                >
+                  <SelectTrigger><SelectValue placeholder={t("customKey.selectModel")} /></SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {modelConfigOptions.map((ref) => (
+                      <SelectItem key={`${ref.provider}:${ref.model}`} value={ref.model} label={ref.model} />
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs text-[var(--text-muted)]">{t("gameSetup.modelConfig.review")}</div>
+                <Select
+                  value={modelConfigOptions.some((ref) => ref.model === reviewModel) ? reviewModel : ""}
+                  onValueChange={handleReviewModelChange}
+                >
+                  <SelectTrigger><SelectValue placeholder={t("customKey.selectModel")} /></SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {modelConfigOptions.map((ref) => (
+                      <SelectItem key={`${ref.provider}:${ref.model}`} value={ref.model} label={ref.model} />
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 

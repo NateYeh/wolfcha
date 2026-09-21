@@ -88,7 +88,8 @@ export function resolveApiKeySource(model: string): ApiKeySource {
 
 function resolveModelForSource(source: ModelSource, model: string): string {
   if (source === "custom") return model;
-  if (source === "tokenpay") return AVAILABLE_MODELS[0]?.model ?? model;
+  // 專案與 TokenPay 都尊重使用者在 UI 選定的模型，但必須是內建或閘道器放行的模型；
+  // 舊存檔換來不合法模型時才退回預設，避免每次呼叫都打不通。
   return resolveModelForBuiltin(model);
 }
 

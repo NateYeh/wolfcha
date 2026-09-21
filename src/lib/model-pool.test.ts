@@ -24,8 +24,8 @@ test("模型池來源：內建與閘道器模型合併時不重複", () => {
   const merged = withGatewayModels(PLAYER_MODELS, ["gemma4:31b-cloud", "new-model:x"]);
   const keys = merged.map((ref) => `${ref.provider}:${ref.model}`);
   assert.deepEqual(keys, [
-    "tokendance:glm-5.3-flash:cloud",
     "tokendance:gemma4:31b-cloud",
+    "tokendance:glm-5.3-flash:cloud",
     "tokendance:new-model:x",
   ]);
   assert.equal(new Set(keys).size, keys.length);

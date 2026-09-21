@@ -890,6 +890,7 @@ export function WelcomeScreen({
         <div className="wc-contract-vignette" aria-hidden="true" />
 
         <GameSetupModal
+          key={isSetupOpen ? "setup-open" : "setup-closed"}
           open={isSetupOpen}
           onOpenChange={setIsSetupOpen}
           playerCount={playerCount}
