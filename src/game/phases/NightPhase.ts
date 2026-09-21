@@ -17,6 +17,7 @@ import {
   generateWitchAction,
   generateWolfAction,
   generateWolfTeamPlan,
+  humanWolfNeedsNightInput,
   transitionPhase as rawTransitionPhase,
 } from "@/lib/game-master";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
@@ -256,17 +257,26 @@ export class NightPhase extends GamePhase {
     const uiText = getUiText();
     const witch = state.players.find((p) => p.role === "Witch" && p.alive);
     const canWitchAct = witch && (!state.roleAbilities.witchHealUsed || !state.roleAbilities.witchPoisonUsed);
+    // 真人狼還欠第一夜分工：停在原地等前端對話框寫入計畫，
+    // 不能帶著空計畫走完夜裡（白天狼隊只能各自為戰）。
+    if (humanWolfNeedsNightInput(state)) return state;
     let currentState = state;
     // 第一夜狼隊商議（主導狼計畫）：刀口落定後、天亮公佈前生成一次，
     // 之後全程注入狼視角；失敗時全場照舊無協調（不攝錯——協調是增強，不是必要步驟）。
     // 所有夜間路徑（純 AI、真人守衛、真人狼）都匯流到這裡，掛點唯一。
+    // 但有存活真人狼時改由真人指派（前端對話框寫入 wolfTeamPlan），這裡不搶著生成。
     if (currentState.day === 1 && !currentState.wolfTeamPlan) {
-      const plan = await generateWolfTeamPlan(currentState);
-      await runtime.waitForUnpause();
-      if (!runtime.isTokenValid(runtime.token)) return currentState;
-      if (plan) {
-        currentState = { ...currentState, wolfTeamPlan: plan };
-        runtime.setGameState(currentState);
+      const aliveHumanWolf = currentState.players.find(
+        (p) => isWolfRole(p.role) && p.alive && p.isHuman
+      );
+      if (!aliveHumanWolf) {
+        const plan = await generateWolfTeamPlan(currentState);
+        await runtime.waitForUnpause();
+        if (!runtime.isTokenValid(runtime.token)) return currentState;
+        if (plan) {
+          currentState = { ...currentState, wolfTeamPlan: plan };
+          runtime.setGameState(currentState);
+        }
       }
     }
     currentState = this.transitionPhase(currentState, "NIGHT_WITCH_ACTION");
@@ -409,8 +419,7 @@ export class NightPhase extends GamePhase {
     currentState = await this.runWolfAction(currentState, runtime);
     if (!runtime.isTokenValid(runtime.token)) return;
 
-    const humanWolf = currentState.players.find((p) => isWolfRole(p.role) && p.alive && p.isHuman);
-    if (humanWolf && currentState.nightActions.wolfTarget === undefined) {
+    if (humanWolfNeedsNightInput(currentState)) {
       return;
     }
 
@@ -453,8 +462,7 @@ export class NightPhase extends GamePhase {
     const currentState = await this.runWolfAction(state, runtime);
     if (!runtime.isTokenValid(runtime.token)) return;
 
-    const humanWolf = currentState.players.find((p) => isWolfRole(p.role) && p.alive && p.isHuman);
-    if (humanWolf && currentState.nightActions.wolfTarget === undefined) {
+    if (humanWolfNeedsNightInput(currentState)) {
       return;
     }
 
@@ -466,6 +474,9 @@ export class NightPhase extends GamePhase {
   }
 
   private async continueNightAfterWolf(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
+    // 真人狼還欠第一夜分工時不能往下走：夜間流程要停在狼人階段，
+    // 等前端對話框寫入計畫（寫入後由 handleWolfTeamPlanSubmit 推下去）。
+    if (humanWolfNeedsNightInput(state)) return;
     const currentState = await this.runWitchAction(state, runtime);
     if (!runtime.isTokenValid(runtime.token)) return;
 

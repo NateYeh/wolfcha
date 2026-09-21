@@ -312,6 +312,8 @@ export interface GameState {
   };
   /** 第一夜狼隊商定的分工（主導狼計畫）；生成失敗或無 AI 狼時為 undefined，全場照舊無協調。 */
   wolfTeamPlan?: WolfTeamPlan;
+  /** 真人狼把第一夜分工交還 AI 主導狼；true 才不會再擋著等他指派（AI 生成失敗也算交還）。 */
+  wolfTeamPlanDelegated?: boolean;
   /** 賽後感言時各 AI 角色的 MVP／SVP 票（含理由）；投票流程跑完前為 []。 */
   endGameVotes?: EndGameVote[];
   /** 賽後投票流程是否已跑完（含失敗跳過）；系統分析要等這個旗標才計票。舊存檔為 undefined。 */

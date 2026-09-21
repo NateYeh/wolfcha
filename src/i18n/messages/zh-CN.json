@@ -1598,6 +1598,24 @@
     "consensus": "狼队已达成一致！",
     "hint": "点击玩家头像选择击杀目标"
   },
+  "wolfTeamPlanDialog": {
+    "title": "狼队分工（第一夜）",
+    "subtitle": "你是 {seat}号{name}（真人）。天亮就是警长竞选，今晚由你指派狼队分工。",
+    "you": "你",
+    "legend": "悍跳＝跳预言家抢线；冲锋＝站悍跳狼的线带票；倒勾＝站真预言家的线藏进好人堆；潜伏＝不站边、留到残局。",
+    "signup": "上警",
+    "hint": "只有一位狼可以挂「悍跳」；点了别人，原来的悍跳会自动退回潜伏。悍跳者必上警（系统会自动补上）。",
+    "reasonLabel": "计划意图（可选，一句话讲给队友听）",
+    "reasonPlaceholder": "例：三号悍跳，八号倒勾，别急着保我",
+    "confirm": "确认分工",
+    "delegate": "交给 AI 决定",
+    "posture": {
+      "jump": "悍跳",
+      "charge": "冲锋",
+      "hook": "倒勾",
+      "deep": "潜伏"
+    }
+  },
   "dayPhase": {
     "organizing": "（正在组织语言…）",
     "interrupted": "（话音被打断了）",

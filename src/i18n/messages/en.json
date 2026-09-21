@@ -1598,6 +1598,24 @@
     "consensus": "Wolves have reached consensus!",
     "hint": "Tap a player avatar to choose a kill target"
   },
+  "wolfTeamPlanDialog": {
+    "title": "Wolf Team Assignment (Night 1)",
+    "subtitle": "You are seat {seat} {name} (human). The badge election starts at dawn — tonight you assign your team's roles.",
+    "you": "You",
+    "legend": "Jump = fake-claim Seer to split the real line; Charge = back the jumper and herd the votes; Hook = side with the real Seer to hide inside the pack; Deep = stay unaligned and survive to the endgame.",
+    "signup": "Run",
+    "hint": "Only one wolf can be the jumper; picking another one clears the previous pick. The jumper always runs for the badge (added automatically).",
+    "reasonLabel": "Intent (optional, one line for your teammates)",
+    "reasonPlaceholder": "e.g. seat 3 jumps, seat 8 hooks, don't defend me too early",
+    "confirm": "Confirm",
+    "delegate": "Let the AI decide",
+    "posture": {
+      "jump": "Jump",
+      "charge": "Charge",
+      "hook": "Hook",
+      "deep": "Deep"
+    }
+  },
   "dayPhase": {
     "organizing": "(Gathering thoughts...)",
     "interrupted": "(Interrupted)",

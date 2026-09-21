@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
 import { getGatewayModels } from "@/lib/api-keys";
-import { PLAYER_MODELS, isWolfRole, type GameState, type Player, type Phase, type Role, type DevPreset, type ModelRef, type StartGameOptions } from "@/types/game";
+import { PLAYER_MODELS, isWolfRole, type GameState, type Player, type Phase, type Role, type DevPreset, type ModelRef, type StartGameOptions, type WolfTeamPlan } from "@/types/game";
 import { gameStateAtom, isValidTransition, clearPersistedGameState, isRestorableGameState } from "@/store/game-machine";
 import { getGeneratorModel, getModelSource } from "@/lib/api-keys";
 import {
@@ -36,6 +36,9 @@ import {
   generateDailySummary,
   getRandomHumanSeat,
   generateWhiteWolfKingBoomDecision,
+  generateWolfTeamPlan,
+  buildHumanWolfTeamPlan,
+  type HumanWolfTeamPlanChoice,
 } from "@/lib/game-master";
 import { buildGenshinModelRefs, generateGenshinModeCharacters, sampleModelRefs, type GeneratedCharacter } from "@/lib/character-generator";
 import { sampleRosterCharacters } from "@/lib/character-roster";
@@ -2216,6 +2219,65 @@ export function useGameLogic() {
   // ============================================
   // 返回 API
   // ============================================
+  /**
+   * 真人狼還欠第一夜分工嗎：真人狼在場、第一夜、尚未寫入計畫（也未交還 AI）時
+   * 由前端對話框接手；NightPhase 的夜間流程同步擋在同一個條件上。
+   */
+  const awaitingWolfTeamPlan = Boolean(
+    humanPlayer &&
+      humanPlayer.alive &&
+      isWolfRole(humanPlayer.role) &&
+      gameState.day === 1 &&
+      !gameState.wolfTeamPlan &&
+      !gameState.wolfTeamPlanDelegated &&
+      gameState.phase === "NIGHT_WOLF_ACTION"
+  );
+
+  /**
+   * 寫入（或交還）第一夜分工後把夜間流程推下去：
+   * 刀口若已經選好，流程正停在女巫階段前等這份分工；這一步就是把它放行。
+   */
+  const continueNightAfterWolfTeamPlan = useCallback(
+    (next: GameState) => {
+      if (next.phase !== "NIGHT_WOLF_ACTION") return;
+      if (next.nightActions.wolfTarget === undefined) return;
+      void runNightPhaseAction(next, getToken(), "CONTINUE_NIGHT_AFTER_WOLF");
+    },
+    [getToken, runNightPhaseAction]
+  );
+
+  /** 真人狼指派第一夜分工：清洗失敗（座位不合法等）就整筆忽略，讓玩家重填。 */
+  const handleWolfTeamPlanSubmit = useCallback(
+    (choice: HumanWolfTeamPlanChoice) => {
+      const plan = buildHumanWolfTeamPlan(gameState, choice);
+      if (!plan) {
+        console.warn("[wolfcha] 真人狼分工不成立，忽略本次指派", choice);
+        return;
+      }
+      const nextState: GameState = { ...gameState, wolfTeamPlan: plan };
+      setGameState(nextState);
+      continueNightAfterWolfTeamPlan(nextState);
+    },
+    [continueNightAfterWolfTeamPlan, gameState, setGameState]
+  );
+
+  /** 真人狼把分工交還 AI 主導狼：生成失敗也照樣放行（旗標才是放行依據），不能卡住夜間流程。 */
+  const handleWolfTeamPlanDelegate = useCallback(async () => {
+    let plan: WolfTeamPlan | null = null;
+    try {
+      plan = await generateWolfTeamPlan(gameState);
+    } catch (error) {
+      console.warn("[wolfcha] 交還 AI 商議狼隊分工失敗，本局照舊無協調", error);
+    }
+    const nextState: GameState = {
+      ...gameState,
+      ...(plan ? { wolfTeamPlan: plan } : {}),
+      wolfTeamPlanDelegated: true,
+    };
+    setGameState(nextState);
+    continueNightAfterWolfTeamPlan(nextState);
+  }, [continueNightAfterWolfTeamPlan, gameState, setGameState]);
+
   return {
     // State
     humanName: humanName || "",
@@ -2251,5 +2313,8 @@ export function useGameLogic() {
     markCurrentSegmentCompleted,
     isCurrentSegmentCompleted,
     shouldAutoAdvanceToNextAI,
+    awaitingWolfTeamPlan,
+    handleWolfTeamPlanSubmit,
+    handleWolfTeamPlanDelegate,
   };
 }

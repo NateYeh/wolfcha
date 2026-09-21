@@ -205,3 +205,78 @@ test("主導狼刀口提示的時間錨點：死訊在「同一天天亮」公�
   setLocale("zh-CN");
   assert.match(getI18n().t("prompts.night.wolfTeamPlan.knifeLineNone"), /空刀/);
 });
+test("buildHumanWolfTeamPlan: 真人狼可以指派自己悍跳（不再排除真人座位）", async () => {
+  const { buildHumanWolfTeamPlan } = await import("./game-master");
+  const state = makeState(makePlayers());
+  const plan = buildHumanWolfTeamPlan(state, {
+    jumpSeat: 8, // seat 7＝真人狼
+    signupSeats: [2, 8],
+    postures: { "2": "charge", "4": "hook", "8": "jump" },
+    reason: "我來悍跳，你們跟著我的線走",
+  });
+  assert.ok(plan, "有存活真人狼時必須產出計畫");
+  assert.equal(plan.jumpSeat, 7, "真人狼可以自己被指派為悍跳者");
+  assert.equal(plan.captainSeat, 7, "真人指派時主導狼就是真人自己");
+  assert.deepEqual(plan.signupSeats, [1, 7], "上警座位轉 0 基");
+  assert.equal(plan.postures["7"], "jump");
+  assert.equal(plan.postures["1"], "charge");
+  assert.equal(plan.postures["3"], "hook");
+});
+
+test("buildHumanWolfTeamPlan: 非狼座位與非法分工代碼一律清洗", async () => {
+  const { buildHumanWolfTeamPlan } = await import("./game-master");
+  const state = makeState(makePlayers());
+  const plan = buildHumanWolfTeamPlan(state, {
+    jumpSeat: 2, // seat 1＝狼，合法
+    signupSeats: [2, 5, 99], // seat 4＝女巫、99 不存在，都要清掉
+    postures: { "2": "jump", "4": "boss", "8": "jump" }, // 非法碼降 deep；多出來的 jump 轉 charge
+    reason: "  一句話  ",
+  });
+  assert.ok(plan);
+  assert.equal(plan.jumpSeat, 1);
+  assert.deepEqual(plan.signupSeats, [1], "悍跳者自動補上，其餘非狼座位清掉");
+  assert.equal(plan.postures["1"], "jump");
+  assert.equal(plan.postures["3"], "deep");
+  assert.equal(plan.postures["7"], "charge");
+  assert.equal(plan.reason, "一句話");
+});
+
+test("buildHumanWolfTeamPlan: 沒有存活真人狼時回傳 null（走 AI 主導狼）", async () => {
+  const { buildHumanWolfTeamPlan } = await import("./game-master");
+  const allAi = makePlayers().map((player) => ({ ...player, isHuman: false }));
+  assert.equal(buildHumanWolfTeamPlan(makeState(allAi), { jumpSeat: 2 }), null);
+
+  const deadHuman = makePlayers().map((player) =>
+    player.isHuman ? { ...player, alive: false } : player
+  );
+  assert.equal(buildHumanWolfTeamPlan(makeState(deadHuman), { jumpSeat: 2 }), null);
+});
+
+test("humanWolfNeedsNightInput: 真人狼未選刀口或第一夜未指派分工前都要擋", async () => {
+  const { humanWolfNeedsNightInput } = await import("./game-master");
+  const players = makePlayers();
+
+  // 什麼都還沒做
+  assert.equal(humanWolfNeedsNightInput(makeState(players)), true);
+
+  // 選了刀口但第一夜還沒指派分工
+  const knifed = makeState(players);
+  knifed.nightActions = { wolfTarget: 2 };
+  assert.equal(humanWolfNeedsNightInput(knifed), true);
+
+  // 指派完分工就放行
+  const planned = { ...knifed, wolfTeamPlan: { captainSeat: 7, jumpSeat: null, signupSeats: [], postures: {}, reason: "", day: 1 } };
+  assert.equal(humanWolfNeedsNightInput(planned), false);
+
+  // 交還 AI 主導狼（即使生成失敗沒計畫）也要放行，否則夜間流程會卡死
+  assert.equal(humanWolfNeedsNightInput({ ...knifed, wolfTeamPlanDelegated: true }), false);
+
+  // 第二夜起不再要求分工
+  assert.equal(humanWolfNeedsNightInput({ ...knifed, day: 2 }), false);
+
+  // 沒有存活真人狼（全 AI 或真人狼已死）
+  const allAi = makePlayers().map((player) => ({ ...player, isHuman: false }));
+  assert.equal(humanWolfNeedsNightInput(makeState(allAi)), false);
+  const deadHuman = makePlayers().map((player) => (player.isHuman ? { ...player, alive: false } : player));
+  assert.equal(humanWolfNeedsNightInput(makeState(deadHuman)), false);
+});

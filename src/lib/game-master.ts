@@ -2149,6 +2149,59 @@ export async function generateWolfTeamPlan(
   }
 }
 
+/**
+ * 真人狼自己指派的狼隊分工（第一夜）。與 AI 主導狼計畫同一套清洗，
+ * 差別只在不再排除真人座位：真人可以指定任何人（含自己）悍跳。
+ * 無存活真人狼或無存活狼時回傳 null。
+ */
+export interface HumanWolfTeamPlanChoice {
+  /** 悍跳者座位（1 基）；0 或 null＝本局不跳。 */
+  jumpSeat?: number | null;
+  /** 上警的狼座位（1 基）；悍跳者由 normalizeWolfTeamPlan 自動補上。 */
+  signupSeats?: number[];
+  /** 各狼分工代碼，鍵為 1 基座位字串。 */
+  postures?: Record<string, unknown>;
+  /** 真人講給隊友聽的一句話計畫意圖。 */
+  reason?: string;
+}
+
+export function buildHumanWolfTeamPlan(
+  state: GameState,
+  choice: HumanWolfTeamPlanChoice
+): WolfTeamPlan | null {
+  const aliveWolves = state.players.filter((p) => isWolfRole(p.role) && p.alive);
+  const humanWolf = aliveWolves.find((p) => p.isHuman);
+  if (!humanWolf) return null;
+  return normalizeWolfTeamPlan(
+    {
+      jumpSeat: choice.jumpSeat ?? 0,
+      signupSeats: choice.signupSeats ?? [],
+      postures: choice.postures ?? {},
+      reason: choice.reason ?? "",
+    },
+    {
+      wolfSeats: aliveWolves.map((wolf) => wolf.seat),
+      humanSeats: [],
+      captainSeat: humanWolf.seat,
+      day: state.day,
+    }
+  );
+}
+
+/**
+ * 真人狼還欠第一夜夜間輸入嗎：
+ * - 還沒選刀口
+ * - 第一夜還沒指派狼隊分工（沒指派就進白天，狼隊只能各自為戰）
+ * 交還 AI 主導狼（wolfTeamPlanDelegated）或該局無存活真人狼時都不再擋。
+ * NightPhase 的夜間流程與前端對話框共用這個判斷，兩邊必須一致才不會互等卡死。
+ */
+export function humanWolfNeedsNightInput(state: GameState): boolean {
+  const humanWolf = state.players.find((p) => isWolfRole(p.role) && p.alive && p.isHuman);
+  if (!humanWolf) return false;
+  if (state.nightActions.wolfTarget === undefined) return true;
+  return state.day === 1 && !state.wolfTeamPlan && !state.wolfTeamPlanDelegated;
+}
+
 export type WitchAction =
   | { type: "save"; reason?: string }
   | { type: "poison"; target: number; reason?: string }

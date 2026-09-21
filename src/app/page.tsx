@@ -45,6 +45,7 @@ import { BottomActionPanel } from "@/components/game/BottomActionPanel";
 import { Notebook } from "@/components/game/Notebook";
 import { GameBackground } from "@/components/game/GameBackground";
 import { PlayerDetailModal } from "@/components/game/PlayerDetailModal";
+import { WolfTeamPlanDialog } from "@/components/game/WolfTeamPlanDialog";
 import { RoleRevealOverlay } from "@/components/game/RoleRevealOverlay";
 import { NightActionOverlay, type NightActionOverlayType } from "@/components/game/NightActionOverlay";
 import { TutorialOverlay, type TutorialPayload } from "@/components/game/TutorialOverlay";
@@ -172,6 +173,9 @@ export default function Home() {
     advanceSpeech,
     markCurrentSegmentCompleted,
     shouldAutoAdvanceToNextAI,
+    awaitingWolfTeamPlan,
+    handleWolfTeamPlanSubmit,
+    handleWolfTeamPlanDelegate,
   } = useGameLogic();
   const { settings, setBgmVolume, setSoundEnabled, setAiVoiceEnabled, setGenshinMode, setSpectatorMode, setAcquaintanceMode, setAutoAdvanceDialogueEnabled } = useSettings();
   const { bgmVolume, isSoundEnabled, isAiVoiceEnabled, isGenshinMode, isSpectatorMode, isAcquaintanceGame, isAutoAdvanceDialogueEnabled } = settings;
@@ -1725,6 +1729,16 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 真人狼的第一夜分工（有真人狼時取代 AI 主導狼） */}
+      {awaitingWolfTeamPlan && humanPlayer && (
+        <WolfTeamPlanDialog
+          gameState={gameState}
+          humanPlayer={humanPlayer}
+          onSubmit={handleWolfTeamPlanSubmit}
+          onDelegate={() => void handleWolfTeamPlanDelegate()}
+        />
+      )}
 
       {/* 玩家详情弹窗 */}
       <PlayerDetailModal
