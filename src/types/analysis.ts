@@ -119,6 +119,8 @@ export type DeathCause = "killed" | "exiled" | "poisoned" | "shot" | "milk" | "b
 export interface PlayerSnapshot {
   playerId: string;
   seat: number;
+  /** 角色池的穩定 id（人類玩家為 undefined）；生涯統計的查詢 key。 */
+  characterId?: string;
   name: string;
   avatar: string;
   /** 角色性別：決定頭像发型與角色一致（人類玩家可能沒有）。 */

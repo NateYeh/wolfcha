@@ -32,7 +32,7 @@ function toPlayerAward(player: Player, reason: string): PlayerAward {
     playerId: player.playerId,
     playerName: player.displayName,
     reason,
-    avatar: player.avatarSeed || player.displayName,
+    avatar: player.avatarSeed || player.characterId || player.displayName,
     gender: player.agentProfile?.persona?.gender,
     avatarStyle: player.avatarStyle,
     role: player.role,

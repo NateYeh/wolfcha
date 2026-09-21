@@ -345,6 +345,7 @@ export function setupPlayers(
       players.push({
         playerId,
         seat,
+        characterId: character.id,
         displayName: character.displayName,
         avatarSeed: character.avatarSeed ?? playerId,
         avatarStyle: character.avatarStyle,

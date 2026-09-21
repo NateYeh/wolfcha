@@ -400,7 +400,7 @@ const buildAcquaintanceNotes = (state: GameState, player: Player): string => {
       if (mind.selfProtection) traits.push(t("promptUtils.acquaintance.fieldSelfProtect", { v: mind.selfProtection }));
       if (mind.tablePresence) traits.push(t("promptUtils.acquaintance.fieldPresence", { v: mind.tablePresence }));
     }
-    const stat = state.characterStats?.[other.displayName];
+    const stat = state.characterStats?.[other.characterId ?? other.displayName];
     const record = stat
       ? t("promptUtils.acquaintance.statsLine", {
         games: stat.games,

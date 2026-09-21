@@ -133,6 +133,8 @@ export interface AgentProfile {
 export interface Player {
   playerId: string;
   seat: number;
+  /** 角色池的穩定 id（人類玩家與 AI 即時生成角色為 undefined）；統計與熟人局的 key。 */
+  characterId?: string;
   displayName: string;
   avatarSeed?: string;
   /** 頭像外觀的固定指定（手寫角色用）；未指定時依 gender＋seed 產生。 */

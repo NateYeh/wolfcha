@@ -56,6 +56,7 @@ export function useGameAnalysis() {
       // 失败只 warn；服务端按 gameId 去重，分析重触发不会重复计场。
       const statRecords: CharacterStatRecord[] = gameState.players.map((p) => ({
         gameId: gameState.gameId,
+        characterId: p.characterId,
         name: p.displayName,
         alignment: p.alignment === "wolf" ? "wolf" : "village",
         won: (p.alignment === "wolf") === (winner === "wolf"),

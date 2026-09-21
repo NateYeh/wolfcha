@@ -1,0 +1,637 @@
+{
+  "ling-hu-chong": {
+    "zh-CN": "令狐冲",
+    "zh-TW": "令狐沖",
+    "en": "Linghu Chong"
+  },
+  "yi-lin": {
+    "zh-CN": "仪琳",
+    "zh-TW": "儀琳",
+    "en": "Yi Lin"
+  },
+  "duan-yu": {
+    "zh-CN": "段誉",
+    "zh-TW": "段譽",
+    "en": "Duan Yu"
+  },
+  "mei-chao-feng": {
+    "zh-CN": "梅超风",
+    "zh-TW": "梅超風",
+    "en": "Mei Chaofeng"
+  },
+  "guo-xiao-tian": {
+    "zh-CN": "郭啸天",
+    "zh-TW": "郭嘯天",
+    "en": "Guo Xiaotian"
+  },
+  "ren-ying-ying": {
+    "zh-CN": "任盈盈",
+    "zh-TW": "任盈盈",
+    "en": "Ren Yingying"
+  },
+  "lan-feng-huang": {
+    "zh-CN": "蓝凤凰",
+    "zh-TW": "藍鳳凰",
+    "en": "Lan Fenghuang"
+  },
+  "feng-qing-yang": {
+    "zh-CN": "风清扬",
+    "zh-TW": "風清揚",
+    "en": "Feng Qingyang"
+  },
+  "xiang-wen-tian": {
+    "zh-CN": "向问天",
+    "zh-TW": "向問天",
+    "en": "Xiang Wentian"
+  },
+  "tian-bo-guang": {
+    "zh-CN": "田伯光",
+    "zh-TW": "田伯光",
+    "en": "Tian Boguang"
+  },
+  "qiao-feng": {
+    "zh-CN": "乔峰",
+    "zh-TW": "喬峰",
+    "en": "Qiao Feng"
+  },
+  "wang-yu-yan": {
+    "zh-CN": "王语嫣",
+    "zh-TW": "王語嫣",
+    "en": "Wang Yuyan"
+  },
+  "wei-xiao-bao": {
+    "zh-CN": "韦小宝",
+    "zh-TW": "韋小寶",
+    "en": "Wei Xiaobao"
+  },
+  "huang-rong": {
+    "zh-CN": "黄蓉",
+    "zh-TW": "黃蓉",
+    "en": "Huang Rong"
+  },
+  "guo-jing": {
+    "zh-CN": "郭靖",
+    "zh-TW": "郭靖",
+    "en": "Guo Jing"
+  },
+  "zhao-min": {
+    "zh-CN": "赵敏",
+    "zh-TW": "趙敏",
+    "en": "Zhao Min"
+  },
+  "zhou-bo-tong": {
+    "zh-CN": "周伯通",
+    "zh-TW": "周伯通",
+    "en": "Zhou Botong"
+  },
+  "lin-ping-zhi": {
+    "zh-CN": "林平之",
+    "zh-TW": "林平之",
+    "en": "Lin Pingzhi"
+  },
+  "qu-fei-yan": {
+    "zh-CN": "曲非烟",
+    "zh-TW": "曲非煙",
+    "en": "Qu Feiyan"
+  },
+  "mu-nian-ci": {
+    "zh-CN": "穆念慈",
+    "zh-TW": "穆念慈",
+    "en": "Mu Nianci"
+  },
+  "yang-guo": {
+    "zh-CN": "杨过",
+    "zh-TW": "楊過",
+    "en": "Yang Guo"
+  },
+  "zhang-wu-ji": {
+    "zh-CN": "张无忌",
+    "zh-TW": "張無忌",
+    "en": "Zhang Wuji"
+  },
+  "jin-lun-fa-wang": {
+    "zh-CN": "金轮法王",
+    "zh-TW": "金輪法王",
+    "en": "Jinlun Fawang"
+  },
+  "dong-fang-bu-bai": {
+    "zh-CN": "东方不败",
+    "zh-TW": "東方不敗",
+    "en": "Dongfang Bubai"
+  },
+  "xiao-long-nu": {
+    "zh-CN": "小龙女",
+    "zh-TW": "小龍女",
+    "en": "Xiaolongnu"
+  },
+  "zhou-zhi-ruo": {
+    "zh-CN": "周芷若",
+    "zh-TW": "周芷若",
+    "en": "Zhou Zhiruo"
+  },
+  "mie-jue-shi-tai": {
+    "zh-CN": "灭绝师太",
+    "zh-TW": "滅絕師太",
+    "en": "Miejue Shitai"
+  },
+  "guo-xiang": {
+    "zh-CN": "郭襄",
+    "zh-TW": "郭襄",
+    "en": "Guo Xiang"
+  },
+  "li-mo-chou": {
+    "zh-CN": "李莫愁",
+    "zh-TW": "李莫愁",
+    "en": "Li Mochou"
+  },
+  "xiao-zhao": {
+    "zh-CN": "小昭",
+    "zh-TW": "小昭",
+    "en": "Xiao Zhao"
+  },
+  "yin-li": {
+    "zh-CN": "殷离",
+    "zh-TW": "殷離",
+    "en": "Yin Li"
+  },
+  "a-zhu": {
+    "zh-CN": "阿朱",
+    "zh-TW": "阿朱",
+    "en": "A Zhu"
+  },
+  "tian-shan-tong-lao": {
+    "zh-CN": "天山童姥",
+    "zh-TW": "天山童姥",
+    "en": "Tianshan Tonglao"
+  },
+  "huo-qing-tong": {
+    "zh-CN": "霍青桐",
+    "zh-TW": "霍青桐",
+    "en": "Huo Qingtong"
+  },
+  "cheng-ling-su": {
+    "zh-CN": "程灵素",
+    "zh-TW": "程靈素",
+    "en": "Cheng Lingsu"
+  },
+  "hong-qi-gong": {
+    "zh-CN": "洪七公",
+    "zh-TW": "洪七公",
+    "en": "Hong Qigong"
+  },
+  "huang-yao-shi": {
+    "zh-CN": "黄药师",
+    "zh-TW": "黃藥師",
+    "en": "Huang Yaoshi"
+  },
+  "ou-yang-feng": {
+    "zh-CN": "欧阳锋",
+    "zh-TW": "歐陽鋒",
+    "en": "Ouyang Feng"
+  },
+  "yi-deng-da-shi": {
+    "zh-CN": "一灯大师",
+    "zh-TW": "一燈大師",
+    "en": "Yideng Dashi"
+  },
+  "zhang-san-feng": {
+    "zh-CN": "张三丰",
+    "zh-TW": "張三丰",
+    "en": "Zhang Sanfeng"
+  },
+  "xie-xun": {
+    "zh-CN": "谢逊",
+    "zh-TW": "謝遜",
+    "en": "Xie Xun"
+  },
+  "mu-rong-fu": {
+    "zh-CN": "慕容复",
+    "zh-TW": "慕容復",
+    "en": "Murong Fu"
+  },
+  "yue-bu-qun": {
+    "zh-CN": "岳不群",
+    "zh-TW": "岳不群",
+    "en": "Yue Buqun"
+  },
+  "ren-wo-xing": {
+    "zh-CN": "任我行",
+    "zh-TW": "任我行",
+    "en": "Ren Woxing"
+  },
+  "hu-fei": {
+    "zh-CN": "胡斐",
+    "zh-TW": "胡斐",
+    "en": "Hu Fei"
+  },
+  "wei-yi-xiao": {
+    "zh-CN": "韦一笑",
+    "zh-TW": "韋一笑",
+    "en": "Wei Yixiao"
+  },
+  "yang-kang": {
+    "zh-CN": "杨康",
+    "zh-TW": "楊康",
+    "en": "Yang Kang"
+  },
+  "chen-xuan-feng": {
+    "zh-CN": "陈玄风",
+    "zh-TW": "陳玄風",
+    "en": "Chen Xuanfeng"
+  },
+  "qiu-qian-ren": {
+    "zh-CN": "裘千仞",
+    "zh-TW": "裘千仞",
+    "en": "Qiu Qianren"
+  },
+  "ou-yang-ke": {
+    "zh-CN": "欧阳克",
+    "zh-TW": "歐陽克",
+    "en": "Ouyang Ke"
+  },
+  "ke-zhen-e": {
+    "zh-CN": "柯镇恶",
+    "zh-TW": "柯鎮惡",
+    "en": "Ke Zhen'e"
+  },
+  "qiu-chu-ji": {
+    "zh-CN": "丘处机",
+    "zh-TW": "丘處機",
+    "en": "Qiu Chuji"
+  },
+  "ying-gu": {
+    "zh-CN": "瑛姑",
+    "zh-TW": "瑛姑",
+    "en": "Ying Gu"
+  },
+  "gong-sun-zhi": {
+    "zh-CN": "公孙止",
+    "zh-TW": "公孫止",
+    "en": "Gongsun Zhi"
+  },
+  "guo-fu": {
+    "zh-CN": "郭芙",
+    "zh-TW": "郭芙",
+    "en": "Guo Fu"
+  },
+  "ye-lv-qi": {
+    "zh-CN": "耶律齐",
+    "zh-TW": "耶律齊",
+    "en": "Yelv Qi"
+  },
+  "lu-wu-shuang": {
+    "zh-CN": "陆无双",
+    "zh-TW": "陸無雙",
+    "en": "Lu Wushuang"
+  },
+  "cheng-ying": {
+    "zh-CN": "程英",
+    "zh-TW": "程英",
+    "en": "Cheng Ying"
+  },
+  "qiu-qian-chi": {
+    "zh-CN": "裘千尺",
+    "zh-TW": "裘千尺",
+    "en": "Qiu Qianchi"
+  },
+  "song-qing-shu": {
+    "zh-CN": "宋青书",
+    "zh-TW": "宋青書",
+    "en": "Song Qingshu"
+  },
+  "yang-xiao": {
+    "zh-CN": "杨逍",
+    "zh-TW": "楊逍",
+    "en": "Yang Xiao"
+  },
+  "fan-yao": {
+    "zh-CN": "范遥",
+    "zh-TW": "範遙",
+    "en": "Fan Yao"
+  },
+  "yin-tian-zheng": {
+    "zh-CN": "殷天正",
+    "zh-TW": "殷天正",
+    "en": "Yin Tianzheng"
+  },
+  "cheng-kun": {
+    "zh-CN": "成昆",
+    "zh-TW": "成昆",
+    "en": "Cheng Kun"
+  },
+  "ji-xiao-fu": {
+    "zh-CN": "纪晓芙",
+    "zh-TW": "紀曉芙",
+    "en": "Ji Xiaofu"
+  },
+  "dai-qi-si": {
+    "zh-CN": "黛绮丝",
+    "zh-TW": "黛綺絲",
+    "en": "Dai Qisi"
+  },
+  "xu-zhu": {
+    "zh-CN": "虚竹",
+    "zh-TW": "虛竹",
+    "en": "Xuzhu"
+  },
+  "a-zi": {
+    "zh-CN": "阿紫",
+    "zh-TW": "阿紫",
+    "en": "A Zi"
+  },
+  "you-tan-zhi": {
+    "zh-CN": "游坦之",
+    "zh-TW": "游坦之",
+    "en": "You Tanzhi"
+  },
+  "duan-zheng-chun": {
+    "zh-CN": "段正淳",
+    "zh-TW": "段正淳",
+    "en": "Duan Zhengchun"
+  },
+  "duan-yan-qing": {
+    "zh-CN": "段延庆",
+    "zh-TW": "段延慶",
+    "en": "Duan Yanqing"
+  },
+  "jiu-mo-zhi": {
+    "zh-CN": "鸠摩智",
+    "zh-TW": "鳩摩智",
+    "en": "Jiumozhi"
+  },
+  "xiao-yuan-shan": {
+    "zh-CN": "萧远山",
+    "zh-TW": "蕭遠山",
+    "en": "Xiao Yuanshan"
+  },
+  "mu-rong-bo": {
+    "zh-CN": "慕容博",
+    "zh-TW": "慕容博",
+    "en": "Murong Bo"
+  },
+  "li-qiu-shui": {
+    "zh-CN": "李秋水",
+    "zh-TW": "李秋水",
+    "en": "Li Qiushui"
+  },
+  "sao-di-seng": {
+    "zh-CN": "扫地僧",
+    "zh-TW": "掃地僧",
+    "en": "Saodi Seng"
+  },
+  "mu-wan-qing": {
+    "zh-CN": "木婉清",
+    "zh-TW": "木婉清",
+    "en": "Mu Wanqing"
+  },
+  "yue-ling-shan": {
+    "zh-CN": "岳灵珊",
+    "zh-TW": "岳靈珊",
+    "en": "Yue Lingshan"
+  },
+  "zuo-leng-chan": {
+    "zh-CN": "左冷禅",
+    "zh-TW": "左冷禪",
+    "en": "Zuo Lengchan"
+  },
+  "qu-yang": {
+    "zh-CN": "曲洋",
+    "zh-TW": "曲洋",
+    "en": "Qu Yang"
+  },
+  "liu-zheng-feng": {
+    "zh-CN": "刘正风",
+    "zh-TW": "劉正風",
+    "en": "Liu Zhengfeng"
+  },
+  "yu-cang-hai": {
+    "zh-CN": "余沧海",
+    "zh-TW": "余滄海",
+    "en": "Yu Canghai"
+  },
+  "lv-zhu-weng": {
+    "zh-CN": "绿竹翁",
+    "zh-TW": "綠竹翁",
+    "en": "Lv Zhuweng"
+  },
+  "kang-xi": {
+    "zh-CN": "康熙",
+    "zh-TW": "康熙",
+    "en": "Kangxi"
+  },
+  "shuang-er": {
+    "zh-CN": "双儿",
+    "zh-TW": "雙兒",
+    "en": "Shuang'er"
+  },
+  "a-ke": {
+    "zh-CN": "阿珂",
+    "zh-TW": "阿珂",
+    "en": "A Ke"
+  },
+  "su-quan": {
+    "zh-CN": "苏荃",
+    "zh-TW": "蘇荃",
+    "en": "Su Quan"
+  },
+  "chen-jin-nan": {
+    "zh-CN": "陈近南",
+    "zh-TW": "陳近南",
+    "en": "Chen Jinnan"
+  },
+  "ao-bai": {
+    "zh-CN": "鳌拜",
+    "zh-TW": "鰲拜",
+    "en": "Aobai"
+  },
+  "hong-an-tong": {
+    "zh-CN": "洪安通",
+    "zh-TW": "洪安通",
+    "en": "Hong Antong"
+  },
+  "jiu-nan-shi-tai": {
+    "zh-CN": "九难师太",
+    "zh-TW": "九難師太",
+    "en": "Jiunan Shitai"
+  },
+  "chen-jia-luo": {
+    "zh-CN": "陈家洛",
+    "zh-TW": "陳家洛",
+    "en": "Chen Jialuo"
+  },
+  "xiang-xiang-gong-zhu": {
+    "zh-CN": "香香公主",
+    "zh-TW": "香香公主",
+    "en": "Xiangxiang Gongzhu"
+  },
+  "wen-tai-lai": {
+    "zh-CN": "文泰来",
+    "zh-TW": "文泰來",
+    "en": "Wen Tailai"
+  },
+  "zhang-zhao-zhong": {
+    "zh-CN": "张召重",
+    "zh-TW": "張召重",
+    "en": "Zhang Zhaozhong"
+  },
+  "yuan-cheng-zhi": {
+    "zh-CN": "袁承志",
+    "zh-TW": "袁承志",
+    "en": "Yuan Chengzhi"
+  },
+  "wen-qing-qing": {
+    "zh-CN": "温青青",
+    "zh-TW": "溫青青",
+    "en": "Wen Qingqing"
+  },
+  "xia-xue-yi": {
+    "zh-CN": "夏雪宜",
+    "zh-TW": "夏雪宜",
+    "en": "Xia Xueyi"
+  },
+  "a-jiu": {
+    "zh-CN": "阿九",
+    "zh-TW": "阿九",
+    "en": "A Jiu"
+  },
+  "he-tie-shou": {
+    "zh-CN": "何铁手",
+    "zh-TW": "何鐵手",
+    "en": "He Tieshou"
+  },
+  "miao-ren-feng": {
+    "zh-CN": "苗人凤",
+    "zh-TW": "苗人鳳",
+    "en": "Miao Renfeng"
+  },
+  "yuan-zi-yi": {
+    "zh-CN": "袁紫衣",
+    "zh-TW": "袁紫衣",
+    "en": "Yuan Ziyi"
+  },
+  "tian-gui-nong": {
+    "zh-CN": "田归农",
+    "zh-TW": "田歸農",
+    "en": "Tian Guinong"
+  },
+  "hu-yi-dao": {
+    "zh-CN": "胡一刀",
+    "zh-TW": "胡一刀",
+    "en": "Hu Yidao"
+  },
+  "zhao-ban-shan": {
+    "zh-CN": "赵半山",
+    "zh-TW": "趙半山",
+    "en": "Zhao Banshan"
+  },
+  "di-yun": {
+    "zh-CN": "狄云",
+    "zh-TW": "狄雲",
+    "en": "Di Yun"
+  },
+  "qi-fang": {
+    "zh-CN": "戚芳",
+    "zh-TW": "戚芳",
+    "en": "Qi Fang"
+  },
+  "shui-sheng": {
+    "zh-CN": "水笙",
+    "zh-TW": "水笙",
+    "en": "Shui Sheng"
+  },
+  "ding-dian": {
+    "zh-CN": "丁典",
+    "zh-TW": "丁典",
+    "en": "Ding Dian"
+  },
+  "xue-dao-lao-zu": {
+    "zh-CN": "血刀老祖",
+    "zh-TW": "血刀老祖",
+    "en": "Xuedao Laozu"
+  },
+  "shi-po-tian": {
+    "zh-CN": "石破天",
+    "zh-TW": "石破天",
+    "en": "Shi Potian"
+  },
+  "bai-zi-zai": {
+    "zh-CN": "白自在",
+    "zh-TW": "白自在",
+    "en": "Bai Zizai"
+  },
+  "xie-yan-ke": {
+    "zh-CN": "谢烟客",
+    "zh-TW": "謝煙客",
+    "en": "Xie Yanke"
+  },
+  "bei-hai-shi": {
+    "zh-CN": "贝海石",
+    "zh-TW": "貝海石",
+    "en": "Bei Haishi"
+  },
+  "li-wen-xiu": {
+    "zh-CN": "李文秀",
+    "zh-TW": "李文秀",
+    "en": "Li Wenxiu"
+  },
+  "su-pu": {
+    "zh-CN": "苏普",
+    "zh-TW": "蘇普",
+    "en": "Su Pu"
+  },
+  "xiao-zhong-hui": {
+    "zh-CN": "萧中慧",
+    "zh-TW": "蕭中慧",
+    "en": "Xiao Zhonghui"
+  },
+  "yuan-guan-nan": {
+    "zh-CN": "袁冠南",
+    "zh-TW": "袁冠南",
+    "en": "Yuan Guannan"
+  },
+  "a-qing": {
+    "zh-CN": "阿青",
+    "zh-TW": "阿青",
+    "en": "A Qing"
+  },
+  "fan-li": {
+    "zh-CN": "范蠡",
+    "zh-TW": "范蠡",
+    "en": "Fan Li"
+  },
+  "xi-shi": {
+    "zh-CN": "西施",
+    "zh-TW": "西施",
+    "en": "Xi Shi"
+  },
+  "jian-ning-gong-zhu": {
+    "zh-CN": "建宁公主",
+    "zh-TW": "建寧公主",
+    "en": "Jianning Gongzhu"
+  },
+  "fang-yi": {
+    "zh-CN": "方怡",
+    "zh-TW": "方怡",
+    "en": "Fang Yi"
+  },
+  "mu-jian-ping": {
+    "zh-CN": "沐剑屏",
+    "zh-TW": "沐劍屏",
+    "en": "Mu Jianping"
+  },
+  "hai-da-fu": {
+    "zh-CN": "海大富",
+    "zh-TW": "海大富",
+    "en": "Hai Dafu"
+  },
+  "wu-san-gui": {
+    "zh-CN": "吴三桂",
+    "zh-TW": "吳三桂",
+    "en": "Wu Sangui"
+  },
+  "duo-long": {
+    "zh-CN": "多隆",
+    "zh-TW": "多隆",
+    "en": "Duo Long"
+  }
+}

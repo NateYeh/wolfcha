@@ -54,7 +54,7 @@ const getRoleIcon = (role: string, size: number = 20) => {
 export function PlayerDetailModal({ player, isOpen, onClose, humanPlayer, isGenshinMode = false, isSpectatorMode = false }: PlayerDetailModalProps) {
   const t = useTranslations();
   const [renderPlayer, setRenderPlayer] = useState<Player | null>(player);
-  const careerStats = useCareerStats(renderPlayer?.displayName ?? null);
+  const careerStats = useCareerStats(renderPlayer?.characterId ?? null);
 
   useEffect(() => {
     if (player) {

@@ -36,6 +36,8 @@ import { getI18n } from "@/i18n/translator";
 import { parseLLMJson } from "./llm-json";
 
 export interface GeneratedCharacter {
+  /** 穩定角色 id（角色池角色才有；AI 即時生成的角色為 undefined）。 */
+  id?: string;
   displayName: string;
   persona: Persona;
   playerMind?: PlayerMind;

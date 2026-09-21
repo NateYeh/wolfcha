@@ -577,8 +577,9 @@ function buildPlayerSnapshots(state: GameState): PlayerSnapshot[] {
     return {
       playerId: player.playerId,
       seat: normalizedSeat,
+      characterId: player.characterId,
       name: player.displayName,
-      avatar: player.avatarSeed || player.displayName,
+      avatar: player.avatarSeed || player.characterId || player.displayName,
       gender: player.agentProfile?.persona?.gender,
       avatarStyle: player.avatarStyle,
       role: player.role,

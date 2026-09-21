@@ -1,22 +1,35 @@
 import type { GeneratedCharacter } from "./character-generator";
 import { getLocale } from "@/i18n/locale-store";
+import type { AppLocale } from "@/i18n/config";
 import { DEFAULT_POOL_ID } from "./roster-pool-ids";
 import POOL_ZH_CN from "@/lib/character-pool/jin-yong-pool.zh-CN.json";
 import POOL_ZH_TW from "@/lib/character-pool/jin-yong-pool.zh-TW.json";
+import CHARACTER_NAMES from "@/lib/character-pool/character-names.json";
 
 /**
  * 角色池：金庸群俠（127 人）。
  *
- * 角色資料在 src/lib/character-pool/jin-yong-pool.zh-*.json：
- * - zh-CN：手寫班底 12 人 ＋ 生成角色 115 人（45 人來自舊角色池、81 人為兩批補角色）。
- * - zh-TW：由 OpenCC s2twp 轉換產生（產物，勿手改；要改請改來源後重跑轉換）。
- * - en 使用 zh-CN 文案（角色本為武俠人物）。
- *
- * 開局一律從整池隨機抽取，不再有寫死的固定班底；新增／移除角色改 JSON 即可
- * （欄位見 types/game.ts 的 Persona／PlayerMind，voiceRules 為必填）。
+ * - 角色「身分」由穩定 id 決定（見 character-names.json），與語系無關；
+ *   顯示名依語系查 character-names.json 的 { zh-CN, zh-TW, en }。
+ * - persona 文案在 src/lib/character-pool/jin-yong-pool.zh-*.json：
+ *   zh-CN 為手寫來源、zh-TW 由 OpenCC s2twp 轉換產生（產物，勿手改），
+ *   en 沿用 zh-CN 文案（英文只做名字，人設維持中文）。
+ * - 開局一律從整池隨機抽取，不再有寫死的固定班底；新增／移除角色改 JSON 即可
+ *   （欄位見 types/game.ts 的 Persona／PlayerMind，voiceRules 為必填）。
  */
-const POOL_ZH_CN_CHARACTERS = POOL_ZH_CN as unknown as GeneratedCharacter[];
-const POOL_ZH_TW_CHARACTERS = POOL_ZH_TW as unknown as GeneratedCharacter[];
+
+/** 角色池檔的欄位：比 GeneratedCharacter 少了 displayName（顯示名改由 id 查表）。 */
+type PoolEntry = Omit<GeneratedCharacter, "displayName"> & { id: string };
+
+const NAMES = CHARACTER_NAMES as Record<string, Record<string, string>>;
+
+/** 依角色 id＋語系取顯示名；查不到時退回簡中、再退回 id 本身。 */
+export function resolveCharacterName(id: string, locale: AppLocale): string {
+  return NAMES[id]?.[locale] ?? NAMES[id]?.["zh-CN"] ?? id;
+}
+
+const POOL_ZH_CN_CHARACTERS = POOL_ZH_CN as unknown as PoolEntry[];
+const POOL_ZH_TW_CHARACTERS = POOL_ZH_TW as unknown as PoolEntry[];
 
 /**
  * 角色池：一個 id 對一組角色。
@@ -28,9 +41,14 @@ export interface RosterPool {
   characters: GeneratedCharacter[];
 }
 
-/** 依目前語系組出池清單（zh-TW 用繁中版，其餘用 zh-CN 文案）。 */
+/** 依目前語系組出池清單（zh-TW 用繁中 persona，其餘用 zh-CN；顯示名一律查 id 對照表）。 */
 function buildPools(): RosterPool[] {
-  const characters = getLocale() === "zh-TW" ? POOL_ZH_TW_CHARACTERS : POOL_ZH_CN_CHARACTERS;
+  const locale = getLocale();
+  const source = locale === "zh-TW" ? POOL_ZH_TW_CHARACTERS : POOL_ZH_CN_CHARACTERS;
+  const characters: GeneratedCharacter[] = source.map((entry) => ({
+    ...entry,
+    displayName: resolveCharacterName(entry.id, locale),
+  }));
   return [{ id: "jin_yong", characters }];
 }
 

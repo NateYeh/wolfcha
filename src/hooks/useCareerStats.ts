@@ -28,8 +28,8 @@ function loadCareerStats(): Promise<Record<string, CharacterStat> | undefined> {
   return careerStatsCachePromise;
 }
 
-/** 依角色名查生涯戰績；無記錄回 undefined（靜默降級，UI 不顯示該區塊）。 */
-export function useCareerStats(displayName: string | undefined | null): CharacterStat | undefined {
+/** 依角色 id 查生涯戰績；無記錄回 undefined（靜默降級，UI 不顯示該區塊）。 */
+export function useCareerStats(characterId: string | undefined | null): CharacterStat | undefined {
   const [statsMap, setStatsMap] = useState<Record<string, CharacterStat> | undefined>(careerStatsCache);
 
   useEffect(() => {
@@ -48,6 +48,6 @@ export function useCareerStats(displayName: string | undefined | null): Characte
     };
   }, [statsMap]);
 
-  if (!displayName || !statsMap) return undefined;
-  return statsMap[displayName];
+  if (!characterId || !statsMap) return undefined;
+  return statsMap[characterId];
 }

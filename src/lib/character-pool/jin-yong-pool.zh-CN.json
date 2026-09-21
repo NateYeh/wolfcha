@@ -1,6 +1,6 @@
 [
   {
-    "displayName": "令狐冲",
+    "id": "ling-hu-chong",
     "avatarSeed": "令狐冲",
     "persona": {
       "styleLabel": "洒脱不羁的华山大师兄",
@@ -40,7 +40,7 @@
     }
   },
   {
-    "displayName": "仪琳",
+    "id": "yi-lin",
     "avatarSeed": "仪琳",
     "persona": {
       "voiceRules": [
@@ -72,7 +72,7 @@
     }
   },
   {
-    "displayName": "段誉",
+    "id": "duan-yu",
     "avatarSeed": "段誉",
     "persona": {
       "voiceRules": [
@@ -105,7 +105,7 @@
     }
   },
   {
-    "displayName": "梅超风",
+    "id": "mei-chao-feng",
     "avatarSeed": "梅超风",
     "persona": {
       "voiceRules": [
@@ -138,7 +138,7 @@
     }
   },
   {
-    "displayName": "郭啸天",
+    "id": "guo-xiao-tian",
     "avatarSeed": "郭啸天",
     "persona": {
       "voiceRules": [
@@ -171,7 +171,7 @@
     }
   },
   {
-    "displayName": "任盈盈",
+    "id": "ren-ying-ying",
     "avatarSeed": "任盈盈",
     "persona": {
       "styleLabel": "外柔内韧的魔教圣姑",
@@ -211,7 +211,7 @@
     }
   },
   {
-    "displayName": "蓝凤凰",
+    "id": "lan-feng-huang",
     "avatarSeed": "蓝凤凰",
     "persona": {
       "voiceRules": [
@@ -243,7 +243,7 @@
     }
   },
   {
-    "displayName": "风清扬",
+    "id": "feng-qing-yang",
     "avatarSeed": "风清扬",
     "avatarStyle": {
       "beard": true
@@ -278,7 +278,7 @@
     }
   },
   {
-    "displayName": "向问天",
+    "id": "xiang-wen-tian",
     "avatarSeed": "向问天",
     "avatarStyle": {
       "beard": true
@@ -313,7 +313,7 @@
     }
   },
   {
-    "displayName": "田伯光",
+    "id": "tian-bo-guang",
     "avatarSeed": "田伯光",
     "persona": {
       "voiceRules": [
@@ -345,7 +345,7 @@
     }
   },
   {
-    "displayName": "乔峰",
+    "id": "qiao-feng",
     "avatarSeed": "乔峰",
     "avatarStyle": {
       "beard": true
@@ -388,7 +388,7 @@
     }
   },
   {
-    "displayName": "王语嫣",
+    "id": "wang-yu-yan",
     "avatarSeed": "王语嫣",
     "avatarStyle": {
       "glasses": true
@@ -423,7 +423,7 @@
     }
   },
   {
-    "displayName": "韦小宝",
+    "id": "wei-xiao-bao",
     "avatarSeed": "韦小宝",
     "persona": {
       "styleLabel": "满嘴跑火车的市井奇人",
@@ -463,7 +463,7 @@
     }
   },
   {
-    "displayName": "黄蓉",
+    "id": "huang-rong",
     "avatarSeed": "黄蓉",
     "persona": {
       "styleLabel": "冰雪聪明的桃花岛千金",
@@ -503,7 +503,7 @@
     }
   },
   {
-    "displayName": "郭靖",
+    "id": "guo-jing",
     "avatarSeed": "郭靖",
     "persona": {
       "voiceRules": [
@@ -536,7 +536,7 @@
     }
   },
   {
-    "displayName": "赵敏",
+    "id": "zhao-min",
     "avatarSeed": "赵敏",
     "persona": {
       "styleLabel": "杀伐决断的绍敏郡主",
@@ -576,7 +576,7 @@
     }
   },
   {
-    "displayName": "周伯通",
+    "id": "zhou-bo-tong",
     "avatarSeed": "周伯通",
     "persona": {
       "voiceRules": [
@@ -609,7 +609,7 @@
     }
   },
   {
-    "displayName": "林平之",
+    "id": "lin-ping-zhi",
     "avatarSeed": "林平之",
     "persona": {
       "voiceRules": [
@@ -642,7 +642,7 @@
     }
   },
   {
-    "displayName": "曲非烟",
+    "id": "qu-fei-yan",
     "avatarSeed": "曲非烟",
     "persona": {
       "voiceRules": [
@@ -675,7 +675,7 @@
     }
   },
   {
-    "displayName": "穆念慈",
+    "id": "mu-nian-ci",
     "avatarSeed": "穆念慈",
     "persona": {
       "voiceRules": [
@@ -708,7 +708,7 @@
     }
   },
   {
-    "displayName": "杨过",
+    "id": "yang-guo",
     "avatarSeed": "杨过",
     "persona": {
       "styleLabel": "叛逆偏激的断臂大侠",
@@ -748,7 +748,7 @@
     }
   },
   {
-    "displayName": "张无忌",
+    "id": "zhang-wu-ji",
     "avatarSeed": "张无忌",
     "persona": {
       "voiceRules": [
@@ -780,7 +780,7 @@
     }
   },
   {
-    "displayName": "金轮法王",
+    "id": "jin-lun-fa-wang",
     "avatarSeed": "金轮法王",
     "avatarStyle": {
       "beard": true
@@ -823,7 +823,7 @@
     }
   },
   {
-    "displayName": "东方不败",
+    "id": "dong-fang-bu-bai",
     "avatarSeed": "东方不败",
     "persona": {
       "voiceRules": [
@@ -855,7 +855,7 @@
     }
   },
   {
-    "displayName": "小龙女",
+    "id": "xiao-long-nu",
     "avatarSeed": "小龙女",
     "persona": {
       "styleLabel": "清冷寡言的古墓传人",
@@ -895,7 +895,7 @@
     }
   },
   {
-    "displayName": "周芷若",
+    "id": "zhou-zhi-ruo",
     "avatarSeed": "周芷若",
     "persona": {
       "styleLabel": "柔弱表皮藏着狠劲的峨眉掌门",
@@ -935,7 +935,7 @@
     }
   },
   {
-    "displayName": "灭绝师太",
+    "id": "mie-jue-shi-tai",
     "avatarSeed": "灭绝师太",
     "persona": {
       "styleLabel": "嫉恶如仇的峨眉前辈",
@@ -975,7 +975,7 @@
     }
   },
   {
-    "displayName": "郭襄",
+    "id": "guo-xiang",
     "avatarSeed": "郭襄",
     "persona": {
       "voiceRules": [
@@ -1007,7 +1007,7 @@
     }
   },
   {
-    "displayName": "李莫愁",
+    "id": "li-mo-chou",
     "avatarSeed": "李莫愁",
     "persona": {
       "voiceRules": [
@@ -1039,7 +1039,7 @@
     }
   },
   {
-    "displayName": "小昭",
+    "id": "xiao-zhao",
     "avatarSeed": "小昭",
     "persona": {
       "voiceRules": [
@@ -1071,7 +1071,7 @@
     }
   },
   {
-    "displayName": "殷离",
+    "id": "yin-li",
     "avatarSeed": "殷离",
     "persona": {
       "voiceRules": [
@@ -1103,7 +1103,7 @@
     }
   },
   {
-    "displayName": "阿朱",
+    "id": "a-zhu",
     "avatarSeed": "阿朱",
     "persona": {
       "voiceRules": [
@@ -1135,7 +1135,7 @@
     }
   },
   {
-    "displayName": "天山童姥",
+    "id": "tian-shan-tong-lao",
     "avatarSeed": "天山童姥",
     "persona": {
       "voiceRules": [
@@ -1167,7 +1167,7 @@
     }
   },
   {
-    "displayName": "霍青桐",
+    "id": "huo-qing-tong",
     "avatarSeed": "霍青桐",
     "persona": {
       "voiceRules": [
@@ -1199,7 +1199,7 @@
     }
   },
   {
-    "displayName": "程灵素",
+    "id": "cheng-ling-su",
     "avatarSeed": "程灵素",
     "avatarStyle": {
       "glasses": true
@@ -1234,7 +1234,7 @@
     }
   },
   {
-    "displayName": "洪七公",
+    "id": "hong-qi-gong",
     "avatarSeed": "洪七公",
     "avatarStyle": {
       "beard": true
@@ -1269,7 +1269,7 @@
     }
   },
   {
-    "displayName": "黄药师",
+    "id": "huang-yao-shi",
     "avatarSeed": "黄药师",
     "persona": {
       "voiceRules": [
@@ -1301,7 +1301,7 @@
     }
   },
   {
-    "displayName": "欧阳锋",
+    "id": "ou-yang-feng",
     "avatarSeed": "欧阳锋",
     "avatarStyle": {
       "beard": true
@@ -1336,7 +1336,7 @@
     }
   },
   {
-    "displayName": "一灯大师",
+    "id": "yi-deng-da-shi",
     "avatarSeed": "一灯大师",
     "persona": {
       "voiceRules": [
@@ -1368,7 +1368,7 @@
     }
   },
   {
-    "displayName": "张三丰",
+    "id": "zhang-san-feng",
     "avatarSeed": "张三丰",
     "avatarStyle": {
       "beard": true
@@ -1403,7 +1403,7 @@
     }
   },
   {
-    "displayName": "谢逊",
+    "id": "xie-xun",
     "avatarSeed": "谢逊",
     "avatarStyle": {
       "beard": true
@@ -1438,7 +1438,7 @@
     }
   },
   {
-    "displayName": "慕容复",
+    "id": "mu-rong-fu",
     "avatarSeed": "慕容复",
     "avatarStyle": {
       "glasses": true
@@ -1473,7 +1473,7 @@
     }
   },
   {
-    "displayName": "岳不群",
+    "id": "yue-bu-qun",
     "avatarSeed": "岳不群",
     "avatarStyle": {
       "glasses": true
@@ -1508,7 +1508,7 @@
     }
   },
   {
-    "displayName": "任我行",
+    "id": "ren-wo-xing",
     "avatarSeed": "任我行",
     "avatarStyle": {
       "beard": true
@@ -1543,7 +1543,7 @@
     }
   },
   {
-    "displayName": "胡斐",
+    "id": "hu-fei",
     "avatarSeed": "胡斐",
     "avatarStyle": {
       "hair": "variant01"
@@ -1578,7 +1578,7 @@
     }
   },
   {
-    "displayName": "韦一笑",
+    "id": "wei-yi-xiao",
     "avatarSeed": "韦一笑",
     "persona": {
       "styleLabel": "行踪诡秘的青翼蝠王",
@@ -1617,7 +1617,7 @@
     }
   },
   {
-    "displayName": "杨康",
+    "id": "yang-kang",
     "avatarSeed": "杨康",
     "persona": {
       "voiceRules": [
@@ -1648,7 +1648,7 @@
     }
   },
   {
-    "displayName": "陈玄风",
+    "id": "chen-xuan-feng",
     "avatarSeed": "陈玄风",
     "persona": {
       "voiceRules": [
@@ -1679,7 +1679,7 @@
     }
   },
   {
-    "displayName": "裘千仞",
+    "id": "qiu-qian-ren",
     "avatarSeed": "裘千仞",
     "persona": {
       "voiceRules": [
@@ -1710,7 +1710,7 @@
     }
   },
   {
-    "displayName": "欧阳克",
+    "id": "ou-yang-ke",
     "avatarSeed": "欧阳克",
     "persona": {
       "voiceRules": [
@@ -1741,7 +1741,7 @@
     }
   },
   {
-    "displayName": "柯镇恶",
+    "id": "ke-zhen-e",
     "avatarSeed": "柯镇恶",
     "persona": {
       "voiceRules": [
@@ -1772,7 +1772,7 @@
     }
   },
   {
-    "displayName": "丘处机",
+    "id": "qiu-chu-ji",
     "avatarSeed": "丘处机",
     "persona": {
       "voiceRules": [
@@ -1804,7 +1804,7 @@
     }
   },
   {
-    "displayName": "瑛姑",
+    "id": "ying-gu",
     "avatarSeed": "瑛姑",
     "persona": {
       "voiceRules": [
@@ -1836,7 +1836,7 @@
     }
   },
   {
-    "displayName": "公孙止",
+    "id": "gong-sun-zhi",
     "avatarSeed": "公孙止",
     "persona": {
       "voiceRules": [
@@ -1868,7 +1868,7 @@
     }
   },
   {
-    "displayName": "郭芙",
+    "id": "guo-fu",
     "avatarSeed": "郭芙",
     "persona": {
       "voiceRules": [
@@ -1900,7 +1900,7 @@
     }
   },
   {
-    "displayName": "耶律齐",
+    "id": "ye-lv-qi",
     "avatarSeed": "耶律齐",
     "persona": {
       "voiceRules": [
@@ -1932,7 +1932,7 @@
     }
   },
   {
-    "displayName": "陆无双",
+    "id": "lu-wu-shuang",
     "avatarSeed": "陆无双",
     "persona": {
       "voiceRules": [
@@ -1963,7 +1963,7 @@
     }
   },
   {
-    "displayName": "程英",
+    "id": "cheng-ying",
     "avatarSeed": "程英",
     "persona": {
       "voiceRules": [
@@ -1994,7 +1994,7 @@
     }
   },
   {
-    "displayName": "裘千尺",
+    "id": "qiu-qian-chi",
     "avatarSeed": "裘千尺",
     "persona": {
       "voiceRules": [
@@ -2025,7 +2025,7 @@
     }
   },
   {
-    "displayName": "宋青书",
+    "id": "song-qing-shu",
     "avatarSeed": "宋青书",
     "persona": {
       "voiceRules": [
@@ -2056,7 +2056,7 @@
     }
   },
   {
-    "displayName": "杨逍",
+    "id": "yang-xiao",
     "avatarSeed": "杨逍",
     "persona": {
       "voiceRules": [
@@ -2087,7 +2087,7 @@
     }
   },
   {
-    "displayName": "范遥",
+    "id": "fan-yao",
     "avatarSeed": "范遥",
     "persona": {
       "voiceRules": [
@@ -2120,7 +2120,7 @@
     }
   },
   {
-    "displayName": "殷天正",
+    "id": "yin-tian-zheng",
     "avatarSeed": "殷天正",
     "persona": {
       "voiceRules": [
@@ -2153,7 +2153,7 @@
     }
   },
   {
-    "displayName": "成昆",
+    "id": "cheng-kun",
     "avatarSeed": "成昆",
     "persona": {
       "voiceRules": [
@@ -2186,7 +2186,7 @@
     }
   },
   {
-    "displayName": "纪晓芙",
+    "id": "ji-xiao-fu",
     "avatarSeed": "纪晓芙",
     "persona": {
       "voiceRules": [
@@ -2219,7 +2219,7 @@
     }
   },
   {
-    "displayName": "黛绮丝",
+    "id": "dai-qi-si",
     "avatarSeed": "黛绮丝",
     "persona": {
       "voiceRules": [
@@ -2252,7 +2252,7 @@
     }
   },
   {
-    "displayName": "虚竹",
+    "id": "xu-zhu",
     "avatarSeed": "虚竹",
     "persona": {
       "voiceRules": [
@@ -2284,7 +2284,7 @@
     }
   },
   {
-    "displayName": "阿紫",
+    "id": "a-zi",
     "avatarSeed": "阿紫",
     "persona": {
       "voiceRules": [
@@ -2316,7 +2316,7 @@
     }
   },
   {
-    "displayName": "游坦之",
+    "id": "you-tan-zhi",
     "avatarSeed": "游坦之",
     "persona": {
       "voiceRules": [
@@ -2348,7 +2348,7 @@
     }
   },
   {
-    "displayName": "段正淳",
+    "id": "duan-zheng-chun",
     "avatarSeed": "段正淳",
     "persona": {
       "voiceRules": [
@@ -2380,7 +2380,7 @@
     }
   },
   {
-    "displayName": "段延庆",
+    "id": "duan-yan-qing",
     "avatarSeed": "段延庆",
     "persona": {
       "voiceRules": [
@@ -2412,7 +2412,7 @@
     }
   },
   {
-    "displayName": "鸠摩智",
+    "id": "jiu-mo-zhi",
     "avatarSeed": "鸠摩智",
     "persona": {
       "voiceRules": [
@@ -2443,7 +2443,7 @@
     }
   },
   {
-    "displayName": "萧远山",
+    "id": "xiao-yuan-shan",
     "avatarSeed": "萧远山",
     "persona": {
       "voiceRules": [
@@ -2474,7 +2474,7 @@
     }
   },
   {
-    "displayName": "慕容博",
+    "id": "mu-rong-bo",
     "avatarSeed": "慕容博",
     "persona": {
       "voiceRules": [
@@ -2505,7 +2505,7 @@
     }
   },
   {
-    "displayName": "李秋水",
+    "id": "li-qiu-shui",
     "avatarSeed": "李秋水",
     "persona": {
       "voiceRules": [
@@ -2536,7 +2536,7 @@
     }
   },
   {
-    "displayName": "扫地僧",
+    "id": "sao-di-seng",
     "avatarSeed": "扫地僧",
     "persona": {
       "voiceRules": [
@@ -2567,7 +2567,7 @@
     }
   },
   {
-    "displayName": "木婉清",
+    "id": "mu-wan-qing",
     "avatarSeed": "木婉清",
     "persona": {
       "voiceRules": [
@@ -2598,7 +2598,7 @@
     }
   },
   {
-    "displayName": "岳灵珊",
+    "id": "yue-ling-shan",
     "avatarSeed": "岳灵珊",
     "persona": {
       "voiceRules": [
@@ -2629,7 +2629,7 @@
     }
   },
   {
-    "displayName": "左冷禅",
+    "id": "zuo-leng-chan",
     "avatarSeed": "左冷禅",
     "persona": {
       "voiceRules": [
@@ -2660,7 +2660,7 @@
     }
   },
   {
-    "displayName": "曲洋",
+    "id": "qu-yang",
     "avatarSeed": "曲洋",
     "persona": {
       "voiceRules": [
@@ -2691,7 +2691,7 @@
     }
   },
   {
-    "displayName": "刘正风",
+    "id": "liu-zheng-feng",
     "avatarSeed": "刘正风",
     "persona": {
       "voiceRules": [
@@ -2722,7 +2722,7 @@
     }
   },
   {
-    "displayName": "余沧海",
+    "id": "yu-cang-hai",
     "avatarSeed": "余沧海",
     "persona": {
       "voiceRules": [
@@ -2754,7 +2754,7 @@
     }
   },
   {
-    "displayName": "绿竹翁",
+    "id": "lv-zhu-weng",
     "avatarSeed": "绿竹翁",
     "persona": {
       "voiceRules": [
@@ -2786,7 +2786,7 @@
     }
   },
   {
-    "displayName": "康熙",
+    "id": "kang-xi",
     "avatarSeed": "康熙",
     "persona": {
       "voiceRules": [
@@ -2818,7 +2818,7 @@
     }
   },
   {
-    "displayName": "双儿",
+    "id": "shuang-er",
     "avatarSeed": "双儿",
     "persona": {
       "voiceRules": [
@@ -2850,7 +2850,7 @@
     }
   },
   {
-    "displayName": "阿珂",
+    "id": "a-ke",
     "avatarSeed": "阿珂",
     "persona": {
       "voiceRules": [
@@ -2882,7 +2882,7 @@
     }
   },
   {
-    "displayName": "苏荃",
+    "id": "su-quan",
     "avatarSeed": "苏荃",
     "persona": {
       "voiceRules": [
@@ -2914,7 +2914,7 @@
     }
   },
   {
-    "displayName": "陈近南",
+    "id": "chen-jin-nan",
     "avatarSeed": "陈近南",
     "persona": {
       "voiceRules": [
@@ -2946,7 +2946,7 @@
     }
   },
   {
-    "displayName": "鳌拜",
+    "id": "ao-bai",
     "avatarSeed": "鳌拜",
     "persona": {
       "voiceRules": [
@@ -2978,7 +2978,7 @@
     }
   },
   {
-    "displayName": "洪安通",
+    "id": "hong-an-tong",
     "avatarSeed": "洪安通",
     "persona": {
       "voiceRules": [
@@ -3010,7 +3010,7 @@
     }
   },
   {
-    "displayName": "九难师太",
+    "id": "jiu-nan-shi-tai",
     "avatarSeed": "九难师太",
     "persona": {
       "voiceRules": [
@@ -3042,7 +3042,7 @@
     }
   },
   {
-    "displayName": "陈家洛",
+    "id": "chen-jia-luo",
     "avatarSeed": "陈家洛",
     "persona": {
       "voiceRules": [
@@ -3073,7 +3073,7 @@
     }
   },
   {
-    "displayName": "香香公主",
+    "id": "xiang-xiang-gong-zhu",
     "avatarSeed": "香香公主",
     "persona": {
       "voiceRules": [
@@ -3104,7 +3104,7 @@
     }
   },
   {
-    "displayName": "文泰来",
+    "id": "wen-tai-lai",
     "avatarSeed": "文泰来",
     "persona": {
       "voiceRules": [
@@ -3135,7 +3135,7 @@
     }
   },
   {
-    "displayName": "张召重",
+    "id": "zhang-zhao-zhong",
     "avatarSeed": "张召重",
     "persona": {
       "voiceRules": [
@@ -3166,7 +3166,7 @@
     }
   },
   {
-    "displayName": "袁承志",
+    "id": "yuan-cheng-zhi",
     "avatarSeed": "袁承志",
     "persona": {
       "voiceRules": [
@@ -3197,7 +3197,7 @@
     }
   },
   {
-    "displayName": "温青青",
+    "id": "wen-qing-qing",
     "avatarSeed": "温青青",
     "persona": {
       "voiceRules": [
@@ -3229,7 +3229,7 @@
     }
   },
   {
-    "displayName": "夏雪宜",
+    "id": "xia-xue-yi",
     "avatarSeed": "夏雪宜",
     "persona": {
       "voiceRules": [
@@ -3261,7 +3261,7 @@
     }
   },
   {
-    "displayName": "阿九",
+    "id": "a-jiu",
     "avatarSeed": "阿九",
     "persona": {
       "voiceRules": [
@@ -3293,7 +3293,7 @@
     }
   },
   {
-    "displayName": "何铁手",
+    "id": "he-tie-shou",
     "avatarSeed": "何铁手",
     "persona": {
       "voiceRules": [
@@ -3325,7 +3325,7 @@
     }
   },
   {
-    "displayName": "苗人凤",
+    "id": "miao-ren-feng",
     "avatarSeed": "苗人凤",
     "persona": {
       "voiceRules": [
@@ -3357,7 +3357,7 @@
     }
   },
   {
-    "displayName": "袁紫衣",
+    "id": "yuan-zi-yi",
     "avatarSeed": "袁紫衣",
     "persona": {
       "voiceRules": [
@@ -3389,7 +3389,7 @@
     }
   },
   {
-    "displayName": "田归农",
+    "id": "tian-gui-nong",
     "avatarSeed": "田归农",
     "persona": {
       "voiceRules": [
@@ -3421,7 +3421,7 @@
     }
   },
   {
-    "displayName": "胡一刀",
+    "id": "hu-yi-dao",
     "avatarSeed": "胡一刀",
     "persona": {
       "voiceRules": [
@@ -3453,7 +3453,7 @@
     }
   },
   {
-    "displayName": "赵半山",
+    "id": "zhao-ban-shan",
     "avatarSeed": "赵半山",
     "persona": {
       "voiceRules": [
@@ -3485,7 +3485,7 @@
     }
   },
   {
-    "displayName": "狄云",
+    "id": "di-yun",
     "avatarSeed": "狄云",
     "persona": {
       "voiceRules": [
@@ -3517,7 +3517,7 @@
     }
   },
   {
-    "displayName": "戚芳",
+    "id": "qi-fang",
     "avatarSeed": "戚芳",
     "persona": {
       "voiceRules": [
@@ -3549,7 +3549,7 @@
     }
   },
   {
-    "displayName": "水笙",
+    "id": "shui-sheng",
     "avatarSeed": "水笙",
     "persona": {
       "voiceRules": [
@@ -3581,7 +3581,7 @@
     }
   },
   {
-    "displayName": "丁典",
+    "id": "ding-dian",
     "avatarSeed": "丁典",
     "persona": {
       "voiceRules": [
@@ -3613,7 +3613,7 @@
     }
   },
   {
-    "displayName": "血刀老祖",
+    "id": "xue-dao-lao-zu",
     "avatarSeed": "血刀老祖",
     "persona": {
       "voiceRules": [
@@ -3645,7 +3645,7 @@
     }
   },
   {
-    "displayName": "石破天",
+    "id": "shi-po-tian",
     "avatarSeed": "石破天",
     "persona": {
       "voiceRules": [
@@ -3677,7 +3677,7 @@
     }
   },
   {
-    "displayName": "白自在",
+    "id": "bai-zi-zai",
     "avatarSeed": "白自在",
     "persona": {
       "voiceRules": [
@@ -3708,7 +3708,7 @@
     }
   },
   {
-    "displayName": "谢烟客",
+    "id": "xie-yan-ke",
     "avatarSeed": "谢烟客",
     "persona": {
       "voiceRules": [
@@ -3739,7 +3739,7 @@
     }
   },
   {
-    "displayName": "贝海石",
+    "id": "bei-hai-shi",
     "avatarSeed": "贝海石",
     "persona": {
       "voiceRules": [
@@ -3770,7 +3770,7 @@
     }
   },
   {
-    "displayName": "李文秀",
+    "id": "li-wen-xiu",
     "avatarSeed": "李文秀",
     "persona": {
       "voiceRules": [
@@ -3801,7 +3801,7 @@
     }
   },
   {
-    "displayName": "苏普",
+    "id": "su-pu",
     "avatarSeed": "苏普",
     "persona": {
       "voiceRules": [
@@ -3832,7 +3832,7 @@
     }
   },
   {
-    "displayName": "萧中慧",
+    "id": "xiao-zhong-hui",
     "avatarSeed": "萧中慧",
     "persona": {
       "voiceRules": [
@@ -3863,7 +3863,7 @@
     }
   },
   {
-    "displayName": "袁冠南",
+    "id": "yuan-guan-nan",
     "avatarSeed": "袁冠南",
     "persona": {
       "voiceRules": [
@@ -3894,7 +3894,7 @@
     }
   },
   {
-    "displayName": "阿青",
+    "id": "a-qing",
     "avatarSeed": "阿青",
     "persona": {
       "voiceRules": [
@@ -3925,7 +3925,7 @@
     }
   },
   {
-    "displayName": "范蠡",
+    "id": "fan-li",
     "avatarSeed": "范蠡",
     "persona": {
       "voiceRules": [
@@ -3956,7 +3956,7 @@
     }
   },
   {
-    "displayName": "西施",
+    "id": "xi-shi",
     "avatarSeed": "西施",
     "persona": {
       "voiceRules": [
@@ -3987,7 +3987,7 @@
     }
   },
   {
-    "displayName": "建宁公主",
+    "id": "jian-ning-gong-zhu",
     "avatarSeed": "建宁公主",
     "persona": {
       "voiceRules": [
@@ -4018,7 +4018,7 @@
     }
   },
   {
-    "displayName": "方怡",
+    "id": "fang-yi",
     "avatarSeed": "方怡",
     "persona": {
       "voiceRules": [
@@ -4049,7 +4049,7 @@
     }
   },
   {
-    "displayName": "沐剑屏",
+    "id": "mu-jian-ping",
     "avatarSeed": "沐剑屏",
     "persona": {
       "voiceRules": [
@@ -4080,7 +4080,7 @@
     }
   },
   {
-    "displayName": "海大富",
+    "id": "hai-da-fu",
     "avatarSeed": "海大富",
     "persona": {
       "voiceRules": [
@@ -4111,7 +4111,7 @@
     }
   },
   {
-    "displayName": "吴三桂",
+    "id": "wu-san-gui",
     "avatarSeed": "吴三桂",
     "persona": {
       "voiceRules": [
@@ -4142,7 +4142,7 @@
     }
   },
   {
-    "displayName": "多隆",
+    "id": "duo-long",
     "avatarSeed": "多隆",
     "persona": {
       "voiceRules": [

@@ -30,7 +30,7 @@ const ALIGNMENT_LABELS: Record<string, { label: string; color: string }> = {
 
 export function PlayerDetailModal({ player, isOpen, onClose }: PlayerDetailModalProps) {
   const t = useTranslations();
-  const careerStats = useCareerStats(player?.name);
+  const careerStats = useCareerStats(player?.characterId);
   if (!player) return null;
 
   const avatarUrl = buildSimpleAvatarUrl(player.avatar || player.name, { gender: player.gender });

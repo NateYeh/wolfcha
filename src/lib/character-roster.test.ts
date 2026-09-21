@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { getRosterPool, getRosterPoolSize, ROSTER_POOL_IDS, sampleRosterCharacters } from "@/lib/character-roster";
+import { getRosterPool, getRosterPoolSize, ROSTER_POOL_IDS, sampleRosterCharacters, resolveCharacterName } from "@/lib/character-roster";
 import { setLocale } from "@/i18n/locale-store";
 
 /** 池子人數：改動 src/data/jin-yong-pool.*.json 時一起更新。 */
@@ -89,13 +89,34 @@ describe("character-roster 角色池", () => {
     }
   });
 
-  it("繁中池與簡中池逐筆對齊（順序／voiceId／avatarSeed 相同，名字已轉繁）", () => {
+  it("每個角色都有穩定 id，且繁中／簡中／英文顯示名皆查得到", () => {
+    const pool = getRosterPool("jin_yong");
+    const ids = new Set<string>();
+    for (const c of pool.characters) {
+      assert.ok(c.id, `${c.displayName} 缺 id`);
+      assert.match(c.id!, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+      assert.ok(!ids.has(c.id!), `id 重複：${c.id}`);
+      ids.add(c.id!);
+      for (const locale of ["zh-CN", "zh-TW", "en"] as const) {
+        const name = resolveCharacterName(c.id!, locale);
+        assert.ok(name.trim().length > 0, `${c.id} 缺 ${locale} 名`);
+      }
+    }
+    assert.equal(ids.size, POOL_SIZE);
+    // 同一 id 在英文語系下不再顯示中文名
+    assert.equal(resolveCharacterName("ling-hu-chong", "en"), "Linghu Chong");
+    assert.equal(resolveCharacterName("ling-hu-chong", "zh-TW"), "令狐沖");
+    assert.equal(resolveCharacterName("ling-hu-chong", "zh-CN"), "令狐冲");
+  });
+
+  it("繁中池與簡中池逐筆對齊（順序／id／voiceId／avatarSeed 相同，名字已轉繁）", () => {
     const zhCN = getRosterPool("jin_yong").characters;
     setLocale("zh-TW");
     try {
       const zhTW = getRosterPool("jin_yong").characters;
       assert.equal(zhTW.length, zhCN.length);
       for (let i = 0; i < zhCN.length; i += 1) {
+        assert.equal(zhTW[i]!.id, zhCN[i]!.id, `${zhCN[i]!.displayName} id 應跨語系相同`);
         assert.equal(zhTW[i]!.persona.voiceId, zhCN[i]!.persona.voiceId, `${zhCN[i]!.displayName} voiceId 應跨語系相同`);
         assert.equal(zhTW[i]!.avatarSeed, zhCN[i]!.avatarSeed, `${zhCN[i]!.displayName} avatarSeed 應跨語系相同`);
       }
