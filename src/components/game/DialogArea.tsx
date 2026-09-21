@@ -283,10 +283,10 @@ interface DialogAreaProps {
   onWhiteWolfKingBoom?: () => void;
   onViewAnalysis?: () => void;
   isAnalysisLoading?: boolean;
-  /** 本局 MVP（賽後感言區顯示；分析完成前為 undefined）。 */
-  gameMvp?: PlayerAward;
-  /** 本局 SVP（敗方最佳；分析完成前為 undefined）。 */
-  gameSvp?: PlayerAward;
+  /** 本局 MVP（可能多人並列；分析完成前為 undefined）。 */
+  gameMvps?: PlayerAward[];
+  /** 本局 SVP（敗方最佳，可能多人並列；分析完成前為 undefined）。 */
+  gameSvps?: PlayerAward[];
   /** 本局 MVP／SVP 投票明細（各 AI 角色 + 系統客觀票）。 */
   gameAwardVotes?: { mvp: AwardVote[]; svp: AwardVote[] };
   isEventLogOpen?: boolean;
@@ -440,8 +440,8 @@ export function DialogArea({
   onWhiteWolfKingBoom,
   onViewAnalysis,
   isAnalysisLoading = false,
-  gameMvp,
-  gameSvp,
+  gameMvps,
+  gameSvps,
   gameAwardVotes,
   isEventLogOpen = false,
   onEventLogOpenChange,
@@ -1269,45 +1269,59 @@ export function DialogArea({
                       <>GG! <span className="text-[var(--color-wolf)] font-semibold">{t("alignment.wolf")}</span> {t("gameEnd.wins")}!</>
                     )}
                   </div>
-                  {/* 本局 MVP／SVP：分析完成後顯示（生成中先顯示佔位） */}
-                  {gameMvp && (
-                    <div className="flex items-center gap-3 mt-3 px-3 py-2.5 rounded-lg border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/10">
-                      <img
-                        src={buildSimpleAvatarUrl(gameMvp.avatar, { gender: gameMvp.gender, style: gameMvp.avatarStyle })}
-                        alt={gameMvp.playerName}
-                        className="w-10 h-10 rounded-full border-2 border-[var(--color-gold)]/40 object-cover"
-                      />
-                      <div className="min-w-0">
-                        <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
-                          <span className="text-[var(--color-gold)]">{t("gameEnd.mvpTitle")}</span>
-                          <span>{gameMvp.playerName}</span>
-                        </div>
-                        {gameMvp.reason && (
-                          <div className="text-xs text-[var(--text-muted)] truncate" title={gameMvp.reason}>
-                            {gameMvp.reason}
+                  {/* 本局 MVP／SVP：分析完成後顯示（同票並列時可能多人；生成中先顯示佔位） */}
+                  {gameMvps && gameMvps.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {gameMvps.map((mvp) => (
+                        <div
+                          key={mvp.playerId}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/10"
+                        >
+                          <img
+                            src={buildSimpleAvatarUrl(mvp.avatar, { gender: mvp.gender, style: mvp.avatarStyle })}
+                            alt={mvp.playerName}
+                            className="w-10 h-10 rounded-full border-2 border-[var(--color-gold)]/40 object-cover"
+                          />
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                              <span className="text-[var(--color-gold)]">{t("gameEnd.mvpTitle")}</span>
+                              <span>{mvp.playerName}</span>
+                            </div>
+                            {mvp.reason && (
+                              <div className="text-xs text-[var(--text-muted)] truncate" title={mvp.reason}>
+                                {mvp.reason}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      ))}
                     </div>
                   )}
-                  {gameSvp && (
-                    <div className="flex items-center gap-3 mt-2 px-3 py-2.5 rounded-lg border border-white/10 bg-black/5 dark:bg-white/5">
-                      <img
-                        src={buildSimpleAvatarUrl(gameSvp.avatar, { gender: gameSvp.gender, style: gameSvp.avatarStyle })}
-                        alt={gameSvp.playerName}
-                        className="w-10 h-10 rounded-full border-2 border-white/20 object-cover"
-                      />
-                      <div className="min-w-0">
-                        <div className="text-sm font-bold text-[var(--text-secondary)] flex items-center gap-2">
-                          <span className="text-[var(--text-muted)]">{t("gameEnd.svpTitle")}</span>
-                          <span>{gameSvp.playerName}</span>
-                        </div>
-                        {gameSvp.reason && (
-                          <div className="text-xs text-[var(--text-muted)] truncate" title={gameSvp.reason}>
-                            {gameSvp.reason}
+                  {gameSvps && gameSvps.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      {gameSvps.map((svp) => (
+                        <div
+                          key={svp.playerId}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-white/10 bg-black/5 dark:bg-white/5"
+                        >
+                          <img
+                            src={buildSimpleAvatarUrl(svp.avatar, { gender: svp.gender, style: svp.avatarStyle })}
+                            alt={svp.playerName}
+                            className="w-10 h-10 rounded-full border-2 border-white/20 object-cover"
+                          />
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-[var(--text-secondary)] flex items-center gap-2">
+                              <span className="text-[var(--text-muted)]">{t("gameEnd.svpTitle")}</span>
+                              <span>{svp.playerName}</span>
+                            </div>
+                            {svp.reason && (
+                              <div className="text-xs text-[var(--text-muted)] truncate" title={svp.reason}>
+                                {svp.reason}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                   {gameAwardVotes && (
@@ -1316,7 +1330,7 @@ export function DialogArea({
                       <AwardVoteBreakdown label={t("gameEnd.svpTitle")} votes={gameAwardVotes.svp} />
                     </>
                   )}
-                  {!gameMvp && !gameSvp && isAnalysisLoading && (
+                  {(!gameMvps || gameMvps.length === 0) && (!gameSvps || gameSvps.length === 0) && isAnalysisLoading && (
                     <div className="flex items-center gap-2 mt-3 px-3 py-2 text-xs text-[var(--text-muted)]">
                       <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
                       {t("gameEnd.mvpLoading")}

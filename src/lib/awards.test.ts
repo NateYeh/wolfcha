@@ -35,17 +35,32 @@ function ballot(
   };
 }
 
-test("系統票 1.5：AI 同票時由系統票多出的 0.5 決定勝負", () => {
+test("同票並列：最高票兩人同時當選（依座位排序）", () => {
   const players = [makePlayer(0), makePlayer(1), makePlayer(2)];
   const result = tallyAwards({
-    ballots: [ballot(0, 0, 1), ballot(1, 1, 0)],
+    ballots: [ballot(3, 0, 1), ballot(4, 0, 1), ballot(5, 1, 0), ballot(6, 1, 0)],
+    systemMvp: { playerId: "p2", reason: "客观最佳" },
+    systemSvp: null,
+    players,
+  });
+  // seat0 = 2、seat1 = 2、seat2 = 1.5（系統）→ seat0／seat1 並列 MVP
+  assert.deepEqual(result.mvp.map((award) => award.playerId), ["p0", "p1"]);
+  assert.equal(result.mvp[0].reason, "mvp by voter3");
+  assert.equal(result.mvp[1].reason, "mvp by voter5");
+  assert.equal(result.mvp.length, 2);
+});
+
+test("系統票 1.5：AI 同票時由系統票多出的 0.5 獨得，不並列", () => {
+  const players = [makePlayer(0), makePlayer(1), makePlayer(2)];
+  const result = tallyAwards({
+    ballots: [ballot(3, 0, 1), ballot(4, 1, 0)],
     systemMvp: { playerId: "p1", reason: "客观最佳" },
     systemSvp: null,
     players,
   });
-  // seat0 = 1（AI），seat1 = 1（AI） + 1.5（系統）= 2.5
-  assert.equal(result.mvp.playerId, "p1");
-  assert.equal(result.mvp.reason, "客观最佳");
+  // seat0 = 1、seat1 = 1（AI） + 1.5（系統）= 2.5 → 系統人選獨得
+  assert.deepEqual(result.mvp.map((award) => award.playerId), ["p1"]);
+  assert.equal(result.mvp[0].reason, "客观最佳");
   const systemVote = result.awardVotes.mvp.find((vote) => vote.isSystem);
   assert.equal(systemVote?.weight, SYSTEM_VOTE_WEIGHT);
   assert.equal(systemVote?.voterSeat, -1);
@@ -60,8 +75,8 @@ test("AI 票數過半可壓過系統票；理由取投給他的一張票", () =>
     players,
   });
   // seat0 = 3（AI） > seat1 = 1.5（系統）
-  assert.equal(result.mvp.playerId, "p0");
-  assert.equal(result.mvp.reason, "mvp by voter0");
+  assert.deepEqual(result.mvp.map((award) => award.playerId), ["p0"]);
+  assert.equal(result.mvp[0].reason, "mvp by voter0");
 });
 
 test("投錯邊不校正：MVP 票投給誰就記誰", () => {
@@ -73,8 +88,8 @@ test("投錯邊不校正：MVP 票投給誰就記誰", () => {
     players,
   });
   // 即使 p1 是敗方，AI 把 MVP 票投給他仍照實計分。
-  assert.equal(result.mvp.playerId, "p1");
-  assert.equal(result.mvp.reason, "mvp by voter0");
+  assert.deepEqual(result.mvp.map((award) => award.playerId), ["p1"]);
+  assert.equal(result.mvp[0].reason, "mvp by voter0");
 });
 
 test("未知／無效的投票目標直接忽略", () => {
@@ -85,37 +100,20 @@ test("未知／無效的投票目標直接忽略", () => {
     systemSvp: null,
     players,
   });
-  assert.equal(result.mvp.playerId, "p0");
+  assert.deepEqual(result.mvp.map((award) => award.playerId), ["p0"]);
   assert.equal(result.awardVotes.mvp.length, 1);
 });
 
-test("純 AI 同票（無系統票）時：存活者優先，再比座位小", () => {
-  const players = [
-    makePlayer(0, { alive: false }),
-    makePlayer(1, { alive: true }),
-    makePlayer(2, { alive: true }),
-  ];
-  const result = tallyAwards({
-    ballots: [ballot(0, 0, 0), ballot(1, 1, 1), ballot(2, 2, 2)],
-    systemMvp: null,
-    systemSvp: null,
-    players,
-  });
-  // 三人都 1 票；seat0 已出局 → 由存活的 seat1／seat2 比座位，seat1 勝。
-  assert.equal(result.mvp.playerId, "p1");
-});
-
-test("SVP 與 MVP 各自獨立計票", () => {
+test("SVP 與 MVP 各自獨立計票，SVP 亦可並列", () => {
   const players = [makePlayer(0), makePlayer(1), makePlayer(2)];
   const result = tallyAwards({
-    ballots: [ballot(0, 0, 2), ballot(1, 0, 2)],
+    ballots: [ballot(3, 0, 1), ballot(4, 0, 2), ballot(5, 0, 1), ballot(6, 0, 2)],
     systemMvp: { playerId: "p0", reason: "客观最佳" },
-    systemSvp: { playerId: "p1", reason: "虽败犹荣" },
+    systemSvp: { playerId: "p0", reason: "虽败犹荣" },
     players,
   });
-  assert.equal(result.mvp.playerId, "p0");
-  // seat2 = 2（AI） > seat1 = 1.5（系統）
-  assert.equal(result.svp.playerId, "p2");
-  assert.equal(result.svp.reason, "svp by voter0");
+  assert.deepEqual(result.mvp.map((award) => award.playerId), ["p0"]);
+  // SVP：seat1 = 2、seat2 = 2（AI） > 系統 1.5 → seat1／seat2 並列
+  assert.deepEqual(result.svp.map((award) => award.playerId), ["p1", "p2"]);
   assert.equal(result.awardVotes.svp.filter((v) => v.isSystem).length, 1);
 });

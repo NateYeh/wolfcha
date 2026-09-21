@@ -42,7 +42,7 @@ export const buildAnalysisSystemPrompt = (): string =>
 
 const MAX_SPEECH_ITEMS_PER_PHASE = 30;
 const MAX_SPEECH_CONTENT_LENGTH = 280;
-export const GAME_ANALYSIS_VERSION = 5;
+export const GAME_ANALYSIS_VERSION = 6;
 
 const ROLE_ALIGNMENT: Record<Role, Alignment> = {
   Werewolf: "wolf",

@@ -18,8 +18,9 @@ export interface AwardBallot {
 }
 
 export interface AwardTallyResult {
-  mvp: PlayerAward;
-  svp: PlayerAward;
+  /** 最高票者；同票並列時含全部並列者（依座位排序）。 */
+  mvp: PlayerAward[];
+  svp: PlayerAward[];
   awardVotes: {
     mvp: AwardVote[];
     svp: AwardVote[];
@@ -39,14 +40,17 @@ function toPlayerAward(player: Player, reason: string): PlayerAward {
 }
 
 /**
- * 由票數算出得票最高者。
- * 分數：AI 票 1、系統票 1.5；同票時存活者優先，再比座位小（保證可重現）。
+ * 由票數找出所有最高票者（同票並列即多人當選，依座位排序）。
+ * 分數：AI 票 1、系統票 1.5。
+ *
+ * 系統票是半整數，所以系統人選永遠不會與人同票——要嘛以最高分獨得，
+ * 要嘛被兩張以上的 AI 票壓過而落敗；並列只會發生在 AI 之間。
  */
 function tallyOne(params: {
   votes: AwardVote[];
   players: Player[];
   fallbackReason: string;
-}): { player: Player; reason: string } {
+}): PlayerAward[] {
   const { votes, players, fallbackReason } = params;
   const scores = new Map<string, number>();
   for (const vote of votes) {
@@ -54,29 +58,26 @@ function tallyOne(params: {
     scores.set(vote.targetPlayerId, (scores.get(vote.targetPlayerId) ?? 0) + vote.weight);
   }
 
-  let best: { player: Player; score: number } | null = null;
-  for (const player of players) {
-    const score = scores.get(player.playerId) ?? 0;
-    if (!best || score > best.score) {
-      best = { player, score };
-      continue;
-    }
-    if (score === best.score) {
-      const aliveBetter = player.alive && !best.player.alive;
-      const seatBetter = player.alive === best.player.alive && player.seat < best.player.seat;
-      if (aliveBetter || seatBetter) best = { player, score };
-    }
+  let maxScore = 0;
+  for (const score of scores.values()) {
+    if (score > maxScore) maxScore = score;
   }
 
-  // players 非空時 best 必不為 null；保險起見仍給一個明確結果。
-  const winner = best?.player ?? players[0];
-  if (!winner) {
-    throw new Error("tallyOne requires at least one player");
-  }
-  // 最終理由：系統若選中他，用系統的客觀理由；否則用投給他的一張票的理由。
-  const systemVote = votes.find((v) => v.isSystem && v.targetPlayerId === winner.playerId);
-  const aiVote = votes.find((v) => !v.isSystem && v.targetPlayerId === winner.playerId);
-  return { player: winner, reason: systemVote?.reason || aiVote?.reason || fallbackReason };
+  const winners = players
+    .filter((p) => maxScore > 0 && (scores.get(p.playerId) ?? 0) === maxScore)
+    .sort((a, b) => a.seat - b.seat);
+  // 完全沒有有效票（理論上不會發生，系統票一定在）時退回存活的第一位，避免空獎項。
+  const pool =
+    winners.length > 0
+      ? winners
+      : [players.find((p) => p.alive) ?? players[0]].filter((p): p is Player => Boolean(p));
+
+  return pool.map((player) => {
+    // 每位當選者各自的理由：系統若選中他，用系統的客觀理由；否則用投給他的一張票的理由。
+    const systemVote = votes.find((v) => v.isSystem && v.targetPlayerId === player.playerId);
+    const aiVote = votes.find((v) => !v.isSystem && v.targetPlayerId === player.playerId);
+    return toPlayerAward(player, systemVote?.reason || aiVote?.reason || fallbackReason);
+  });
 }
 
 /**
@@ -161,12 +162,9 @@ export function tallyAwards(params: {
     });
   }
 
-  const mvp = tallyOne({ votes: mvpVotes, players, fallbackReason: "本局關鍵勝利貢獻" });
-  const svp = tallyOne({ votes: svpVotes, players, fallbackReason: "雖敗仍有亮點" });
-
   return {
-    mvp: toPlayerAward(mvp.player, mvp.reason),
-    svp: toPlayerAward(svp.player, svp.reason),
+    mvp: tallyOne({ votes: mvpVotes, players, fallbackReason: "本局關鍵勝利貢獻" }),
+    svp: tallyOne({ votes: svpVotes, players, fallbackReason: "雖敗仍有亮點" }),
     awardVotes: { mvp: mvpVotes, svp: svpVotes },
   };
 }

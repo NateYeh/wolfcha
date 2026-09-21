@@ -59,8 +59,8 @@ export function useGameAnalysis() {
         name: p.displayName,
         alignment: p.alignment === "wolf" ? "wolf" : "village",
         won: (p.alignment === "wolf") === (winner === "wolf"),
-        mvp: data.awards.mvp?.playerId === p.playerId,
-        svp: data.awards.svp?.playerId === p.playerId,
+        mvp: data.awards.mvp.some((award) => award.playerId === p.playerId),
+        svp: data.awards.svp.some((award) => award.playerId === p.playerId),
       }));
       void recordCharacterStats(gameState.gameId, statRecords);
     } catch (err) {

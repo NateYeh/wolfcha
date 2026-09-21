@@ -152,8 +152,9 @@ export interface GameAnalysisData {
   result: "village_win" | "wolf_win";
 
   awards: {
-    mvp: PlayerAward;
-    svp: PlayerAward;
+    /** 最高票者（同票並列時含全部並列者，依座位排序）。 */
+    mvp: PlayerAward[];
+    svp: PlayerAward[];
   };
 
   /** MVP／SVP 投票明細：各 AI 角色 + 系統客觀票（1.5 票）。 */

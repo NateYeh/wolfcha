@@ -632,16 +632,20 @@ export function generateAnalysisHTML(data: GameAnalysisData): string {
     </section>
 
     <div class="awards">
+      ${awards.mvp.length > 0 ? `
       <div class="award-card">
         <div class="award-title">最佳表现 MVP</div>
-        <div class="award-name">${awards.mvp.playerName}</div>
-        <div class="award-reason">${awards.mvp.reason}</div>
-      </div>
+        ${awards.mvp.map((award) => `
+          <div class="award-name">${award.playerName}</div>
+          <div class="award-reason">${award.reason}</div>`).join("")}
+      </div>` : ""}
+      ${awards.svp.length > 0 ? `
       <div class="award-card">
         <div class="award-title">虽败犹荣 SVP</div>
-        <div class="award-name">${awards.svp.playerName}</div>
-        <div class="award-reason">${awards.svp.reason}</div>
-      </div>
+        ${awards.svp.map((award) => `
+          <div class="award-name">${award.playerName}</div>
+          <div class="award-reason">${award.reason}</div>`).join("")}
+      </div>` : ""}
     </div>
 
     ${personalStats.highlightQuote ? `

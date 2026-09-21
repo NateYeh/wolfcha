@@ -1603,8 +1603,8 @@ export default function Home() {
                       onWhiteWolfKingBoom={handleWhiteWolfKingBoom}
                       onViewAnalysis={handleViewAnalysis}
                       isAnalysisLoading={isAnalysisLoading}
-                      gameMvp={analysisData?.awards?.mvp}
-                      gameSvp={analysisData?.awards?.svp}
+                      gameMvps={analysisData?.awards?.mvp}
+                      gameSvps={analysisData?.awards?.svp}
                       gameAwardVotes={analysisData?.awardVotes}
                       isEventLogOpen={isEventLogOpen}
                       onEventLogOpenChange={setIsEventLogOpen}
