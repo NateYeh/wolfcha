@@ -11,7 +11,8 @@ setLocale("zh-CN");
 const makePlayer = (
   playerId: string,
   seat: number,
-  role: Player["role"]
+  role: Player["role"],
+  model = "gemma4:31b-cloud"
 ): Player => ({
   playerId,
   seat,
@@ -20,6 +21,10 @@ const makePlayer = (
   role,
   alignment: role === "Werewolf" || role === "WhiteWolfKing" ? "wolf" : "village",
   isHuman: false,
+  agentProfile: {
+    modelRef: { provider: "tokendance", model },
+    persona: { voiceRules: [], mbti: "INTJ", gender: "male", age: 30 },
+  },
 });
 
 const makeState = (players: Player[]): GameState => {
@@ -79,8 +84,8 @@ const requestText = (request: { messages: Array<{ content: string | unknown[] }>
 test("警徽报名批处理为每个玩家建立独立 Prompt，并按返回顺序映射结果", async () => {
   const { generateAIBadgeSignupBatch } = await import("./game-master");
   const players = [
-    makePlayer("seer", 0, "Seer"),
-    makePlayer("guard", 1, "Guard"),
+    makePlayer("seer", 0, "Seer", "gemma4:31b-cloud"),
+    makePlayer("guard", 1, "Guard", "glm-5.3-flash:cloud"),
   ];
   const state = makeState(players);
   const originalFetch = globalThis.fetch;
@@ -139,6 +144,9 @@ test("警徽报名批处理为每个玩家建立独立 Prompt，并按返回顺�
 
     const seerPrompt = requestText(requests[0]);
     const guardPrompt = requestText(requests[1]);
+    // 警徽報名是角色行為：每個角色用自己的模型（迴歸：這裡曾誤用摘要模型 glm-5.3-flash）。
+    assert.equal(requests[0].model, "gemma4:31b-cloud");
+    assert.equal(requests[1].model, "glm-5.3-flash:cloud");
     assert.match(seerPrompt, /<your_seer_checks>/);
     assert.doesNotMatch(seerPrompt, /<your_guard_info>/);
     assert.match(guardPrompt, /<your_guard_info>/);

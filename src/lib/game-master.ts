@@ -1394,13 +1394,25 @@ export async function generateAIBadgeSignupBatch(
 ): Promise<Record<string, boolean>> {
   if (!players || players.length === 0) return {};
 
-  const model = getSummaryModel();
-  const modelRef = getModelRefForModel(model);
+  // 報不報名是角色行為：用該角色自己的模型，跟發言／投票／夜間行動同一把尺。
+  // 只有角色缺少 agentProfile（例如測試夾具）時才退回摘要模型，並留下紀錄，不靜默。
+  const resolveSignupModelRef = (player: Player): ModelRef => {
+    const ref = player.agentProfile?.modelRef;
+    if (ref) return ref;
+    console.warn(
+      "[badge_signup] 角色缺少 agentProfile.modelRef，暫用摘要模型",
+      { playerId: player.playerId, seat: player.seat + 1 }
+    );
+    return getModelRefForModel(getSummaryModel());
+  };
   const requests = players.map((player) => {
+    const modelRef = resolveSignupModelRef(player);
+    const model = modelRef.model;
     const prompt = resolvePhasePrompt("DAY_BADGE_SIGNUP", state, player);
     const { messages } = buildMessagesForPrompt(prompt);
     return {
       player,
+      model,
       messages,
       request: {
         model,
@@ -1434,7 +1446,7 @@ export async function generateAIBadgeSignupBatch(
   try {
     const results = await generateCompletionBatch(requests.map(({ request }) => request));
     await Promise.all(
-      requests.map(async ({ player, messages }, index) => {
+      requests.map(async ({ player, model, messages }, index) => {
         const result = results[index];
         const decision = result?.ok ? parseBadgeSignupDecision(result.content) : null;
         if (decision !== null) parsedByPlayer[player.playerId] = decision.signup;
@@ -1475,7 +1487,7 @@ export async function generateAIBadgeSignupBatch(
     );
   } catch (error) {
     await Promise.all(
-      requests.map(({ player, messages }) =>
+      requests.map(({ player, model, messages }) =>
         aiLogger.log({
           type: "badge_signup",
           request: {
