@@ -30,6 +30,24 @@ import type { DialogueState } from "@/store/game-machine";
 
 const HISTORY_BOTTOM_THRESHOLD = 24;
 
+/** 發言速插模板：狼人殺發言高度模板化，一鍵插入比語音更快。 */
+const SPEECH_PRESET_KEYS = [
+  "dialog.speechPresets.p1",
+  "dialog.speechPresets.p2",
+  "dialog.speechPresets.p3",
+  "dialog.speechPresets.p4",
+  "dialog.speechPresets.p5",
+  "dialog.speechPresets.p6",
+] as const;
+
+/** 把新文字接到既有發言後面（語音聽寫與速插模板共用）。 */
+const appendSpeechText = (prev: string | undefined, text: string): string => {
+  const base = String(prev ?? "").trim();
+  const incoming = text.trim();
+  if (!incoming) return base;
+  return base.length > 0 ? `${base} ${incoming}` : incoming;
+};
+
 // 职业立绘映射
 const ROLE_PORTRAIT_MAP: Record<string, string> = {
   Werewolf: '/roles/werewolf.png',
@@ -1734,6 +1752,21 @@ export function DialogArea({
                       </button>
                     </div>
                   )}
+                  {/* 常用語速插：點一下插入模板，X/Y 自己換掉 */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {SPEECH_PRESET_KEYS.map((presetKey) => (
+                      <button
+                        key={presetKey}
+                        type="button"
+                        onClick={() => onInputChange?.(appendSpeechText(inputText, t(presetKey)))}
+                        className="h-7 px-2.5 rounded border border-[var(--color-gold)]/35 text-[11px] leading-none text-[var(--color-gold)] bg-transparent hover:bg-[var(--color-gold)]/10 transition-all cursor-pointer"
+                        title={t(presetKey)}
+                      >
+                        {t(presetKey)}
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="wc-input-box relative" style={{ minHeight: "112px", alignItems: "flex-start", padding: "14px 16px 56px" }}>
                     <MentionInput
                       key={`mention-input-${gameState.phase}-${gameState.currentSpeakerSeat}`}
@@ -1763,9 +1796,7 @@ export function DialogArea({
                         disabled={!isHumanTurn}
                         isNight={isNight}
                         onTranscript={(text) => {
-                          const prev = String(inputText || "");
-                          const next = prev.trim().length > 0 ? `${prev.trim()} ${text}` : text;
-                          onInputChange?.(next);
+                          onInputChange?.(appendSpeechText(inputText, text));
                         }}
                       />
 
