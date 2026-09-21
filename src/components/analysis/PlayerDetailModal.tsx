@@ -30,7 +30,7 @@ const ALIGNMENT_LABELS: Record<string, { label: string; color: string }> = {
 
 export function PlayerDetailModal({ player, isOpen, onClose }: PlayerDetailModalProps) {
   const t = useTranslations();
-  const careerStats = useCareerStats(player?.characterId);
+  const careerStats = useCareerStats(player?.characterId, player?.name);
   if (!player) return null;
 
   const avatarUrl = buildSimpleAvatarUrl(player.avatar || player.name, { gender: player.gender });
@@ -106,7 +106,7 @@ export function PlayerDetailModal({ player, isOpen, onClose }: PlayerDetailModal
                 <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">{player.name}</h2>
 
                 {/* 生涯战绩：按角色名累计（无记录则不显示） */}
-                {careerStats && careerStats.games > 0 && (
+                {careerStats && (
                   <div className="mb-2">
                     <div className="grid grid-cols-4 rounded-lg bg-black/5 dark:bg-white/10 px-2 py-2">
                       <div className="min-w-0">
@@ -119,7 +119,7 @@ export function PlayerDetailModal({ player, isOpen, onClose }: PlayerDetailModal
                       </div>
                       <div className="min-w-0 border-l border-black/5 dark:border-white/10">
                         <div className="text-sm font-bold text-[var(--text-primary)] whitespace-nowrap">
-                          {Math.round((careerStats.wins / careerStats.games) * 100)}%
+                          {careerStats.games > 0 ? Math.round((careerStats.wins / careerStats.games) * 100) : 0}%
                         </div>
                         <div className="mt-0.5 text-[11px] leading-tight text-[var(--text-muted)] whitespace-nowrap">
                           {t("playerDetail.statWinRateLabel")}

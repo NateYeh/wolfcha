@@ -87,7 +87,7 @@ export function aggregateCharacterStats(records: CharacterStatRecord[]): Record<
   return stats;
 }
 
-/** 读取聚合统计；任何失败（本地 demo、无文件、请求失败）返回 undefined，由调用方静默降级。 */
+/** 读取聚合统计；请求失败返回 undefined，空资料集返回空物件（让角色卡仍显示 0 参赛）。 */
 export async function fetchCharacterStats(): Promise<Record<string, CharacterStat> | undefined> {
   try {
     const res = await fetchWithTimeout("/api/character-stats", { method: "GET" }, 8000);
@@ -96,7 +96,7 @@ export async function fetchCharacterStats(): Promise<Record<string, CharacterSta
       return undefined;
     }
     const data = (await res.json()) as { stats?: Record<string, CharacterStat> };
-    return data.stats && Object.keys(data.stats).length > 0 ? data.stats : undefined;
+    return data.stats ?? {};
   } catch (error) {
     console.warn("[wolfcha] fetchCharacterStats failed:", error);
     return undefined;
