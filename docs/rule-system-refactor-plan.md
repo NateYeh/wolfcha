@@ -213,3 +213,16 @@ type BoardPreset = {
 - AI log 類型：`wwk_boom_decision` → `self_destruct_decision`（舊 log 仍用舊名）。
 - 續辦競選：`startDayPhaseInternal` 先看 `shouldResumeBadgeElection`，天亮時補公布死訊後
   交給 `useBadgePhase.resumeBadgeSpeechPhase`（跳過已發言候選人）。
+
+### 自爆狀態轉移（可測純函式）
+
+`lib/rules/self-destruct-apply.ts` 的 `applySelfDestructToState()` 是自爆的**唯一狀態真相**
+（hook 只負責公告、遺言、移交警徽、進黑夜的流程）。標準雙爆流程以 `self-destruct-flow.test.ts`
+逐一驗證：
+
+1. 第一天競選發言第一隻狼自爆 → 補公布第一夜死訊 → 第一夜死者遺言進佇列（實際發表由 hook 跑）
+   → 階段切 `SELF_DESTRUCT` → 直接天黑；`badge.lost` 不變、`electionBooms=1`、`electionSuspended=true`。
+2. 天亮續辦競選（跳過已發言候選人）→ 第二天第二隻狼再自爆 → `badge.lost=true`、`electionSuspended=false`，
+   且**第二夜的新死亡不進遺言佇列**（`pendingLastWordsSeats` 為空）。
+3. 白狼王在競選發言自爆＝一次帶人＋一次吞徽（不需第二爆）。
+4. 非競選階段自爆不動警徽；警長（含自爆者本人）死亡時交出移交權，由警長自己選傳徽或撕徽。

@@ -26,9 +26,9 @@ import { gameStateAtom, isValidTransition, clearPersistedGameState, isRestorable
 import { getGeneratorModel, getModelSource } from "@/lib/api-keys";
 import { isAbstainSeat } from "@/lib/rules/actions";
 import { takeNextLastWordsSeat } from "@/lib/rules/last-words";
-import { getCurrentSpeechRoundMessages } from "@/lib/speech-order";
 import { getRoleCapabilities } from "@/lib/rules/roles";
-import { canSelfDestruct, hasAlreadyBoomed, resolveSelfDestructOutcome, shouldResumeBadgeElection } from "@/lib/rules/self-destruct";
+import { canSelfDestruct, hasAlreadyBoomed, shouldResumeBadgeElection } from "@/lib/rules/self-destruct";
+import { applySelfDestructToState } from "@/lib/rules/self-destruct-apply";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import {
   buildGameStartState,
@@ -712,64 +712,12 @@ export function useGameLogic() {
   };
 
   /**
-   * 補公布「已結算但還沒公布」的夜晚死亡。
+   * 執行自爆（AI 與真人共用）：狀態轉移交給純函式 `applySelfDestructToState`，
+   * 這裡只負責公告、遺言、移交警徽與進入黑夜的流程。
    *
-   * 自爆會跳過當天剩餘流程（第一天的死訊本來排在警徽競選之後），若不補做，
-   * 第一夜死者會少掉死訊公告與遺言。這裡只做必要的套用與公告，旁白音效由 UI 端自行處理。
-   */
-  const settleUnannouncedNightDeaths = useCallback((state: GameState): GameState => {
-    const history = state.nightHistory ?? {};
-    const unannounced = Object.entries(history)
-      .filter(([, record]) => record && record.resultsAnnounced === false && (record.deaths ?? []).length > 0)
-      .sort(([a], [b]) => Number(a) - Number(b));
-    if (unannounced.length === 0) return state;
-
-    const systemMessages = getSystemMessages();
-    let currentState = state;
-    for (const [day, record] of unannounced) {
-      for (const death of record.deaths ?? []) {
-        const victim = currentState.players.find((p) => p.seat === death.seat);
-        if (!victim) continue;
-        if (victim.alive) currentState = killPlayer(currentState, victim.seat);
-        // 被毒死的獵人不能開槍（沿用死亡公告規則）
-        if (death.reason === "poison" && victim.role === "Hunter") {
-          currentState = { ...currentState, roleAbilities: { ...currentState.roleAbilities, hunterCanShoot: false } };
-        }
-        // 奶穿（同刀同毒）不重複發第二次死訊
-        if (death.reason === "milk") continue;
-        currentState = addSystemMessage(
-          currentState,
-          systemMessages.playerKilled(victim.seat + 1, victim.displayName)
-        );
-      }
-      currentState = {
-        ...currentState,
-        nightHistory: {
-          ...currentState.nightHistory,
-          [Number(day)]: { ...record, resultsAnnounced: true },
-        },
-      };
-    }
-    console.warn(
-      `[wolfcha] 自爆跳過白天流程，補公布未宣布的夜間死訊：${unannounced.map(([day]) => day).join("、")}`
-    );
-    return {
-      ...currentState,
-      nightActions: {
-        ...currentState.nightActions,
-        pendingWolfVictim: undefined,
-        pendingPoisonVictim: undefined,
-      },
-    };
-  }, []);
-
-  /**
-   * 執行自爆（AI 與真人共用）：
-   *
-   * 1. 自爆者立刻出局（沒有遺言、沒有自爆宣言）。
-   * 2. 只有白狼王能帶走一名玩家（對方無遺言；獵人仍可開槍）。
-   * 3. 警徽：競選階段白狼王自爆直接吞徽；普通狼第一次順延競選、第二次（雙爆）吞徽。
-   * 4. 直接天黑：先補公布尚未宣布的夜間死訊與第一夜遺言，再進入黑夜。
+   * 標準流程（見 lib/rules/self-destruct-apply.ts 的說明）：
+   * 第一隻狼在競選發言自爆 → 公布第一夜死訊 → 第一夜死者遺言 → 直接天黑（競選保留）；
+   * 第二隻狼再自爆 → 警徽正式流失，且第二夜起的新死亡沒有遺言。
    */
   const applySelfDestruct = useCallback(async (
     state: GameState,
@@ -780,106 +728,61 @@ export function useGameLogic() {
     token: ReturnType<typeof getToken>
   ): Promise<void> => {
     const flags = getBoardRuleFlags(state.players.length);
-    const electionBooms = state.badge.electionBooms ?? 0;
-    const outcome = resolveSelfDestructOutcome({
-      phase: originPhase,
-      role: boomer.role,
+    const applied = applySelfDestructToState({
+      state,
+      boomerSeat: boomer.seat,
+      targetSeat,
+      reason,
+      originPhase,
       flags,
-      electionBooms,
     });
+    const systemMessages = getSystemMessages();
+    let currentState = applied.state;
 
-    let currentState = killPlayer(state, boomer.seat);
-    currentState = {
-      ...currentState,
-      roleAbilities: {
-        ...currentState.roleAbilities,
-        boomedSeats: [...(currentState.roleAbilities.boomedSeats ?? []), boomer.seat].filter(
-          (seat, index, all) => all.indexOf(seat) === index
-        ),
-      },
-    };
-
-    // 帶人（只有白狼王；被帶走的人沒有遺言）
-    let boomVictim: Player | undefined;
-    if (outcome.takesPlayer && targetSeat !== null) {
-      const target = currentState.players.find((p) => p.seat === targetSeat);
-      if (target?.alive) {
-        currentState = killPlayer(currentState, targetSeat);
-        boomVictim = currentState.players.find((p) => p.seat === targetSeat);
-        const msg = t("system.selfDestructWithTarget", {
-          seat: boomer.seat + 1,
-          name: boomer.displayName,
-          targetSeat: targetSeat + 1,
-          targetName: target.displayName,
-        });
-        currentState = addSystemMessage(currentState, msg);
-        setDialogue(speakerHost, msg, false);
-      }
+    // 公告：自爆（帶人／不帶人）
+    if (applied.victimSeat !== undefined) {
+      const victim = currentState.players.find((p) => p.seat === applied.victimSeat);
+      const msg = t("system.selfDestructWithTarget", {
+        seat: boomer.seat + 1,
+        name: boomer.displayName,
+        targetSeat: applied.victimSeat + 1,
+        targetName: victim?.displayName ?? "",
+      });
+      currentState = addSystemMessage(currentState, msg);
+      setDialogue(speakerHost, msg, false);
     } else {
       const msg = t("system.selfDestruct", { seat: boomer.seat + 1, name: boomer.displayName });
       currentState = addSystemMessage(currentState, msg);
       setDialogue(speakerHost, msg, false);
     }
 
-    // 警徽：吞徽／順延競選／警長死亡撕徽
-    const isElectionPhase = originPhase === "DAY_BADGE_SPEECH";
-    let badge = {
-      ...currentState.badge,
-      electionBooms: isElectionPhase && !outcome.swallowBadge ? electionBooms + 1 : electionBooms,
-    };
-    if (outcome.swallowBadge) {
-      badge = { ...badge, holderSeat: null, lost: true, electionSuspended: false };
+    // 公告：警徽流失（競選階段吞徽）
+    if (applied.outcome.swallowBadge) {
       const lostMsg = t("system.badgeLost");
       currentState = addSystemMessage(currentState, lostMsg);
       setDialogue(speakerHost, lostMsg, false);
-    } else if (outcome.suspendElection) {
-      // 跨天續辦競選時，當日發言紀錄不再包含前一天的競選發言，因此把「已發言候選人」記進狀態
-      const spokenToday = getCurrentSpeechRoundMessages(state).map(
-        (message) => state.players.find((p) => p.playerId === message.playerId)?.seat
-      ).filter((seat): seat is number => seat !== undefined);
-      badge = {
-        ...badge,
-        electionSuspended: true,
-        electionSpokenSeats: [...new Set([...(badge.electionSpokenSeats ?? []), ...spokenToday])],
-      };
     }
 
-    const sheriffSeat = badge.holderSeat;
-    const deadSheriff =
-      sheriffSeat !== null
-        ? currentState.players.find((p) => p.seat === sheriffSeat && !p.alive) ?? null
-        : null;
-
-    const prevDayRecord = (currentState.dayHistory || {})[currentState.day] || {};
-    currentState = {
-      ...currentState,
-      badge,
-      dayHistory: {
-        ...(currentState.dayHistory || {}),
-        [currentState.day]: {
-          ...prevDayRecord,
-          selfDestruct: {
-            boomSeat: boomer.seat,
-            ...(targetSeat !== null ? { targetSeat } : {}),
-            reason,
-            swallowBadge: outcome.swallowBadge,
-            suspendedElection: outcome.suspendElection,
-          },
-        },
-      },
-    };
-
-    // 階段切到 SELF_DESTRUCT：來源階段（競選／白天）已經用來決定警徽規則，
-    // 這裡切過去讓後續的移交警徽、遺言、天黑都走合法轉移。
-    currentState = transitionPhase(currentState, "SELF_DESTRUCT");
+    // 公告：補公布尚未公布的夜間死訊（第一夜死者）；奶穿（同刀同毒）不重複發第二次
+    for (const death of applied.newlyAnnouncedDeaths) {
+      if (death.reason === "milk") continue;
+      const victim = currentState.players.find((p) => p.seat === death.seat);
+      currentState = addSystemMessage(
+        currentState,
+        systemMessages.playerKilled(death.seat + 1, victim?.displayName ?? "")
+      );
+    }
     setGameState(currentState);
 
     const continueAfterSettle = async (afterState: GameState): Promise<void> => {
       // 帶走獵人：獵人仍可開槍
-      if (boomVictim?.role === "Hunter" && afterState.roleAbilities.hunterCanShoot) {
+      const victim = applied.victimSeat !== undefined
+        ? afterState.players.find((p) => p.seat === applied.victimSeat)
+        : undefined;
+      if (victim?.role === "Hunter" && afterState.roleAbilities.hunterCanShoot) {
         await delay(1200);
         const hunterFn = hunterDeathRef.current;
-        if (hunterFn) await hunterFn(afterState, boomVictim, false);
+        if (hunterFn) await hunterFn(afterState, victim, false);
         return;
       }
 
@@ -896,32 +799,30 @@ export function useGameLogic() {
     };
 
     const continueAfterBadge = async (afterBadgeState: GameState): Promise<void> => {
-      const settled = settleUnannouncedNightDeaths(afterBadgeState);
-      setGameState(settled);
-
       // 第一夜死者的遺言不會被自爆吃掉：先發表完再進黑夜
-      if ((settled.pendingLastWordsSeats ?? []).length > 0) {
+      if ((afterBadgeState.pendingLastWordsSeats ?? []).length > 0) {
         const drain = drainPendingLastWordsRef.current;
         if (drain) {
-          await drain(settled, token, continueAfterSettle);
+          await drain(afterBadgeState, token, continueAfterSettle);
           return;
         }
         console.warn("[wolfcha] 遺言佇列處理器尚未就緒，自爆後直接續跑流程");
       }
-      await continueAfterSettle(settled);
+      await continueAfterSettle(afterBadgeState);
     };
 
     // 警長（含自爆者本人）死亡時由他自己決定傳徽或撕徽，不自動撕毀
-    if (deadSheriff) {
+    if (applied.badgeTransferSeat !== null) {
+      const sheriff = currentState.players.find((p) => p.seat === applied.badgeTransferSeat) ?? boomer;
       const transferFn = badgeTransferRef.current;
       if (transferFn) {
-        await transferFn(currentState, deadSheriff, continueAfterBadge);
+        await transferFn(currentState, sheriff, continueAfterBadge);
         return;
       }
       console.warn("[wolfcha] 警徽移交處理器尚未就緒，改為直接撕毀警徽");
-      const fallbackMsg = t("system.badgeTorn", { seat: deadSheriff.seat + 1, name: deadSheriff.displayName });
+      const fallbackMsg = t("system.badgeTorn", { seat: sheriff.seat + 1, name: sheriff.displayName });
       const fallbackState = addSystemMessage(
-        { ...currentState, badge: { ...badge, holderSeat: null } },
+        { ...currentState, badge: { ...currentState.badge, holderSeat: null } },
         fallbackMsg
       );
       setDialogue(speakerHost, fallbackMsg, false);
@@ -930,7 +831,7 @@ export function useGameLogic() {
     }
 
     await continueAfterBadge(currentState);
-  }, [addSystemMessage, checkWinCondition, killPlayer, setDialogue, setGameState, speakerHost, settleUnannouncedNightDeaths, t, transitionPhase]);
+  }, [addSystemMessage, checkWinCondition, setDialogue, setGameState, speakerHost, t]);
 
   // AI 自爆決策（所有狼陣營角色，見 lib/rules/self-destruct.ts）
   selfDestructCheckRef.current = async (state: GameState, wolf: Player): Promise<boolean> => {
