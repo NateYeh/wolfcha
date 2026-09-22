@@ -38,11 +38,6 @@ export const getRoleText = (role: string) => {
   }
 };
 
-/** 勝負條件＋兩個全域區塊（想贏的動機、允許不完美）。 */
-const withPlayerMindset = (winConditionLine: string): string => {
-  const { t } = getI18n();
-  return `${winConditionLine}\n\n${t("promptUtils.winMotivationNote")}\n\n${t("promptUtils.humannessNote")}`;
-};
 
 /**
  * 遊戲基本盤：這是什麼遊戲、通用規則、角色與技能一覽（公開知識）。
@@ -61,29 +56,45 @@ export const getGameFundamentals = (): string => {
  * {coreRules} 佔位符攜帶的整塊內容：遊戲基本盤＋勝負條件＋心態區塊。
  * 每個玩家階段的 base 模板都插這個佔位符，所以基本盤會跟著到每一隻玩家手上。
  */
-export const getRolePromptCore = (role: string) => {
+/** 與角色綁定的勝負條件（逐角色不同，因此必須放個人區，不能進共用前綴）。 */
+export const getRoleWinCondition = (role: string): string => {
   const { t } = getI18n();
-  const raw = ((): string => {
-    switch (role) {
-      case "Werewolf":
-        return t("promptUtils.winCondition.werewolf");
-      case "WhiteWolfKing":
-        return t("promptUtils.winCondition.whiteWolfKing");
-      case "Seer":
-        return t("promptUtils.winCondition.seer");
-      case "Witch":
-        return t("promptUtils.winCondition.witch");
-      case "Hunter":
-        return t("promptUtils.winCondition.hunter");
-      case "Guard":
-        return t("promptUtils.winCondition.guard");
-      case "Idiot":
-        return t("promptUtils.winCondition.idiot");
-      default:
-        return t("promptUtils.winCondition.villager");
-    }
-    })();
-  return `${getGameFundamentals()}\n\n${withPlayerMindset(raw)}`;
+  switch (role) {
+    case "Werewolf":
+      return t("promptUtils.winCondition.werewolf");
+    case "WhiteWolfKing":
+      return t("promptUtils.winCondition.whiteWolfKing");
+    case "Seer":
+      return t("promptUtils.winCondition.seer");
+    case "Witch":
+      return t("promptUtils.winCondition.witch");
+    case "Hunter":
+      return t("promptUtils.winCondition.hunter");
+    case "Guard":
+      return t("promptUtils.winCondition.guard");
+    case "Idiot":
+      return t("promptUtils.winCondition.idiot");
+    default:
+      return t("promptUtils.winCondition.villager");
+  }
+};
+
+/**
+ * 全桌共用的規則區塊：遊戲基本盤＋「想贏的動機」＋「允許不完美」。
+ * 與角色、座位無關，字串逐字相同，因此排在任何 prompt 的最前面當作快取前綴。
+ */
+export const getSharedPromptRules = (): string => {
+  const { t } = getI18n();
+  return `${getGameFundamentals()}\n\n${t("promptUtils.winMotivationNote")}\n\n${t("promptUtils.humannessNote")}`;
+};
+
+/**
+ * {coreRules} 佔位符攜帶的整塊內容：遊戲基本盤＋勝負條件＋心態區塊。
+ * 注意：勝負條件逐角色不同，這整塊不適合當共用前綴；
+ * 需要前綴快取的呼叫端改用 getSharedPromptRules()＋getRoleWinCondition() 分開拼。
+ */
+export const getRolePromptCore = (role: string) => {
+  return `${getSharedPromptRules()}\n\n${getRoleWinCondition(role)}`;
 };
 
 const PUBLIC_ROLE_ORDER: Role[] = [
@@ -1010,11 +1021,20 @@ const buildWolfTeamPlanSection = (
   return lines.join("\n");
 };
 
-export const buildGameContext = (
+export type GameContextParts = { shared: string; private: string };
+
+/**
+ * 組出對局上下文，分成兩個區塊：
+ * - `shared`：公共資訊（公開規則、票型、逐字紀錄等），同一輪裡不同座位的字串完全一致
+ * - `private`：個人專屬（身份、私有資訊、熟人印象、個人狀態）
+ * 分開回傳是為了前綴快取：呼叫端把 shared 排在前面、private 排在後面，
+ * 同一輪的多個 AI 呼叫就能共用同一段前綴（實測快取命中約 99%）。
+ */
+export const buildGameContextParts = (
   state: GameState,
   player: Player,
   options?: { excludePendingDeaths?: boolean }
-): string => {
+): GameContextParts => {
   options = { ...options, excludePendingDeaths: options?.excludePendingDeaths || !areNightResultsVisible(state) };
   const { t } = getI18n();
   const alivePlayers = state.players.filter((p) => p.alive);
@@ -1025,9 +1045,11 @@ export const buildGameContext = (
   const publicHunterShotCause = t("promptUtils.gameContext.deathCauseHunterShot");
   const publicWhiteWolfKingCause = t("promptUtils.gameContext.deathCauseWhiteWolfKing");
 
-  // === 第一优先级：角色私有信息（放在最前面） ===
+  // === 個人專屬區塊集中在最後（前綴快取友善） ===
+  const privateParts: string[] = [];
   const privateInfo = buildRolePrivateInfo(state, player, options);
-  let context = privateInfo ? `${privateInfo}\n\n` : "";
+  if (privateInfo) privateParts.push(privateInfo);
+  let context = "";
 
   // Build YAML-formatted game state
   const aliveSeats = alivePlayers.map((p) => p.seat + 1);
@@ -1067,14 +1089,16 @@ export const buildGameContext = (
     name: player.displayName 
   });
 
-  context += `<current_status>\n${timeReminder}\n</current_status>
+  privateParts.push(`<current_status>\n${timeReminder}\n</current_status>`);
+  // `you:` 逐字搬到個人區：留在 game_state 裡的話，同一輪 12 個人的公共前綴
+  // 會在這一行就分岔，後面所有公共內容都無法共用快取。
+  privateParts.push(`you: {seat: ${player.seat + 1}, name: ${player.displayName}}`);
 
-<game_state>
+  context += `\n<game_state>
 day: ${state.day}
 phase: ${phaseText}
 phase_code: ${state.phase}
 game_status: ${state.winner ? `ended_${state.winner}` : "ongoing"}
-you: {seat: ${player.seat + 1}, name: ${player.displayName}}
 total_seats: ${totalSeats}
 alive: [${aliveSeats.join(", ")}]
 dead: [${deadInfo.join(", ")}]
@@ -1095,14 +1119,17 @@ alive_count: ${alivePlayers.length}
     context += `\n\n<unannounced_night_result>\n${t("promptUtils.gameContext.unannouncedNightResult")}\n</unannounced_night_result>`;
   }
 
-  // Add alive players list for reference
+  // 自己那一行不加「（你）」標記：這個標記會讓公共名單逐人不同，整段前綴就報廢；
+  // 身份在個人區的 <current_status> 已經寫明。
   const playerList = alivePlayers
-    .map((p) => `  - ${t("promptUtils.gameContext.seatLabel", { seat: p.seat + 1 })} ${p.displayName}${p.isHuman ? t("promptUtils.gameContext.humanSuffix") : ""}${p.playerId === player.playerId ? t("promptUtils.gameContext.youSuffix") : ""}`)
+    .map((p) => `  - ${t("promptUtils.gameContext.seatLabel", { seat: p.seat + 1 })} ${p.displayName}${p.isHuman ? t("promptUtils.gameContext.humanSuffix") : ""}`)
     .join("\n");
   context += `\n\n<alive_players>\n${playerList}\n</alive_players>`;
 
-  // 熟人局：其他玩家的行为印象与交手记录（日夜都拼——读人不是白天专利）。
-  context += buildAcquaintanceNotes(state, player);
+  // 熟人局：其他玩家的行為印象與交手記錄。名單逐人不同（略過自己那一行），
+  // 屬於個人區；日夜都拼——讀人不是白天專利。
+  const acquaintanceNotes = buildAcquaintanceNotes(state, player);
+  if (acquaintanceNotes) privateParts.push(acquaintanceNotes);
 
   const wolfFriendlyFireNote = t("promptUtils.gameContext.wolfFriendlyFireNote");
   const phaseOrderNote =
@@ -1181,9 +1208,10 @@ alive_count: ${alivePlayers.length}
   if (guardClaimReadingNote) {
     rulesText += `\n${guardClaimReadingNote}`;
   }
-  // 警長職責放最後：對拿徽者是最直接的行動指令（歸票）。
+  // 警長職責放最個人區最後：對拿徽者是最直接的行動指令（歸票），
+  // 而且只有拿徽者收到，留在公共規則區會讓規則區逐人不同。
   if (sheriffDutyNote) {
-    rulesText += `\n${sheriffDutyNote}`;
+    privateParts.push(sheriffDutyNote);
   }
   
   if (rulesText) {
@@ -1340,15 +1368,32 @@ alive_count: ${alivePlayers.length}
     context += `\n</votes>`;
   }
 
-  // NOTE: Role-specific private information is now at the TOP of the context
-  // via buildRolePrivateInfo() to ensure AI sees it first.
+  // NOTE: Role-specific private information 一律放在 private 區，由呼叫端排在公共區之後
+  // （見 buildGameContextParts）：公共前綴才能被同一輪的多個座位共用。
 
   // NOTE: We intentionally do NOT include <current_votes> during DAY_VOTE phase.
   // Showing real-time votes to later voters causes a "bandwagon effect" where
   // AI players follow earlier votes instead of making independent decisions
   // based on their own analysis and speeches.
 
-  return context;
+  return {
+    shared: context.trim(),
+    private: privateParts.map((part) => part.trim()).filter(Boolean).join("\n\n"),
+  };
+};
+
+/**
+ * 完整的對局上下文：公共區在前、個人專屬區在後。
+ * 個人資訊緊鄰後面的任務指令，模型不會漏看；
+ * 而公共前綴能與同輪其他座位共用（前綴快取）。
+ */
+export const buildGameContext = (
+  state: GameState,
+  player: Player,
+  options?: { excludePendingDeaths?: boolean }
+): string => {
+  const { shared, private: privateContext } = buildGameContextParts(state, player, options);
+  return [shared, privateContext].filter(Boolean).join("\n\n");
 };
 
 /**

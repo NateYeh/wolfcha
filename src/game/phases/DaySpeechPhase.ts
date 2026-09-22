@@ -2,12 +2,13 @@ import { isWolfRole, type GameState, type Player } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "../core/types";
 import {
-  buildGameContext,
+  buildGameContextParts,
   buildPersonaSection,
   buildPlayerTodaySpeech,
   buildTodayTranscript,
   getRoleText,
-  getRolePromptCore,
+  getSharedPromptRules,
+  getRoleWinCondition,
   buildSystemTextFromParts,
   buildPublicFactsForPlayer,
   buildDecisionGrounding,
@@ -60,7 +61,7 @@ export class DaySpeechPhase extends GamePhase {
     const isPreAnnouncementCampaign =
       state.phase === "DAY_BADGE_SPEECH" ||
       (state.phase === "DAY_PK_SPEECH" && state.pkSource === "badge");
-    const gameContext = buildGameContext(
+    const gameContextParts = buildGameContextParts(
       state,
       player,
       isPreAnnouncementCampaign ? { excludePendingDeaths: true } : undefined
@@ -124,13 +125,16 @@ export class DaySpeechPhase extends GamePhase {
 
     const publicFactsForPlayer = buildPublicFactsForPlayer(state, player);
 
-    const baseCacheable = t("prompts.daySpeech.base", {
+    // system 只放全桌通用的內容（說話/格式規則＋公共基本盤）；
+    // 逐人內容（身份、人設、勝負條件、階段任務、個人公開事實）全進 user 個人區，
+    // 否則 system 第一個 token 就逐人不同，後面的公共區塊全部無法共用快取。
+    const identityContent = t("prompts.daySpeech.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      coreRules: getRolePromptCore(player.role),
+      coreRules: "",
       persona,
-    });
+    }).trim();
     const wasVotedOut = isLastWords && state.dayHistory?.[state.day]?.executed?.seat === player.seat;
     const taskLine = isLastWords
       ? t(
@@ -159,11 +163,8 @@ export class DaySpeechPhase extends GamePhase {
       ? t("prompts.daySpeech.wolfLastWordsNote")
       : "";
     const systemParts: SystemPromptPart[] = [
-      { text: baseCacheable, cacheable: true, ttl: "1h" },
-      { text: taskSection },
-      ...(publicFactsForPlayer ? [{ text: publicFactsForPlayer }] : []),
       { text: guidelinesSection, cacheable: true, ttl: "1h" },
-      ...(wolfLastWordsSection ? [{ text: wolfLastWordsSection }] : []),
+      { text: getSharedPromptRules(), cacheable: true, ttl: "1h" },
     ];
     const system = buildSystemTextFromParts(systemParts);
 
@@ -179,7 +180,15 @@ export class DaySpeechPhase extends GamePhase {
     const phaseHintSection = phaseHint ? t("prompts.daySpeech.phaseSection", { phaseHint }) : "";
 
     const user = t("prompts.daySpeech.user", {
-      gameContext,
+      sharedContext: gameContextParts.shared,
+      privateContext: [
+        gameContextParts.private,
+        identityContent,
+        getRoleWinCondition(player.role),
+        taskSection,
+        publicFactsForPlayer,
+        wolfLastWordsSection,
+      ].filter(Boolean).join("\n\n"),
       todayTranscript: todayTranscript || t("prompts.daySpeech.userNoTranscript", { speakOrder }),
       selfSpeech: selfSpeechContext || t("prompts.daySpeech.userNoSelfSpeech"),
       phaseHintSection,

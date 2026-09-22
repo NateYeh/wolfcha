@@ -3,11 +3,12 @@ import { isWolfRole, type GameState, type Player } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "../core/types";
 import {
-  buildGameContext,
+  buildGameContextParts,
   buildTodayTranscript,
   buildPlayerTodaySpeech,
   getRoleText,
-  getRolePromptCore,
+  getSharedPromptRules,
+  getRoleWinCondition,
   buildSystemTextFromParts,
   buildDecisionGrounding,
 } from "@/lib/prompt-utils";
@@ -134,7 +135,7 @@ export class VotePhase extends GamePhase {
 
   getPrompt(context: GameContext, player: Player): PromptResult {
     const state = context.state;
-    const gameContext = buildGameContext(state, player);
+    const gameContextParts = buildGameContextParts(state, player);
     const eligibleSeats =
       state.pkSource === "vote" && state.pkTargets && state.pkTargets.length > 0
         ? new Set(state.pkTargets)
@@ -154,25 +155,34 @@ export class VotePhase extends GamePhase {
       ? t("promptUtils.gameContext.selfSpeechIncludedInTimeline", { seat: player.seat + 1 })
       : "";
 
-    const cacheableContent = t("prompts.vote.base", {
-      seat: player.seat + 1,
-      name: player.displayName,
-      role: getRoleText(player.role),
-      coreRules: getRolePromptCore(player.role),
-    });
     // 放逐票和警徽票一樣事後必被復盤；狼隊最容易在票型上整隊暴露，
     // 因此把票型紀律只拼給狼人（好人沒有這個問題，多給反而稀釋其他指引）。
     const dynamicContent = t("prompts.vote.task", {
       options: alivePlayers.map((p) => t("prompts.vote.option", { seat: p.seat + 1, name: p.displayName })).join(", "),
     }) + (isWolfRole(player.role) ? `\n${t("prompts.vote.wolfVoteDiscipline")}` : "");
+    // system 只放全桌逐字相同的內容：只要是逐人不同的字串出現在 system，
+    // 後面的公共區（含本日逐字紀錄）就全部無法共用快取。逐人內容一律進 user 個人區。
+    const identityContent = t("prompts.vote.base", {
+      seat: player.seat + 1,
+      name: player.displayName,
+      role: getRoleText(player.role),
+      coreRules: "",
+    }).trim();
     const systemParts: SystemPromptPart[] = [
-      { text: cacheableContent, cacheable: true, ttl: "1h" },
-      { text: dynamicContent },
+      { text: getSharedPromptRules(), cacheable: true, ttl: "1h" },
     ];
     const system = buildSystemTextFromParts(systemParts);
 
+    // user 區塊順序：公共上下文 → 本日逐字紀錄 → 個人區（身份／勝負條件／階段任務）→ 輸出契約。
+    const privateZone = [
+      gameContextParts.private,
+      identityContent,
+      getRoleWinCondition(player.role),
+      dynamicContent,
+    ].filter(Boolean).join("\n\n");
     const user = t("prompts.vote.user", {
-      gameContext,
+      sharedContext: gameContextParts.shared,
+      privateContext: privateZone,
       todayTranscript: todayTranscript || t("prompts.vote.userNoTranscript"),
       selfSpeech: selfSpeechContext || t("prompts.vote.userNoSelfSpeech"),
       voteJsonFormat: JSON.stringify({ seat: exampleSeat }),

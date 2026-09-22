@@ -123,17 +123,19 @@ test("警徽评选：狼人可见警徽票纪律，好人不可见", async () =>
   const wolf = state.players.find((p) => p.role === "Werewolf")!;
   state.currentSpeakerSeat = wolf.seat;
   const wolfPrompt = new PhaseManager().getPrompt("DAY_BADGE_ELECTION", { state }, wolf)!;
-  assert.match(wolfPrompt.system, /【警徽票纪律（仅狼人可见）】/);
+  // 逐人內容已移到 user 個人區（system 只留全桌共用前綴以共用快取），改看完整 prompt
+  const wolfFull = `${wolfPrompt.system}\n${wolfPrompt.user}`;
+  assert.match(wolfFull, /【警徽票纪律（仅狼人可见）】/);
   // 无对跳时：唯一跳预言家的人大概率真，默认投他是标准操作
-  assert.match(wolfPrompt.system, /唯一跳预言家的人大概率是真预言家/);
+  assert.match(wolfFull, /唯一跳预言家的人大概率是真预言家/);
   // 不投需充足理由，否则复盘时暴露
-  assert.match(wolfPrompt.system, /警徽票没投预言家」是好人点狼的常用证据/);
+  assert.match(wolfFull, /警徽票没投预言家」是好人点狼的常用证据/);
   // 队友已对跳则优先投队友
-  assert.match(wolfPrompt.system, /优先把警徽票投给对跳的队友/);
+  assert.match(wolfFull, /优先把警徽票投给对跳的队友/);
   const villager = state.players.find((p) => p.role === "Villager")!;
   state.currentSpeakerSeat = villager.seat;
   const villagerPrompt = new PhaseManager().getPrompt("DAY_BADGE_ELECTION", { state }, villager)!;
-  assert.doesNotMatch(villagerPrompt.system, /警徽票纪律/);
+  assert.doesNotMatch(`${villagerPrompt.system}\n${villagerPrompt.user}`, /警徽票纪律/);
 });
 
 test("放逐票：狼人可见票型纪律，好人不可见", async () => {
@@ -142,14 +144,15 @@ test("放逐票：狼人可见票型纪律，好人不可见", async () => {
   const state = fresh("DAY_VOTE");
   const wolf = state.players.find((p) => p.role === "Werewolf")!;
   const wolfPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, wolf)!;
-  assert.match(wolfPrompt.system, /【放逐票的票型纪律（仅狼人可见）】/);
+  const wolfFull = `${wolfPrompt.system}\n${wolfPrompt.user}`;
+  assert.match(wolfFull, /【放逐票的票型纪律（仅狼人可见）】/);
   // 别跟队友把票压在同一个目标上（本局 D2 两狼同投 3 号的教训）
-  assert.match(wolfPrompt.system, /别跟队友把票压在同一个目标上/);
+  assert.match(wolfFull, /别跟队友把票压在同一个目标上/);
   // 队友挡不住票时跟大部队弃车，比另开战场安全
-  assert.match(wolfPrompt.system, /跟大部队投他（弃车保帅）比另开一个战场安全/);
+  assert.match(wolfFull, /跟大部队投他（弃车保帅）比另开一个战场安全/);
   const villager = state.players.find((p) => p.role === "Villager")!;
   const villagerPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
-  assert.doesNotMatch(villagerPrompt.system, /放逐票的票型纪律/);
+  assert.doesNotMatch(`${villagerPrompt.system}\n${villagerPrompt.user}`, /放逐票的票型纪律/);
 });
 
 test("落后局站位：狼人白天可见，好人不可见", async () => {
@@ -172,13 +175,14 @@ test("狼人遗言：狼人可见遗言纪律，好人不可见", async () => {
   const wolf = state.players.find((p) => p.role === "Werewolf")!;
   state.currentSpeakerSeat = wolf.seat;
   const wolfPrompt = new PhaseManager().getPrompt("DAY_LAST_WORDS", { state }, wolf)!;
-  assert.match(wolfPrompt.system, /【狼人的遗言纪律（仅狼人可见）】/);
+  const wolfFull = `${wolfPrompt.system}\n${wolfPrompt.user}`;
+  assert.match(wolfFull, /【狼人的遗言纪律（仅狼人可见）】/);
   // 遗言点队友＝替好人点出两人一伙（6 号遗言点 7 号的教训）
-  assert.match(wolfPrompt.system, /别在遗言里点队友、给队友递话/);
+  assert.match(wolfFull, /别在遗言里点队友、给队友递话/);
   const villager = state.players.find((p) => p.role === "Villager")!;
   state.currentSpeakerSeat = villager.seat;
   const villagerPrompt = new PhaseManager().getPrompt("DAY_LAST_WORDS", { state }, villager)!;
-  assert.doesNotMatch(villagerPrompt.system, /狼人的遗言纪律/);
+  assert.doesNotMatch(`${villagerPrompt.system}\n${villagerPrompt.user}`, /狼人的遗言纪律/);
 });
 
 test("警徽移交：狼人可见移交经验，好人不可见", async () => {
@@ -188,13 +192,14 @@ test("警徽移交：狼人可见移交经验，好人不可见", async () => {
   const wolf = state.players.find((p) => p.role === "Werewolf")!;
   state.currentSpeakerSeat = wolf.seat;
   const wolfPrompt = new PhaseManager().getPrompt("BADGE_TRANSFER", { state }, wolf)!;
-  assert.match(wolfPrompt.system, /【警徽移交经验（仅狼人可见）】/);
-  assert.match(wolfPrompt.system, /接徽的队友通常第一个被点名/);
-  assert.match(wolfPrompt.system, /一条徽链能串出两三只狼/);
+  const wolfFull = `${wolfPrompt.system}\n${wolfPrompt.user}`;
+  assert.match(wolfFull, /【警徽移交经验（仅狼人可见）】/);
+  assert.match(wolfFull, /接徽的队友通常第一个被点名/);
+  assert.match(wolfFull, /一条徽链能串出两三只狼/);
   const villager = state.players.find((p) => p.role === "Villager")!;
   state.currentSpeakerSeat = villager.seat;
   const villagerPrompt = new PhaseManager().getPrompt("BADGE_TRANSFER", { state }, villager)!;
-  assert.doesNotMatch(villagerPrompt.system, /警徽移交经验/);
+  assert.doesNotMatch(`${villagerPrompt.system}\n${villagerPrompt.user}`, /警徽移交经验/);
 });
 
 const decisions: Phase[] = ["DAY_BADGE_SIGNUP", "DAY_BADGE_ELECTION", "BADGE_TRANSFER", "DAY_VOTE", "HUNTER_SHOOT", "WHITE_WOLF_KING_BOOM", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"];
@@ -969,26 +974,32 @@ test("已死未公布的玩家：警徽報名／發言／投票名單要剔除�
   assert.equal(excludePendingDeathPlayers(cleanState, candidates), candidates);
 });
 
-test("警徽報名 prompt：上警收益/成本知識進 system，教判斷不下命令", async () => {
+test("警徽報名 prompt：上警收益/成本知識隨個人區進 prompt，教判斷不下命令", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
   const state = fresh("DAY_BADGE_SIGNUP");
   const seer = state.players.find((p) => p.role === "Seer")!;
   state.currentSpeakerSeat = seer.seat;
   const prompt = new PhaseManager().getPrompt("DAY_BADGE_SIGNUP", { state }, seer)!;
-  // 知識在 system（與 task 同層），不在 user
-  assert.match(prompt.system, /【上警这笔账怎么算（报不报名，你自己决定）】/);
-  assert.match(prompt.system, /有查验要第一时间报/);
-  assert.match(prompt.system, /往往是免费暴露/);
-  assert.match(prompt.system, /警徽流是预言家的信息线/);
+  // 逐人內容（含 task）改放 user 個人區尾端：system 只留全桌共用前綴才能共用快取。
+  // 知識與 task 同層、緊鄰輸出契約，模型仍然拿得到。
+  const full = `${prompt.system}\n${prompt.user}`;
+  assert.match(full, /【上警这笔账怎么算（报不报名，你自己决定）】/);
+  // 只檢查知識區塊本身，不把公共規則的文字算進來
+  const tacticsBlock = full.split("【上警这笔账怎么算（报不报名，你自己决定）】")[1]?.split("【输出格式】")[0] ?? "";
+  assert.match(tacticsBlock, /有查验要第一时间报/);
+  assert.match(tacticsBlock, /往往是免费暴露/);
+  assert.match(tacticsBlock, /警徽流是预言家的信息线/);
   // 教知識不下命令：明說由自己判斷，且無禁令字眼
-  assert.match(prompt.system, /由你结合自己的身份/);
-  assert.doesNotMatch(prompt.system, /不得|禁止|必须报|不要报名/);
+  assert.match(tacticsBlock, /由你结合自己的身份/);
+  assert.doesNotMatch(tacticsBlock, /不得|禁止|必须报|不要报名/);
   // task 的 {tactics} 佔位符已渲染，格式說明仍完整
-  assert.doesNotMatch(prompt.system, /\{tactics\}/);
-  assert.match(prompt.system, /【输出格式】/);
-  assert.match(prompt.system, /"signup":true/);
-  assert.doesNotMatch(prompt.user, /上警这笔账/);
+  assert.doesNotMatch(full, /\{tactics\}/);
+  assert.match(full, /【输出格式】/);
+  assert.match(full, /"signup":true/);
+  // system 必須全桌逐字相同（逐人內容留在 system 會使後面所有公共區塊無法共用快取）
+  assert.doesNotMatch(prompt.system, /上警这笔账/);
+  assert.doesNotMatch(prompt.system, /1号/);
 });
 
 test("發言底線規則：要求大白話，禁成語/書面黑話（騎牆教訓）", async () => {

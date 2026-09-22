@@ -2,11 +2,12 @@ import type { Player } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameContext, PromptResult, SystemPromptPart } from "../core/types";
 import {
-  buildGameContext,
+  buildGameContextParts,
   buildPersonaSection,
   buildTodayTranscript,
   getRoleText,
-  getRolePromptCore,
+  getSharedPromptRules,
+  getRoleWinCondition,
   buildSystemTextFromParts,
 } from "@/lib/prompt-utils";
 import { getI18n } from "@/i18n/translator";
@@ -46,14 +47,16 @@ export class BadgePhase extends GamePhase {
       .filter((p) => p.alive && p.playerId !== player.playerId)
       .filter((p) => (candidates.length > 0 ? candidates.includes(p.seat) : true));
     const exampleSeat = (alivePlayers[0]?.seat ?? player.seat) + 1;
-    const context = buildGameContext(state, player, { excludePendingDeaths: true });
+    const contextParts = buildGameContextParts(state, player, { excludePendingDeaths: true });
 
-    const cacheableContent = t("prompts.badge.election.base", {
+    // system 只放全桌通用的公開規則；逐人內容（身份、勝負條件、任務）全進 user 個人區，
+    // 否則 system 第一個 token 就逐人不同，後面的公共區塊全部無法共用快取。
+    const identityContent = t("prompts.badge.election.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      coreRules: getRolePromptCore(player.role),
-    });
+      coreRules: "",
+    }).trim();
     const dynamicContent =
       t("prompts.badge.election.task", {
         options: alivePlayers
@@ -65,53 +68,67 @@ export class BadgePhase extends GamePhase {
       // 不投需有能公开说出口的理由，否则复盘时「警徽票没投预言家」会直接暴露。
       (isWolfRole(player.role) ? t("prompts.badge.election.wolfBadgeVoteDiscipline") : "");
     const systemParts: SystemPromptPart[] = [
-      { text: cacheableContent, cacheable: true, ttl: "1h" },
-      { text: dynamicContent },
+      { text: getSharedPromptRules(), cacheable: true, ttl: "1h" },
     ];
     const system = buildSystemTextFromParts(systemParts);
 
     // 候选资格只限制投票目标，不能抹去已公开的落选者发言。
     const badgeSpeechText = buildTodayTranscript(state);
 
-    const liteContextLines = [
-      context,
-      t("prompts.badge.election.contextHeader", { day: state.day }),
-      badgeSpeechText ? t("prompts.badge.election.contextRecent", { text: badgeSpeechText }) : "",
-    ].filter(Boolean);
-
-    const user = t("prompts.badge.election.user", { context: liteContextLines.join("\n\n") });
+    // user 順序：公共上下文與紀錄在前，個人區緊鄰發問處。
+    const privateZone = [
+      contextParts.private,
+      identityContent,
+      getRoleWinCondition(player.role),
+      dynamicContent,
+    ].filter(Boolean).join("\n\n");
+    const user = t("prompts.badge.election.user", {
+      sharedContext: [
+        contextParts.shared,
+        t("prompts.badge.election.contextHeader", { day: state.day }),
+        badgeSpeechText ? t("prompts.badge.election.contextRecent", { text: badgeSpeechText }) : "",
+      ].filter(Boolean).join("\n\n"),
+      privateContext: privateZone,
+    });
 
     return { system, user, systemParts };
   }
 
   private buildBadgeSignupPrompt(state: GameContext["state"], player: Player): PromptResult {
     // excludePendingDeaths: true - 警长竞选时夜间死亡还未公布，AI不应知道是否平安夜
-    const context = buildGameContext(state, player, { excludePendingDeaths: true });
+    const contextParts = buildGameContextParts(state, player, { excludePendingDeaths: true });
     const isGenshinMode = !!state.isGenshinMode;
     const persona = buildPersonaSection(player, isGenshinMode);
     const todayTranscript = buildTodayTranscript(state);
 
     const { t } = getI18n();
     
-    const cacheableContent = t("prompts.badge.signup.base", {
+    // system 只放全桌通用的公開規則；逐人內容（身份、勝負條件、任務）全進 user 個人區。
+    const identityContent = t("prompts.badge.signup.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      coreRules: getRolePromptCore(player.role),
+      coreRules: "",
       persona,
-    });
+    }).trim();
     // 上警收益/成本知識：教判斷不下命令，報不報名由 AI 自己算帳。
     const dynamicContent = t("prompts.badge.signup.task", {
       tactics: t("prompts.badge.signup.tactics"),
     });
     const systemParts: SystemPromptPart[] = [
-      { text: cacheableContent, cacheable: true, ttl: "1h" },
-      { text: dynamicContent },
+      { text: getSharedPromptRules(), cacheable: true, ttl: "1h" },
     ];
     const system = buildSystemTextFromParts(systemParts);
 
+    const privateZone = [
+      contextParts.private,
+      identityContent,
+      getRoleWinCondition(player.role),
+      dynamicContent,
+    ].filter(Boolean).join("\n\n");
     const user = t("prompts.badge.signup.user", {
-      context,
+      sharedContext: contextParts.shared,
+      privateContext: privateZone,
       todayTranscript: todayTranscript || t("prompts.badge.signup.noTranscript"),
     });
 
@@ -120,18 +137,19 @@ export class BadgePhase extends GamePhase {
 
   private buildBadgeTransferPrompt(state: GameContext["state"], player: Player): PromptResult {
     const { t } = getI18n();
-    const context = buildGameContext(state, player);
+    const contextParts = buildGameContextParts(state, player);
     const alivePlayers = state.players.filter(
       (p) => p.alive && p.playerId !== player.playerId
     );
     const exampleSeat = (alivePlayers[0]?.seat ?? player.seat) + 1;
 
-    const cacheableContent = t("prompts.badge.transfer.base", {
+    // system 只放全桌通用的公開規則；逐人內容（身份、勝負條件、任務）全進 user 個人區。
+    const identityContent = t("prompts.badge.transfer.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      coreRules: getRolePromptCore(player.role),
-    });
+      coreRules: "",
+    }).trim();
     const dynamicContent = t("prompts.badge.transfer.task", {
       options: alivePlayers
         .map((p) => t("prompts.badge.option", { seat: p.seat + 1, name: p.displayName }))
@@ -142,15 +160,21 @@ export class BadgePhase extends GamePhase {
       // 警徽移交经验：仅狼人可见。移交是公开动作，好人会从接徽人倒推死者的关系网。
       (isWolfRole(player.role) ? t("prompts.badge.transfer.wolfTransferExperience") : "");
     const systemParts: SystemPromptPart[] = [
-      { text: cacheableContent, cacheable: true, ttl: "1h" },
-      { text: dynamicContent },
+      { text: getSharedPromptRules(), cacheable: true, ttl: "1h" },
     ];
     const system = buildSystemTextFromParts(systemParts);
 
     const todayTranscript = buildTodayTranscript(state);
 
+    const privateZone = [
+      contextParts.private,
+      identityContent,
+      getRoleWinCondition(player.role),
+      dynamicContent,
+    ].filter(Boolean).join("\n\n");
     const user = t("prompts.badge.transfer.user", {
-      context,
+      sharedContext: contextParts.shared,
+      privateContext: privateZone,
       todayTranscript: todayTranscript || t("prompts.badge.transfer.noTranscript"),
     });
 

@@ -86,9 +86,10 @@ test("自由发言只声明当前阶段事实，不把警徽投票留到后续",
   const prompt = new DaySpeechPhase().getPrompt({ state }, state.players[0]);
 
   assert.match(prompt.user, /phase_code: DAY_SPEECH/);
-  assert.match(prompt.system, /警徽竞选和警徽投票均已结束/);
-  assert.match(prompt.system, /本轮发言结束后进行的是放逐投票，不是警徽投票/);
-  assert.doesNotMatch(prompt.system, /支持\S+拿警徽|应该把警徽给/);
+  // 階段事實與逐人內容同在 user（個人區在逐字紀錄之後）
+  assert.match(prompt.user, /警徽竞选和警徽投票均已结束/);
+  assert.match(prompt.user, /本轮发言结束后进行的是放逐投票，不是警徽投票/);
+  assert.doesNotMatch(prompt.user, /支持\S+拿警徽|应该把警徽给/);
 });
 
 test("放逐投票明确区别于警徽投票，并移除角色策略引导", async () => {
@@ -172,10 +173,10 @@ test("被放逐者遗言明确投票已完成，猎人不能把枪保留到未�
   const prompt = new DaySpeechPhase().getPrompt({ state }, hunter);
 
   assert.match(prompt.user, /phase_code: DAY_LAST_WORDS/);
-  assert.match(prompt.system, /本日放逐投票已经完成/);
-  assert.match(prompt.system, /不再进行本日讨论、归票或投票/);
-  assert.match(prompt.system, /选择不开枪，本次开枪机会永久失效/);
-  assert.match(prompt.system, /不能保留到之后的回合/);
+  assert.match(prompt.user, /本日放逐投票已经完成/);
+  assert.match(prompt.user, /不再进行本日讨论、归票或投票/);
+  assert.match(prompt.user, /选择不开枪，本次开枪机会永久失效/);
+  assert.match(prompt.user, /不能保留到之后的回合/);
 });
 
 test("猎人开枪 Prompt 只保留遗言原文，不从原文强制推断动作", async () => {
