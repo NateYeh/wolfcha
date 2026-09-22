@@ -3,7 +3,10 @@
  * 使用 MiniMax TTS API 生成游戏旁白语音并保存到本地
  * 
  * 使用方法:
- * 1. 确保 .env.local 中配置了 MINIMAX_API_KEY 和 MINIMAX_GROUP_ID
+ * 1. 在 .env.local 設定 MINIMAX_API_KEY（國際站金鑰形如 sk-api-…）
+ *    - 國際站：MINIMAX_API_BASE_URL=https://api.minimaxi.chat
+ *    - 中國站：MINIMAX_API_BASE_URL=https://api.minimax.chat（預設值，需搭配 MINIMAX_GROUP_ID）
+ *    - MINIMAX_GROUP_ID 選填：國際站省略時由 token 自動對應；中國站必填。
  * 2. 运行: npx tsx scripts/generate-narrator-audio.ts [locale]
  *    - npx tsx scripts/generate-narrator-audio.ts        # Generate all languages
  *    - npx tsx scripts/generate-narrator-audio.ts zh     # Generate Chinese only
@@ -123,14 +126,15 @@ const BASE_OUTPUT_DIR = path.join(process.cwd(), "public", "audio", "narrator");
 
 async function requestMiniMaxTTS(text: string, voiceId: string): Promise<Buffer> {
   const apiKey = process.env.MINIMAX_API_KEY;
-  const groupId = process.env.MINIMAX_GROUP_ID;
+  // GroupId 只在中國站必填；國際站省略時 API 會用 token 對應的群組
+  const groupId = process.env.MINIMAX_GROUP_ID?.trim();
 
-  if (!apiKey || !groupId) {
-    throw new Error("Missing MINIMAX_API_KEY or MINIMAX_GROUP_ID in environment variables");
+  if (!apiKey) {
+    throw new Error("Missing MINIMAX_API_KEY in environment variables (.env.local)");
   }
 
   const baseUrl = process.env.MINIMAX_API_BASE_URL || "https://api.minimax.chat";
-  const url = `${baseUrl}/v1/t2a_v2?GroupId=${encodeURIComponent(groupId)}`;
+  const url = groupId ? `${baseUrl}/v1/t2a_v2?GroupId=${encodeURIComponent(groupId)}` : `${baseUrl}/v1/t2a_v2`;
 
   const payload = {
     model: process.env.MINIMAX_TTS_MODEL || "speech-01-turbo",
@@ -162,7 +166,7 @@ async function requestMiniMaxTTS(text: string, voiceId: string): Promise<Buffer>
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          GroupId: groupId,
+          ...(groupId ? { GroupId: groupId } : {}),
           "Accept-Encoding": "identity",
         },
         family: 4,
