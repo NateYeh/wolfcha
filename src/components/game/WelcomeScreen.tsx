@@ -677,6 +677,9 @@ export function WelcomeScreen({
     const preset = devTab === "preset" && devPreset ? (devPreset as DevPreset) : undefined;
     return {
       fixedRoles: roles,
+      // 開發者自選角色是「逐座位」指定（UI 一排座位選單）→ 不洗牌；
+      // 版型只是組成宣告 → 交給 setupPlayers 洗牌。
+      fixedRolesSeatOrdered: devRoleOverrideEnabled,
       devPreset: preset,
       difficulty,
       playerCount,

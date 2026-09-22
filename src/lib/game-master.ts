@@ -277,13 +277,22 @@ export function setupPlayers(
   seedPlayerIds?: string[],
   modelRefs?: ModelRef[],
   aiSeatOrder?: number[],
-  preferredRole?: Role
+  preferredRole?: Role,
+  fixedRolesSeatOrdered: boolean = false
 ): Player[] {
   const { t } = getI18n();
   const totalPlayers = playerCount;
   const fallbackHumanName = t("common.you");
   const roles = getRoleConfiguration(totalPlayers);
-  const assignedRoles = fixedRoles && fixedRoles.length === totalPlayers ? fixedRoles : shuffleArray(roles);
+  // 版型（fixedRoles）只宣告「這一局有哪些角色」，不宣告誰坐哪個座位 → 一律洗牌。
+  // 只有開發者自選角色（逐座位指定）才照傳入順序放。以前帶版型就整段跳過洗牌，
+  // 導致狼固定坐在 1~4 號（版型表的排列順序）。
+  const assignedRoles =
+    fixedRoles && fixedRoles.length === totalPlayers
+      ? fixedRolesSeatOrdered
+        ? [...fixedRoles]
+        : shuffleArray(fixedRoles)
+      : shuffleArray(roles);
 
   // 身份偏好：只要該角色在這局的角色組成裡（含版型／開發者指定的組成），就換給真人。
   // 以前只要帶 fixedRoles 就整段跳過，導致「選了版型就不能再用身份偏好」。

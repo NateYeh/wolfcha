@@ -24,6 +24,12 @@ export type DevPreset = "MILK_POISON_TEST" | "LAST_WORDS_TEST";
 
 export interface StartGameOptions {
   fixedRoles?: Role[];
+  /**
+   * fixedRoles 是否「逐座位指定」。
+   * - true：開發者自選角色（每個座位有意義）→ 不洗牌，照傳入順序放。
+   * - false／未給：版型只宣告「組成」→ 座位仍要打亂，否則狼永遠坐在 1~4 號。
+   */
+  fixedRolesSeatOrdered?: boolean;
   devPreset?: DevPreset;
   difficulty?: DifficultyLevel;
   playerCount?: number;

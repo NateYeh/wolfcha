@@ -62,7 +62,9 @@ test("任意人类座位都只占一席，AI角色与模型映射不串位", asy
       fixedRoles,
       seedPlayerIds,
       characters.map(() => modelRef),
-      aiSeats
+      aiSeats,
+      undefined,
+      true // 逐座位指定的情境（開發者自選角色）
     );
 
     assert.equal(players.length, playerCount);

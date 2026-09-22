@@ -1777,6 +1777,7 @@ export function useGameLogic() {
   const startGame = useCallback(async (options?: Partial<StartGameOptions>) => {
     const {
       fixedRoles,
+      fixedRolesSeatOrdered = false,
       devPreset,
       difficulty = "normal",
       playerCount = 10,
@@ -1943,7 +1944,8 @@ export function useGameLogic() {
         seedPlayerIds,
         isGenshinMode ? genshinModelRefs : aiModelRefs,
         aiSeatOrder,
-        preferredRole
+        preferredRole,
+        fixedRolesSeatOrdered
       );
 
       let newState: GameState = buildGameStartState({

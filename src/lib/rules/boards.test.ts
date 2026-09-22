@@ -413,3 +413,51 @@ test("身份偏好：即使帶入自訂版型組成，只要偏好角色在名�
   assert.equal(withHunter.some((p) => p.role === "Hunter"), false, "版型裡沒有的角色不該被換進來");
   assert.equal(withHunter.length, 12);
 });
+
+test("版型只決定組成：座位一律打亂，狼不會固定坐在 1~4 號", async () => {
+  const { setupPlayers } = await import("@/lib/game-master");
+  const board = getBoardById("official-12-classic")!;
+  const canonical = board.roles;
+  const characters = Array.from({ length: 11 }, (_, index) => ({
+    displayName: `AI角色${index + 1}`,
+    persona: { voiceRules: [], mbti: "INTJ", gender: "male" as const, age: 30 },
+  }));
+
+  const orderSeen = new Set<string>();
+  const wolfSeatsSeen = new Set<string>();
+  for (let round = 0; round < 25; round++) {
+    const players = setupPlayers(characters, 0, "我", 12, [...canonical]);
+    // 組成必須與版型相同（只是座位換了）
+    assert.deepEqual(
+      players.map((p) => p.role).slice().sort(),
+      canonical.slice().sort(),
+      "洗牌後角色組成必須與版型相同"
+    );
+    orderSeen.add(players.map((p) => p.role).join(","));
+    wolfSeatsSeen.add(
+      players
+        .filter((p) => isWolfRole(p.role))
+        .map((p) => p.seat)
+        .sort()
+        .join(",")
+    );
+  }
+  assert.ok(orderSeen.size > 1, "多次開局拿到同一個座位排列 → 版型路徑沒有洗牌");
+  assert.equal(wolfSeatsSeen.has("0,1,2,3"), false, "狼不該固定坐在 1~4 號");
+  assert.ok(wolfSeatsSeen.size > 1, "狼的座位每局都一樣 → 版型路徑沒有洗牌");
+
+  // 逐座位指定（開發者自選角色）不受影響：照傳入順序、不洗牌
+  const anchored = setupPlayers(
+    characters,
+    0,
+    "我",
+    12,
+    [...canonical],
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    true
+  );
+  assert.deepEqual(anchored.map((p) => p.role), canonical, "逐座位指定時必須照傳入順序");
+});
