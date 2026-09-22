@@ -233,7 +233,9 @@ type BoardPreset = {
 ## 騎士（Knight）與白狼騎士版型
 
 **版型**：`official-12-white-wolf-knight`＝預言家、女巫、守衛、騎士、4 村民、3 狼人、白狼王（12 人）。
-另有 `official-12-seer-witch-hunter-idiot`（預女獵白）＝預言家、女巫、獵人、白痴、4 平民、4 狼人——
+另有 `official-12-seer-witch-hunter-idiot`（預女獵白）＝預言家、女巫、獵人、白痴、4 平民、4 狼人
+與 `official-12-seer-witch-guard-idiot`（預女守白）＝預言家、女巫、守衛、白痴、4 平民、4 小狼
+（**首個沒有獵人的 12 人版**：獵人相關流程全為條件觸發，無人持有該角色時不會進入 HUNTER_SHOOT）——
 全為既有角色，只在版型註冊表加一筆資料即可（三層架構的預期效果）。
 WelcomeScreen 開發者面板的「角色」分頁可用「套用官方版型」一鍵套用（`roleConfigValid` 改走
 `validateBoardPreset`，任何合法組成都能開局）。

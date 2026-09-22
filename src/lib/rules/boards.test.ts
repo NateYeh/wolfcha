@@ -133,6 +133,45 @@ function countBoardRolesOf(board: { roles: Role[] }): {
   return { byCamp, byRole, total: board.roles.length };
 }
 
+test("版型註冊表：預女守白＝預言家/女巫/守衛/白痴＋4 平民＋4 小狼（首個沒有獵人的 12 人版）", () => {
+  const board = getBoardById("official-12-seer-witch-guard-idiot");
+  assert.ok(board, "應收錄預女守白版型");
+  assert.equal(board.official, true);
+  assert.equal(board.playerCount, 12);
+  assert.deepEqual(countBoardRolesOf(board), {
+    byCamp: { wolf: 4, god: 4, villager: 4 },
+    byRole: { Werewolf: 4, Seer: 1, Witch: 1, Guard: 1, Idiot: 1, Villager: 4 },
+    total: 12,
+  });
+  // 4 小狼：沒有白狼王；也沒有獵人與騎士、禁言長老
+  for (const role of ["WhiteWolfKing", "Hunter", "Knight", "MuteElder"]) {
+    assert.equal(board.roles.includes(role as never), false, `不該有 ${role}`);
+  }
+  const { errors, warnings } = validateBoardPreset(board);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(warnings, []);
+});
+
+test("版型註冊表：四個 12 人版型的陣營統計與預設版型", () => {
+  const twelve = getBoardsByPlayerCount(12).map((board) => board.id);
+  // 不鎖 UI 排列順序，只確認這五個版型都在（順序由選單自己決定）
+  assert.deepEqual([...twelve].sort(), [
+    "official-12-classic",
+    "official-12-seer-witch-guard-idiot",
+    "official-12-seer-witch-hunter-idiot",
+    "official-12-seer-witch-hunter-mute",
+    "official-12-white-wolf-knight",
+  ].sort());
+  // 預設 12 人版型仍是經典（既有行為不變）
+  assert.equal(getDefaultBoard(12).id, "official-12-classic");
+  // 所有 12 人版型都是 12 人、4 狼，且通過驗證
+  for (const board of getBoardsByPlayerCount(12)) {
+    assert.equal(board.roles.length, 12, `${board.id} 應為 12 人`);
+    assert.equal(board.roles.filter((role) => isWolfRole(role)).length, 4, `${board.id} 應為 4 狼`);
+    assert.deepEqual(validateBoardPreset(board).errors, [], `${board.id} 不應有錯誤`);
+  }
+});
+
 test("版型註冊表：預女獵白＝預言家/女巫/獵人/白痴＋4 平民＋4 狼人（純資料新增）", () => {
   const board = getBoardById("official-12-seer-witch-hunter-idiot");
   assert.ok(board, "應收錄預女獵白版型");
