@@ -879,12 +879,16 @@ export function useGameLogic() {
       flags,
     });
 
-    // 技能無效：目標已出局（含死訊未公布的第一夜死者）→ 不消耗技能、回到來源階段
+    // 技能無效：目標已出局（含死訊未公布的第一夜死者）→ 不消耗技能、狀態原樣
+    // （AI 路徑本來就在白天發言階段發動，階段不會被改動；真人路徑要切回來源階段，
+    //  但同階段切換會重設 speechRoundStartMessageIndex，所以只有在階段不同時才切）
     if (applied.voidedTargetSeat !== undefined) {
       console.warn(`[wolfcha] 決鬥目標 ${applied.voidedTargetSeat + 1} 號已出局，翻牌決鬥判定無效`);
-      const back = transitionPhase(applied.state, originPhase);
+      const back = applied.state.phase === originPhase
+        ? applied.state
+        : transitionPhase(applied.state, originPhase);
       setGameState(back);
-      return { action: "continue", state: back };
+      return { action: "none", state: back };
     }
 
     const outcome = applied.outcome!;

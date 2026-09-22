@@ -1183,7 +1183,8 @@ export default function Home() {
       phase === "NIGHT_WOLF_ACTION" ||
       phase === "NIGHT_GUARD_ACTION" ||
       phase === "HUNTER_SHOOT" ||
-      phase === "SELF_DESTRUCT"
+      phase === "SELF_DESTRUCT" ||
+      phase === "KNIGHT_DUEL"
     ) {
       await handleNightAction(targetSeat);
     }
