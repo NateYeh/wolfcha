@@ -225,6 +225,8 @@ export interface ReasoningOptions {
   max_tokens?: number;
 }
 
+export type CompletionUsage = NonNullable<ChatCompletionResponse["usage"]>;
+
 export interface GenerateOptions {
   signal?: AbortSignal;
   model: string;
@@ -236,6 +238,11 @@ export interface GenerateOptions {
   reasoning?: ReasoningOptions;
   reasoning_effort?: "minimal" | "low" | "medium" | "high";
   response_format?: ResponseFormat;
+  /**
+   * 串流結束後回報 usage（含 prompt_tokens_details.cached_tokens），供快取命中統計。
+   * 串流 generator 只能 yield 文字，拿不到回傳值，因此用回呼把統計資訊帶出來。
+   */
+  onUsage?: (usage: CompletionUsage | undefined) => void;
 }
 
 /** Merge modelRef overrides (temperature, reasoning) into options; modelRef values override call-time when present. */
@@ -995,6 +1002,9 @@ export async function* generateCompletionStream(
         temperature: options.temperature ?? 0.7,
         max_tokens: maxTokens,
         stream: true,
+        // 讓上游在最後一幀回報 usage（含 prompt_tokens_details.cached_tokens）：
+        // 串流路徑原本完全沒有 token 統計，speech 佔全場 prompt 大宗卻量不到快取命中。
+        stream_options: { include_usage: true },
         ...(options.reasoning ? { reasoning: options.reasoning } : {}),
         ...(options.reasoning_effort ? { reasoning_effort: options.reasoning_effort } : {}),
         ...(options.response_format ? { response_format: options.response_format } : {}),
@@ -1019,6 +1029,7 @@ export async function* generateCompletionStream(
   let buffer = "";
   let totalOutputChars = 0;
   let streamComplete = false;
+  let streamUsage: CompletionUsage | undefined;
 
   // <think> 块剥离状态机（用于 MiniMax 等把思考嵌在 content 里的模型）
   let thinkStripped = false;
@@ -1051,6 +1062,10 @@ export async function* generateCompletionStream(
     const protocolError = readStreamProtocolError(json);
     if (protocolError) throw new Error(protocolError);
     if (!isRecord(json)) return { done: false, content: "" };
+    // usage 幀（choices 為空）只帶統計，沒有內容可 yield。
+    if (isRecord(json.usage)) {
+      streamUsage = json.usage as CompletionUsage;
+    }
     const choices = Array.isArray(json.choices) ? json.choices : [];
     const firstChoice = isRecord(choices[0]) ? choices[0] : null;
     const deltaPayload = firstChoice && isRecord(firstChoice.delta)
@@ -1130,7 +1145,17 @@ export async function* generateCompletionStream(
   gameStatsTracker.addAiCall({
     inputChars,
     outputChars: totalOutputChars,
+    promptTokens: streamUsage?.prompt_tokens,
+    completionTokens: streamUsage?.completion_tokens,
   });
+
+  // usage 回報給呼叫方（例如寫進 AI log 的 cache 欄位，讓串流的快取命中也能量測）。
+  try {
+    options.onUsage?.(streamUsage);
+  } catch (error) {
+    // 統計回報失敗不得影響串流本體，但也不得靜默：留一行警告。
+    console.warn(`[LLM] onUsage 回呼拋出例外，不影響串流結果：${String(error)}`);
+  }
 }
 
 export async function generateJSON<T>(

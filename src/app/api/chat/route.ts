@@ -1183,6 +1183,9 @@ export async function POST(request: NextRequest) {
 
       if (stream) {
         requestBody.stream = true;
+        // 串流要求上游在最後一帧回報 usage（含 cached_tokens），否則串流路徑的 token 用量
+        // 與快取命中完全量不到（發言 30 趟、每次上萬字，是 prompt 大宗）。
+        requestBody.stream_options = { include_usage: true };
       }
 
       // GLM-4.7 / Kimi K2.5 默认开启思考，API 参数可关闭（已实测有效）

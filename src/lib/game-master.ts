@@ -1,7 +1,7 @@
 import { areNightResultsVisible } from "./night-visibility";
 import { v4 as uuidv4 } from "uuid";
-import { generateCompletion, generateCompletionBatch, generateCompletionStream, mergeOptionsFromModelRef, stripMarkdownCodeFences, stripReasoningArtifacts, type GenerateOptions, type LLMMessage } from "./llm";
-import type { ChatCompletionResponse } from "./llm";
+import { generateCompletion, generateCompletionBatch, generateCompletionStream, extractPromptCacheUsage, mergeOptionsFromModelRef, stripMarkdownCodeFences, stripReasoningArtifacts, type GenerateOptions, type LLMMessage } from "./llm";
+import type { ChatCompletionResponse, CompletionUsage } from "./llm";
 import { StreamingSpeechParser } from "./streaming-speech-parser";
 import {
   type GameState,
@@ -801,12 +801,15 @@ export async function* generateAISpeechStream(
   const { messages } = buildMessagesForPrompt(prompt);
 
   let fullResponse = "";
+  // 串流 generator 拿不到回傳值，用 onUsage 把 usage 帶出來寫進 log（快取命中原則上量不到）。
+  let streamUsage: CompletionUsage | undefined;
   try {
     for await (const chunk of generateCompletionStream(mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
       model: player.agentProfile!.modelRef.model,
       messages,
       promptScope: "gameplay",
       temperature: GAME_TEMPERATURE.SPEECH,
+      onUsage: (usage) => { streamUsage = usage; },
     }))) {
       fullResponse += chunk;
       yield chunk;
@@ -825,6 +828,7 @@ export async function* generateAISpeechStream(
         content: sanitizedSpeech,
         raw: fullResponse,
         duration: Date.now() - startTime,
+        ...(streamUsage ? { cache: extractPromptCacheUsage(streamUsage) } : {}),
       },
     });
   } catch (error) {
@@ -1055,6 +1059,8 @@ export async function generateAISpeechSegmentsStream(
   });
 
   let accumulatedContent = "";
+  // 串流 usage（含 cached_tokens）靠回呼帶出，寫進 AI log 後才能量測快取命中。
+  let streamUsage: CompletionUsage | undefined;
   try {
     const stream = generateCompletionStream(mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
       model: player.agentProfile!.modelRef.model,
@@ -1062,6 +1068,7 @@ export async function generateAISpeechSegmentsStream(
       promptScope: "gameplay",
       temperature: GAME_TEMPERATURE.SPEECH,
       signal: options.signal,
+      onUsage: (usage) => { streamUsage = usage; },
     }));
 
     let chunkCount = 0;
@@ -1100,6 +1107,7 @@ export async function generateAISpeechSegmentsStream(
           raw: accumulatedContent,
           rawResponse: recoveryDetails ? JSON.stringify({ recovery: recoveryDetails }) : undefined,
           duration: Date.now() - startTime,
+          ...(streamUsage ? { cache: extractPromptCacheUsage(streamUsage) } : {}),
         },
         error: resolveSpeechParseError(parseError, parser, Boolean(recoveryDetails)),
       });
