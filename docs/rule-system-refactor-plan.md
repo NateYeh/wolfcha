@@ -342,3 +342,24 @@ WelcomeScreen 開發者面板的「角色」分頁可用「套用官方版型」
 - 順帶收斂：`RoleCapabilities.deathShot` 取代散落的 `role === "Hunter"`；`getRoleText`／
   `getRoleWinCondition`／`getRoleName`／教學卡（`tutorialOverlay.roles`）補齊 Knight／MuteElder／WolfKing
   （先前缺這幾個 case 會讓新角色的 prompt 說自己是「村民」、教學卡讀到 undefined）。
+
+## 新增角色檢查清單（踩過的坑）
+
+新角色上線時最容易「安靜地錯」的不是規則，而是顯示層。已收斂成單一真相，照這個順序補：
+
+1. `src/types/game.ts`：`Role` 聯集。
+2. `src/lib/rules/roles.ts`：`ROLE_CAPABILITIES`（`Record<Role, …>`，tsc 會逼你補齊）。
+3. `src/lib/rules/boards.ts`：`ALL_ROLE_KEYS` ＋ 版型資料。
+4. i18n：`roles.*`、`promptUtils.roleText.*`／`winCondition.*`、`roleReveal.roles.*`＋`nextStep.*`、
+   `tutorialOverlay.roles.*`（`t.raw`，缺了教學卡會讀到 undefined）、`gameSetup.rolePreference.desc.*`、
+   公共規則 `roleSkills`／`basicRules`（AI 讀的就是這份，沒同步會照舊規則打）。
+5. `src/lib/game-constants.ts`：`getRoleName`（**顯示名稱的單一真相**）。UI 一律呼叫它，
+   不要自己維護 `Record<string, string>` ＋ `?? t("roles.villager")`：
+   這種寫法不受型別保護，新角色會顯示成「村民」（玩家看到的是錯的身份，不是壞掉）。
+6. 角色列舉檔案：`DevTools/DevConsole.tsx` 的 `ALL_ROLES` 要等於 `ALL_ROLE_KEYS`
+   （寫死清單會讓 `<select>` 找不到 option，瀏覽器顯示第一個選項＝村民）。
+7. 賽後分析：`game-analysis.ts` 的標籤規則走 `ROLE_ALIGNMENT`（狼陣營一律吃狼標籤），
+   分析 prompt 的角色清單由 `ALL_ROLE_KEYS` 產生；`analysis/constants.ts` 的圖／名／簡稱。
+
+`src/lib/rules/role-enumeration.test.ts` 兜底：每個角色的顯示名稱必須互不相同，
+且任何出現角色鍵（`Idiot:`）的原始碼檔案都必須列出所有角色。

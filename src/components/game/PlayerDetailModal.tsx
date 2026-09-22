@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "@phosphor-icons/react";
 import type { Player } from "@/types/game";
+import { getRoleName as getRoleConstantName } from "@/lib/game-constants";
 import { isWolfRole } from "@/types/game";
 import { 
   WerewolfIcon,
@@ -85,22 +86,14 @@ export function PlayerDetailModal({ player, isOpen, onClose, humanPlayer, isGens
         return true;
       });
   }, [persona?.voiceRules]);
-  const roleLabels = useMemo<Record<string, string>>(() => ({
-    Werewolf: t("roles.werewolf"),
-    WhiteWolfKing: t("roles.whiteWolfKing"),
-    Seer: t("roles.seer"),
-    Witch: t("roles.witch"),
-    Hunter: t("roles.hunter"),
-    Guard: t("roles.guard"),
-    Idiot: t("roles.idiot"),
-    Villager: t("roles.villager"),
-  }), [t]);
   const strategyLabels = useMemo<Record<string, string>>(() => ({
     aggressive: t("persona.strategy.aggressive"),
     safe: t("persona.strategy.safe"),
     balanced: t("persona.strategy.balanced"),
   }), [t]);
-  const getRoleName = (role: string) => roleLabels[role] ?? t("roles.villager");
+  // 角色名稱走單一真相（lib/game-constants.getRoleName）：自己維護一份 Record<string,string>
+  // 的話，新增角色（騎士／禁言長老／狼王）會被 ?? 村民 吃掉，顯示成村民。
+  const getRoleName = (role: string) => getRoleConstantName(role);
   const getStrategyLabel = (strategy?: string) => {
     if (!strategy) return strategyLabels.balanced;
     return strategyLabels[strategy] ?? strategyLabels.balanced;

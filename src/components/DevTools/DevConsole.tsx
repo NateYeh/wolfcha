@@ -6,6 +6,8 @@ import { useAtom } from "jotai";
 import { motion, AnimatePresence } from "framer-motion";
 import { gameStateAtom } from "@/store/game-machine";
 import type { GameState, Phase, Role, Player } from "@/types/game";
+import { ALL_ROLE_KEYS } from "@/lib/rules/boards";
+import { getRoleName as getRoleConstantName } from "@/lib/game-constants";
 import { isWolfRole } from "@/types/game";
 import { X, Wrench, Play, Pause, SkipForward, Eye, Users, Crosshair, Code, ChatDots, Warning, ArrowRight, ArrowLeft, Lightning, SpeakerHigh, ChartBar } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
@@ -68,7 +70,9 @@ const ALL_PHASES: Phase[] = [
 ];
 
 // 所有可用的角色
-const ALL_ROLES: Role[] = ["Villager", "Werewolf", "WhiteWolfKing", "Seer", "Witch", "Hunter", "Guard", "Idiot"];
+// 角色清單必須跟著 ALL_ROLE_KEYS 走：寫死清單會讓新角色（騎士／禁言長老／狼王）
+// 在 <select> 裡找不到對應 option，瀏覽器就顯示第一個選項（村民）。
+const ALL_ROLES: Role[] = [...ALL_ROLE_KEYS];
 
 // Helper to get phase name with i18n
 const usePhaseNames = () => {
@@ -100,17 +104,11 @@ const usePhaseNames = () => {
 // Helper to get role name with i18n
 const useRoleNames = () => {
   const t = useTranslations();
-  return useMemo(() => ({
-    Villager: t("devConsole.roles.Villager"),
-    Werewolf: t("devConsole.roles.Werewolf"),
-    WhiteWolfKing: t("devConsole.roles.WhiteWolfKing"),
-    Seer: t("devConsole.roles.Seer"),
-    Witch: t("devConsole.roles.Witch"),
-    Hunter: t("devConsole.roles.Hunter"),
-    Guard: t("devConsole.roles.Guard"),
-    Idiot: t("devConsole.roles.Idiot"),
-    Knight: t("roles.knight"),
-  } as Record<Role, string>), [t]);
+  // 用單一真相組出「角色 → 名稱」，不再手寫對照表（漏一個就會顯示成下一個角色）
+  return useMemo(
+    () => Object.fromEntries(ALL_ROLE_KEYS.map((role) => [role, getRoleConstantName(role)])) as Record<Role, string>,
+    [t]
+  );
 };
 
 // Helper to format player label with i18n

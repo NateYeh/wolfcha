@@ -3,6 +3,7 @@
  * 从 GameState 解析并生成 GameAnalysisData
  */
 
+import { ALL_ROLE_KEYS } from "@/lib/rules/boards";
 import type { GameState, Player, Role, Alignment, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { getSummaryModel } from "@/lib/api-keys";
@@ -282,10 +283,8 @@ function getTagRulesForRole(role: Role): EvaluationTagRule[] {
     case "Witch": return [...WITCH_TAGS, ...VILLAGER_TAGS];
     case "Guard": return [...GUARD_TAGS, ...VILLAGER_TAGS];
     case "Hunter": return [...HUNTER_TAGS, ...VILLAGER_TAGS];
-    case "Werewolf":
-    case "WhiteWolfKing": return WOLF_TAGS;
-    case "Idiot": return VILLAGER_TAGS;
-    default: return VILLAGER_TAGS;
+    // 狼陣營一律吃狼的推理標籤（含狼王）；其餘走陣營表，避免新角色落到 default 被當村民
+    default: return ROLE_ALIGNMENT[role] === "wolf" ? WOLF_TAGS : VILLAGER_TAGS;
   }
 }
 
@@ -1629,7 +1628,7 @@ ${formatSpeechSummaries(speechSummaries, state)}
 3. reviews必须包含2条队友评价（ally，从「${alliesText}」中选择）和1条对手评价（enemy，从「${enemiesText}」中选择）
 4. 【重要】队友是指同一阵营的玩家，对手是指敌对阵营的玩家。${humanAlignmentText}的队友只能是${humanAlignmentText}的其他成员！
 5. highlightQuote必须是玩家的原话，从上面的发言记录中选取，如果无发言记录则返回空字符串""
-6. 角色名使用英文：Werewolf, Seer, Witch, Hunter, Guard, Villager, WhiteWolfKing, Idiot
+6. 角色名使用英文：${ALL_ROLE_KEYS.join(", ")}
 7. 游戏进度、死亡、投票、胜负必须严格服从“游戏历史（结构化事实为准）”，不要用发言摘要覆盖结构化事实
 8. speechScores评分标准：
    - logic（逻辑严密度）：分析发言是否有逻辑漏洞、推理是否合理
