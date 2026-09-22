@@ -27,6 +27,7 @@ import { trackSseAttempt } from "@/lib/sse-attempt-tracker";
 import { RequestTimeoutError } from "@/lib/request-timeout";
 import { normalizeGatewayBaseUrl, toChatCompletionsUrl } from "@/lib/gateway-url";
 import { UPSTREAM_TIMEOUT_CODE, UPSTREAM_TIMEOUT_HEADER } from "@/lib/upstream-timeout";
+import { resolveReasoningEffort } from "@/lib/reasoning-effort";
 
 // 9 人完整角色画像的正常流式输出实测可超过 80 秒。未启用 Fluid
 // Compute 的 Vercel 项目默认上限可能只有 60 秒，必须显式放宽；这只延长
@@ -73,25 +74,9 @@ function withThinkingReserve(maxTokens: number): number {
   return Math.max(16, Math.floor(maxTokens)) + thinkingTokenReserve();
 }
 
-// TokenDance 上游（自架 gpt-load 閘道器）實際看的欄位是 reasoning_effort，
-// 而非 thinking。實測 deepseek-v4.1-flash:cloud：none 可完全關閉思考
-// （reasoning 0 字、completion 5784→2696），low 約降至七成。
-// 未設定時不送此欄位，維持原行為。
-const DEFAULT_REASONING_EFFORT = "";
-const TOKENDANCE_REASONING_EFFORTS = new Set(["none", "minimal", "low", "medium", "high"]);
-
-function tokendanceReasoningEffort(): string | undefined {
-  const raw = (process.env.WOLFCHA_REASONING_EFFORT ?? DEFAULT_REASONING_EFFORT).trim().toLowerCase();
-  if (raw === "") return undefined;
-  if (TOKENDANCE_REASONING_EFFORTS.has(raw)) return raw;
-
-  console.warn(`[chat] WOLFCHA_REASONING_EFFORT 設定無效（${raw}），已忽略`);
-  return undefined;
-}
-
-/** 依環境設定附加 reasoning_effort，讓推理模型的思考量可控。 */
-function applyReasoningEffort(body: Record<string, unknown>): void {
-  const effort = tokendanceReasoningEffort();
+/** 依模型附加 reasoning_effort；各模型的實測值與優先序見 reasoning-effort.ts。 */
+function applyReasoningEffort(body: Record<string, unknown>, model: string): void {
+  const effort = resolveReasoningEffort(model, process.env);
   if (effort) body.reasoning_effort = effort;
 }
 
@@ -719,7 +704,7 @@ async function runBatchItem(
     } else if (modelLower.includes("glm") || modelLower.includes("kimi")) {
       requestBody.thinking = { type: "disabled" };
     }
-    applyReasoningEffort(requestBody);
+    applyReasoningEffort(requestBody, model);
 
     if (response_format && supportsResponseFormat(model)) {
       applyTokenDanceResponseFormat(requestBody, response_format);
@@ -1196,7 +1181,7 @@ export async function POST(request: NextRequest) {
       } else if (modelLower.includes("glm") || modelLower.includes("kimi")) {
         requestBody.thinking = { type: "disabled" };
       }
-      applyReasoningEffort(requestBody);
+      applyReasoningEffort(requestBody, model);
 
       if (response_format && supportsResponseFormat(model)) {
         applyTokenDanceResponseFormat(requestBody, response_format);
