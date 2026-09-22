@@ -1082,7 +1082,7 @@
     "knightDuelReveal": "{seat} {name} reveals and duels {targetSeat} {targetName}",
     "knightDuelHitWolf": "{targetSeat} {targetName} is a werewolf - out by duel, night falls immediately",
     "knightDuelMissed": "{targetSeat} {targetName} is good - {seat} {name} dies paying for the failed duel",
-    "muteActionStart": "Mute Elder, please open your eyes and pick who to silence tomorrow",
+    "muteActionStart": "Mute Elder, open your eyes.",
     "playerMuted": "{seat} {name} is silenced and cannot speak today (can still vote and give last words)"
   },
   "ui": {

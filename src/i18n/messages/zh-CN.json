@@ -1082,7 +1082,7 @@
     "knightDuelReveal": "{seat}号 {name} 翻牌决斗 {targetSeat}号 {targetName}",
     "knightDuelHitWolf": "{targetSeat}号 {targetName} 是狼人，决斗出局，直接进入黑夜",
     "knightDuelMissed": "{targetSeat}号 {targetName} 是好人，{seat}号 {name} 以死谢罪出局",
-    "muteActionStart": "禁言长老请睁眼，请选择明天要禁言的玩家",
+    "muteActionStart": "禁言长老请睁眼",
     "playerMuted": "{seat}号 {name} 被禁言，今天不能发言（仍可投票、可留遗言）"
   },
   "ui": {
