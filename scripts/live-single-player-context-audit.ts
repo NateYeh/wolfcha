@@ -193,7 +193,7 @@ const createUniqueSeerClaimState = (): GameState => {
       witchPoisonUsed: false,
       hunterCanShoot: true,
       idiotRevealed: false,
-      whiteWolfKingBoomUsed: false,
+      boomedSeats: [],
     },
     winner: null,
   };

@@ -192,7 +192,7 @@ type BoardPreset = {
 |---|---|---|
 | 0 版型／角色能力／規則旗標三層資料 | ✅ 完成（`7be874b`） | 四份重複的版型定義收斂為 `lib/rules/boards.ts`；8–12 人版型逐字不變（快照測試） |
 | 1 守衛空守＋女巫不可自救 | ✅ 完成 | 守衛：`seat 0` 表示空守（strict schema enum 已納入 0）、空守不寫入 `lastGuardTarget`（可連續多晚空守）；女巫：`selfSaveRule` 依旗標切換、刀口是自己時不提供解藥選項、人類 UI 不顯示解藥按鈕 |
-| 2 自爆系統泛化 | ⬜ 待做（遺言佇列已先落地，供自爆中斷白天時補發表） | `SELF_DESTRUCT`、全狼自爆、雙爆吞警徽、跨日續競選、移除自爆宣言 |
+| 2 自爆系統泛化 | ✅ 完成（rename 為 `SELF_DESTRUCT`） | 全狼可自爆、無遺言無宣言、直接天黑（先補死訊＋遺言）、競選階段白狼王吞徽／普通狼雙爆吞徽、跨日續辦競選；AI 決策與真人按鈕一併泛化 | `SELF_DESTRUCT`、全狼自爆、雙爆吞警徽、跨日續競選、移除自爆宣言 |
 | 3 官方 26 版型＋自定義版型 | ⬜ 延後 | 依使用者裁定，功能完成後再添加 |
 | 4 新角色 | ⬜ 延後 | 同上（狼美人、隱狼、騎士、石像鬼…） |
 
@@ -200,3 +200,15 @@ type BoardPreset = {
 
 - 覆盤／日總結目前把空守顯示成「沒有守護目標」；若要在賽後報告中明確顯示「空守」，
   需在夜晚結算時記錄 `dayHistory.guardAbstained`（狀態與分析層都要加欄位）。
+
+### Phase 2 實作備註
+
+- 階段 ID：`SELF_DESTRUCT`（原本 `WHITE_WOLF_KING_BOOM`）；舊存檔在 `normalizeGameState` 內自動換算
+  （含 `roleAbilities.whiteWolfKingBoomUsed` → `boomedSeats`）。
+- 狀態：`roleAbilities.boomedSeats`（自爆過的座位）、`badge.electionBooms`（本競選階段自爆次數）、
+  `badge.electionSuspended` ＋ `badge.electionSpokenSeats`（跨天續辦競選用）、`badge.lost`（警徽流失）。
+- 直接天黑前會先 `settleUnannouncedNightDeaths`：把「已結算但還沒公布」的夜間死亡套用＋公告，
+  再跑第一夜遺言佇列，最後才進黑夜（否則第一夜死訊與遺言會被自爆吃掉）。
+- AI log 類型：`wwk_boom_decision` → `self_destruct_decision`（舊 log 仍用舊名）。
+- 續辦競選：`startDayPhaseInternal` 先看 `shouldResumeBadgeElection`，天亮時補公布死訊後
+  交給 `useBadgePhase.resumeBadgeSpeechPhase`（跳過已發言候選人）。

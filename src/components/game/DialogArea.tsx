@@ -27,6 +27,9 @@ import { useTranslations } from "next-intl";
 
 type WitchActionType = "save" | "poison" | "pass";
 import type { DialogueState } from "@/store/game-machine";
+import { getBoardRuleFlags } from "@/lib/rules/boards";
+import { getRoleCapabilities } from "@/lib/rules/roles";
+import { canSelfDestruct, hasAlreadyBoomed } from "@/lib/rules/self-destruct";
 
 const HISTORY_BOTTOM_THRESHOLD = 24;
 
@@ -82,7 +85,7 @@ const getPhaseRole = (phase: Phase, humanRole?: string): string | null => {
     case 'NIGHT_WITCH_ACTION': return 'Witch';
     case 'NIGHT_SEER_ACTION': return 'Seer';
     case 'HUNTER_SHOOT': return 'Hunter';
-    case 'WHITE_WOLF_KING_BOOM': return 'WhiteWolfKing';
+    case 'SELF_DESTRUCT': return 'WhiteWolfKing';
     default: return null;
   }
 };
@@ -299,7 +302,7 @@ interface DialogAreaProps {
   onNightAction?: (seat: number, actionType?: WitchActionType) => void;
   onBadgeSignup?: (wants: boolean) => void;
   onRestart?: () => void;
-  onWhiteWolfKingBoom?: () => void;
+  onSelfDestruct?: () => void;
   onViewAnalysis?: () => void;
   isAnalysisLoading?: boolean;
   /** 本局 MVP（可能多人並列；分析完成前為 undefined）。 */
@@ -456,7 +459,7 @@ export function DialogArea({
   onNightAction,
   onBadgeSignup,
   onRestart,
-  onWhiteWolfKingBoom,
+  onSelfDestruct,
   onViewAnalysis,
   isAnalysisLoading = false,
   gameMvps,
@@ -1087,7 +1090,7 @@ export function DialogArea({
       (phase === "NIGHT_GUARD_ACTION" && humanPlayer?.role === "Guard" && humanPlayer?.alive) ||
       (phase === "HUNTER_SHOOT" && humanPlayer?.role === "Hunter") ||
       (phase === "BADGE_TRANSFER" && humanPlayer && gameState.badge.holderSeat === humanPlayer.seat) ||
-      (phase === "WHITE_WOLF_KING_BOOM" && humanPlayer?.role === "WhiteWolfKing" && humanPlayer?.alive && !gameState.roleAbilities.whiteWolfKingBoomUsed);
+      (phase === "SELF_DESTRUCT" && !!humanPlayer?.alive && getRoleCapabilities(humanPlayer?.role ?? "Villager").boomTakesPlayer && !hasAlreadyBoomed(gameState.roleAbilities.boomedSeats, humanPlayer?.seat ?? -1));
 
     return Boolean(
       isCorrectRoleForPhase
@@ -1555,7 +1558,7 @@ export function DialogArea({
                   NIGHT_GUARD_ACTION: t("dialog.action.guardProtect"),
                   HUNTER_SHOOT: t("dialog.action.hunterShoot"),
                   BADGE_TRANSFER: t("dialog.action.badgeTransfer"),
-                  WHITE_WOLF_KING_BOOM: t("dialog.action.whiteWolfKingBoom"),
+                  SELF_DESTRUCT: t("dialog.action.selfDestruct"),
                 };
 
                 const actionColorMap: Record<string, string> = {
@@ -1566,7 +1569,7 @@ export function DialogArea({
                   NIGHT_GUARD_ACTION: "text-[var(--color-success)]",
                   HUNTER_SHOOT: "text-[var(--color-warning)]",
                   BADGE_TRANSFER: "text-[var(--color-warning)]",
-                  WHITE_WOLF_KING_BOOM: "text-[var(--color-danger)]",
+                  SELF_DESTRUCT: "text-[var(--color-danger)]",
                 };
 
                 const actionText = actionTextMap[phase] || t("dialog.action.select");
@@ -1740,15 +1743,15 @@ export function DialogArea({
                   className="space-y-3"
                 >
                   {/* 白狼王自爆按钮 - 在发言阶段显示 */}
-                  {humanPlayer?.role === "WhiteWolfKing" && humanPlayer?.alive && !gameState.roleAbilities.whiteWolfKingBoomUsed && ["DAY_SPEECH", "DAY_BADGE_SPEECH", "DAY_PK_SPEECH"].includes(phase) && (
+                  {humanPlayer && humanPlayer.alive && isWolfRole(humanPlayer.role) && canSelfDestruct({ phase, role: humanPlayer.role, flags: getBoardRuleFlags(gameState.players.length) }) && !hasAlreadyBoomed(gameState.roleAbilities.boomedSeats, humanPlayer.seat) && (
                     <div className="flex justify-end">
                       <button
-                        onClick={onWhiteWolfKingBoom}
+                        onClick={onSelfDestruct}
                         className="h-8 px-3 rounded text-xs font-medium bg-red-600 text-white hover:bg-red-700 transition-all flex items-center gap-1.5 cursor-pointer"
                         type="button"
                       >
                         <Skull size={14} weight="fill" />
-                        {t("bottomAction.confirmAction.whiteWolfKingBoomBtn")}
+                        {t("bottomAction.confirmAction.selfDestructBtn")}
                       </button>
                     </div>
                   )}

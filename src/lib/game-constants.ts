@@ -59,7 +59,7 @@ export const PHASE_CATEGORIES = {
     "DAY_RESOLVE",
   ] as const,
   SPEECH_PHASES: ["DAY_SPEECH", "DAY_LAST_WORDS", "DAY_BADGE_SPEECH", "DAY_PK_SPEECH"] as const,
-  SPECIAL_PHASES: ["BADGE_TRANSFER", "HUNTER_SHOOT", "WHITE_WOLF_KING_BOOM", "GAME_END"] as const,
+  SPECIAL_PHASES: ["BADGE_TRANSFER", "HUNTER_SHOOT", "SELF_DESTRUCT", "GAME_END"] as const,
 } as const;
 
 import { getI18n } from "@/i18n/translator";

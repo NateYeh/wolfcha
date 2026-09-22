@@ -46,7 +46,7 @@ export type Phase =
   | "DAY_RESOLVE"
   | "BADGE_TRANSFER"        // 警长移交警徽
   | "HUNTER_SHOOT"          // 猎人开枪
-  | "WHITE_WOLF_KING_BOOM"  // 白狼王自爆
+  | "SELF_DESTRUCT"  // 自爆（所有狼陣營角色）
   | "GAME_END";
 
 export type Alignment = "village" | "wolf";
@@ -249,6 +249,14 @@ export interface GameState {
     /** 每日警徽竞选最终赢家快照；null 表示该日竞选最终无人当选。 */
     electionWinners?: Record<number, number | null>;
     revoteCount: number;
+    /** 警徽流失（競選階段的狼自爆吞徽）：本局永久沒有警長 */
+    lost?: boolean;
+    /** 這個競選階段已發生的狼自爆次數（雙爆吞警徽用） */
+    electionBooms?: number;
+    /** 競選被自爆中斷：下一個天亮要繼續競選，而不是直接進白天討論 */
+    electionSuspended?: boolean;
+    /** 中斷前已經發言過的候選人座位（跨天續辦時用來跳過已發言者） */
+    electionSpokenSeats?: number[];
   };
   votes: Record<string, number>;
   voteReasons?: Record<string, string>;
@@ -284,7 +292,14 @@ export interface GameState {
       /** 当日放逐投票发生时的警长座位；null 表示当时无警长。 */
       sheriffSeatAtVote?: number | null;
       hunterShot?: { hunterSeat: number; targetSeat: number; reason?: string };
-      whiteWolfKingBoom?: { boomSeat: number; targetSeat: number; reason?: string };
+      /** 自爆紀錄（所有狼陣營角色；白狼王才有 targetSeat） */
+      selfDestruct?: {
+        boomSeat: number;
+        targetSeat?: number;
+        reason?: string;
+        swallowBadge?: boolean;
+        suspendedElection?: boolean;
+      };
       idiotRevealed?: { seat: number };
     }
   >;
@@ -332,7 +347,8 @@ export interface GameState {
     witchPoisonUsed: boolean;    // 女巫毒药是否已用
     hunterCanShoot: boolean;     // 猎人是否能开枪（被毒死不能开枪）
     idiotRevealed: boolean;      // 白痴是否已翻牌（翻牌后失去投票权但不死）
-    whiteWolfKingBoomUsed: boolean; // 白狼王是否已自爆
+    /** 已自爆過的座位（自爆者出局，僅供防重複與賽後紀錄） */
+    boomedSeats: number[];
   };
   winner: Alignment | null;
 }

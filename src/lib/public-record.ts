@@ -37,9 +37,13 @@ export function buildPublicRecordForRemark(state: GameState): string[] {
     const record = state.dayHistory?.[day];
     if (!record) continue;
 
-    const boom = record.whiteWolfKingBoom;
+    const boom = record.selfDestruct;
     if (boom) {
-      lines.push(t("specialEvents.publicRecordBoom", { day, seat: boom.boomSeat + 1, target: boom.targetSeat + 1 }));
+      lines.push(
+        boom.targetSeat !== undefined
+          ? t("specialEvents.publicRecordBoom", { day, seat: boom.boomSeat + 1, target: boom.targetSeat + 1 })
+          : t("specialEvents.publicRecordBoomNoTarget", { day, seat: boom.boomSeat + 1 })
+      );
     }
     const shot = record.hunterShot ?? night?.hunterShot;
     if (shot) {

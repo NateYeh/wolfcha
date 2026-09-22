@@ -19,6 +19,7 @@ export type GameAction =
   | { type: "CONTINUE_NIGHT_AFTER_WITCH" }
   | { type: "START_DAY_SPEECH_AFTER_BADGE"; options?: { skipAnnouncements?: boolean } }
   | { type: "ADVANCE_SPEAKER" }
+  | { type: "ANNOUNCE_NIGHT_RESULTS"; options?: { skipAnnouncements?: boolean } }
   | { type: "RESOLVE_VOTES" }
   | { type: "RESUME_VOTES" }
   | { type: "VOTE"; targetSeat: number }

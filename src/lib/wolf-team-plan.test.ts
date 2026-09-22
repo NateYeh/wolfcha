@@ -63,7 +63,7 @@ const makeState = (players: Player[], wolfTeamPlan?: WolfTeamPlan): GameState =>
     witchPoisonUsed: false,
     hunterCanShoot: true,
     idiotRevealed: false,
-    whiteWolfKingBoomUsed: false,
+    boomedSeats: [],
   },
   winner: null,
   ...(wolfTeamPlan ? { wolfTeamPlan } : {}),

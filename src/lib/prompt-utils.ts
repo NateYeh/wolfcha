@@ -165,12 +165,17 @@ const buildPublicRoleReveals = (state: GameState): string => {
           target: formatSeatName(state, history.hunterShot.targetSeat),
         }));
       }
-      if (history.whiteWolfKingBoom) {
-        facts.push(t("promptUtils.gameContext.whiteWolfKingRoleReveal", {
-          day: Number(day),
-          player: formatSeatName(state, history.whiteWolfKingBoom.boomSeat),
-          target: formatSeatName(state, history.whiteWolfKingBoom.targetSeat),
-        }));
+      if (history.selfDestruct) {
+        const boomPlayer = formatSeatName(state, history.selfDestruct.boomSeat);
+        facts.push(
+          history.selfDestruct.targetSeat !== undefined
+            ? t("promptUtils.gameContext.selfDestructRevealWithTarget", {
+                day: Number(day),
+                player: boomPlayer,
+                target: formatSeatName(state, history.selfDestruct.targetSeat),
+              })
+            : t("promptUtils.gameContext.selfDestructReveal", { day: Number(day), player: boomPlayer })
+        );
       }
       if (history.idiotRevealed) {
         facts.push(t("promptUtils.gameContext.idiotRoleReveal", {
@@ -231,9 +236,11 @@ export const buildPublicFactsForPlayer = (state: GameState, player: Player): str
     const todayDayHistory = state.dayHistory?.[state.day];
     if (todayDayHistory?.executed) deadTodaySeats.add(todayDayHistory.executed.seat);
     if (todayDayHistory?.hunterShot) deadTodaySeats.add(todayDayHistory.hunterShot.targetSeat);
-    if (todayDayHistory?.whiteWolfKingBoom) {
-      deadTodaySeats.add(todayDayHistory.whiteWolfKingBoom.boomSeat);
-      deadTodaySeats.add(todayDayHistory.whiteWolfKingBoom.targetSeat);
+    if (todayDayHistory?.selfDestruct) {
+      deadTodaySeats.add(todayDayHistory.selfDestruct.boomSeat);
+      if (todayDayHistory.selfDestruct.targetSeat !== undefined) {
+        deadTodaySeats.add(todayDayHistory.selfDestruct.targetSeat);
+      }
     }
   }
   const deadToday = state.players.filter((p) => deadTodaySeats.has(p.seat));
@@ -1068,7 +1075,7 @@ export const buildGameContextParts = (
     for (const [day, history] of Object.entries(state.dayHistory || {})) {
       if (history.executed?.seat === p.seat) { cause = publicExecutionCause; deathDay = Number(day); }
       if (history.hunterShot?.targetSeat === p.seat) { cause = publicHunterShotCause; deathDay = Number(day); }
-      if (history.whiteWolfKingBoom?.boomSeat === p.seat || history.whiteWolfKingBoom?.targetSeat === p.seat) {
+      if (history.selfDestruct?.boomSeat === p.seat || history.selfDestruct?.targetSeat === p.seat) {
         cause = publicWhiteWolfKingCause;
         deathDay = Number(day);
       }
@@ -1259,8 +1266,8 @@ alive_count: ${alivePlayers.length}
           currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${publicHunterShotCause}}`);
         }
       }
-      if (dayHistory?.whiteWolfKingBoom) {
-        [dayHistory.whiteWolfKingBoom.boomSeat, dayHistory.whiteWolfKingBoom.targetSeat].forEach((seat) => {
+      if (dayHistory?.selfDestruct) {
+        [dayHistory.selfDestruct.boomSeat, dayHistory.selfDestruct.targetSeat].forEach((seat) => {
           const p = state.players.find((player) => player.seat === seat);
           if (p && !p.alive) {
             currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${publicWhiteWolfKingCause}}`);

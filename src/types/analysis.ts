@@ -1,7 +1,7 @@
 import type { Alignment, AvatarStyle, Persona, Role } from "./game";
 
 export type NightEventType = "kill" | "save" | "poison" | "check" | "guard";
-export type DayEventType = "exile" | "badge" | "hunter_shot" | "white_wolf_king_boom" | "idiot_reveal";
+export type DayEventType = "exile" | "badge" | "hunter_shot" | "self_destruct" | "idiot_reveal";
 
 export interface NightEvent {
   type: NightEventType;
@@ -34,7 +34,7 @@ export interface DayPhase {
   speeches?: PlayerSpeech[];
   event?: DayEvent;
   hunterEvent?: DayEvent;
-  whiteWolfKingBoomEvent?: DayEvent;
+  selfDestructEvent?: DayEvent;
   idiotRevealEvent?: DayEvent;
 }
 

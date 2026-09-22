@@ -33,6 +33,7 @@ import { buildPublicRecordForRemark } from "@/lib/public-record";
 import { getRoleConfiguration } from "@/lib/role-configuration";
 import { canWitchSave, getGuardEligibleSeats, isAbstainKeyword } from "@/lib/rules/actions";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
+import { getRoleCapabilities } from "@/lib/rules/roles";
 import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
 
 export { getRoleConfiguration } from "@/lib/role-configuration";
@@ -251,7 +252,7 @@ export function createInitialGameState(): GameState {
       witchPoisonUsed: false,
       hunterCanShoot: true,
       idiotRevealed: false,
-      whiteWolfKingBoomUsed: false,
+      boomedSeats: [],
     },
     winner: null,
   };
@@ -2640,7 +2641,7 @@ export function collectPrivateActionNotes(state: GameState, seat: number): Priva
   };
   for (const [dayStr, record] of Object.entries(state.dayHistory ?? {})) {
     const day = Number(dayStr);
-    const boom = record.whiteWolfKingBoom;
+    const boom = record.selfDestruct;
     if (boom && boom.boomSeat === seat) push(day, "boom", boom.targetSeat, boom.reason);
     const shot = record.hunterShot;
     if (shot && shot.hunterSeat === seat) push(day, "shot", shot.targetSeat, shot.reason);
@@ -2833,14 +2834,16 @@ export async function generateGameEndRemark(
 }
 
 /**
- * AI 白狼王自爆决策：返回 { targetSeat, farewell, reason }——targetSeat 为 null 表示不自爆；
- * 自爆时 farewell 为一两句翻桌宣言（当场公开，供带风向发挥）。
+ * AI 自爆決策：`boom` 為 true 表示自爆；只有能帶人的角色（白狼王）才會有 `targetSeat`。
+ *
+ * 自爆沒有宣言、也沒有遺言，因此不再要求模型寫翻桌台詞；普通狼自爆不帶人。
  */
-export async function generateWhiteWolfKingBoomDecision(
+export async function generateSelfDestructDecision(
   state: GameState,
   player: Player
-): Promise<{ targetSeat: number | null; farewell: string; reason: string }> {
-  const prompt = resolvePhasePrompt("WHITE_WOLF_KING_BOOM", state, player);
+): Promise<{ boom: boolean; targetSeat: number | null; reason: string }> {
+  const prompt = resolvePhasePrompt("SELF_DESTRUCT", state, player);
+  const takesPlayer = getRoleCapabilities(player.role).boomTakesPlayer;
   const alivePlayers = state.players.filter(
     (p) => p.alive && p.playerId !== player.playerId
   );
@@ -2849,15 +2852,16 @@ export async function generateWhiteWolfKingBoomDecision(
   let attempts = 0;
   const { messages } = buildMessagesForPrompt(prompt);
   const validSeats = alivePlayers.map((p) => p.seat);
+  const noBoom = { boom: false, targetSeat: null } as const;
 
-  if (validSeats.length === 0) return { targetSeat: null, farewell: "", reason: "" };
+  if (takesPlayer && validSeats.length === 0) return { ...noBoom, reason: "" };
 
   try {
     const completion = await withCriticalRetry(
-      "wwk_boom_decision",
+      "self_destruct_decision",
       async () => {
         attempts += 1;
-        return await generateCompletionAndParse<number | null>(
+        return await generateCompletionAndParse<{ boom: boolean; targetSeat: number | null }>(
           mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
             model: player.agentProfile!.modelRef.model,
             messages,
@@ -2880,7 +2884,7 @@ export async function generateWhiteWolfKingBoomDecision(
               seatValue === 0 ||
               seatValue === "0";
 
-            if (wantsPass) return parseOk(null);
+            if (wantsPass) return parseOk(noBoom);
             const wantsBoom =
               action === "" ||
               action.includes("boom") ||
@@ -2888,18 +2892,20 @@ export async function generateWhiteWolfKingBoomDecision(
               action.includes("self");
             if (!wantsBoom) return parseFail();
 
+            // 普通狼自爆不帶人：即使模型給了座位也只當作「自爆」
+            if (!takesPlayer) return parseOk({ boom: true, targetSeat: null });
+
             const target = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "boom"]);
-            return target === null ? parseFail() : parseOk(target);
+            return target === null ? parseFail() : parseOk({ boom: true, targetSeat: target });
           }
         );
       },
     );
-    const parsedTarget = completion.parsed;
-    const farewell = extractJsonTextField(completion.cleaned, "farewell", 400);
+    const decision = completion.parsed ?? noBoom;
     const boomReason = extractJsonTextField(completion.cleaned, "reason");
 
     await aiLogger.log({
-      type: "wwk_boom_decision",
+      type: "self_destruct_decision",
       request: {
         model: player.agentProfile!.modelRef.model,
         messages,
@@ -2910,17 +2916,17 @@ export async function generateWhiteWolfKingBoomDecision(
         raw: completion.result.content,
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
-        parsed: { targetSeat: parsedTarget, attempts: completion.attempts, reason: boomReason, farewell },
+        parsed: { boom: decision.boom, targetSeat: decision.targetSeat, attempts: completion.attempts, reason: boomReason },
         attempts,
         duration: Date.now() - startTime,
       },
     });
 
-    return { targetSeat: parsedTarget, farewell, reason: boomReason };
+    return { boom: decision.boom, targetSeat: decision.targetSeat, reason: boomReason };
   } catch (error) {
-    console.warn("[wolfcha] generateWhiteWolfKingBoomDecision failed, passing self-destruct:", error);
+    console.warn("[wolfcha] generateSelfDestructDecision failed, passing self-destruct:", error);
     await aiLogger.log({
-      type: "wwk_boom_decision",
+      type: "self_destruct_decision",
       request: {
         model: player.agentProfile!.modelRef.model,
         messages,
@@ -2928,16 +2934,16 @@ export async function generateWhiteWolfKingBoomDecision(
       },
       response: {
         content: "",
-        parsed: { targetSeat: null, farewell: "", reason: "" },
+        parsed: { boom: false, targetSeat: null, attempts: 1, reason: "" },
         attempts,
         duration: Date.now() - startTime,
         failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
       },
-      error: String(error),
     });
-    return { targetSeat: null, farewell: "", reason: "" };
+    return { ...noBoom, reason: "" };
   }
 }
+
 
 /** 预取仅在实际提示词完全一致时复用，消息数量不足以代表上下文。 */
 export function getSpeechContextKey(state: GameState, player: Player): string {

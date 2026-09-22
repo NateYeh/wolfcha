@@ -28,6 +28,8 @@ import { DELAY_CONFIG } from "@/lib/game-constants";
 import { delay } from "@/lib/game-flow-controller";
 import { playNarrator } from "@/lib/narrator-audio-player";
 import { getPlayerDiedKey } from "@/lib/narrator-voice";
+import { getBoardRuleFlags } from "@/lib/rules/boards";
+import { canSelfDestruct, hasAlreadyBoomed, isSelfDestructPhase } from "@/lib/rules/self-destruct";
 
 type DaySpeechRuntime = {
   token: FlowToken;
@@ -41,8 +43,8 @@ type DaySpeechRuntime = {
   onStartVote: (state: GameState, token: FlowToken) => Promise<void>;
   onBadgeSpeechEnd: (state: GameState) => Promise<void>;
   onPkSpeechEnd: (state: GameState) => Promise<void>;
-  /** AI白狼王自爆决策：返回 true 表示已自爆（由调用方处理后续），false 表示不自爆 */
-  onWhiteWolfKingBoomCheck: (state: GameState, wwk: Player) => Promise<boolean>;
+  /** AI 自爆決策：返回 true 表示已自爆（由呼叫方處理後續），false 表示不自爆 */
+  onSelfDestructCheck: (state: GameState, wolf: Player) => Promise<boolean>;
   /** 第一夜死者的遺言佇列：死亡公告後依序發表，完成後呼叫 continuation 續跑白天流程 */
   onPendingLastWords?: (state: GameState, continuation: (s: GameState) => Promise<void>) => Promise<void>;
 };
@@ -212,6 +214,12 @@ ${t("prompts.daySpeech.formatReminder")}`;
       await this.startDaySpeechAfterBadge(_context.state, runtime, _action.options);
       return;
     }
+    if (_action.type === "ANNOUNCE_NIGHT_RESULTS") {
+      // 只補公布死訊與第一夜遺言（自爆跳過白天流程時使用），不進入白天討論
+      const announced = await this.announceNightResults(_context.state, runtime, _action.options);
+      await this.runPendingLastWords(runtime, announced.state, async () => {});
+      return;
+    }
     if (_action.type === "ADVANCE_SPEAKER") {
       await this.advanceSpeaker(_context.state, runtime);
     }
@@ -228,8 +236,8 @@ ${t("prompts.daySpeech.formatReminder")}`;
     if (!raw.runAISpeech || !raw.onBadgeTransfer || !raw.onHunterDeath || !raw.onGameEnd) return null;
     if (!raw.onStartVote || !raw.onBadgeSpeechEnd || !raw.onPkSpeechEnd) return null;
     // 提供默认的空实现以保持向后兼容
-    if (!raw.onWhiteWolfKingBoomCheck) {
-      raw.onWhiteWolfKingBoomCheck = async () => false;
+    if (!raw.onSelfDestructCheck) {
+      raw.onSelfDestructCheck = async () => false;
     }
     if (!raw.onPendingLastWords) {
       raw.onPendingLastWords = async (state, continuation) => {
@@ -239,16 +247,28 @@ ${t("prompts.daySpeech.formatReminder")}`;
     return raw;
   }
 
-  private async startDaySpeechAfterBadge(
+  /**
+   * 死訊公告：把「已結算但還沒公布」的夜晚死亡套用到玩家並公告。
+   *
+   * 自爆會跳過當天剩餘流程直接天黑，因此這個方法也會被自爆流程單獨呼叫
+   * （action `ANNOUNCE_NIGHT_RESULTS`），確保第一夜死訊與其遺言不會被吃掉。
+   */
+  private async announceNightResults(
     state: GameState,
     runtime: DaySpeechRuntime,
     options?: { skipAnnouncements?: boolean }
-  ): Promise<void> {
+  ): Promise<{ state: GameState; wolfVictim?: Player; poisonVictim?: Player; hasDeaths: boolean }> {
     const { t } = getI18n();
     const systemMessages = getSystemMessages();
     const speakerHost = t("speakers.host");
     let currentState = state;
     const skipAnnouncements = options?.skipAnnouncements === true;
+
+    // 這一夜已經公告過（例如自爆中斷競選時先用 ANNOUNCE_NIGHT_RESULTS 補公布過）就不再重複：
+    // 否則第二次呼叫會因為沒有 pending 死因而誤報「平安夜」。
+    if (currentState.nightHistory?.[currentState.day]?.resultsAnnounced === true) {
+      return { state: currentState, hasDeaths: false };
+    }
 
     const { pendingWolfVictim, pendingPoisonVictim } = currentState.nightActions;
     let hasDeaths = false;
@@ -349,22 +369,35 @@ ${t("prompts.daySpeech.formatReminder")}`;
     };
     runtime.setGameState(currentState);
 
-    /**
-     * 死亡公告之後、白天討論之前：先讓待發表遺言的死者（第一夜死者）依序發言。
-     *
-     * 若白天流程被自爆／警徽事件中斷，佇列會留在狀態裡，於下一次天亮補發表，
-     * 不會因為「直接天黑」而遺失（見 GameState.pendingLastWordsSeats）。
-     */
-    const continueAfterAnnouncement = async (
-      baseState: GameState,
-      startDiscussion: (s: GameState) => Promise<void>
-    ): Promise<void> => {
-      if ((baseState.pendingLastWordsSeats ?? []).length > 0 && runtime.onPendingLastWords) {
-        await runtime.onPendingLastWords(baseState, startDiscussion);
-        return;
-      }
-      await startDiscussion(baseState);
-    };
+    return { state: currentState, wolfVictim, poisonVictim, hasDeaths };
+  }
+
+  /**
+   * 死亡公告之後、白天討論之前：先讓待發表遺言的死者（第一夜死者）依序發言。
+   *
+   * 若白天流程被自爆／警徽事件中斷，佇列會留在狀態裡，於下一次天亮補發表，
+   * 不會因為「直接天黑」而遺失（見 GameState.pendingLastWordsSeats）。
+   */
+  private async runPendingLastWords(
+    runtime: DaySpeechRuntime,
+    baseState: GameState,
+    startDiscussion: (s: GameState) => Promise<void>
+  ): Promise<void> {
+    if ((baseState.pendingLastWordsSeats ?? []).length > 0 && runtime.onPendingLastWords) {
+      await runtime.onPendingLastWords(baseState, startDiscussion);
+      return;
+    }
+    await startDiscussion(baseState);
+  }
+
+  private async startDaySpeechAfterBadge(
+    state: GameState,
+    runtime: DaySpeechRuntime,
+    options?: { skipAnnouncements?: boolean }
+  ): Promise<void> {
+    const announced = await this.announceNightResults(state, runtime, options);
+    const currentState = announced.state;
+    const wolfVictim = announced.wolfVictim;
 
     const currentSheriffSeat = currentState.badge.holderSeat;
     const sheriffPlayer =
@@ -380,7 +413,7 @@ ${t("prompts.daySpeech.formatReminder")}`;
         }
 
         const newSheriffSeat = afterTransferState.badge.holderSeat;
-        await continueAfterAnnouncement(afterTransferState, async (discussionState) => {
+        await this.runPendingLastWords(runtime, afterTransferState, async (discussionState) => {
           if (wolfVictim?.role === "Hunter" && discussionState.roleAbilities.hunterCanShoot) {
             await runtime.onHunterDeath(discussionState, wolfVictim, true);
             return;
@@ -401,7 +434,7 @@ ${t("prompts.daySpeech.formatReminder")}`;
       return;
     }
 
-    await continueAfterAnnouncement(currentState, async (discussionState) => {
+    await this.runPendingLastWords(runtime, currentState, async (discussionState) => {
       if (wolfVictim?.role === "Hunter" && discussionState.roleAbilities.hunterCanShoot) {
         await runtime.onHunterDeath(discussionState, wolfVictim, true);
         return;
@@ -480,17 +513,18 @@ ${t("prompts.daySpeech.formatReminder")}`;
     this.isMovingToNextSpeaker = true;
 
     try {
-      // AI白狼王自爆决策：发言结束后检查是否自爆
-      if (state.phase === "DAY_SPEECH" || state.phase === "DAY_PK_SPEECH") {
+      // AI 自爆決策：發言結束後檢查是否自爆（所有狼陣營角色皆可，見 lib/rules/self-destruct.ts）
+      if (isSelfDestructPhase(state.phase)) {
         const currentSpeaker = state.players.find((p) => p.seat === state.currentSpeakerSeat);
+        const flags = getBoardRuleFlags(state.players.length);
         if (
           currentSpeaker &&
           !currentSpeaker.isHuman &&
-          currentSpeaker.role === "WhiteWolfKing" &&
           currentSpeaker.alive &&
-          !state.roleAbilities.whiteWolfKingBoomUsed
+          canSelfDestruct({ phase: state.phase, role: currentSpeaker.role, flags }) &&
+          !hasAlreadyBoomed(state.roleAbilities.boomedSeats, currentSpeaker.seat)
         ) {
-          const boomed = await runtime.onWhiteWolfKingBoomCheck(state, currentSpeaker);
+          const boomed = await runtime.onSelfDestructCheck(state, currentSpeaker);
           if (boomed) return; // 自爆已处理，不再继续发言流程
         }
       }

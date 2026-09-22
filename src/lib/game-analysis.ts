@@ -417,7 +417,7 @@ function buildAnalysisContext(humanPlayer: Player, state: GameState): AnalysisCo
         humanDeathDay = parseInt(dayStr, 10);
         break;
       }
-      if (dayData.whiteWolfKingBoom?.targetSeat === humanPlayer.seat || dayData.whiteWolfKingBoom?.boomSeat === humanPlayer.seat) {
+      if (dayData.selfDestruct?.targetSeat === humanPlayer.seat || dayData.selfDestruct?.boomSeat === humanPlayer.seat) {
         humanDeathDay = parseInt(dayStr, 10);
         break;
       }
@@ -562,7 +562,7 @@ function buildPlayerSnapshots(state: GameState): PlayerSnapshot[] {
           deathCause = "shot";
           break;
         }
-        if (dayData.whiteWolfKingBoom?.targetSeat === player.seat || dayData.whiteWolfKingBoom?.boomSeat === player.seat) {
+        if (dayData.selfDestruct?.targetSeat === player.seat || dayData.selfDestruct?.boomSeat === player.seat) {
           deathDay = parseInt(dayStr, 10);
           deathCause = "boom";
           break;
@@ -768,8 +768,8 @@ function buildStructuredDaySummary(
   if (nightData?.hunterShot) {
     parts.push(`猎人${formatSeatName(state, nightData.hunterShot.hunterSeat)}带走${formatSeatName(state, nightData.hunterShot.targetSeat)}`);
   }
-  if (dayData?.whiteWolfKingBoom) {
-    parts.push(`白狼王${formatSeatName(state, dayData.whiteWolfKingBoom.boomSeat)}自爆带走${formatSeatName(state, dayData.whiteWolfKingBoom.targetSeat)}`);
+  if (dayData?.selfDestruct) {
+    parts.push(`自爆：${formatSeatName(state, dayData.selfDestruct.boomSeat)}${dayData.selfDestruct.targetSeat !== undefined ? `带走${formatSeatName(state, dayData.selfDestruct.targetSeat)}` : "出局"}`);
   }
   if (dayData?.idiotRevealed) {
     parts.push(`${formatSeatName(state, dayData.idiotRevealed.seat)}翻牌白痴`);
@@ -856,8 +856,8 @@ function buildAuthoritativeHistoryText(state: GameState): string {
     if (dayData?.hunterShot) {
       dayLines.push(`猎人开枪：${formatSeatName(state, dayData.hunterShot.hunterSeat)}带走${formatSeatName(state, dayData.hunterShot.targetSeat)}`);
     }
-    if (dayData?.whiteWolfKingBoom) {
-      dayLines.push(`白狼王自爆：${formatSeatName(state, dayData.whiteWolfKingBoom.boomSeat)}带走${formatSeatName(state, dayData.whiteWolfKingBoom.targetSeat)}`);
+    if (dayData?.selfDestruct) {
+      dayLines.push(`自爆：${formatSeatName(state, dayData.selfDestruct.boomSeat)}${dayData.selfDestruct.targetSeat !== undefined ? `带走${formatSeatName(state, dayData.selfDestruct.targetSeat)}` : "出局"}`);
     }
     if (dayData?.idiotRevealed) {
       dayLines.push(`白痴翻牌：${formatSeatName(state, dayData.idiotRevealed.seat)}免疫放逐`);
@@ -1100,19 +1100,19 @@ function buildTimeline(state: GameState, aiSummaries?: AISpeechSummaryResult): T
     }
 
     // 白狼王自爆信息
-    const wwkBoom = dayData?.whiteWolfKingBoom;
+    const wwkBoom = dayData?.selfDestruct;
     if (wwkBoom) {
       const { boomSeat, targetSeat } = wwkBoom;
       const targetPlayer = state.players.find(p => p.seat === targetSeat);
       const targetName = targetPlayer?.displayName || "";
       if (targetSeat !== null && targetSeat !== undefined) {
         dayEvents.push({
-          type: "white_wolf_king_boom",
+          type: "self_destruct",
           target: `${boomSeat + 1}号自爆 → ${targetSeat + 1}号${targetName}`,
         });
       } else {
         dayEvents.push({
-          type: "white_wolf_king_boom",
+          type: "self_destruct",
           target: `${boomSeat + 1}号自爆，未带走任何人`,
         });
       }
@@ -1216,7 +1216,7 @@ function buildTimeline(state: GameState, aiSummaries?: AISpeechSummaryResult): T
     // 始终创建讨论阶段（即使没有 speeches），包含放逐事件和特殊事件
     const exileEvent = dayEvents.find(e => e.type === "exile");
     const hunterEvent = dayEvents.find(e => e.type === "hunter_shot");
-    const whiteWolfKingBoomEvent = dayEvents.find(e => e.type === "white_wolf_king_boom");
+    const selfDestructEvent = dayEvents.find(e => e.type === "self_destruct");
     const idiotRevealEvent = dayEvents.find(e => e.type === "idiot_reveal");
     dayPhases.push({
       type: "discussion",
@@ -1224,7 +1224,7 @@ function buildTimeline(state: GameState, aiSummaries?: AISpeechSummaryResult): T
       speeches: speeches.length > 0 ? speeches : undefined,
       event: exileEvent,
       hunterEvent,
-      whiteWolfKingBoomEvent,
+      selfDestructEvent,
       idiotRevealEvent,
     });
 

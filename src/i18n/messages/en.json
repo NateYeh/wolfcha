@@ -721,8 +721,8 @@
     },
     "restart": "Restart",
     "confirmAction": {
-      "whiteWolfKingBoom": "Self-destruct & take #{seat}",
-      "whiteWolfKingBoomBtn": "Self-destruct"
+      "selfDestructWithTarget": "Self-destruct and take Seat {seat}",
+      "selfDestructBtn": "Self-destruct"
     },
     "guardAbstain": "Abstain"
   },
@@ -1003,8 +1003,6 @@
     "witchPoison": "You poisoned Seat {seat} {name}.",
     "guardProtect": "You protected Seat {seat} {name}.",
     "hunterShoot": "Hunter Seat {hunterSeat} shot Seat {targetSeat} {targetName}.",
-    "whiteWolfKingBoom": "Seat {seat} White Wolf King self-destructed and took Seat {targetSeat} {targetName}.",
-    "whiteWolfKingBoomNoTarget": "Seat {seat} White Wolf King self-destructed without taking anyone.",
     "idiotRevealed": "Seat {seat} {name} revealed as Idiot — immune to exile! Loses voting rights.",
     "badgeTransferStart": "Seat {seat} {name} is the sheriff. Transfer the badge or tear it up.",
     "badgeTransferred": "Badge transferred to Seat {toSeat} {toName}.",
@@ -1020,7 +1018,10 @@
       "badgeTransferred": "^Badge transferred to Seat\\s+\\d+\\s+.+\\.?$",
       "playerExecuted": "^Seat\\s+\\d+\\s+.+\\s+was eliminated\\.?$",
       "voteTie": "^Tie vote\\. No one is eliminated today\\.?$"
-    }
+    },
+    "selfDestruct": "Seat {seat} {name} self-destructed",
+    "selfDestructWithTarget": "Seat {seat} {name} self-destructed and took Seat {targetSeat} {targetName}",
+    "badgeLost": "The badge is lost - there will be no sheriff this game"
   },
   "ui": {
     "waitingSeer": "Select a player to check. Tap a player card to select.",
@@ -1054,7 +1055,8 @@
     "seatNumber": "Seat {seat}",
     "seatWithName": "Seat {seat} {name}",
     "seatOnly": "Seat {seat}",
-    "listSeparator": ", "
+    "listSeparator": ", ",
+    "selfDestructPickTarget": "Choose who to take with you (you are out at once - no last words, no speech)"
   },
   "prompts": {
     "daySpeech": {
@@ -1196,11 +1198,17 @@
       "user": "{context}\n\nWhich seat do you want to shoot?\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text.\nShoot example: {jsonFormat}\nPass example: {passJsonFormat}\nWhen shooting, put one line in reason: why this target, citing public facts.\nseat must be the target you actually choose; if your reason names a player or a seat number it must match seat — the numbers in the examples are format only, don't copy them.",
       "lastWordsContext": "\n\n【Public record that already occurred: your last words】\n{lastWords}"
     },
-    "whiteWolfKingBoom": {
-      "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{coreRules}",
-      "task": "【White Wolf King Self-Destruct Ability】\nYou may choose to self-destruct during the day. When you self-destruct, you take one alive player with you (no last words for them). After self-destruct, the day ends and night begins immediately, skipping the vote.\nAs far as the Seer's check goes you are just a werewolf: a check on you comes back as a werewolf hit, with no extra cover.\n\n【Task】\nBased on the current situation, decide whether to self-destruct. If yes, choose only from alive players.\n\nAlive players: {options}\n\n{tactics}\n\n【Boom declaration & reason】\nIf you decide to boom: put one or two lines of your table-flip declaration in farewell (spoken publicly, everyone sees it); put one line in reason for why you boom now (recorded only, not public). Common plays for a real table: flip openly and own it; fake betrayal — deliberately name a random seat as your partner to muddy the water; real betrayal — if the game felt suffocating, just hand out your partner; half-true works too. Play it however you like, written like a normal speech.\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text.\nBoom example: {jsonFormat}\nPass example: {passJsonFormat}",
-      "user": "{context}\n\nShould you self-destruct? Return a strict JSON object.\nBoom example: {jsonFormat}\nPass example: {passJsonFormat}\nseat must be the target you actually choose; if your reason names a player or a seat number it must match seat — the numbers in the examples are format only, don't copy them.",
-      "tactics": "【How to price a self-destruct (whether to blast is your call)】\nYou spend your own life and buy «take one player out with no last words + cancel today's vote + go straight to night». Whether that is worth it comes down to these:\n- Cancelling the vote is value by itself: if a teammate is the one leaving today, blasting voids that exile.\n- Target value: the real seer (especially the line that stands alone with no counter-claim) is the most expensive; the sheriff is next (the badge goes with him and the good side loses its organiser); the good player hunting you hardest is next.\n- Count the seer lines first: if two players already claim seer, blasting one of them tells the whole table «the one you blasted was the real one» — and your surviving teammate is instantly marked fake. Before you blast, ask whether this cut saves the line or sells it.\n- Timing: a teammate already on the block with the votes basically settled is the most valuable moment; early on, when you can stay hidden, blasting away your cover usually loses.\n- The blasted player gets no last words and cannot be disproven — that is the strongest part of this skill; but your teammates have to be able to hold the position afterwards."
+    "selfDestruct": {
+      "base": "【Role】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{coreRules}",
+      "task": "【Self-destruct (daytime only)】\nYou may self-destruct **on your own speech turn**, including badge-election speeches. You are out immediately and the rest of the day is cancelled - night falls at once:\nno last words, no self-destruct speech, no further speaking.\n{effectLine}\n{badgeLine}\n\n【Task】\nDecide whether to self-destruct now.\n\nAlive players: {options}\n\n{tactics}\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text.\nSelf-destruct example: {jsonFormat}\nDo not self-destruct example: {passJsonFormat}\nUse the reason field for one short sentence on your judgment (under 30 words).",
+      "effectLine": "- You take nobody with you: you spend your own life to skip today's vote and go straight to night",
+      "effectLineTakesPlayer": "- You may take one alive player with you (no last words for them; a hunter you take can still shoot)",
+      "badgeLineWolfFirst": "- Self-destruct during the badge-election speeches: this is the first wolf self-destruct of this election, so the election is postponed - at the next dawn it resumes with the candidates who have not spoken yet; a second wolf self-destruct in the same election ends it at once and the badge is lost",
+      "badgeLineWolfSecond": "- This is the second wolf self-destruct of this election: the election ends at once and the badge is lost (there will be no sheriff this game)",
+      "badgeLineWhiteWolfKing": "- Self-destruct during the badge-election speeches: besides taking one player, the badge is lost immediately (there will be no sheriff this game)",
+      "badgeLineDay": "- Self-destructing during the day/PK speeches only skips the rest of today's speeches and the vote; the badge is unaffected (if you take the sheriff, the badge is torn as usual)",
+      "tactics": "【How to price a self-destruct (your call)】\nYou spend your own life to buy \"skip today's vote + go straight to night\" (the White Wolf King also takes one player). Work out these accounts first:\n- Skipping the vote is itself a gain: if your teammate is the one leaving today, blowing up voids that exile.\n- Timing: it is worth the most when your teammate is already on the stand and the votes are basically settled; early on, when you are still hidden, blowing up your cover is usually a loss.\n- The election maths is finer: the first self-destruct only postpones the election to tomorrow (no information lost, badge still alive), only the second one swallows the badge; a White Wolf King self-destruct in the election swallows it in one shot - before spending it to wreck the opponents' election rhythm, check whether any teammate can take over the election for you.\n- A self-destruct takes no secrets with it: you get no last words, no hint-dropping, no appeal. Say what you want to say in your earlier speeches.",
+      "user": "{context}\n\nDo you self-destruct? Return a strict JSON object.\nSelf-destruct example: {jsonFormat}\nDo not self-destruct example: {passJsonFormat}"
     }
   },
   "badgePhase": {
@@ -1287,14 +1295,14 @@
       "description": "Hunter shot",
       "human": "Tap a player card to choose your shot target"
     },
-    "whiteWolfKingBoom": {
-      "description": "White Wolf King self-destruct",
-      "human": "Tap a player card to choose self-destruct target"
-    },
     "gameEnd": {
       "description": "Game over",
       "villageWin": "Villagers win",
       "wolfWin": "Werewolves win"
+    },
+    "selfDestruct": {
+      "description": "Self-destruct (wolves may blow up on their own speech turn)",
+      "human": "Tap a player card to choose who to take with you"
     }
   },
   "page": {
@@ -1398,10 +1406,10 @@
       "wolfKill": "Kill",
       "guardProtect": "Protect",
       "hunterShoot": "Shoot",
-      "whiteWolfKingBoom": "Self-destruct on",
       "whiteWolfKingBoomBtn": "Self-destruct",
       "badgeTransfer": "Transfer badge to",
-      "select": "Select"
+      "select": "Select",
+      "selfDestruct": "Self-destruct on"
     },
     "input": {
       "lastWordsPlaceholder": "Any last words?",
@@ -1588,10 +1596,11 @@
     "executed": "Day: {player} was exiled ({votes} votes)",
     "voteTie": "Day: tied vote, nobody was exiled",
     "hunterShot": "Hunter {hunter} shot {target}",
-    "whiteWolfKingBoom": "White Wolf King {boom} exploded and took {target}",
     "idiotRevealed": "{player} revealed as Idiot and survived exile",
     "gameEndVillage": "Game over: Villagers win",
-    "gameEndWolf": "Game over: Werewolves win"
+    "gameEndWolf": "Game over: Werewolves win",
+    "selfDestruct": "{boom} self-destructed",
+    "selfDestructWithTarget": "{boom} self-destructed and took {target}"
   },
   "wolfPlanning": {
     "title": "Wolf coordination",
@@ -1649,12 +1658,12 @@
     "remarkRevealLine": "Seat {seat} {name}: {role}{human}",
     "publicRecordNightDeaths": "Night {day}: {seats} eliminated (cause not announced)",
     "publicRecordPeacefulNight": "Night {day}: peaceful night",
-    "publicRecordBoom": "Day {day}: No.{seat} (White Wolf King) self-destructed, taking No.{target}",
+    "publicRecordBoom": "Day {day}: Seat {seat} self-destructed and took Seat {target}",
     "publicRecordShot": "Day {day}: No.{seat} (Hunter) shot and took No.{target}",
     "publicRecordIdiot": "Day {day}: No.{seat} flipped as the Idiot and was spared from exile",
     "publicRecordExile": "Day {day}: No.{seat} was exiled ({votes} votes)",
     "publicRecordExileTie": "Day {day}: the exile vote tied",
-    "publicRecordNoExile": "Day {day}: the White Wolf King self-destruct cancelled that day's exile vote, so nobody was exiled",
+    "publicRecordNoExile": "Day {day}: a wolf self-destruct voided that day's exile vote; nobody was exiled",
     "remarkPublicFactsTitle": "[Host's public record (objective facts)]\n",
     "remarkClaimsRule": "The summaries above record what people said at the time, not confirmed facts: whenever you cite anyone's claim you must write it as «No.X claimed / questioned / believed at the time…»; a player's mistaken claim (including calling a contested seer line uncontested) must never be repeated as fact.\n",
     "remarkHumanTag": " (the human player)",
@@ -1667,7 +1676,8 @@
     "remarkPrivateWolf": "Night {day} the wolf team killed No.{target} — the reason you wrote at the time: {reason}",
     "remarkPrivateWitchSave": "Night {day} you used the antidote on No.{target} — the reason you wrote at the time: {reason}",
     "remarkPrivateWitchPoison": "Night {day} you used the poison on No.{target} — the reason you wrote at the time: {reason}",
-    "remarkPrivateSeer": "Night {day} you checked No.{target} — the reason you wrote at the time: {reason}"
+    "remarkPrivateSeer": "Night {day} you checked No.{target} — the reason you wrote at the time: {reason}",
+    "publicRecordBoomNoTarget": "Day {day}: Seat {seat} self-destructed"
   },
   "gameLogic": {
     "errors": {
@@ -1726,8 +1736,8 @@
     "gameFundamentals": {
       "title": "【What game this is】",
       "overview": "This is a multiplayer Werewolf game. The players are split into the good side and the werewolf side: daytime is for speech, deduction and voting out suspects, and each night the werewolves kill one player. Good wins by exiling all werewolves; werewolves win when their number matches the good side's.",
-      "basicRules": "【General rules (public — everyone at the table knows these)】\n- Daily flow: night (werewolves kill) → on day 1 the badge election runs first → dawn announces the deaths → free speech → exile vote, repeating. What happened at night is unknown to everyone until dawn announces it.\n- Deaths do not reveal roles: normal deaths and exile votes keep the role hidden; a role is only confirmed when the host triggers a public ability (Idiot reveal, Hunter shot, White Wolf King self-destruct). Anyone claiming a role or announcing check results is only making a statement — that is not a fact.\n- Exile vote: the player with the most votes is out; on a tie the tied players go to a PK round and vote again. The Sheriff's (badge holder's) vote counts as 1.5; when the Sheriff is out, the badge is handed to someone else.\n- Last words: a player voted out gets last words; players killed at night, taken by the Hunter's shot, or taken by the White Wolf King's self-destruct get none.",
-      "roleSkills": "【Roles and abilities (public rules you may use to reason about others)】\n- Werewolf: at night you and your teammates decide together whom to kill, and you know who your teammates are; the Seer checks you as a werewolf.\n- White Wolf King: werewolf side; during the day you may self-destruct, taking one alive player with you (they get no last words) and skipping that day's exile vote to go straight into night.\n- Seer: each night check one player as good or werewolf; only you know the result, and in this game only the Seer can check.\n- Witch: one antidote and one poison, each once per game, at most one per night. The antidote saves the player the werewolves attacked that night (you may save yourself); the poison kills one player; a Hunter poisoned to death cannot shoot.\n- Hunter: when voted out or killed by werewolves you may shoot one alive player; you cannot shoot if the Witch poisoned you.\n- Guard: each night protect one player from the werewolves' kill (you may protect yourself); you cannot protect the same player two nights in a row; if the Guard and the Witch's antidote both save the same player (milk poison), that player still dies.\n- Idiot: when voted out you reveal and survive (once only); afterwards you lose your vote but may keep speaking.\n- Villager: no night ability; you play through speech and votes.",
+      "basicRules": "【General rules (public — everyone at the table knows these)】\n- Daily flow: night (werewolves kill) → on day 1 the badge election runs first → dawn announces the deaths → free speech → exile vote, repeating. What happened at night is unknown to everyone until dawn announces it.\n- Deaths do not reveal roles: normal deaths and exile votes keep the role hidden; a role is only confirmed when the host triggers a public ability (Idiot reveal, Hunter shot, wolf self-destruct). Anyone claiming a role or announcing check results is only making a statement — that is not a fact.\n- Exile vote: the player with the most votes is out; on a tie the tied players go to a PK round and vote again. The Sheriff's (badge holder's) vote counts as 1.5; when the Sheriff is out, the badge is handed to someone else.\n- Self-destruct: a wolf may self-destruct on its own speech turn (including badge-election speeches). It is out at once, the rest of the day is cancelled, and night falls immediately. The boomer gets no last words. During the badge election a wolf self-destruct postpones the election to the next dawn; a second wolf self-destruct in the same election ends it at once and the badge is lost (no sheriff for the rest of the game).\n- Badge election: on day 1 the sheriff is elected first; candidates speak in turn and the table votes. The badge can be handed over when its holder is out, or torn up.\n- Last words: a player voted out gets last words; players killed on the **first night** (however many, whatever the cause) also get last words; from the second night on, night deaths get none. Players taken by the Hunter's shot or by a self-destruct get none.",
+      "roleSkills": "【Roles and abilities (public rules you may use to reason about others)】\n- Werewolf: at night you and your teammates decide together whom to kill, and you know who your teammates are; the Seer checks you as a werewolf. During the day you may self-destruct on your own speech turn (see 【Self-destruct】).\n- White Wolf King: werewolf side; on your own speech turn you may self-destruct and take one alive player with you (they get no last words); self-destructing during a badge-election speech also makes the badge lost immediately.\n- Seer: each night check one player as good or werewolf; only you know the result, and in this game only the Seer can check.\n- Witch: one antidote and one poison, each once per game, at most one per night. The antidote saves the player the werewolves attacked that night, but **cannot save yourself** (the witch can never self-save); the poison kills one player; a Hunter poisoned to death cannot shoot.\n- Hunter: when voted out or killed by werewolves you may shoot one alive player; you cannot shoot if the Witch poisoned you; a Hunter taken by a self-destruct can still shoot.\n- Guard: each night you may protect one player from the werewolves' kill (you may protect yourself), or **abstain** (protect nobody); you cannot protect the same player two nights in a row (an abstention is not a protection, so you may abstain several nights in a row); if the Guard and the Witch's antidote both save the same player (milk poison), that player still dies.\n- Idiot: when voted out you reveal and survive (once only); afterwards you lose your vote but may keep speaking.\n- Villager: no night ability; you play through speech and votes.",
       "scopeNote": "Note: the list above is the full role table; which roles are actually in this game, and how many of each, is given by 【Public role configuration】. Roles absent from that configuration do not exist in this game — do not assume they are present."
     },
     "winCondition": {
@@ -1809,7 +1819,6 @@
       "publicRoleRevealsTitle": "【Role events confirmed by the host】",
       "publicRoleRevealsNone": "- None; the host has not publicly confirmed any player's role.",
       "hunterRoleReveal": "- Day {day}: {hunter} was publicly confirmed by the host as the Hunter and shot {target}. A shot performs no check and does not reveal {target}'s role.",
-      "whiteWolfKingRoleReveal": "- Day {day}: {player} was publicly confirmed by the host as the White Wolf King and exploded, taking {target} with them.",
       "idiotRoleReveal": "- Day {day}: {player} was publicly confirmed by the host as the Idiot.",
       "unannouncedNightResult": "The host has not announced last night's deaths. You know only what is explicitly listed in your private role information. An empty death list does not establish a peaceful night, and you cannot assert who died last night.",
       "selfSpeechIncludedInTimeline": "Your speech is already preserved as Seat {seat} at its actual position in the complete timeline above, so it is not repeated here.",
@@ -1850,7 +1859,7 @@
       "deathCauseVote": "voted out",
       "deathCauseDeath": "cause not public",
       "deathCauseHunterShot": "public Hunter shot",
-      "deathCauseWhiteWolfKing": "public White Wolf King explosion",
+      "deathCauseWhiteWolfKing": "a wolf publicly self-destructed",
       "deathCauseUnknown": "unknown",
       "noSheriff": "none",
       "voteCount": "votes",
@@ -1893,7 +1902,9 @@
       "wolfTeamPlanPostureHook": "hook (hide in the good crowd)",
       "wolfTeamPlanPostureDeep": "deep (no clear side)",
       "wolfTeamPlanSignupYes": "run for sheriff",
-      "wolfTeamPlanSignupNo": "not running"
+      "wolfTeamPlanSignupNo": "not running",
+      "selfDestructReveal": "- Day {day}: the host publicly confirmed that {player} self-destructed.",
+      "selfDestructRevealWithTarget": "- Day {day}: the host publicly confirmed that {player} self-destructed and took {target}."
     },
     "acquaintance": {
       "header": "【Friends' table】You know everyone at this table. Below are impressions built up over past games, the underlying model each AI runs on, and each player's record. Impressions are only impressions — this game they may not follow old habits, and the wolves especially may act out of character. How you use this knowledge is up to you.",

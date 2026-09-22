@@ -24,7 +24,7 @@ test("賽後公開記錄：只列主持人公布過的客觀結果，玩家說�
     },
   };
   state.dayHistory = {
-    1: { whiteWolfKingBoom: { boomSeat: 4, targetSeat: 7, reason: "票台要出我队友，炸掉作废投票" } },
+    1: { selfDestruct: { boomSeat: 4, targetSeat: 7, reason: "票台要出我队友，炸掉作废投票" } },
     2: { executed: { seat: 5, votes: 6.5 }, hunterShot: { hunterSeat: 1, targetSeat: 3, reason: "他死保假预言家" } },
   };
   state.dailySummaries = { 1: ["1号当时声称他是预言家，10号是唯一没被对跳的预言家线"] };
@@ -33,8 +33,8 @@ test("賽後公開記錄：只列主持人公布過的客觀結果，玩家說�
 
   assert.match(text, /第1夜：平安夜/);
   assert.match(text, /第2夜：11号、10号出局（死因未公开）/);
-  assert.match(text, /第1天：5号白狼王自爆，带走8号/);
-  assert.match(text, /第1天：白狼王自爆作废当日放逐投票，无人被放逐/);
+  assert.match(text, /第1天：5号自爆，带走8号/);
+  assert.match(text, /第1天：狼人自爆作废当日放逐投票，无人被放逐/);
   assert.match(text, /第2天：2号猎人开枪带走4号/);
   assert.match(text, /第2天：6号被放逐（6.5票）/);
   // 摘要裡的玩家主張（含錯誤主張）不得被升級成公開事實

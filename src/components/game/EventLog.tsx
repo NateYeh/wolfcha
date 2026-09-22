@@ -123,15 +123,18 @@ export function EventLog({ gameState }: EventLogProps) {
       const dayRecord = gameState.dayHistory?.[day];
       if (!dayRecord) return;
 
-      if (dayRecord.whiteWolfKingBoom) {
+      if (dayRecord.selfDestruct) {
         entries.push({
           id: `white-wolf-king-boom-${day}`,
           day,
           order: 30,
-          text: t("eventLog.whiteWolfKingBoom", {
-            boom: formatSeat(dayRecord.whiteWolfKingBoom.boomSeat),
-            target: formatSeat(dayRecord.whiteWolfKingBoom.targetSeat),
-          }),
+          text:
+            dayRecord.selfDestruct.targetSeat !== undefined
+              ? t("eventLog.selfDestructWithTarget", {
+                  boom: formatSeat(dayRecord.selfDestruct.boomSeat),
+                  target: formatSeat(dayRecord.selfDestruct.targetSeat),
+                })
+              : t("eventLog.selfDestruct", { boom: formatSeat(dayRecord.selfDestruct.boomSeat) }),
           tone: "danger",
           icon: "shot",
         });

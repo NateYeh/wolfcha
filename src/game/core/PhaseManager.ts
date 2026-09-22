@@ -6,7 +6,7 @@ import { NightPhase } from "../phases/NightPhase";
 import { DaySpeechPhase } from "../phases/DaySpeechPhase";
 import { BadgePhase } from "../phases/BadgePhase";
 import { HunterPhase } from "../phases/HunterPhase";
-import { WhiteWolfKingBoomPhase } from "../phases/WhiteWolfKingBoomPhase";
+import { SelfDestructPhase } from "../phases/SelfDestructPhase";
 
 export class PhaseManager {
   private readonly phases: Partial<Record<Phase, GamePhase>>;
@@ -17,7 +17,7 @@ export class PhaseManager {
     const daySpeechPhase = new DaySpeechPhase();
     const badgePhase = new BadgePhase();
     const hunterPhase = new HunterPhase();
-    const whiteWolfKingBoomPhase = new WhiteWolfKingBoomPhase();
+    const selfDestructPhase = new SelfDestructPhase();
     this.phases = {
       NIGHT_START: nightPhase,
       NIGHT_GUARD_ACTION: nightPhase,
@@ -33,7 +33,7 @@ export class PhaseManager {
       DAY_BADGE_ELECTION: badgePhase,
       BADGE_TRANSFER: badgePhase,
       HUNTER_SHOOT: hunterPhase,
-      WHITE_WOLF_KING_BOOM: whiteWolfKingBoomPhase,
+      SELF_DESTRUCT: selfDestructPhase,
     };
   }
 

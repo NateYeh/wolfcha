@@ -199,7 +199,7 @@ export const createSinglePlayerContextAuditState = (): GameState => ({
     witchPoisonUsed: true,
     hunterCanShoot: true,
     idiotRevealed: false,
-    whiteWolfKingBoomUsed: false,
+    boomedSeats: [],
   },
   winner: null,
 });
@@ -532,11 +532,11 @@ export async function runSinglePlayerContextAudit(
     recordCoverage("hunter_shoot", "HUNTER_SHOOT", byRole("Hunter"));
 
     transport.setNext(JSON.stringify({ action: "pass" }));
-    await gameMaster.generateWhiteWolfKingBoomDecision(
-      makePublicStateForActor(byRole("WhiteWolfKing").seat, "WHITE_WOLF_KING_BOOM"),
+    await gameMaster.generateSelfDestructDecision(
+      makePublicStateForActor(byRole("WhiteWolfKing").seat, "SELF_DESTRUCT"),
       byRole("WhiteWolfKing")
     );
-    recordCoverage("white_wolf_king_boom", "WHITE_WOLF_KING_BOOM", byRole("WhiteWolfKing"));
+    recordCoverage("white_wolf_king_boom", "SELF_DESTRUCT", byRole("WhiteWolfKing"));
 
     for (const player of players) {
       const transferState = gameMaster.killPlayer(

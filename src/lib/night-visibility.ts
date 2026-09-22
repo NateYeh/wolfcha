@@ -9,5 +9,5 @@ export function areNightResultsVisible(state: GameState, day = state.day): boole
   // 兼容旧存档：第一天警上阶段先竞选，后公布死讯，包括平安夜。
   return !state.phase.startsWith("NIGHT_") && state.phase !== "DAY_START" &&
     !state.phase.startsWith("DAY_BADGE_") &&
-    !(["DAY_PK_SPEECH", "WHITE_WOLF_KING_BOOM"].includes(state.phase) && state.pkSource === "badge");
+    !(["DAY_PK_SPEECH", "SELF_DESTRUCT"].includes(state.phase) && state.pkSource === "badge");
 }

@@ -20,6 +20,7 @@ import type { GameState, Player, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { ABSTAIN_SEAT } from "@/lib/rules/actions";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
+import { getRoleCapabilities } from "@/lib/rules/roles";
 import { useTranslations } from "next-intl";
 
 type WitchActionType = "save" | "poison" | "pass";
@@ -79,7 +80,7 @@ export function BottomActionPanel({
             (phase === "NIGHT_WOLF_ACTION" && humanPlayer && isWolfRole(humanPlayer.role) && humanPlayer.alive) ||
             (phase === "NIGHT_GUARD_ACTION" && humanPlayer?.role === "Guard" && humanPlayer?.alive) ||
             (phase === "HUNTER_SHOOT" && humanPlayer?.role === "Hunter") ||
-            (phase === "WHITE_WOLF_KING_BOOM" && humanPlayer?.role === "WhiteWolfKing");
+            (phase === "SELF_DESTRUCT" && !!humanPlayer?.alive && getRoleCapabilities(humanPlayer?.role ?? "Villager").boomTakesPlayer);
 
           if (
             isCorrectRoleForPhase &&
@@ -140,10 +141,10 @@ export function BottomActionPanel({
                   </button>
                 )}
 
-                {phase === "WHITE_WOLF_KING_BOOM" && (
+                {phase === "SELF_DESTRUCT" && (
                   <button onClick={onConfirmAction} className="inline-flex items-center justify-center h-10 text-base font-medium rounded-sm border-none cursor-pointer active:scale-[0.98] transition-all duration-150 bg-[var(--color-danger)] text-white hover:bg-[#dc2626] flex-[2]">
                     <Skull size={18} weight="fill" className="mr-1" />
-                    {t("bottomAction.confirmAction.whiteWolfKingBoom", { seat: selectedSeat + 1 })}
+                    {t("bottomAction.confirmAction.selfDestructWithTarget", { seat: selectedSeat + 1 })}
                   </button>
                 )}
               </motion.div>

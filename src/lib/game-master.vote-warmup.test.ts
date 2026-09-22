@@ -51,7 +51,7 @@ const makeState = (players: Player[]): GameState => ({
     witchPoisonUsed: false,
     hunterCanShoot: true,
     idiotRevealed: false,
-    whiteWolfKingBoomUsed: false,
+    boomedSeats: [],
   },
   winner: null,
 });

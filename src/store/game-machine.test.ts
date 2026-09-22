@@ -34,6 +34,10 @@ test("投票中刷新保留每张已提交的票，旧发言延迟保存不能�
     jotai: await import("jotai"), "jotai/utils": await import("jotai/utils"),
     "@/types/game": await import("@/types/game"), "@/lib/game-master": await import("@/lib/game-master"),
     "@/lib/game-session-policy": await import("@/lib/game-session-policy"), "@/i18n/translator": await import("@/i18n/translator"),
+    "@/lib/rules/roles": await import("@/lib/rules/roles"),
+    "@/lib/rules/flags": await import("@/lib/rules/flags"),
+    "@/lib/rules/self-destruct": await import("@/lib/rules/self-destruct"),
+    "@/lib/rules/boards": await import("@/lib/rules/boards"),
   };
   const storage = new Map<string, string>();
   const timers = new Map<number, () => void>(); let serial = 0;

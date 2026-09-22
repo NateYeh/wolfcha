@@ -237,13 +237,13 @@ function DayEventItem({ event, onShowVotes }: { event: DayEvent; onShowVotes?: (
     );
   }
 
-  // 白狼王自爆信息
-  if (event.type === "white_wolf_king_boom") {
+  // 狼人自爆信息
+  if (event.type === "self_destruct") {
     return (
       <div className="mt-2 bg-red-500/10 border border-red-500/20 rounded px-3 py-2 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Bomb className="w-4 h-4 text-red-400" />
-          <span className="text-xs text-red-400">白狼王自爆</span>
+          <span className="text-xs text-red-400">狼人自爆</span>
         </div>
         <span className="text-xs font-bold text-red-300">
           {event.target}
@@ -371,9 +371,9 @@ function DayPhaseCard({
         />
       )}
 
-      {phase.whiteWolfKingBoomEvent && (
+      {phase.selfDestructEvent && (
         <DayEventItem 
-          event={phase.whiteWolfKingBoomEvent} 
+          event={phase.selfDestructEvent} 
           onShowVotes={() => {}}
         />
       )}

@@ -167,7 +167,7 @@ export default function Home() {
     handleHumanVote,
     handleNightAction,
     handleHumanBadgeTransfer,
-    handleWhiteWolfKingBoom,
+    handleSelfDestruct,
     handleNextRound,
     waitingForNextRound,
     advanceSpeech,
@@ -1181,7 +1181,7 @@ export default function Home() {
       phase === "NIGHT_WOLF_ACTION" ||
       phase === "NIGHT_GUARD_ACTION" ||
       phase === "HUNTER_SHOOT" ||
-      phase === "WHITE_WOLF_KING_BOOM"
+      phase === "SELF_DESTRUCT"
     ) {
       await handleNightAction(targetSeat);
     }
@@ -1604,7 +1604,7 @@ export default function Home() {
                       onNightAction={handleNightActionConfirm}
                       onBadgeSignup={handleBadgeSignup}
                       onRestart={restartGame}
-                      onWhiteWolfKingBoom={handleWhiteWolfKingBoom}
+                      onSelfDestruct={handleSelfDestruct}
                       onViewAnalysis={handleViewAnalysis}
                       isAnalysisLoading={isAnalysisLoading}
                       gameMvps={analysisData?.awards?.mvp}

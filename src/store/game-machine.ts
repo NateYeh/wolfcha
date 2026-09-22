@@ -11,6 +11,8 @@ import type { GameAnalysisData } from "@/types/analysis";
 import { createInitialGameState } from "@/lib/game-master";
 import { GAME_SESSION_RESUME_WINDOW_MS } from "@/lib/game-session-policy";
 import { getI18n } from "@/i18n/translator";
+import { getRoleCapabilities } from "@/lib/rules/roles";
+import { hasAlreadyBoomed } from "@/lib/rules/self-destruct";
 
 // ============ 游戏状态持久化配置 ============
 
@@ -42,7 +44,7 @@ const IN_PROGRESS_PHASES: Phase[] = [
   "DAY_RESOLVE",
   "BADGE_TRANSFER",
   "HUNTER_SHOOT",
-  "WHITE_WOLF_KING_BOOM",
+  "SELF_DESTRUCT",
 ];
 
 /**
@@ -218,7 +220,7 @@ const VALID_PHASES: readonly string[] = [
   "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION", "NIGHT_RESOLVE",
   "DAY_START", "DAY_BADGE_SIGNUP", "DAY_BADGE_SPEECH", "DAY_BADGE_ELECTION",
   "DAY_PK_SPEECH", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_VOTE", "DAY_RESOLVE",
-  "BADGE_TRANSFER", "HUNTER_SHOOT", "WHITE_WOLF_KING_BOOM", "GAME_END",
+  "BADGE_TRANSFER", "HUNTER_SHOOT", "SELF_DESTRUCT", "GAME_END",
 ] as const;
 
 function isValidGameState(state: unknown): state is GameState {
@@ -260,14 +262,23 @@ function isValidGameState(state: unknown): state is GameState {
  */
 function normalizeGameState(state: GameState): GameState {
   const initial = createInitialGameState();
-  
+
+  // 舊存檔相容：白狼王自爆階段已更名為 SELF_DESTRUCT（所有狼陣營角色共用），
+  // 舊的 roleAbilities.whiteWolfKingBoomUsed 也要換算成 boomedSeats。
+  const legacyPhase = (state.phase as string | undefined) === "WHITE_WOLF_KING_BOOM" ? "SELF_DESTRUCT" : state.phase;
+  const legacyBoomUsed =
+    (state.roleAbilities as { whiteWolfKingBoomUsed?: boolean } | undefined)?.whiteWolfKingBoomUsed === true;
+  const legacyBoomSeats = legacyBoomUsed
+    ? state.players.filter((p) => p.role === "WhiteWolfKing").map((p) => p.seat)
+    : undefined;
+
   return {
     ...initial,
     ...state,
     // Ensure required fields have valid values
     gameId: state.gameId || initial.gameId,
     gameSessionId: hasGameSessionId(state) ? state.gameSessionId : null,
-    phase: state.phase || initial.phase,
+    phase: legacyPhase || initial.phase,
     day: typeof state.day === "number" && Number.isFinite(state.day) ? state.day : initial.day,
     difficulty: state.difficulty || initial.difficulty,
     players: Array.isArray(state.players) ? state.players : initial.players,
@@ -289,6 +300,7 @@ function normalizeGameState(state: GameState): GameState {
     roleAbilities: state.roleAbilities && typeof state.roleAbilities === "object" ? {
       ...initial.roleAbilities,
       ...state.roleAbilities,
+      ...(legacyBoomSeats ? { boomedSeats: legacyBoomSeats } : {}),
     } : initial.roleAbilities,
     winner: state.winner ?? null,
   };
@@ -862,16 +874,24 @@ export const PHASE_CONFIGS: Record<Phase, PhaseConfig> = {
     },
     actionType: "night_action",
   },
-  WHITE_WOLF_KING_BOOM: {
-    phase: "WHITE_WOLF_KING_BOOM",
-    description: "phase.whiteWolfKingBoom.description",
+  SELF_DESTRUCT: {
+    phase: "SELF_DESTRUCT",
+    description: "phase.selfDestruct.description",
     humanDescription: (hp) => {
       const { t } = getI18n();
-      return hp?.role === "WhiteWolfKing" ? t("phase.whiteWolfKingBoom.human") : t("phase.whiteWolfKingBoom.description");
+      return getRoleCapabilities(hp?.role ?? "Villager").boomTakesPlayer
+        ? t("phase.selfDestruct.human")
+        : t("phase.selfDestruct.description");
     },
-    requiresHumanInput: (hp, gs) => hp?.role === "WhiteWolfKing" && hp?.alive && !gs.roleAbilities.whiteWolfKingBoomUsed || false,
+    // 只有「能帶人」的角色需要選目標（白狼王）；普通狼自爆不選人
+    requiresHumanInput: (hp, gs) =>
+      Boolean(
+        hp?.alive &&
+          getRoleCapabilities(hp.role).boomTakesPlayer &&
+          !hasAlreadyBoomed(gs.roleAbilities.boomedSeats, hp.seat)
+      ) || false,
     canSelectPlayer: (hp, target) => {
-      if (!hp || hp.role !== "WhiteWolfKing" || !target.alive || target.isHuman) return false;
+      if (!hp || !getRoleCapabilities(hp.role).boomTakesPlayer || !target.alive || target.isHuman) return false;
       return true;
     },
     actionType: "night_action",
@@ -1015,10 +1035,10 @@ export const VALID_TRANSITIONS: Record<Phase, Phase[]> = {
   // 白天流程: 开始 -> 发言 -> 投票 -> 结算
   DAY_START: ["DAY_BADGE_SIGNUP", "DAY_SPEECH"],
   DAY_BADGE_SIGNUP: ["DAY_BADGE_SPEECH", "DAY_SPEECH"],
-  DAY_BADGE_SPEECH: ["DAY_BADGE_ELECTION", "WHITE_WOLF_KING_BOOM"],
+  DAY_BADGE_SPEECH: ["DAY_BADGE_ELECTION", "SELF_DESTRUCT"],
   DAY_BADGE_ELECTION: ["DAY_PK_SPEECH", "DAY_SPEECH"],
-  DAY_PK_SPEECH: ["DAY_BADGE_ELECTION", "DAY_VOTE", "WHITE_WOLF_KING_BOOM"],
-  DAY_SPEECH: ["DAY_VOTE", "WHITE_WOLF_KING_BOOM"],
+  DAY_PK_SPEECH: ["DAY_BADGE_ELECTION", "DAY_VOTE", "SELF_DESTRUCT"],
+  DAY_SPEECH: ["DAY_VOTE", "SELF_DESTRUCT"],
   DAY_VOTE: ["DAY_RESOLVE"],
   DAY_RESOLVE: ["DAY_PK_SPEECH", "DAY_LAST_WORDS", "BADGE_TRANSFER", "NIGHT_START", "GAME_END"],
   DAY_LAST_WORDS: ["NIGHT_START", "HUNTER_SHOOT", "BADGE_TRANSFER", "GAME_END"],
@@ -1026,7 +1046,7 @@ export const VALID_TRANSITIONS: Record<Phase, Phase[]> = {
   // 特殊阶段
   BADGE_TRANSFER: ["DAY_LAST_WORDS", "HUNTER_SHOOT", "NIGHT_START", "DAY_SPEECH", "GAME_END"],
   HUNTER_SHOOT: ["DAY_START", "NIGHT_START", "BADGE_TRANSFER", "GAME_END"],
-  WHITE_WOLF_KING_BOOM: ["NIGHT_START", "HUNTER_SHOOT", "GAME_END"],
+  SELF_DESTRUCT: ["NIGHT_START", "HUNTER_SHOOT", "GAME_END"],
   GAME_END: ["LOBBY"], // 允许重新开始
 };
 

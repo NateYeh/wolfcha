@@ -202,7 +202,7 @@ test("警徽移交：狼人可见移交经验，好人不可见", async () => {
   assert.doesNotMatch(`${villagerPrompt.system}\n${villagerPrompt.user}`, /警徽移交经验/);
 });
 
-const decisions: Phase[] = ["DAY_BADGE_SIGNUP", "DAY_BADGE_ELECTION", "BADGE_TRANSFER", "DAY_VOTE", "HUNTER_SHOOT", "WHITE_WOLF_KING_BOOM", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"];
+const decisions: Phase[] = ["DAY_BADGE_SIGNUP", "DAY_BADGE_ELECTION", "BADGE_TRANSFER", "DAY_VOTE", "HUNTER_SHOOT", "SELF_DESTRUCT", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"];
 for (const phase of decisions) {
   test(`阶段矩阵：${phase} 必须包含已公开的当天证据`, async () => {
     await import("@/lib/game-master");
@@ -211,7 +211,7 @@ for (const phase of decisions) {
     state.pkSource = "badge";
     state.badge.candidates = [0, 1];
     state.messages = [message(state, "唯一公开证据：3号曾承认没有查验结果", "DAY_BADGE_SPEECH", 2)];
-    const role = phase === "HUNTER_SHOOT" ? "Hunter" : phase === "WHITE_WOLF_KING_BOOM" ? "WhiteWolfKing" : "Villager";
+    const role = phase === "HUNTER_SHOOT" ? "Hunter" : phase === "SELF_DESTRUCT" ? "WhiteWolfKing" : "Villager";
     const actor = state.players.find((p) => p.role === role)!;
     state.currentSpeakerSeat = actor.seat;
     const prompt = new PhaseManager().getPrompt(phase, { state }, actor)!;
@@ -220,7 +220,7 @@ for (const phase of decisions) {
 }
 
 test("警徽 PK 临时切换为自爆提示词，仍不能提前得知刀口结果；公布后才可知", async () => {
-  const { generateWhiteWolfKingBoomDecision } = await import("@/lib/game-master");
+  const { generateSelfDestructDecision } = await import("@/lib/game-master");
   const state = fresh("DAY_PK_SPEECH");
   state.pkSource = "badge";
   state.badge.candidates = [0, 1];
@@ -234,12 +234,12 @@ test("警徽 PK 临时切换为自爆提示词，仍不能提前得知刀口结�
     return Response.json({ id: "test", choices: [{ message: { role: "assistant", content: '{"action":"pass"}' }, finish_reason: "stop" }] });
   };
   try {
-    await generateWhiteWolfKingBoomDecision(state, actor);
+    await generateSelfDestructDecision(state, actor);
     assert.match(prompt, /结果待天亮公布/);
     assert.doesNotMatch(prompt, /目标当晚出局/);
     assert.equal(state.nightHistory[1].resultsAnnounced, undefined);
     state.nightHistory[1].resultsAnnounced = true;
-    await generateWhiteWolfKingBoomDecision(state, actor);
+    await generateSelfDestructDecision(state, actor);
     assert.match(prompt, /目标当晚出局/);
   } finally { globalThis.fetch = originalFetch; }
 });
@@ -918,7 +918,7 @@ test("白狼王自爆：拿得到自爆算帳知識（純提示、不下命令�
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
 
-  const state = fresh("WHITE_WOLF_KING_BOOM");
+  const state = fresh("SELF_DESTRUCT");
   const wwk = state.players.find((p) => p.role === "WhiteWolfKing")!;
   const seer = state.players.find((p) => p.role === "Seer")!;
   state.currentSpeakerSeat = wwk.seat;
@@ -926,13 +926,13 @@ test("白狼王自爆：拿得到自爆算帳知識（純提示、不下命令�
     message(state, `那我摊牌了，${seer.seat + 1}号${seer.displayName}，预言家。第一夜验的X号，查杀。`, "DAY_BADGE_SPEECH", seer.seat),
   ];
 
-  const prompt = new PhaseManager().getPrompt("WHITE_WOLF_KING_BOOM", { state }, wwk)!;
+  const prompt = new PhaseManager().getPrompt("SELF_DESTRUCT", { state }, wwk)!;
   // 知識：算帳方式（跳過投票的收益、目標價值、有對跳時炸掉一個＝告訴全場被炸的是真的）
   // 自爆算帳屬於技能說明，與任務同在 system
   assert.match(prompt.system, /【自爆这笔账怎么算（要不要炸，你自己决定）】/);
   assert.match(prompt.system, /跳过投票本身就是收益/);
-  assert.match(prompt.system, /等于亲手告诉全场「被炸的那个才是真的」/);
-  assert.match(prompt.system, /这一刀是救线还是卖线/);
+  assert.match(prompt.system, /第一次自爆只是把竞选拖到明天/);
+  assert.match(prompt.system, /第二次才吞警徽/);
   // 沒有禁令字眼
   assert.doesNotMatch(prompt.system, /不得|禁止|必须/);
 
@@ -1053,7 +1053,7 @@ test("發言底線規則：發言前先對帳，抓公開事實矛盾＋要關�
 });
 
 test("白狼王自爆决策：farewell 翻桌宣言进 prompt 与解析结果（供带风向发挥）", async () => {
-  const { generateWhiteWolfKingBoomDecision } = await import("@/lib/game-master");
+  const { generateSelfDestructDecision } = await import("@/lib/game-master");
   const state = fresh("DAY_SPEECH");
   const actor = state.players.find((p) => p.role === "WhiteWolfKing")!;
   const target = state.players.find((p) => p.alive && p.seat !== actor.seat)!;
@@ -1079,14 +1079,13 @@ test("白狼王自爆决策：farewell 翻桌宣言进 prompt 与解析结果（
     });
   };
   try {
-    const result = await generateWhiteWolfKingBoomDecision(state, actor);
+    const result = await generateSelfDestructDecision(state, actor);
+    assert.equal(result.boom, true);
     assert.equal(result.targetSeat, target.seat);
-    assert.equal(result.farewell, "我是狼，刚才是演给你们看的。");
-    // 宣言知识（含假出賣玩法，建议式）与格式要求
-    assert.match(prompt, /【自爆宣言与理由】/);
-    assert.match(prompt, /假出賣——故意乱指一个号当队友/);
-    assert.match(prompt, /怎么发挥由你自己决定/);
-    assert.match(prompt, /farewell/);
+    // 自爆沒有宣言也沒有遺言：prompt 不得再要求 farewell，也不再教翻桌台詞
+    assert.match(prompt, /【自爆（白天专用技能）】/);
+    assert.match(prompt, /没有遗言、没有自爆宣言/);
+    assert.doesNotMatch(prompt, /farewell/);
     assert.match(prompt, /reason/);
   } finally { globalThis.fetch = originalFetch; }
 });

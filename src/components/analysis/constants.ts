@@ -53,7 +53,7 @@ export const DAY_EVENT_LABELS: Record<string, string> = {
   exile: "放逐",
   badge: "警长竞选",
   hunter_shot: "猎人开枪",
-  white_wolf_king_boom: "白狼王自爆",
+  self_destruct: "狼人自爆",
   idiot_reveal: "白痴翻牌",
 };
 

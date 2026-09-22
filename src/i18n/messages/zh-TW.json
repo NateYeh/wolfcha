@@ -721,8 +721,8 @@
     },
     "restart": "重新開始",
     "confirmAction": {
-      "whiteWolfKingBoom": "自爆帶走 {seat}號",
-      "whiteWolfKingBoomBtn": "自爆"
+      "selfDestructWithTarget": "自爆帶走 {seat}號",
+      "selfDestructBtn": "自爆"
     },
     "guardAbstain": "空守"
   },
@@ -1003,8 +1003,6 @@
     "witchPoison": "你對 {seat}號 {name} 使用了毒藥",
     "guardProtect": "你守護了 {seat}號 {name}",
     "hunterShoot": "{hunterSeat}號獵人開槍帶走了 {targetSeat}號 {targetName}",
-    "whiteWolfKingBoom": "{seat}號白狼王自爆，帶走了 {targetSeat}號 {targetName}",
-    "whiteWolfKingBoomNoTarget": "{seat}號白狼王自爆，沒有帶走任何人",
     "idiotRevealed": "{seat}號 {name} 翻牌 —— 白痴，免疫放逐！此後失去投票權。",
     "badgeTransferStart": "{seat}號 {name} 是警長，請選擇移交警徽的對象或撕毀警徽",
     "badgeTransferred": "警徽移交給 {toSeat}號 {toName}",
@@ -1020,7 +1018,10 @@
       "badgeTransferred": "^警徽移交給\\s*\\d+號\\s+.+$",
       "playerExecuted": "^\\d+號\\s+.+\\s+出局$",
       "voteTie": "^票數相同，今天無人出局$"
-    }
+    },
+    "selfDestruct": "{seat}號 {name} 自爆出局",
+    "selfDestructWithTarget": "{seat}號 {name} 自爆，帶走了 {targetSeat}號 {targetName}",
+    "badgeLost": "警徽流失，本局不再有警長"
   },
   "ui": {
     "waitingSeer": "選擇一名玩家進行查驗。點選玩家卡片進行選擇。",
@@ -1054,7 +1055,8 @@
     "seatWithName": "{seat}號 {name}",
     "seatOnly": "{seat}號",
     "seatNumber": "{seat}號",
-    "listSeparator": "、"
+    "listSeparator": "、",
+    "selfDestructPickTarget": "選擇要帶走的目標（自爆後你立刻出局，沒有遺言與宣言）"
   },
   "prompts": {
     "daySpeech": {
@@ -1196,11 +1198,17 @@
       "user": "{context}\n\n你要帶走幾號？\n\n【格式】\n嚴格返回 JSON 對象，不要程式碼塊，不要解釋，不要多餘文字。\n開槍示例：{jsonFormat}\n不開槍示例：{passJsonFormat}\n開槍時在 reason 裡寫一句話：這槍為什麼打他，引用公開事實。\nseat 必須是你真正要選的目標；如果你在 reason 裡點了名字或座位號，必須和 seat 一致——示例裡的數字只是格式示意，不要照抄。",
       "lastWordsContext": "\n\n【已經發生的公開記錄：你的遺言】\n{lastWords}"
     },
-    "whiteWolfKingBoom": {
+    "selfDestruct": {
       "base": "【身份】\n你是 {seat}號「{name}」\n身份: {role}\n\n{coreRules}",
-      "task": "【白狼王自爆技能】\n你可以選擇在白天自爆。自爆時可帶走一名存活的玩家（對方無遺言），自爆後直接進入黑夜，跳過投票。\n查驗這條線上你和普通狼人沒區別：預言家查到你只會拿到查殺，沒有額外偽裝。\n\n【任務】\n根據當前局勢，決定是否自爆。如果自爆，只能從存活玩家裡選擇目標。\n\n存活玩家: {options}\n\n{tactics}\n\n【自爆宣言與理由】\n如果決定自爆：farewell 裡留一兩句翻桌的話（當場公開，全場都看得到）；reason 一句話寫為什麼現在炸（只進記錄，不公開）。真人白狼王的宣言常見玩法：直接翻桌認狼；假出賣——故意亂指一個號當隊友，把水攪渾；真出賣——玩得憋屈時乾脆交出隊友；半真半假也行。怎麼發揮由你自己決定，寫法跟平時發言一樣。\n\n【格式】\n嚴格返回 JSON 對象，不要程式碼塊，不要解釋，不要多餘文字。\n自爆示例：{jsonFormat}\n不自爆示例：{passJsonFormat}",
-      "user": "{context}\n\n是否自爆？嚴格返回 JSON 對象。\n自爆示例：{jsonFormat}\n不自爆示例：{passJsonFormat}\nseat 必須是你真正要選的目標；如果你在 reason 裡點了名字或座位號，必須和 seat 一致——示例裡的數字只是格式示意，不要照抄。",
-      "tactics": "【自爆這筆賬怎麼算（要不要炸，你自己決定）】\n你花掉的是自己這條命，換來的是「無遺言帶走一人 + 跳過今天的投票 + 直接進夜」。值不值，先算清這幾筆：\n- 跳過投票本身就是收益：今天票台上要出去的是你隊友，炸掉等於把這次放逐作廢。\n- 目標值多少：真預言家（尤其是正獨跳、沒人對跳的那條線）最貴；警長次之（警徽會一起沒，好人失去組織者）；咬你最兇的好人再次。\n- 先數清楚場上有幾條預言家線：如果已經兩個人跳預言家，你炸掉其中一個，等於親手告訴全場「被炸的那個才是真的」——剩下那個隊友立刻被標成假的。炸之前問自己一句：這一刀是救線還是賣線。\n- 時機：隊友已經在票台上、票數基本定了，是最值錢的時候；局勢還早、你還藏得住，炸掉自己的隱藏身份通常虧。\n- 被炸的人沒有遺言、也無法被證偽，這是這個技能最強的地方；但你的隊友得接得住這個局面。"
+      "task": "【自爆（白天專用技能）】\n你可以在**自己的發言輪**自爆，包含警徽競選發言。自爆後你立刻出局，當天剩餘流程全部結束、直接進入黑夜：\n沒有遺言、沒有自爆宣言，也不能再發言。\n{effectLine}\n{badgeLine}\n\n【任務】\n根據當前局勢決定是否自爆。\n\n存活玩家: {options}\n\n{tactics}\n\n【格式】\n嚴格返回 JSON 對象，不要程式碼塊，不要解釋，不要多餘文字。\n自爆示例：{jsonFormat}\n不自爆示例：{passJsonFormat}\nreason 欄位用一句話說明你的判斷（30字內）。",
+      "effectLine": "- 你自爆不帶走任何人：花掉的是自己的命，換來的是「跳過今天的投票 + 直接進夜」",
+      "effectLineTakesPlayer": "- 你自爆時可以帶走一名存活玩家（對方沒有遺言，獵人被帶走仍可開槍）",
+      "badgeLineWolfFirst": "- 在警徽競選發言階段自爆：這是競選階段的第一次狼自爆，競選會順延——天亮後從還沒發言的候選人繼續；同一個競選階段再出現第二次狼自爆，競選立即結束、警徽流失",
+      "badgeLineWolfSecond": "- 這是競選階段的第二次狼自爆：競選立即結束、警徽流失（本局再也不會出現警長）",
+      "badgeLineWhiteWolfKing": "- 在警徽競選發言階段自爆：除了帶走一人，警徽直接流失（本局再也不會出現警長）",
+      "badgeLineDay": "- 白天／PK 發言自爆：只跳過當天剩餘發言與投票，警徽不受影響（警長若被你帶走則照常撕毀）",
+      "tactics": "【自爆這筆賬怎麼算（要不要炸，你自己決定）】\n你花掉的是自己這條命，換來的是「跳過今天的投票 + 直接進夜」（白狼王另加帶走一人）。值不值，先算清這幾筆：\n- 跳過投票本身就是收益：今天票台上要出去的是你隊友，炸掉等於把這次放逐作廢。\n- 時機：隊友已經在票台上、票數基本定了，是最值錢的時候；局勢還早、你還藏得住，炸掉自己的隱藏身份通常虧。\n- 競選階段的賬更細：第一次自爆只是把競選拖到明天（資訊沒少、警徽還在），第二次才吞警徽；白狼王在競選階段炸掉則是一次性吞徽——用它換掉對手的競選節奏之前，先想清楚你隊友還有沒有人能接手競選。\n- 自爆**不會**帶走秘密：你不能留遺言、不能遞話、也不能翻案，炸完這一下就結束了。要留話就趁之前的發言說完。",
+      "user": "{context}\n\n是否自爆？嚴格返回 JSON 對象。\n自爆示例：{jsonFormat}\n不自爆示例：{passJsonFormat}"
     }
   },
   "badgePhase": {
@@ -1287,14 +1295,14 @@
       "description": "獵人開槍",
       "human": "點選玩家卡片選擇開槍目標"
     },
-    "whiteWolfKingBoom": {
-      "description": "白狼王自爆",
-      "human": "點選玩家卡片選擇自爆帶走的目標"
-    },
     "gameEnd": {
       "description": "遊戲結束",
       "villageWin": "好人勝利",
       "wolfWin": "狼人勝利"
+    },
+    "selfDestruct": {
+      "description": "自爆（狼人在自己的發言輪自爆）",
+      "human": "點選玩家卡片選擇自爆帶走的目標"
     }
   },
   "page": {
@@ -1398,10 +1406,10 @@
       "wolfKill": "擊殺",
       "guardProtect": "守護",
       "hunterShoot": "射擊",
-      "whiteWolfKingBoom": "自爆帶走",
       "whiteWolfKingBoomBtn": "自爆",
       "badgeTransfer": "將警徽移交給",
-      "select": "選擇"
+      "select": "選擇",
+      "selfDestruct": "自爆帶走"
     },
     "input": {
       "lastWordsPlaceholder": "有什麼想說的？",
@@ -1588,10 +1596,11 @@
     "executed": "白天：{player} 被放逐（{votes}票）",
     "voteTie": "白天：投票平票，無人出局",
     "hunterShot": "獵人 {hunter} 開槍帶走 {target}",
-    "whiteWolfKingBoom": "白狼王 {boom} 自爆帶走 {target}",
     "idiotRevealed": "{player} 翻牌白痴，免疫放逐",
     "gameEndVillage": "遊戲結束：好人陣營勝利",
-    "gameEndWolf": "遊戲結束：狼人陣營勝利"
+    "gameEndWolf": "遊戲結束：狼人陣營勝利",
+    "selfDestruct": "{boom} 自爆出局",
+    "selfDestructWithTarget": "{boom} 自爆，帶走 {target}"
   },
   "wolfPlanning": {
     "title": "狼人協作",
@@ -1649,12 +1658,12 @@
     "remarkRevealLine": "{seat}號 {name}：{role}{human}",
     "publicRecordNightDeaths": "第{day}夜：{seats}出局（死因未公開）",
     "publicRecordPeacefulNight": "第{day}夜：平安夜",
-    "publicRecordBoom": "第{day}天：{seat}號白狼王自爆，帶走{target}號",
+    "publicRecordBoom": "第{day}天：{seat}號自爆，帶走{target}號",
     "publicRecordShot": "第{day}天：{seat}號獵人開槍帶走{target}號",
     "publicRecordIdiot": "第{day}天：{seat}號翻牌白痴，免疫放逐",
     "publicRecordExile": "第{day}天：{seat}號被放逐（{votes}票）",
     "publicRecordExileTie": "第{day}天：放逐投票平票",
-    "publicRecordNoExile": "第{day}天：白狼王自爆作廢當日放逐投票，無人被放逐",
+    "publicRecordNoExile": "第{day}天：狼人自爆作廢當日放逐投票，無人被放逐",
     "remarkPublicFactsTitle": "【主持人公開記錄（客觀事實）】\n",
     "remarkClaimsRule": "以上摘要記的是各方當時的說詞，不是已確認的事實：引用任何人的主張都必須寫成「X號當時聲稱／質疑／認為…」；玩家當時說錯的話（包含把有對跳的局說成沒對跳）不能當事實講出來。\n",
     "remarkHumanTag": "（玩家本人）",
@@ -1667,7 +1676,8 @@
     "remarkPrivateWolf": "第{day}夜狼隊刀的是{target}號——你自己寫的理由：{reason}",
     "remarkPrivateWitchSave": "第{day}夜你用解藥救了{target}號——你自己寫的理由：{reason}",
     "remarkPrivateWitchPoison": "第{day}夜你用毒藥毒了{target}號——你自己寫的理由：{reason}",
-    "remarkPrivateSeer": "第{day}夜你查驗的是{target}號——你自己寫的理由：{reason}"
+    "remarkPrivateSeer": "第{day}夜你查驗的是{target}號——你自己寫的理由：{reason}",
+    "publicRecordBoomNoTarget": "第{day}天：{seat}號自爆出局"
   },
   "gameLogic": {
     "errors": {
@@ -1726,8 +1736,8 @@
     "gameFundamentals": {
       "title": "【這是一局什麼遊戲】",
       "overview": "這是一局多人狼人殺。玩家分成好人陣營與狼人陣營：白天靠發言、推理和投票放逐懷疑對象，夜裡狼人出刀殺一個人。好人放逐所有狼人即獲勝；狼人讓自己的人數追平好人即獲勝。",
-      "basicRules": "【通用規則（全場公開、人人都知道的規則）】\n- 每天流程：夜晚（狼人刀人）→ 第一天先進行警徽競選 → 天亮公佈死亡 → 自由發言 → 放逐投票，循環往復。夜裡發生的事，在天亮公佈之前沒人知道。\n- 死亡不公佈身份：普通死亡和投票出局都不公開身份，只有主持人觸發公開技能（白痴翻牌、獵人開槍、白狼王自爆）時才確認身份。任何人聲稱自己是什麼身份、或宣告查驗結果，都只是他的發言，不是事實。\n- 放逐投票：得票最多的人出局；平票時由平票的人進行 PK 再投一輪。警長（拿警徽的人）的票算 1.5 票；警長出局時會把警徽移交給別人。\n- 遺言：被投票放逐的人有遺言；夜裡被刀死、被獵人開槍帶走、被白狼王自爆帶走的人都沒有遺言。",
-      "roleSkills": "【角色與技能（公開規則，可以拿來推理別人）】\n- 狼人：夜裡和隊友一起商量刀誰，知道隊友是誰；預言家查驗你為狼人。\n- 白狼王：狼人陣營；白天可以自爆，自爆時帶走一名存活玩家（對方沒有遺言），並跳過當天的放逐投票直接進入黑夜。\n- 預言家：每晚查驗一名玩家是好人還是狼人，結果只有自己知道；本局只有預言家能查驗。\n- 女巫：一瓶解藥、一瓶毒藥，全域性各一次，同一夜最多用一瓶。解藥能救當晚被狼人襲擊的人（可以自救）；毒藥能毒死一名玩家；被毒死的獵人無法開槍。\n- 獵人：被投票放逐或被狼人擊殺時，可以開槍帶走一名存活玩家；被女巫毒死時無法開槍。\n- 守衛：每晚守護一名玩家（可以守自己）不被狼人殺害；不能連續兩晚守同一個人；和女巫的解藥同時作用在同一個人身上時，這個人仍然會死。\n- 白痴：被投票放逐時翻牌免疫（只有一次），之後失去投票權，但仍然可以發言。\n- 村民：沒有夜間技能，靠發言和投票參與。",
+      "basicRules": "【通用規則（全場公開、人人都知道的規則）】\n- 每天流程：夜晚（狼人刀人）→ 第一天先進行警徽競選 → 天亮公佈死亡 → 自由發言 → 放逐投票，循環往復。夜裡發生的事，在天亮公佈之前沒人知道。\n- 死亡不公佈身份：普通死亡和投票出局都不公開身份，只有主持人觸發公開技能（白痴翻牌、獵人開槍、狼人自爆）時才確認身份。任何人聲稱自己是什麼身份、或宣告查驗結果，都只是他的發言，不是事實。\n- 放逐投票：得票最多的人出局；平票時由平票的人進行 PK 再投一輪。警長（拿警徽的人）的票算 1.5 票；警長出局時會把警徽移交給別人。\n- 自爆：狼人可以在自己的發言輪（含警徽競選發言）自爆，自爆後立刻出局、當天剩餘流程全部結束、直接進入黑夜。自爆的人沒有遺言；警徽競選階段的狼自爆會讓競選順延到下一個天亮，若同一個競選階段出現第二次狼自爆（雙爆），競選立即結束、警徽流失（本局再沒有警長）。\n- 警徽競選：第一天先競選警長，候選人依次發言後由全場投票；警徽可以讓持有人在出局時移交，也可以撕毀。\n- 遺言：被投票放逐的人有遺言；**第一夜**死亡的玩家（無論幾個、無論死因）也有遺言；第二夜起夜裡死亡的人沒有遺言。被獵人開槍帶走、被自爆帶走的人都沒有遺言。",
+      "roleSkills": "【角色與技能（公開規則，可以拿來推理別人）】\n- 狼人：夜裡和隊友一起商量刀誰，知道隊友是誰；預言家查驗你為狼人。白天可以在自己的發言輪自爆（見【自爆】）。\n- 白狼王：狼人陣營；白天可以在自己的發言輪自爆，自爆時帶走一名存活玩家（對方沒有遺言）；在警徽競選發言時自爆，除了帶走一人，警徽還會直接流失。\n- 預言家：每晚查驗一名玩家是好人還是狼人，結果只有自己知道；本局只有預言家能查驗。\n- 女巫：一瓶解藥、一瓶毒藥，全域性各一次，同一夜最多用一瓶。解藥能救當晚被狼人襲擊的人，但**不能救自己**（女巫全程不可自救）；毒藥能毒死一名玩家；被毒死的獵人無法開槍。\n- 獵人：被投票放逐或被狼人擊殺時，可以開槍帶走一名存活玩家；被女巫毒死時無法開槍；被自爆帶走的獵人仍然可以開槍。\n- 守衛：每晚可以守護一名玩家（可以守自己）不被狼人殺害，也可以選擇**空守**（不守護任何人）；不能連續兩晚守同一個人（空守不算守護，所以可以連續多晚空守）；和女巫的解藥同時作用在同一個人身上時，這個人仍然會死。\n- 白痴：被投票放逐時翻牌免疫（只有一次），之後失去投票權，但仍然可以發言。\n- 村民：沒有夜間技能，靠發言和投票參與。",
       "scopeNote": "注意：上面是完整角色表；本局實際有哪些角色、各有幾個，以【本局公開角色配置】為準。配置裡沒有的角色本局不存在，不要假設它在場。"
     },
     "winCondition": {
@@ -1809,7 +1819,6 @@
       "publicRoleRevealsTitle": "【主持人已公開確認的身份事件】",
       "publicRoleRevealsNone": "- 無；當前沒有任何玩家身份被主持人公開確認。",
       "hunterRoleReveal": "- 第{day}天：{hunter} 已由主持人公開確認為獵人，並開槍帶走 {target}；開槍不產生查驗結果，也不公開 {target} 的身份。",
-      "whiteWolfKingRoleReveal": "- 第{day}天：{player} 已由主持人公開確認為白狼王，並自爆帶走 {target}。",
       "idiotRoleReveal": "- 第{day}天：{player} 已由主持人公開確認為白痴。",
       "unannouncedNightResult": "主持人尚未公佈昨夜死亡結果。你只能知道角色私有資訊中明確列出的內容；不能從當前死亡列表為空推斷為平安夜，也不能斷言誰昨夜出局。",
       "selfSpeechIncludedInTimeline": "你的發言已作為{seat}號保留在上方完整時間線的實際位置，不在這裡重複。",
@@ -1850,7 +1859,7 @@
       "deathCauseVote": "投票",
       "deathCauseDeath": "死因未公開",
       "deathCauseHunterShot": "獵人公開開槍",
-      "deathCauseWhiteWolfKing": "白狼王公開自爆",
+      "deathCauseWhiteWolfKing": "狼人公開自爆",
       "deathCauseUnknown": "unknown",
       "noSheriff": "無",
       "voteCount": "票數",
@@ -1893,7 +1902,9 @@
       "wolfTeamPlanPostureHook": "倒勾（站進好人堆）",
       "wolfTeamPlanPostureDeep": "潛伏（不明確站邊）",
       "wolfTeamPlanSignupYes": "上警",
-      "wolfTeamPlanSignupNo": "不上警"
+      "wolfTeamPlanSignupNo": "不上警",
+      "selfDestructReveal": "- 第{day}天：{player} 已由主持人公開確認自爆出局。",
+      "selfDestructRevealWithTarget": "- 第{day}天：{player} 已由主持人公開確認自爆，並帶走 {target}。"
     },
     "acquaintance": {
       "header": "【熟人局】這桌人你都認識，下面是平時積累的印象、各自跑的底層模型和交手記錄。印象只是印象——本局他們未必照老習慣打，拿狼的人更可能一反常態；怎麼利用這些瞭解，你自己決定。",

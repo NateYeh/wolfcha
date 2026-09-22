@@ -26,6 +26,9 @@ import { gameStateAtom, isValidTransition, clearPersistedGameState, isRestorable
 import { getGeneratorModel, getModelSource } from "@/lib/api-keys";
 import { isAbstainSeat } from "@/lib/rules/actions";
 import { takeNextLastWordsSeat } from "@/lib/rules/last-words";
+import { getCurrentSpeechRoundMessages } from "@/lib/speech-order";
+import { getRoleCapabilities } from "@/lib/rules/roles";
+import { canSelfDestruct, hasAlreadyBoomed, resolveSelfDestructOutcome, shouldResumeBadgeElection } from "@/lib/rules/self-destruct";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import {
   buildGameStartState,
@@ -38,7 +41,7 @@ import {
   killPlayer,
   generateDailySummary,
   getRandomHumanSeat,
-  generateWhiteWolfKingBoomDecision,
+  generateSelfDestructDecision,
   generateWolfTeamPlan,
   buildHumanWolfTeamPlan,
   type HumanWolfTeamPlanChoice,
@@ -162,7 +165,9 @@ export function useGameLogic() {
   const onStartVoteRef = useRef<((state: GameState, token: ReturnType<typeof getToken>) => Promise<void>) | null>(null);
   const onBadgeSpeechEndRef = useRef<((state: GameState) => Promise<void>) | null>(null);
   const onPkSpeechEndRef = useRef<((state: GameState) => Promise<void>) | null>(null);
-  const wwkBoomCheckRef = useRef<((state: GameState, wwk: Player) => Promise<boolean>) | null>(null);
+  const selfDestructCheckRef = useRef<((state: GameState, wolf: Player) => Promise<boolean>) | null>(null);
+  /** 真人自爆時用來記住「從哪個階段自爆」（白狼王需要先選目標，會先切到 SELF_DESTRUCT 階段） */
+  const selfDestructOriginRef = useRef<Phase | null>(null);
   /** 第一夜死者遺言佇列的處理器（由 DaySpeechPhase 在死亡公告後呼叫） */
   const pendingLastWordsRef = useRef<
     ((state: GameState, continuation: (s: GameState) => Promise<void>) => Promise<void>) | null
@@ -363,7 +368,7 @@ export function useGameLogic() {
         }
       },
       onWhiteWolfKingBoomCheck: async (state: GameState, wwk: Player): Promise<boolean> => {
-        const fn = wwkBoomCheckRef.current;
+        const fn = selfDestructCheckRef.current;
         if (fn) {
           return fn(state, wwk);
         }
@@ -706,104 +711,270 @@ export function useGameLogic() {
     }
   };
 
-  // AI白狼王自爆决策
-  wwkBoomCheckRef.current = async (state: GameState, wwk: Player): Promise<boolean> => {
-    if (state.roleAbilities.whiteWolfKingBoomUsed) return false;
-    if (!wwk.agentProfile?.modelRef) return false;
+  /**
+   * 補公布「已結算但還沒公布」的夜晚死亡。
+   *
+   * 自爆會跳過當天剩餘流程（第一天的死訊本來排在警徽競選之後），若不補做，
+   * 第一夜死者會少掉死訊公告與遺言。這裡只做必要的套用與公告，旁白音效由 UI 端自行處理。
+   */
+  const settleUnannouncedNightDeaths = useCallback((state: GameState): GameState => {
+    const history = state.nightHistory ?? {};
+    const unannounced = Object.entries(history)
+      .filter(([, record]) => record && record.resultsAnnounced === false && (record.deaths ?? []).length > 0)
+      .sort(([a], [b]) => Number(a) - Number(b));
+    if (unannounced.length === 0) return state;
 
-    const boomDecision = await generateWhiteWolfKingBoomDecision(state, wwk);
-    if (boomDecision.targetSeat === null) return false; // AI 选择不自爆
-    const targetSeat = boomDecision.targetSeat;
+    const systemMessages = getSystemMessages();
+    let currentState = state;
+    for (const [day, record] of unannounced) {
+      for (const death of record.deaths ?? []) {
+        const victim = currentState.players.find((p) => p.seat === death.seat);
+        if (!victim) continue;
+        if (victim.alive) currentState = killPlayer(currentState, victim.seat);
+        // 被毒死的獵人不能開槍（沿用死亡公告規則）
+        if (death.reason === "poison" && victim.role === "Hunter") {
+          currentState = { ...currentState, roleAbilities: { ...currentState.roleAbilities, hunterCanShoot: false } };
+        }
+        // 奶穿（同刀同毒）不重複發第二次死訊
+        if (death.reason === "milk") continue;
+        currentState = addSystemMessage(
+          currentState,
+          systemMessages.playerKilled(victim.seat + 1, victim.displayName)
+        );
+      }
+      currentState = {
+        ...currentState,
+        nightHistory: {
+          ...currentState.nightHistory,
+          [Number(day)]: { ...record, resultsAnnounced: true },
+        },
+      };
+    }
+    console.warn(
+      `[wolfcha] 自爆跳過白天流程，補公布未宣布的夜間死訊：${unannounced.map(([day]) => day).join("、")}`
+    );
+    return {
+      ...currentState,
+      nightActions: {
+        ...currentState.nightActions,
+        pendingWolfVictim: undefined,
+        pendingPoisonVictim: undefined,
+      },
+    };
+  }, []);
+
+  /**
+   * 執行自爆（AI 與真人共用）：
+   *
+   * 1. 自爆者立刻出局（沒有遺言、沒有自爆宣言）。
+   * 2. 只有白狼王能帶走一名玩家（對方無遺言；獵人仍可開槍）。
+   * 3. 警徽：競選階段白狼王自爆直接吞徽；普通狼第一次順延競選、第二次（雙爆）吞徽。
+   * 4. 直接天黑：先補公布尚未宣布的夜間死訊與第一夜遺言，再進入黑夜。
+   */
+  const applySelfDestruct = useCallback(async (
+    state: GameState,
+    boomer: Player,
+    targetSeat: number | null,
+    reason: string,
+    originPhase: Phase,
+    token: ReturnType<typeof getToken>
+  ): Promise<void> => {
+    const flags = getBoardRuleFlags(state.players.length);
+    const electionBooms = state.badge.electionBooms ?? 0;
+    const outcome = resolveSelfDestructOutcome({
+      phase: originPhase,
+      role: boomer.role,
+      flags,
+      electionBooms,
+    });
+
+    let currentState = killPlayer(state, boomer.seat);
+    currentState = {
+      ...currentState,
+      roleAbilities: {
+        ...currentState.roleAbilities,
+        boomedSeats: [...(currentState.roleAbilities.boomedSeats ?? []), boomer.seat].filter(
+          (seat, index, all) => all.indexOf(seat) === index
+        ),
+      },
+    };
+
+    // 帶人（只有白狼王；被帶走的人沒有遺言）
+    let boomVictim: Player | undefined;
+    if (outcome.takesPlayer && targetSeat !== null) {
+      const target = currentState.players.find((p) => p.seat === targetSeat);
+      if (target?.alive) {
+        currentState = killPlayer(currentState, targetSeat);
+        boomVictim = currentState.players.find((p) => p.seat === targetSeat);
+        const msg = t("system.selfDestructWithTarget", {
+          seat: boomer.seat + 1,
+          name: boomer.displayName,
+          targetSeat: targetSeat + 1,
+          targetName: target.displayName,
+        });
+        currentState = addSystemMessage(currentState, msg);
+        setDialogue(speakerHost, msg, false);
+      }
+    } else {
+      const msg = t("system.selfDestruct", { seat: boomer.seat + 1, name: boomer.displayName });
+      currentState = addSystemMessage(currentState, msg);
+      setDialogue(speakerHost, msg, false);
+    }
+
+    // 警徽：吞徽／順延競選／警長死亡撕徽
+    const isElectionPhase = originPhase === "DAY_BADGE_SPEECH";
+    let badge = {
+      ...currentState.badge,
+      electionBooms: isElectionPhase && !outcome.swallowBadge ? electionBooms + 1 : electionBooms,
+    };
+    if (outcome.swallowBadge) {
+      badge = { ...badge, holderSeat: null, lost: true, electionSuspended: false };
+      const lostMsg = t("system.badgeLost");
+      currentState = addSystemMessage(currentState, lostMsg);
+      setDialogue(speakerHost, lostMsg, false);
+    } else if (outcome.suspendElection) {
+      // 跨天續辦競選時，當日發言紀錄不再包含前一天的競選發言，因此把「已發言候選人」記進狀態
+      const spokenToday = getCurrentSpeechRoundMessages(state).map(
+        (message) => state.players.find((p) => p.playerId === message.playerId)?.seat
+      ).filter((seat): seat is number => seat !== undefined);
+      badge = {
+        ...badge,
+        electionSuspended: true,
+        electionSpokenSeats: [...new Set([...(badge.electionSpokenSeats ?? []), ...spokenToday])],
+      };
+    }
+
+    const sheriffSeat = badge.holderSeat;
+    const sheriffPlayer =
+      sheriffSeat !== null ? currentState.players.find((p) => p.seat === sheriffSeat) : null;
+    if (sheriffPlayer && !sheriffPlayer.alive) {
+      const forceTornMsg = t("system.badgeForceTorn", {
+        seat: sheriffSeat! + 1,
+        name: sheriffPlayer.displayName,
+      });
+      currentState = addSystemMessage(currentState, forceTornMsg);
+      setDialogue(speakerHost, forceTornMsg, false);
+      badge = { ...badge, holderSeat: null };
+    }
+
+    const prevDayRecord = (currentState.dayHistory || {})[currentState.day] || {};
+    currentState = {
+      ...currentState,
+      badge,
+      dayHistory: {
+        ...(currentState.dayHistory || {}),
+        [currentState.day]: {
+          ...prevDayRecord,
+          selfDestruct: {
+            boomSeat: boomer.seat,
+            ...(targetSeat !== null ? { targetSeat } : {}),
+            reason,
+            swallowBadge: outcome.swallowBadge,
+            suspendedElection: outcome.suspendElection,
+          },
+        },
+      },
+    };
+
+    setGameState(currentState);
+
+    const continueAfterSettle = async (afterState: GameState): Promise<void> => {
+      // 帶走獵人：獵人仍可開槍
+      if (boomVictim?.role === "Hunter" && afterState.roleAbilities.hunterCanShoot) {
+        await delay(1200);
+        const hunterFn = hunterDeathRef.current;
+        if (hunterFn) await hunterFn(afterState, boomVictim, false);
+        return;
+      }
+
+      const winner = checkWinCondition(afterState);
+      if (winner) {
+        const endFn = endGameRef.current;
+        if (endFn) await endFn(afterState, winner);
+        return;
+      }
+
+      await delay(1200);
+      const proceedFn = proceedToNightRef.current;
+      if (proceedFn) await proceedFn(afterState, token);
+    };
+
+    const settled = settleUnannouncedNightDeaths(currentState);
+    setGameState(settled);
+
+    // 第一夜死者的遺言不會被自爆吃掉：先發表完再進黑夜
+    if ((settled.pendingLastWordsSeats ?? []).length > 0) {
+      const drain = drainPendingLastWordsRef.current;
+      if (drain) {
+        await drain(settled, token, continueAfterSettle);
+        return;
+      }
+      console.warn("[wolfcha] 遺言佇列處理器尚未就緒，自爆後直接續跑流程");
+    }
+    await continueAfterSettle(settled);
+  }, [addSystemMessage, checkWinCondition, killPlayer, setDialogue, setGameState, speakerHost, settleUnannouncedNightDeaths, t]);
+
+  // AI 自爆決策（所有狼陣營角色，見 lib/rules/self-destruct.ts）
+  selfDestructCheckRef.current = async (state: GameState, wolf: Player): Promise<boolean> => {
+    if (!wolf.agentProfile?.modelRef) return false;
+    if (hasAlreadyBoomed(state.roleAbilities.boomedSeats, wolf.seat)) return false;
+
+    const decision = await generateSelfDestructDecision(state, wolf);
+    if (!decision.boom) return false;
 
     const token = getToken();
     if (!isTokenValid(token)) return false;
 
-    // 自爆宣言：翻桌台词，先入公开记录（当天 transcript 只收存活者发言，需在死亡结算前加入）
-    let baseState = state;
-    if (boomDecision.farewell.trim().length > 0) {
-      baseState = addPlayerMessage(state, wwk.playerId, boomDecision.farewell, { isLastWords: true });
+    if (decision.targetSeat !== null) {
+      const target = state.players.find((p) => p.seat === decision.targetSeat);
+      if (!target?.alive) return false;
     }
 
-    // 执行自爆逻辑
-    let currentState = transitionPhase(baseState, "WHITE_WOLF_KING_BOOM");
-    currentState = killPlayer(currentState, wwk.seat);
-    currentState = {
-      ...currentState,
-      roleAbilities: { ...currentState.roleAbilities, whiteWolfKingBoomUsed: true },
-    };
-
-    const target = currentState.players.find((p) => p.seat === targetSeat);
-    if (target && target.alive) {
-      currentState = killPlayer(currentState, targetSeat);
-      const msg = t("system.whiteWolfKingBoom", {
-        seat: wwk.seat + 1,
-        name: wwk.displayName,
-        targetSeat: targetSeat + 1,
-        targetName: target.displayName,
-      });
-      currentState = addSystemMessage(currentState, msg);
-      setDialogue(speakerHost, msg, false);
-
-      const prevDayRecord = (currentState.dayHistory || {})[currentState.day] || {};
-      currentState = {
-        ...currentState,
-        dayHistory: {
-          ...(currentState.dayHistory || {}),
-          [currentState.day]: { ...prevDayRecord, whiteWolfKingBoom: { boomSeat: wwk.seat, targetSeat, reason: boomDecision.reason } },
-        },
-      };
-    } else {
-      const msg = t("system.whiteWolfKingBoomNoTarget", { seat: wwk.seat + 1, name: wwk.displayName });
-      currentState = addSystemMessage(currentState, msg);
-      setDialogue(speakerHost, msg, false);
-    }
-
-    // 白狼王自爆带走的人没有遗言，如果被带走的人或白狼王是警长，警徽直接撕毁
-    const sheriffSeat = currentState.badge.holderSeat;
-    if (sheriffSeat !== null && (!currentState.players.find((p) => p.seat === sheriffSeat)?.alive)) {
-      const sheriffPlayer = currentState.players.find((p) => p.seat === sheriffSeat);
-      const forceTornMsg = t("system.badgeForceTorn", { seat: sheriffSeat + 1, name: sheriffPlayer?.displayName || "" });
-      currentState = addSystemMessage(currentState, forceTornMsg);
-      currentState = {
-        ...currentState,
-        badge: { ...currentState.badge, holderSeat: null },
-      };
-    }
-
-    setGameState(currentState);
-
-    // 白狼王自爆带走猎人时，猎人可以开枪（非毒死，技能可发动）
-    const boomTarget = currentState.players.find((p) => p.seat === targetSeat);
-    if (boomTarget?.role === "Hunter" && currentState.roleAbilities.hunterCanShoot) {
-      await delay(1200);
-      const hunterFn = hunterDeathRef.current;
-      if (hunterFn) await hunterFn(currentState, boomTarget, false);
-      return true;
-    }
-
-    const winner = checkWinCondition(currentState);
-    if (winner) {
-      const endFn = endGameRef.current;
-      if (endFn) await endFn(currentState, winner);
-      return true;
-    }
-
-    await delay(1200);
-    const proceedFn = proceedToNightRef.current;
-    if (proceedFn) await proceedFn(currentState, token);
+    await applySelfDestruct(state, wolf, decision.targetSeat, decision.reason, state.phase, token);
     return true;
   };
 
   // ============================================
   // 内部流程函数
   // ============================================
+  /**
+   * 派送 DaySpeech 階段的 action，並回傳「含 setGameState 之後」的最新狀態。
+   *
+   * 一般流程靠 setGameState 驅動即可，但自爆／續辦競選需要在同一個 async 流程裡
+   * 立刻拿到公告後的狀態，因此這裡包一層捕捉。
+   */
+  const runDaySpeechActionCapturing = useCallback(async (
+    state: GameState,
+    token: ReturnType<typeof getToken>,
+    action: "ANNOUNCE_NIGHT_RESULTS"
+  ): Promise<GameState> => {
+    const phaseImpl = phaseManagerRef.current.getPhase("DAY_SPEECH");
+    if (!phaseImpl) return state;
+    let latest = state;
+    const extras = {
+      ...buildDaySpeechExtras(token),
+      setGameState: (value: GameState | ((prev: GameState) => GameState)) => {
+        latest = typeof value === "function" ? value(latest) : value;
+        setGameState(latest);
+      },
+    };
+    await phaseImpl.handleAction({ state, phase: state.phase, extras }, { type: action });
+    return latest;
+  }, [buildDaySpeechExtras, setGameState]);
+
   const startDayPhaseInternal = useCallback(async (
     state: GameState,
     token: ReturnType<typeof getToken>,
     options?: { skipAnnouncements?: boolean }
   ) => {
-    // 第一天：先进行警徽评选
-    if (state.day === 1 && state.badge.holderSeat === null) {
+    // 警徽競選被自爆中斷：天亮後先補公布死訊（含第一夜遺言），再繼續競選
+    if (shouldResumeBadgeElection(state)) {
+      const announced = await runDaySpeechActionCapturing(state, token, "ANNOUNCE_NIGHT_RESULTS");
+      await badgePhase.resumeBadgeSpeechPhase(announced);
+      return;
+    }
+    // 第一天：先进行警徽评选（警徽流失時直接跳過）
+    if (state.day === 1 && state.badge.holderSeat === null && state.badge.lost !== true) {
       await badgePhase.startBadgeSignupPhase(state);
       return;
     }
@@ -2110,87 +2281,54 @@ export function useGameLogic() {
         }
       });
     }
-    // 白狼王自爆
-    else if (gameState.phase === "WHITE_WOLF_KING_BOOM" && humanPlayer.role === "WhiteWolfKing") {
-      // Kill the White Wolf King himself
-      currentState = killPlayer(currentState, humanPlayer.seat);
-      currentState = {
-        ...currentState,
-        roleAbilities: { ...currentState.roleAbilities, whiteWolfKingBoomUsed: true },
-      };
-
-      if (targetSeat >= 0) {
-        // Kill the target
-        currentState = killPlayer(currentState, targetSeat);
-        const target = currentState.players.find((p) => p.seat === targetSeat);
-        if (target) {
-          const msg = t("system.whiteWolfKingBoom", { seat: humanPlayer.seat + 1, name: humanPlayer.displayName, targetSeat: targetSeat + 1, targetName: target.displayName });
-          currentState = addSystemMessage(currentState, msg);
-          setDialogue(speakerHost, msg, false);
-        }
-        const prevDayRecord = (currentState.dayHistory || {})[currentState.day] || {};
-        currentState = {
-          ...currentState,
-          dayHistory: {
-            ...(currentState.dayHistory || {}),
-            [currentState.day]: { ...prevDayRecord, whiteWolfKingBoom: { boomSeat: humanPlayer.seat, targetSeat } },
-          },
-        };
-      } else {
-        const msg = t("system.whiteWolfKingBoomNoTarget", { seat: humanPlayer.seat + 1, name: humanPlayer.displayName });
-        currentState = addSystemMessage(currentState, msg);
-        setDialogue(speakerHost, msg, false);
+    // 自爆（所有狼陣營角色；白狼王另外帶走一名玩家）
+    else if (gameState.phase === "SELF_DESTRUCT" && isWolfRole(humanPlayer.role)) {
+      const boomFlags = getBoardRuleFlags(currentState.players.length);
+      const boomTakesPlayer =
+        getRoleCapabilities(humanPlayer.role).boomTakesPlayer &&
+        boomFlags.boom.takesPlayerRoles.includes(humanPlayer.role);
+      const originPhase = selfDestructOriginRef.current;
+      selfDestructOriginRef.current = null;
+      if (!originPhase) {
+        console.warn("[wolfcha] 缺少自爆來源階段，依白天發言處理（此情況下不吞警徽）");
       }
-
-      // 白狼王自爆带走的人没有遗言，如果被带走的人或白狼王是警长，警徽直接撕毁
-      const boomSheriffSeat = currentState.badge.holderSeat;
-      if (boomSheriffSeat !== null && (!currentState.players.find((p) => p.seat === boomSheriffSeat)?.alive)) {
-        const boomSheriffPlayer = currentState.players.find((p) => p.seat === boomSheriffSeat);
-        const forceTornMsg = t("system.badgeForceTorn", { seat: boomSheriffSeat + 1, name: boomSheriffPlayer?.displayName || "" });
-        currentState = addSystemMessage(currentState, forceTornMsg);
-        currentState = {
-          ...currentState,
-          badge: { ...currentState.badge, holderSeat: null },
-        };
-      }
-
-      setGameState(currentState);
-
-      // 白狼王自爆带走猎人时，猎人可以开枪（非毒死，技能可发动）
-      if (targetSeat >= 0) {
-        const boomTarget = currentState.players.find((p) => p.seat === targetSeat);
-        if (boomTarget?.role === "Hunter" && currentState.roleAbilities.hunterCanShoot) {
-          await delay(1200);
-          const hunterFn = hunterDeathRef.current;
-          if (hunterFn) await hunterFn(currentState, boomTarget, false);
-          return;
-        }
-      }
-
-      const winner = checkWinCondition(currentState);
-      if (winner) {
-        await endGameSafely(currentState, winner);
-        return;
-      }
-
-      await delay(1200);
-      await proceedToNight(currentState, token);
+      await applySelfDestruct(
+        currentState,
+        humanPlayer,
+        boomTakesPlayer && targetSeat >= 0 ? targetSeat : null,
+        "",
+        originPhase ?? "DAY_SPEECH",
+        token
+      );
     }
   }, [gameState, humanPlayer, setGameState, setDialogue, setIsWaitingForAI, waitForUnpause, getToken, runNightPhaseAction, resolveNight, startDayPhaseInternal, proceedToNight, endGameSafely, transitionPhase, speakerHost, t, continueAfterHunterShot]);
 
-  /** 人类白狼王自爆（进入 WHITE_WOLF_KING_BOOM 阶段） */
-  const handleWhiteWolfKingBoom = useCallback(async () => {
-    if (!humanPlayer || humanPlayer.role !== "WhiteWolfKing" || !humanPlayer.alive) return;
+  /** 人类白狼王自爆（进入 SELF_DESTRUCT 阶段） */
+  /** 真人自爆（所有狼陣營角色；白狼王需要先選帶走的目標） */
+  const handleSelfDestruct = useCallback(async () => {
     const currentState = gameStateRef.current;
-    if (currentState.roleAbilities.whiteWolfKingBoomUsed) return;
-    if (currentState.phase !== "DAY_SPEECH" && currentState.phase !== "DAY_BADGE_SPEECH" && currentState.phase !== "DAY_PK_SPEECH") return;
+    if (!humanPlayer || !humanPlayer.alive) return;
 
-    // Transition to WWK boom phase
-    const nextState = transitionPhase(currentState, "WHITE_WOLF_KING_BOOM");
-    setGameState(nextState);
-    clearDialogue();
-    setDialogue(speakerHost, t("ui.whiteWolfKingBoom"), false);
-  }, [humanPlayer, transitionPhase, setGameState, clearDialogue, setDialogue, speakerHost, t]);
+    const flags = getBoardRuleFlags(currentState.players.length);
+    if (!canSelfDestruct({ phase: currentState.phase, role: humanPlayer.role, flags })) return;
+    if (hasAlreadyBoomed(currentState.roleAbilities.boomedSeats, humanPlayer.seat)) return;
+
+    const takesPlayer =
+      getRoleCapabilities(humanPlayer.role).boomTakesPlayer &&
+      flags.boom.takesPlayerRoles.includes(humanPlayer.role);
+
+    if (takesPlayer) {
+      // 需要選「帶走誰」：切到 SELF_DESTRUCT 階段讓玩家點卡片，來源階段記在 ref
+      selfDestructOriginRef.current = currentState.phase;
+      const nextState = transitionPhase(currentState, "SELF_DESTRUCT");
+      setGameState(nextState);
+      clearDialogue();
+      setDialogue(speakerHost, t("ui.selfDestructPickTarget"), false);
+      return;
+    }
+
+    await applySelfDestruct(currentState, humanPlayer, null, "", currentState.phase, getToken());
+  }, [applySelfDestruct, clearDialogue, getToken, humanPlayer, setDialogue, setGameState, speakerHost, t, transitionPhase]);
 
   /** 人类警长移交 */
   const handleHumanBadgeTransfer = useCallback(async (targetSeat: number) => {
@@ -2384,7 +2522,7 @@ export function useGameLogic() {
     handleHumanVote,
     handleNightAction,
     handleHumanBadgeTransfer,
-    handleWhiteWolfKingBoom,
+    handleSelfDestruct,
     handleNextRound,
     scrollToBottom,
     advanceSpeech,

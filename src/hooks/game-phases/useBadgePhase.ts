@@ -38,6 +38,7 @@ export interface BadgePhaseActions {
   startBadgeSignupPhase: (state: GameState) => Promise<void>;
   startBadgeSpeechPhase: (state: GameState) => Promise<void>;
   startBadgeElectionPhase: (state: GameState, options?: { isRevote?: boolean; isResume?: boolean }) => Promise<void>;
+  resumeBadgeSpeechPhase: (state: GameState) => Promise<void>;
   resumeBadgeSignupPhase: (state: GameState) => Promise<void>;
   handleBadgeSignup: (wants: boolean) => Promise<void>;
   handleBadgeTransfer: (state: GameState, sheriff: Player, afterTransfer: (s: GameState) => Promise<void>) => Promise<void>;
@@ -278,6 +279,9 @@ export function useBadgePhase(
         allVotes: {},
         history: { ...state.badge.history, [state.day]: finalVotes },
         electionWinners: { ...state.badge.electionWinners, [state.day]: winnerSeat },
+        // 競選已結案：清掉「被自爆中斷」的續辦旗標
+        electionSuspended: false,
+        electionSpokenSeats: undefined,
       },
     };
 
@@ -611,6 +615,60 @@ export function useBadgePhase(
   maybeStartBadgeSpeechAfterSignupRef.current = maybeStartBadgeSpeechAfterSignup;
 
   /** 警长移交警徽 */
+  /**
+   * 繼續警徽競選發言（競選被自爆中斷後，下一個天亮續辦）。
+   *
+   * 與 `startBadgeSpeechPhase` 的差別：跳過「中斷前已經發言過」的候選人
+   * （`badge.electionSpokenSeats`，因為跨天後當日發言紀錄已不包含前一天的競選發言），
+   * 並且把 `speechRoundStartMessageIndex` 重新對齊本輪，避免重複發言。
+   */
+  const resumeBadgeSpeechPhase = useCallback(async (state: GameState) => {
+    const texts = getTexts();
+    const candidates = state.badge.candidates || [];
+    const alreadySpoken = new Set(state.badge.electionSpokenSeats ?? []);
+    const remaining = excludePendingDeathPlayers(
+      state,
+      state.players.filter((p) => p.alive && candidates.includes(p.seat) && !alreadySpoken.has(p.seat))
+    );
+
+    let currentState = transitionPhase(state, "DAY_BADGE_SPEECH");
+    currentState = {
+      ...currentState,
+      badge: { ...currentState.badge, electionSuspended: false, electionSpokenSeats: undefined },
+      currentSpeakerSeat: null,
+      daySpeechStartSeat: null,
+    };
+
+    if (remaining.length === 0) {
+      // 沒有還沒發言的候選人：直接進競選投票
+      setGameState(currentState);
+      await startBadgeElectionPhase(currentState, { isResume: true });
+      return;
+    }
+
+    const firstSpeaker = remaining[0];
+    currentState = addSystemMessage(
+      currentState,
+      texts.systemMessages.badgeSpeechStart
+    );
+    currentState = {
+      ...currentState,
+      daySpeechStartSeat: firstSpeaker.seat,
+      currentSpeakerSeat: firstSpeaker.seat,
+    };
+    setDialogue(texts.speakerHost, texts.systemMessages.badgeSpeechStart, false);
+    setGameState(currentState);
+
+    await delay(DELAY_CONFIG.DIALOGUE);
+    await waitForUnpause();
+
+    if (!firstSpeaker.isHuman) {
+      await runAISpeech(currentState, firstSpeaker);
+    } else {
+      setDialogue(texts.speakerHint, texts.uiText.yourTurn, false);
+    }
+  }, [setGameState, setDialogue, waitForUnpause, runAISpeech, startBadgeElectionPhase]);
+
   const handleBadgeTransfer = useCallback(async (
     state: GameState,
     sheriff: Player,
@@ -713,6 +771,7 @@ export function useBadgePhase(
   return {
     startBadgeSignupPhase,
     startBadgeSpeechPhase,
+    resumeBadgeSpeechPhase,
     startBadgeElectionPhase,
     resumeBadgeSignupPhase,
     handleBadgeSignup,
