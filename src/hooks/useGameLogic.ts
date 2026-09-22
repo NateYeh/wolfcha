@@ -845,17 +845,10 @@ export function useGameLogic() {
     }
 
     const sheriffSeat = badge.holderSeat;
-    const sheriffPlayer =
-      sheriffSeat !== null ? currentState.players.find((p) => p.seat === sheriffSeat) : null;
-    if (sheriffPlayer && !sheriffPlayer.alive) {
-      const forceTornMsg = t("system.badgeForceTorn", {
-        seat: sheriffSeat! + 1,
-        name: sheriffPlayer.displayName,
-      });
-      currentState = addSystemMessage(currentState, forceTornMsg);
-      setDialogue(speakerHost, forceTornMsg, false);
-      badge = { ...badge, holderSeat: null };
-    }
+    const deadSheriff =
+      sheriffSeat !== null
+        ? currentState.players.find((p) => p.seat === sheriffSeat && !p.alive) ?? null
+        : null;
 
     const prevDayRecord = (currentState.dayHistory || {})[currentState.day] || {};
     currentState = {
@@ -876,6 +869,9 @@ export function useGameLogic() {
       },
     };
 
+    // 階段切到 SELF_DESTRUCT：來源階段（競選／白天）已經用來決定警徽規則，
+    // 這裡切過去讓後續的移交警徽、遺言、天黑都走合法轉移。
+    currentState = transitionPhase(currentState, "SELF_DESTRUCT");
     setGameState(currentState);
 
     const continueAfterSettle = async (afterState: GameState): Promise<void> => {
@@ -899,20 +895,42 @@ export function useGameLogic() {
       if (proceedFn) await proceedFn(afterState, token);
     };
 
-    const settled = settleUnannouncedNightDeaths(currentState);
-    setGameState(settled);
+    const continueAfterBadge = async (afterBadgeState: GameState): Promise<void> => {
+      const settled = settleUnannouncedNightDeaths(afterBadgeState);
+      setGameState(settled);
 
-    // 第一夜死者的遺言不會被自爆吃掉：先發表完再進黑夜
-    if ((settled.pendingLastWordsSeats ?? []).length > 0) {
-      const drain = drainPendingLastWordsRef.current;
-      if (drain) {
-        await drain(settled, token, continueAfterSettle);
+      // 第一夜死者的遺言不會被自爆吃掉：先發表完再進黑夜
+      if ((settled.pendingLastWordsSeats ?? []).length > 0) {
+        const drain = drainPendingLastWordsRef.current;
+        if (drain) {
+          await drain(settled, token, continueAfterSettle);
+          return;
+        }
+        console.warn("[wolfcha] 遺言佇列處理器尚未就緒，自爆後直接續跑流程");
+      }
+      await continueAfterSettle(settled);
+    };
+
+    // 警長（含自爆者本人）死亡時由他自己決定傳徽或撕徽，不自動撕毀
+    if (deadSheriff) {
+      const transferFn = badgeTransferRef.current;
+      if (transferFn) {
+        await transferFn(currentState, deadSheriff, continueAfterBadge);
         return;
       }
-      console.warn("[wolfcha] 遺言佇列處理器尚未就緒，自爆後直接續跑流程");
+      console.warn("[wolfcha] 警徽移交處理器尚未就緒，改為直接撕毀警徽");
+      const fallbackMsg = t("system.badgeTorn", { seat: deadSheriff.seat + 1, name: deadSheriff.displayName });
+      const fallbackState = addSystemMessage(
+        { ...currentState, badge: { ...badge, holderSeat: null } },
+        fallbackMsg
+      );
+      setDialogue(speakerHost, fallbackMsg, false);
+      await continueAfterBadge(fallbackState);
+      return;
     }
-    await continueAfterSettle(settled);
-  }, [addSystemMessage, checkWinCondition, killPlayer, setDialogue, setGameState, speakerHost, settleUnannouncedNightDeaths, t]);
+
+    await continueAfterBadge(currentState);
+  }, [addSystemMessage, checkWinCondition, killPlayer, setDialogue, setGameState, speakerHost, settleUnannouncedNightDeaths, t, transitionPhase]);
 
   // AI 自爆決策（所有狼陣營角色，見 lib/rules/self-destruct.ts）
   selfDestructCheckRef.current = async (state: GameState, wolf: Player): Promise<boolean> => {
