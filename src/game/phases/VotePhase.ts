@@ -28,6 +28,9 @@ import { delay, type FlowToken } from "@/lib/game-flow-controller";
 import { playNarrator } from "@/lib/narrator-audio-player";
 import { getPlayerDiedKey } from "@/lib/narrator-voice";
 
+/** 逐票落地的畫面節奏（網路已併發完成，這裡只錯開 UI 更新） */
+const VOTE_REVEAL_BEAT_MS = 120;
+
 type VotePhaseRuntime = {
   token: FlowToken;
   getGameState?: () => GameState;
@@ -104,18 +107,11 @@ export class VotePhase extends GamePhase {
     try {
       // 逐席單發吃不到彼此的快取，先補一發同前綴暖機（實測 0~52% → ~99%）。
       // 只有 AI 席位 ≥2 才值得（單發自己就是冷啟動）。
+      // 逐席單發吃不到彼此的快取，先補一發同前綴暖機（實測 0~52% → ~99%）。
+      // 只有 AI 席位 ≥2 才值得（單發自己就是冷啟動）。
       if (aiPlayers.length >= 2) await warmUpVotePrompt(currentState, aiPlayers[0]);
-      for (const aiPlayer of aiPlayers) {
-        if (!stillCurrent()) {
-          tokenInvalidated = true;
-          break;
-        }
-        const vote = await generateAIVote(currentState, aiPlayer);
-        if (!stillCurrent()) {
-          tokenInvalidated = true;
-          break;
-        }
 
+      const writeVote = (aiPlayer: (typeof aiPlayers)[number], vote: { seat: number; reason: string }) => {
         setGameState((prevState) => ({
           ...prevState,
           votes: { ...prevState.votes, [aiPlayer.playerId]: vote.seat },
@@ -126,6 +122,48 @@ export class VotePhase extends GamePhase {
           votes: { ...currentState.votes, [aiPlayer.playerId]: vote.seat },
           voteReasons: { ...(currentState.voteReasons || {}), [aiPlayer.playerId]: vote.reason },
         };
+      };
+
+      // 第一席先算完：它的票會寫進公共資訊，後面的人看得到（保留一點「跟票」的連鎖感）。
+      const [firstVoter, ...laterVoters] = aiPlayers;
+      if (firstVoter) {
+        const firstVote = await generateAIVote(currentState, firstVoter);
+        if (!stillCurrent()) {
+          tokenInvalidated = true;
+        } else {
+          writeVote(firstVoter, firstVote);
+        }
+      }
+
+      // 其餘席位**併發**送（逐席 await 會讓總時間＝各席加總）。
+      // 票是同一時間投的，彼此看不到對方；只有第一席的票在公共資訊裡。
+      if (!tokenInvalidated && laterVoters.length > 0) {
+        // 前綴多了第一席的票 → 再暖一發，讓這批並發全部命中快取
+        if (laterVoters.length >= 2) await warmUpVotePrompt(currentState, laterVoters[0]);
+        const settledVotes = await Promise.all(
+          laterVoters.map(async (aiPlayer) => {
+            try {
+              return { aiPlayer, vote: await generateAIVote(currentState, aiPlayer) };
+            } catch (error) {
+              console.warn("[wolfcha] AI vote threw, skipping this seat", error);
+              return null;
+            }
+          })
+        );
+        if (!stillCurrent()) {
+          tokenInvalidated = true;
+        } else {
+          for (const settled of settledVotes) {
+            if (!settled) continue;
+            if (!stillCurrent()) {
+              tokenInvalidated = true;
+              break;
+            }
+            writeVote(settled.aiPlayer, settled.vote);
+            // 保留逐票落地的視覺節奏（網路已經併發完成，這裡只錯開畫面更新）
+            await delay(VOTE_REVEAL_BEAT_MS);
+          }
+        }
       }
     } finally {
       if (stillCurrent()) setIsWaitingForAI(false);

@@ -50,6 +50,9 @@ export interface BadgePhaseActions {
  * 警长竞选阶段 Hook
  * 负责管理警长竞选报名、发言、投票、移交等流程
  */
+/** 逐票落地的畫面節奏（網路已併發完成，這裡只錯開 UI 更新） */
+const BADGE_VOTE_BEAT_MS = 120;
+
 export function useBadgePhase(
   callbacks: BadgePhaseCallbacks
 ): BadgePhaseActions {
@@ -569,38 +572,68 @@ export function useBadgePhase(
       currentState.players.filter((p) => p.alive && !p.isHuman && !candidates.includes(p.seat) &&
         (!isResume || typeof currentState.badge.votes[p.playerId] !== "number"))
     );
+    // 对局或投票轮次已经变化时，旧返回不能写入新一轮。
+    const sameBadgeRound = () => {
+      const latest = gameStateRef.current;
+      return (
+        latest.gameId === state.gameId &&
+        latest.day === state.day &&
+        latest.phase === "DAY_BADGE_ELECTION" &&
+        latest.badge.revoteCount === currentState.badge.revoteCount
+      );
+    };
+    // Abstain (-1) is recorded as-is; invalid non-abstain results also abstain.
+    const normalizeBadgeVote = (seat: number) =>
+      seat !== BADGE_VOTE_ABSTAIN && candidates.length > 0 && !candidates.includes(seat)
+        ? BADGE_VOTE_ABSTAIN
+        : seat;
+    const fetchBadgeVote = async (aiPlayer: (typeof aiPlayers)[number]) => {
+      try {
+        return normalizeBadgeVote(await generateAIBadgeVote(currentState, aiPlayer));
+      } catch (e) {
+        console.warn("[wolfcha] AI badge vote threw, treating as abstain", e);
+        return BADGE_VOTE_ABSTAIN;
+      }
+    };
+    const writeBadgeVote = (aiPlayer: (typeof aiPlayers)[number], targetSeat: number) => {
+      const latestState = gameStateRef.current;
+      currentState = {
+        ...currentState,
+        badge: {
+          ...currentState.badge,
+          votes: { ...latestState.badge.votes, [aiPlayer.playerId]: targetSeat },
+        },
+      };
+      gameStateRef.current = currentState;
+      setGameState(currentState);
+    };
+
     try {
+      setIsWaitingForAI(true);
       // 警徽投票也是逐席單發，先暖一次公共前綴（理由同放逐投票）。
       if (aiPlayers.length >= 2) await warmUpBadgeVotePrompt(currentState, aiPlayers[0]);
-      for (const aiPlayer of aiPlayers) {
-        setIsWaitingForAI(true);
-        let targetSeat: number;
-        try {
-          targetSeat = await generateAIBadgeVote(currentState, aiPlayer);
-        } catch (e) {
-          console.warn("[wolfcha] AI badge vote threw, treating as abstain", e);
-          targetSeat = BADGE_VOTE_ABSTAIN;
-        }
 
-        // Abstain (-1) is recorded as-is; invalid non-abstain results also abstain.
-        if (targetSeat !== BADGE_VOTE_ABSTAIN && candidates.length > 0 && !candidates.includes(targetSeat)) {
-          targetSeat = BADGE_VOTE_ABSTAIN;
-        }
+      // 第一席先算完（它的票進公共資訊，後面的人看得到），其餘併發送。
+      const [firstVoter, ...laterVoters] = aiPlayers;
+      if (firstVoter) {
+        const firstSeat = await fetchBadgeVote(firstVoter);
+        if (!sameBadgeRound()) return;
+        writeBadgeVote(firstVoter, firstSeat);
+      }
 
-        // 对局或投票轮次已经变化时，旧返回不能写入新一轮。
-        const latestState = gameStateRef.current;
-        if (latestState.gameId !== state.gameId || latestState.day !== state.day ||
-            latestState.phase !== "DAY_BADGE_ELECTION" ||
-            latestState.badge.revoteCount !== currentState.badge.revoteCount) return;
-        currentState = {
-          ...currentState,
-          badge: {
-            ...currentState.badge,
-            votes: { ...latestState.badge.votes, [aiPlayer.playerId]: targetSeat },
-          },
-        };
-        gameStateRef.current = currentState;
-        setGameState(currentState);
+      if (laterVoters.length > 0) {
+        // 前綴多了第一席的票 → 再暖一發，讓這批並發全部命中快取
+        if (laterVoters.length >= 2) await warmUpBadgeVotePrompt(currentState, laterVoters[0]);
+        const settledVotes = await Promise.all(
+          laterVoters.map(async (aiPlayer) => ({ aiPlayer, seat: await fetchBadgeVote(aiPlayer) }))
+        );
+        if (!sameBadgeRound()) return;
+        for (const settled of settledVotes) {
+          if (!sameBadgeRound()) return;
+          writeBadgeVote(settled.aiPlayer, settled.seat);
+          // 保留逐票落地的視覺節奏（網路已併發完成，這裡只錯開畫面更新）
+          await delay(BADGE_VOTE_BEAT_MS);
+        }
       }
     } finally {
       setIsWaitingForAI(false);
