@@ -49,15 +49,26 @@ export function useCareerStats(
   useEffect(() => {
     if (statsMap) return;
     let cancelled = false;
-    loadCareerStats()
-      .then((map) => {
-        // 即使回空（或失敗）也標記為已載入，讓角色卡顯示零值戰績而非整塊不見。
-        if (!cancelled) setStatsMap(map ?? {});
-      })
-      .catch((error) => {
-        // fetchCharacterStats 內部已記 log；此處僅避免未處理的 rejection
-        console.warn("[wolfcha] useCareerStats load failed:", error);
-      });
+    let attempt = 0;
+    const tryLoad = async (): Promise<void> => {
+      const map = await loadCareerStats();
+      if (cancelled) return;
+      if (map) {
+        setStatsMap(map);
+        return;
+      }
+      // 載入失敗（例如 dev server 正在重編譯、請求逾時）：退避重試兩次，
+      // 都失敗才落零值戰績——避免一次逾時讓角色卡永遠卡在 0。
+      attempt += 1;
+      if (attempt < 3) {
+        window.setTimeout(() => {
+          void tryLoad();
+        }, 2500 * attempt);
+        return;
+      }
+      setStatsMap({});
+    };
+    void tryLoad();
     return () => {
       cancelled = true;
     };
