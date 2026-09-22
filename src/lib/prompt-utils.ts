@@ -8,6 +8,7 @@ import { getI18n } from "@/i18n/translator";
 import { getRoleName } from "./game-constants";
 import { getMutedSeat, isMutePublic } from "./rules/mute";
 import { getRoleConfiguration } from "./role-configuration";
+import { ALL_ROLE_KEYS } from "./rules/boards";
 import {
   resolveBadgeElectionWinner,
   resolveSheriffSeatAtVote,
@@ -110,38 +111,34 @@ export const getRolePromptCore = (role: string) => {
   return `${getSharedPromptRules()}\n\n${getRoleWinCondition(role)}`;
 };
 
-const PUBLIC_ROLE_ORDER: Role[] = [
-  "Werewolf",
-  "WhiteWolfKing",
-  "Seer",
-  "Witch",
-  "Hunter",
-  "Guard",
-  "Idiot",
-  "Knight",
-  "Villager",
-];
-
 /**
- * Build the role composition shown publicly before the game starts.
- * This deliberately reads the public player-count configuration instead of
- * state.players, so no seat-to-role or alive-role information can leak.
+ * 本局實際角色組成（單一真相，只回角色不回座位）：
+ * 1. 開局後玩家身上已發牌 → 直接數 players（自選角色／版型都不會漂移）；
+ * 2. 尚未發牌（單元測試／預覽）→ 退回 fixedRoles（版型組成）；
+ * 3. 都沒有 → 該人數的預設版型。
+ * 只輸出角色計數，不帶座位與存活資訊，因此不會洩漏座位身分。
  */
+export const getGameRoleComposition = (state: Pick<GameState, "players" | "fixedRoles">): Role[] => {
+  const playerRoles = state.players.map((p) => p.role).filter((role): role is Role => typeof role === "string");
+  if (playerRoles.length > 0 && playerRoles.length === state.players.length) return playerRoles;
+  if (state.fixedRoles && state.fixedRoles.length === state.players.length) return state.fixedRoles;
+  return getRoleConfiguration(state.players.length);
+};
+
+/** 本局是否含有某個角色（供角色專屬戰術提示做條件拼接，如守衛博弈／獵人槍口） */
+export const gameHasRole = (state: Pick<GameState, "players" | "fixedRoles">, role: Role): boolean =>
+  getGameRoleComposition(state).includes(role);
+
 export const buildPublicRoleConfiguration = (state: Pick<GameState, "players" | "fixedRoles">): string => {
   const { t } = getI18n();
-  const playerCount = state.players.length;
   const counts = new Map<Role, number>();
-  // 自定義／非預設版型（如白狼騎士）以 state.fixedRoles 為準；
-  // 這裡只統計角色數量，不帶座位與存活資訊，因此不會洩漏座位身分。
-  const roles =
-    state.fixedRoles && state.fixedRoles.length === playerCount
-      ? state.fixedRoles
-      : getRoleConfiguration(playerCount);
-  roles.forEach((role) => {
+  getGameRoleComposition(state).forEach((role) => {
     counts.set(role, (counts.get(role) ?? 0) + 1);
   });
 
-  const items = PUBLIC_ROLE_ORDER
+  // 順序跟著 ALL_ROLE_KEYS（單一真相）：寫死清單會讓新角色（騎士／禁言長老／狼王）
+  // 被這個 filter 靜默吞掉，AI 看到的配置就會少角色、總數對不上座位數。
+  const items = ALL_ROLE_KEYS
     .map((role) => ({ role, count: counts.get(role) ?? 0 }))
     .filter(({ count }) => count > 0)
     .map(({ role, count }) =>
@@ -975,14 +972,19 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
       wolfInfo += `\n${buildWolfTeamPlanSection(state, state.wolfTeamPlan, player)}`;
     }
     // 獵人的槍口風險：夜間刀口、白狼王自爆、白天要不要碰自稱獵人的人都要算這筆帳，
-    // 日夜都拼入（處理獵人的三種方式代價不同）。
-    wolfInfo += `\n${t("promptUtils.gameContext.hunterGunThreatNote")}`;
+    // 日夜都拼入（處理獵人的三種方式代價不同）。本局沒有獵人時不拼（避免戰術提示提到不存在的角色）。
+    if (gameHasRole(state, "Hunter")) {
+      wolfInfo += `\n${t("promptUtils.gameContext.hunterGunThreatNote")}`;
+    }
     // 白天才有保人与切割的取舍：队友劣势时无脑硬保会把狼队绑成一条线一起暴露。
     // 夜间出刀与本原则无关，因此只在白天阶段拼入。
     if (state.phase.includes("DAY")) {
       // 守衛刀口帳：夜間出刀已有 prompts.night.wolf.guardMindGame，這裡補白天
       // （評估今晚刀誰、自稱守衛的人怎麼處理、算刀數時怎麼算被守住的機率）。
-      wolfInfo += `\n${t("promptUtils.gameContext.wolfGuardAwarenessNote")}`;
+      // 本局沒有守衛時不拼（AI 不該被提示去猜一個不存在的守衛）。
+      if (gameHasRole(state, "Guard")) {
+        wolfInfo += `\n${t("promptUtils.gameContext.wolfGuardAwarenessNote")}`;
+      }
       wolfInfo += `\n${t("promptUtils.gameContext.wolfTeamPrinciples")}`;
       // 落後局（人数落后、悍跳队友被翻牌）跟領先局的打法不同：硬撑只会整队暴露。
       wolfInfo += `\n${t("promptUtils.gameContext.wolfLosingPositionNote")}`;
@@ -1186,17 +1188,22 @@ alive_count: ${alivePlayers.length}${mutedLine}
   const badgeNote = isDayPhase ? t("promptUtils.gameContext.badgeNote") : "";
   const goldWaterNote = isDayPhase ? t("promptUtils.gameContext.goldWaterNote") : "";
   // 有人跳獵人怎麼讀：獵人報身份沒有可核對的帳目（不像查驗、用藥），白天推理用；夜間不拼入。
-  const hunterClaimReadingNote = isDayPhase ? t("promptUtils.gameContext.hunterClaimReadingNote") : "";
+  // 本局沒有獵人時不拼（配置已明說該角色不存在，提示反而製造噪音）。
+  const hunterClaimReadingNote = isDayPhase && gameHasRole(state, "Hunter")
+    ? t("promptUtils.gameContext.hunterClaimReadingNote")
+    : "";
   // 守衛規則與自報怎麼讀：連守限制是全場規則（不只守衛自己知道），否則好人會拿「前晚守過、昨晚卻死」
-  // 當矛盾去砸真守衛；只在白天拼入。
-  const guardClaimReadingNote = isDayPhase ? t("promptUtils.gameContext.guardClaimReadingNote") : "";
+  // 當矛盾去砸真守衛；只在白天拼入。本局沒有守衛時不拼。
+  const guardClaimReadingNote = isDayPhase && gameHasRole(state, "Guard")
+    ? t("promptUtils.gameContext.guardClaimReadingNote")
+    : "";
   // 警長職責：只有拿徽者收到，避免狼警長免費收割「跟警徽走」的權威；僅白天拼入。
   const sheriffDutyNote = isDayPhase && state.badge?.holderSeat === player.seat
     ? t("promptUtils.gameContext.sheriffDutyNote")
     : "";
   
-  // Check if guard exists in this game
-  const hasGuard = state.players.some(p => p.role === "Guard");
+  // Check if guard exists in this game（單一真相：跟著本局實際組成走）
+  const hasGuard = gameHasRole(state, "Guard");
   
   // Check if it's a peaceful night (no deaths today)
   const nightHistory = state.nightHistory?.[state.day];

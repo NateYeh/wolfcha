@@ -4,7 +4,7 @@ import { createSinglePlayerContextAuditState } from "../../../scripts/single-pla
 import { setLocale } from "@/i18n/locale-store";
 import { buildGameContext, buildPastDaysTranscript } from "@/lib/prompt-utils";
 import { recordVoteRound } from "@/lib/vote-rounds";
-import type { GameState, Phase } from "@/types/game";
+import type { GameState, Phase, Role } from "@/types/game";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "context-regression-key";
@@ -46,6 +46,36 @@ test("狼人夜晚出刀提示必须包含守卫博弈推断（守卫可能守�
   // 连刀逻辑：被刀却平安夜的目标，今晚守卫不能连守、女巫解药已用完。
   assert.match(prompt.user, /今晚连刀 X 命中率通常最高/);
   assert.match(prompt.user, /避开第 1 条里守卫今晚最可能守的座位/);
+});
+
+test("本局没有守卫时，夜间出刀提示不再包含守卫博弈（战术提示不得提到不存在的角色）", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("NIGHT_WOLF_ACTION");
+  // 12 人预女猎禁变体：狼 4 + 预/女/禁言长老 + 民 5 —— 无守卫、无猎人
+  const roles: Role[] = [
+    "Werewolf", "Werewolf", "Werewolf", "Werewolf",
+    "Seer", "Witch", "MuteElder",
+    "Villager", "Villager", "Villager", "Villager", "Villager",
+  ];
+  state.players = state.players.map((p, seat) => ({
+    ...p,
+    role: roles[seat],
+    alignment: ["Werewolf", "WhiteWolfKing", "WolfKing"].includes(roles[seat]) ? "wolf" : "village",
+  }));
+  const wolf = state.players.find((p) => p.role === "Werewolf")!;
+  state.currentSpeakerSeat = wolf.seat;
+  const prompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state }, wolf)!;
+  assert.doesNotMatch(prompt.user, /【守卫博弈】/, "本局没有守卫，不应让狼去猜守卫动向");
+  assert.match(prompt.user, /【刀口优先级】/, "泛用刀口逻辑仍在");
+  assert.doesNotMatch(prompt.user, /【猎人在场时的刀口风险】/, "本局没有猎人，不应提供猎人枪口风险");
+
+  // 对照组：默认组成有守卫 → 守卫博弈回归
+  const withGuard = fresh("NIGHT_WOLF_ACTION");
+  const guardWolf = withGuard.players.find((p) => p.role === "Werewolf")!;
+  withGuard.currentSpeakerSeat = guardWolf.seat;
+  const guardPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: withGuard }, guardWolf)!;
+  assert.match(guardPrompt.user, /【守卫博弈】/);
 });
 
 test("夜間行動帶 reason：四職業 prompt 要求一句話理由，jsonFormat 範例含 reason 字段", async () => {

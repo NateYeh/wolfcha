@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { setLocale } from "@/i18n/locale-store";
 import type { ChatMessage, GameState, Player, Role } from "@/types/game";
+import { ALL_ROLE_KEYS } from "./rules/boards";
+import { getRoleName } from "./game-constants";
 import {
   buildDecisionGrounding,
   buildGameContext,
@@ -100,6 +102,78 @@ test("公开角色配置只包含人数板子，不包含座位身份", () => {
   assert.doesNotMatch(config, /玩家\d+/);
   assert.match(config, /狼人存活数达到好人存活数时狼人胜利/);
   assert.match(config, /未被主持人公开确认的出局身份，不能用于断言当前剩余某角色的确切数量/);
+});
+
+test("公开角色配置必须包含本局每一个角色（禁言长老等新角色不得被静默吞掉）", () => {
+  // 12 人预女猎禁版型：狼 4 + 预/女/猎/禁言长老 + 民 4（实测 log 里配置漏了禁言长老、总数 11≠12）
+  const roles: Role[] = [
+    "Werewolf", "Werewolf", "Werewolf", "Werewolf",
+    "Seer", "Witch", "Hunter", "MuteElder",
+    "Villager", "Villager", "Villager", "Villager",
+  ];
+  const players: Player[] = roles.map((role, seat) => ({
+    playerId: `p${seat}`, seat, displayName: `玩家${seat + 1}`, alive: true, role,
+    alignment: role === "Werewolf" ? "wolf" : "village", isHuman: false,
+  }));
+  const config = buildPublicRoleConfiguration({ players, fixedRoles: undefined });
+  assert.match(config, /狼人 × 4/);
+  assert.match(config, /预言家 × 1/);
+  assert.match(config, /女巫 × 1/);
+  assert.match(config, /猎人 × 1/);
+  assert.match(config, /禁言长老 × 1/, "配置漏角色 → AI 看到的总数对不上座位数");
+  assert.match(config, /村民 × 4/);
+  assert.doesNotMatch(config, /白狼王|守卫|白痴|骑士|狼王/);
+});
+
+test("每个实作角色都必须能出现在公开角色配置里（新角色加入 ALL_ROLE_KEYS 即生效）", () => {
+  for (const role of ALL_ROLE_KEYS) {
+    const players: Player[] = [{
+      playerId: "p0", seat: 0, displayName: "玩家1", alive: true, role,
+      alignment: role === "Werewolf" || role === "WhiteWolfKing" || role === "WolfKing" ? "wolf" : "village",
+      isHuman: false,
+    }];
+    const config = buildPublicRoleConfiguration({ players, fixedRoles: undefined });
+    assert.ok(
+      config.includes(`${getRoleName(role)} × 1`),
+      `角色 ${role}（${getRoleName(role)}）没出现在公开配置里`
+    );
+  }
+});
+
+test("狼视角战术提示按本局角色拼接：没有守卫/猎人时不再出现对应区块", () => {
+  // 12 人预女猎禁去掉猎人守卫的变体：狼 4 + 预/女/禁言长老 + 民 5 —— 无守卫、无猎人
+  const roles: Role[] = [
+    "Werewolf", "Werewolf", "Werewolf", "Werewolf",
+    "Seer", "Witch", "MuteElder",
+    "Villager", "Villager", "Villager", "Villager", "Villager",
+  ];
+  const players: Player[] = roles.map((role, seat) => ({
+    playerId: `p${seat}`, seat, displayName: `玩家${seat + 1}`, alive: true, role,
+    alignment: role === "Werewolf" ? "wolf" : "village", isHuman: false,
+  }));
+  const state: GameState = { ...makeState(), players, badge: { ...makeState().badge, candidates: [] } };
+  const wolf = players[0];
+  const dayContext = buildGameContext(state, wolf);
+  assert.doesNotMatch(dayContext, /【守卫在场时的刀口账】/, "本局没有守卫，不应提供守卫刀口账");
+  assert.doesNotMatch(dayContext, /【守卫的规则与自报怎么读】/, "本局没有守卫，不应提供守卫自报解读");
+  assert.doesNotMatch(dayContext, /【猎人在场时的刀口风险】/, "本局没有猎人，不应提供猎人枪口风险");
+  // 泛狼战术仍然要在
+  assert.match(dayContext, /【狼队出刀记录】|【存活狼队】/);
+
+  // 对照组：把守卫、猎人放回组成，两个区块都要回来
+  const withGuardRoles: Role[] = [
+    "Werewolf", "Werewolf", "Werewolf", "Werewolf",
+    "Seer", "Witch", "Hunter", "Guard", "MuteElder",
+    "Villager", "Villager", "Villager",
+  ];
+  const guardPlayers: Player[] = withGuardRoles.map((role, seat) => ({
+    playerId: `g${seat}`, seat, displayName: `玩家${seat + 1}`, alive: true, role,
+    alignment: role === "Werewolf" ? "wolf" : "village", isHuman: false,
+  }));
+  const guardState: GameState = { ...makeState(), players: guardPlayers, badge: { ...makeState().badge, candidates: [] } };
+  const guardContext = buildGameContext(guardState, guardPlayers[0]);
+  assert.match(guardContext, /【守卫在场时的刀口账】/);
+  assert.match(guardContext, /【猎人在场时的刀口风险】/);
 });
 
 test("普通夜间出局只传死因未公开，公开技能死因才按主持人事件传入", () => {

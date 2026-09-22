@@ -30,6 +30,7 @@ export interface BoardPreset {
 export const ALL_ROLE_KEYS: Role[] = [
   "Werewolf",
   "WhiteWolfKing",
+  "WolfKing",
   "Seer",
   "Witch",
   "Hunter",
@@ -37,7 +38,6 @@ export const ALL_ROLE_KEYS: Role[] = [
   "Idiot",
   "Knight",
   "MuteElder",
-  "WolfKing",
   "Villager",
 ];
 

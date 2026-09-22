@@ -2,15 +2,7 @@ import type { GameState, Player, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "../core/types";
-import {
-  buildDecisionContext,
-  buildGameContext,
-  buildTodayTranscript,
-  buildPlayerTodaySpeech,
-  getRoleText,
-  getRolePromptCore,
-  buildSystemTextFromParts,
-} from "@/lib/prompt-utils";
+import { buildDecisionContext, buildGameContext, buildTodayTranscript, buildPlayerTodaySpeech, getRoleText, getRolePromptCore, buildSystemTextFromParts, gameHasRole } from "@/lib/prompt-utils";
 import {
   addSystemMessage,
   generateGuardAction,
@@ -740,7 +732,8 @@ export class NightPhase extends GamePhase {
     const user = t("prompts.night.wolf.user", {
       context: this.buildContextWithDay(context, todayTranscript, selfSpeech),
       // 守卫博弈：出刀前推断守卫动向，避免把刀送进守护位（仅夜间出刀提示）。
-      guardNote: t("prompts.night.wolf.guardMindGame"),
+      // 本局没有守卫时不拼（实测 AI 会在 reasoning 里疑惑「config 没列守卫，提示却要我猜守卫」）。
+      guardNote: gameHasRole(state, "Guard") ? t("prompts.night.wolf.guardMindGame") : "",
       // 刀口优先级：修正「只算命中率」的出刀——收益优先，跳预言家持警徽者是资讯核心。
       knifeNote: t("prompts.night.wolf.knifePriority"),
       jsonFormat: JSON.stringify({ seat: (alivePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你们为什么刀他" }),
