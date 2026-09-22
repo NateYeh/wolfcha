@@ -229,3 +229,26 @@ type BoardPreset = {
    且**第二夜的新死亡不進遺言佇列**（`pendingLastWordsSeats` 為空）。
 3. 白狼王在競選發言自爆＝一次帶人＋一次吞徽（不需第二爆）。
 4. 非競選階段自爆不動警徽；警長（含自爆者本人）死亡時交出移交權，由警長自己選傳徽或撕徽。
+
+## 騎士（Knight）與白狼騎士版型
+
+**版型**：`official-12-white-wolf-knight`＝預言家、女巫、守衛、騎士、4 村民、3 狼人、白狼王（12 人）。
+WelcomeScreen 開發者面板的「角色」分頁可用「套用官方版型」一鍵套用（`roleConfigValid` 改走
+`validateBoardPreset`，任何合法組成都能開局）。
+
+**規則（`lib/rules/knight-duel.ts`）**：
+
+| 項目 | 規則 |
+| --- | --- |
+| 時機 | 白天發言階段與警徽競選發言階段（自己發言輪）；**警上 PK 發言與遺言階段不可** |
+| 次數 | 一場一次（`roleAbilities.duelUsedSeats`） |
+| 目標 | 只能挑戰**場上存活**玩家（未公布死訊的第一夜死者已算出局，不可挑戰；不能挑戰自己） |
+| 目標是狼 | 狼人當場出局，**隨即進入黑夜**（跳過當天剩餘發言與放逐投票）；競選階段則競選順延 |
+| 目標是好人 | 騎士**以死謝罪**出局，白天流程照走（含放逐投票） |
+| 遺言 | 決鬥出局者沒有遺言（與自爆／被帶走一致） |
+| 死亡技能 | 被決鬥出局的狼人不能發動死亡技能（狼王開槍、白狼王帶人、狼美人殉情）＝`canTriggerDeathSkill(cause, role, flags)` |
+| 技能無效 | 指定已出局者 → 不消耗技能、不改變狀態，只寫 warn log |
+
+**共用機制**：`lib/rules/settle-night-deaths.ts` 把「補公布未宣布的夜間死亡＋第一夜遺言入列」
+抽出來，自爆與決鬥兩條「提前結束白天」的路徑共用；`lib/rules/knight-duel-apply.ts` 是決鬥的
+唯一狀態真相（`game-master.knight-duel.test.ts` 驗 AI 契約、`rules/knight-duel.test.ts` 驗規則與狀態）。
