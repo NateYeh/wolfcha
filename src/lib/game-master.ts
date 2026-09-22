@@ -1,6 +1,6 @@
 import { areNightResultsVisible } from "./night-visibility";
 import { v4 as uuidv4 } from "uuid";
-import { generateCompletion, generateCompletionBatch, generateCompletionStream, extractPromptCacheUsage, mergeOptionsFromModelRef, stripMarkdownCodeFences, stripReasoningArtifacts, type GenerateOptions, type LLMMessage } from "./llm";
+import { generateCompletion, generateCompletionBatch, generateCompletionStream, extractPromptCacheUsage, mergeOptionsFromModelRef, stripMarkdownCodeFences, stripReasoningArtifacts, warmUpCompletion, type GenerateOptions, type LLMMessage } from "./llm";
 import type { ChatCompletionResponse, CompletionUsage } from "./llm";
 import { StreamingSpeechParser } from "./streaming-speech-parser";
 import {
@@ -1163,11 +1163,14 @@ export async function generateAISpeechSegmentsStream(
   }
 }
 
-export async function generateAIVote(
+/**
+ * 放逐投票的 prompt 與請求參數。
+ * 暖機與正式請求共用同一份 plan，保證兩者的公共前綴逐字相同（否則快取對不上）。
+ */
+function planVoteRequest(
   state: GameState,
   player: Player
-): Promise<{ seat: number; reason: string }> {
-  const { t } = getI18n();
+): { messages: LLMMessage[]; validSeats: number[]; options: GenerateOptions } | null {
   const prompt = resolvePhasePrompt("DAY_VOTE", state, player);
   const eligibleSeats = state.pkSource === "vote" && state.pkTargets && state.pkTargets.length > 0
     ? new Set(state.pkTargets)
@@ -1175,13 +1178,44 @@ export async function generateAIVote(
   const alivePlayers = state.players.filter(
     (p) => p.alive && p.playerId !== player.playerId && (!eligibleSeats || eligibleSeats.has(p.seat))
   );
-  const startTime = Date.now();
   const { messages } = buildMessagesForPrompt(prompt);
   const validSeats = alivePlayers.map((p) => p.seat);
+  if (validSeats.length === 0) return null;
 
-  if (validSeats.length === 0) {
+  return {
+    messages,
+    validSeats,
+    options: mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+      model: player.agentProfile!.modelRef.model,
+      messages,
+      promptScope: "gameplay",
+      temperature: GAME_TEMPERATURE.ACTION,
+      response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "day_vote", validSeats),
+    }),
+  };
+}
+
+/**
+ * 放逐投票前的前綴快取暖機：投票是逐席單發，實測未暖機時命中 0~52%，
+ * 先補一發同前綴（max_tokens=1）就能讓後續席位約 99% 命中。詳見 llm.ts warmUpCompletion。
+ */
+export async function warmUpVotePrompt(state: GameState, player: Player): Promise<void> {
+  const plan = planVoteRequest(state, player);
+  if (!plan) return;
+  await warmUpCompletion(plan.options);
+}
+
+export async function generateAIVote(
+  state: GameState,
+  player: Player
+): Promise<{ seat: number; reason: string }> {
+  const { t } = getI18n();
+  const plan = planVoteRequest(state, player);
+  const startTime = Date.now();
+  if (!plan) {
     return { seat: AI_VOTE_ABSTAIN, reason: t("gameMaster.voteFallback.noTargets") };
   }
+  const { messages, validSeats, options } = plan;
 
   try {
     const parseSeatValue = (value: unknown): number | null => {
@@ -1197,13 +1231,7 @@ export async function generateAIVote(
     };
 
     const completion = await generateCompletionAndParse(
-      mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
-        model: player.agentProfile!.modelRef.model,
-        messages,
-        promptScope: "gameplay",
-        temperature: GAME_TEMPERATURE.ACTION,
-        response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "day_vote", validSeats),
-      }),
+      options,
       (cleaned) => {
         const parsed = parseLLMJson<{
           seat?: unknown;
@@ -1228,7 +1256,7 @@ export async function generateAIVote(
 
     const parsedResult = completion.parsed ?? {
       seat: AI_VOTE_ABSTAIN,
-      reason: alivePlayers.length === 0
+      reason: validSeats.length === 0
         ? t("gameMaster.voteFallback.noTargets")
         : t("gameMaster.voteFallback.parseFailedAbstain"),
     };
@@ -1255,7 +1283,7 @@ export async function generateAIVote(
   } catch (error) {
     const fallbackResult = {
       seat: AI_VOTE_ABSTAIN,
-      reason: alivePlayers.length === 0
+      reason: validSeats.length === 0
         ? t("gameMaster.voteFallback.noTargets")
         : t("gameMaster.voteFallback.apiFailedAbstain"),
     };
@@ -1522,32 +1550,54 @@ export async function generateAIBadgeSignupBatch(
   return parsedByPlayer;
 }
 
-export async function generateAIBadgeVote(
+/** 警徽投票的 prompt 與請求參數；暖機與正式請求共用。 */
+function planBadgeVoteRequest(
   state: GameState,
   player: Player
-): Promise<number> {
+): { messages: LLMMessage[]; validSeats: number[]; options: GenerateOptions } | null {
   const prompt = resolvePhasePrompt("DAY_BADGE_ELECTION", state, player);
   const candidates = Array.isArray(state.badge?.candidates) ? state.badge.candidates : [];
   const alivePlayers = state.players
     .filter((p) => p.alive && p.playerId !== player.playerId)
     .filter((p) => (candidates.length > 0 ? candidates.includes(p.seat) : true));
+  const { messages } = buildMessagesForPrompt(prompt);
+  const validSeats = alivePlayers.map((p) => p.seat);
+  if (validSeats.length === 0) return null;
+
+  return {
+    messages,
+    validSeats,
+    options: mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+      model: player.agentProfile!.modelRef.model,
+      messages,
+      promptScope: "gameplay",
+      temperature: GAME_TEMPERATURE.ACTION,
+      response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "badge_vote", validSeats),
+    }),
+  };
+}
+
+/** 警徽投票前的前綴快取暖機（同放逐投票的理据）。 */
+export async function warmUpBadgeVotePrompt(state: GameState, player: Player): Promise<void> {
+  const plan = planBadgeVoteRequest(state, player);
+  if (!plan) return;
+  await warmUpCompletion(plan.options);
+}
+
+export async function generateAIBadgeVote(
+  state: GameState,
+  player: Player
+): Promise<number> {
+  const plan = planBadgeVoteRequest(state, player);
   const startTime = Date.now();
   // 警徽投票也要 reason：與放逐投票同一把尺，供覆盤「警徽票為什麼這樣投」。
   let parsedReason = "";
-  const { messages } = buildMessagesForPrompt(prompt);
-  const validSeats = alivePlayers.map((p) => p.seat);
-
-  if (validSeats.length === 0) return BADGE_VOTE_ABSTAIN;
+  if (!plan) return BADGE_VOTE_ABSTAIN;
+  const { messages, validSeats, options } = plan;
 
   try {
     const completion = await generateCompletionAndParse<number>(
-      mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
-        model: player.agentProfile!.modelRef.model,
-        messages,
-        promptScope: "gameplay",
-        temperature: GAME_TEMPERATURE.ACTION,
-        response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "badge_vote", validSeats),
-      }),
+      options,
       (cleaned) => {
         const parsedObject = parseLLMJson<{ reason?: unknown }>(cleaned);
         parsedReason = typeof parsedObject?.reason === "string" ? parsedObject.reason : "";

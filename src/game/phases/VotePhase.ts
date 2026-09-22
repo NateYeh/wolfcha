@@ -19,6 +19,7 @@ import {
   generateAIVote,
   tallyVotes,
   transitionPhase,
+  warmUpVotePrompt,
 } from "@/lib/game-master";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { DELAY_CONFIG } from "@/lib/game-constants";
@@ -100,6 +101,9 @@ export class VotePhase extends GamePhase {
     let tokenInvalidated = false;
     setIsWaitingForAI(true);
     try {
+      // 逐席單發吃不到彼此的快取，先補一發同前綴暖機（實測 0~52% → ~99%）。
+      // 只有 AI 席位 ≥2 才值得（單發自己就是冷啟動）。
+      if (aiPlayers.length >= 2) await warmUpVotePrompt(currentState, aiPlayers[0]);
       for (const aiPlayer of aiPlayers) {
         if (!stillCurrent()) {
           tokenInvalidated = true;

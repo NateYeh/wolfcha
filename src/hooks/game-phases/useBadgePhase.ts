@@ -12,6 +12,7 @@ import {
   generateAIBadgeVote,
   generateAIBadgeSignupBatch,
   generateBadgeTransfer,
+  warmUpBadgeVotePrompt,
   BADGE_VOTE_ABSTAIN,
   BADGE_TRANSFER_TORN,
   excludePendingDeathPlayers,
@@ -565,6 +566,8 @@ export function useBadgePhase(
         (!isResume || typeof currentState.badge.votes[p.playerId] !== "number"))
     );
     try {
+      // 警徽投票也是逐席單發，先暖一次公共前綴（理由同放逐投票）。
+      if (aiPlayers.length >= 2) await warmUpBadgeVotePrompt(currentState, aiPlayers[0]);
       for (const aiPlayer of aiPlayers) {
         setIsWaitingForAI(true);
         let targetSeat: number;
