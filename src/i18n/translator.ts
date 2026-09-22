@@ -25,9 +25,8 @@ export const getI18n = (locale?: AppLocale) => {
       return result;
     } catch (err) {
       // ICU message format errors (INVALID_MESSAGE, MALFORMED_ARGUMENT, etc.)
-      if (process.env.NODE_ENV !== "production") {
-        console.error("[i18n] Translation error for key:", key, "locale:", activeLocale, "error:", err);
-      }
+      // 這類錯誤會讓呼叫端拿到 key 而不是文案（AI prompt 會壞掉卻看不出來）→ 一律留痕
+      console.error("[i18n] Translation error for key:", key, "locale:", activeLocale, "error:", err);
       // Return key as fallback to prevent crash
       return key;
     }

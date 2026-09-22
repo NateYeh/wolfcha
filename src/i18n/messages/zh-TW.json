@@ -1160,10 +1160,10 @@
       "formatReminder": "只輸出 JSON 字串陣列，形如 [\"第一段。\",\"第二段。\"]；不要寫解釋、思考過程或段落文字。",
       "user": "{sharedContext}\n\n【本日討論記錄】\n{todayTranscript}\n\n{privateContext}\n\n【你本日已說過的話】\n{selfSpeech}\n\n{phaseHintSection}\n\n【發言順序】\n{speakOrderHint}\n\n輪到你發言，返回JSON陣列：\n",
       "wolfLastWordsNote": "【狼人的遺言紀律（僅狼人可見）】\n遺言是全場事後必讀的公開記錄，狼隊最後一次被連坐，通常就發生在這裡。\n- 別在遺言裡點隊友、給隊友遞話、或替他解釋。好人讀得出來：「臨死還點他」通常被當成兩人一夥的證據，你的隊友會因為這一句被順藤摸瓜。\n- 別替自己翻案翻得太用力：你已經出局，全場不會因為你喊得兇就改判，過度辯解只會把火力引到跟你一條線上的人。\n- 真要留話，把水攪到好人身上：點一個發言不圓、票型跟自己判斷對不上的好人位置，或者留一句讓好人自己去核的疑問（例如某人的賬跟死亡事實對不上）。\n- 可以認栽、可以裝輕鬆，但不要暴露狼隊結構和刀口思路。",
-      "formatReminderWithSkill": "本回合你同時要決定技能，因此改成輸出**單一 JSON 物件**：\n{\"speech\": [\"第一段。\", \"第二段。\"], \"skill\": {\"action\": \"none\"}}\n- 發言正文只能放在 speech 陣列裡（每段一句，會被逐段顯示與朗讀）；\n- skill 只放技能決定，不要寫進 speech；\n- 不要輸出解釋、思考過程或多餘文字。",
+      "formatReminderWithSkill": "本回合你同時要決定技能，因此改成輸出**單一 JSON 物件**：\n'{'\"speech\": [\"第一段。\", \"第二段。\"], \"skill\": '{'\"action\": \"none\"'}}'\n- 發言正文只能放在 speech 陣列裡（每段一句，會被逐段顯示與朗讀）；\n- skill 只放技能決定，不要寫進 speech；\n- 不要輸出解釋、思考過程或多餘文字。",
       "skillContract": {
-        "selfDestruct": "【輸出格式（本回合含自爆決定）】\n只輸出一個 JSON 物件，形如：\n{\"speech\": [\"第一段。\", \"第二段。\"], \"skill\": {\"action\": \"none\"}}\n要自爆時 skill 寫 {\"action\": \"boom\", \"reason\": \"<一句話>\"}；白狼王要帶人再加 \"seat\": <目標號>。\n不自爆就寫 {\"action\": \"none\"}。skill 只能是這幾種寫法，而且只出現一次。\n發言正文只能放在 speech 陣列裡，不要把 JSON 或技能說明寫進發言內容。",
-        "knightDuel": "【輸出格式（本回合含翻牌決鬥決定）】\n只輸出一個 JSON 物件，形如：\n{\"speech\": [\"第一段。\", \"第二段。\"], \"skill\": {\"action\": \"none\"}}\n要翻牌決鬥時 skill 寫 {\"action\": \"duel\", \"seat\": <目標號>, \"reason\": \"<一句話>\"}。\n不發動就寫 {\"action\": \"none\"}。skill 只能是這幾種寫法，而且只出現一次。\n發言正文只能放在 speech 陣列裡，不要把 JSON 或技能說明寫進發言內容。"
+        "selfDestruct": "【輸出格式（本回合含自爆決定）】\n只輸出一個 JSON 物件，形如：\n'{'\"speech\": [\"第一段。\", \"第二段。\"], \"skill\": '{'\"action\": \"none\"'}}'\n要自爆時 skill 寫 '{'\"action\": \"boom\", \"reason\": \"<一句話>\"'}'；白狼王要帶人再加 \"seat\": <目標號>。\n不自爆就寫 '{'\"action\": \"none\"'}'。skill 只能是這幾種寫法，而且只出現一次。\n發言正文只能放在 speech 陣列裡，不要把 JSON 或技能說明寫進發言內容。",
+        "knightDuel": "【輸出格式（本回合含翻牌決鬥決定）】\n只輸出一個 JSON 物件，形如：\n'{'\"speech\": [\"第一段。\", \"第二段。\"], \"skill\": '{'\"action\": \"none\"'}}'\n要翻牌決鬥時 skill 寫 '{'\"action\": \"duel\", \"seat\": <目標號>, \"reason\": \"<一句話>\"'}'。\n不發動就寫 '{'\"action\": \"none\"'}'。skill 只能是這幾種寫法，而且只出現一次。\n發言正文只能放在 speech 陣列裡，不要把 JSON 或技能說明寫進發言內容。"
       }
     },
     "vote": {
@@ -1213,7 +1213,7 @@
         "lastTarget": "上晚保護了{seat}號，今晚不能選",
         "task": "【守衛技能】\n每晚可保護一名玩家不被狼人殺害。守護成功則刀口存活。\n\n【重要規則】\n- 不能連續兩晚保護同一人\n- 可以保護自己\n- 可以空守：今晚不保護任何人。空守不算守護行動，所以之後仍然可以守任何人，也可以連續多晚空守\n- 若守衛和女巫同時救同一人（毒奶），該玩家仍會死亡\n\n【任務】\n選擇一名玩家保護，或選擇空守。\n\n可選: {options}\n{lastTargetLine}\n{abstainLine}",
         "user": "{context}\n\n你要保護幾號？如果今晚想空守，seat 填 0。\n\n【格式】\n嚴格返回 JSON 對象，不要程式碼塊，不要解釋，不要多餘文字：\n{jsonFormat}\nreason 欄位用一句話說明你為什麼守他（30字內）。\nseat 必須是你真正要選的目標；如果你在 reason 裡點了名字或座位號，必須和 seat 一致——示例裡的數字只是格式示意，不要照抄。",
-        "abstainLine": "- 空守寫法：seat 填 0（例：{\"seat\":0,\"reason\":\"今晚想空守\"}）"
+        "abstainLine": "- 空守寫法：seat 填 0（例：'{'\"seat\":0,\"reason\":\"今晚想空守\"'}'）"
       },
       "witch": {
         "base": "【身份】\n你是 {seat}號「{name}」\n身份: {role}\n\n{coreRules}",
