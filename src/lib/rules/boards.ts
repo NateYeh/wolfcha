@@ -223,6 +223,47 @@ export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
   },
 ] as const;
 
+/** 該版型出現過的**角色種類**（去重、保留首次出現順序），供 UI 下拉選單使用 */
+export function getBoardRoleKindsOf(board: BoardPreset): Role[] {
+  return [...new Set(board.roles)];
+}
+
+/**
+ * 解析「這一局要用哪個版型」：指定的 boardId 必須存在、且人數與目前設定相符，
+ * 否則退回該人數的預設版型（找不到該人數時再退回 10 人版型）。
+ */
+export function resolveBoardPreset(playerCount: number, boardId?: string | null): BoardPreset {
+  const board = boardId ? getBoardById(boardId) : undefined;
+  if (board && board.playerCount === playerCount) return board;
+  return getDefaultBoard(playerCount);
+}
+
+/** 選定版型的角色組成（回傳複本） */
+export function getSelectedBoardRoles(playerCount: number, boardId?: string | null): Role[] {
+  return [...resolveBoardPreset(playerCount, boardId).roles];
+}
+
+/** 選定版型出現過的角色種類（身份偏好清單的來源） */
+export function getSelectedBoardRoleKinds(playerCount: number, boardId?: string | null): Role[] {
+  return getBoardRoleKindsOf(resolveBoardPreset(playerCount, boardId));
+}
+
+/** 選定版型的陣營／角色統計（大廳摘要與自選驗證的來源） */
+export function countSelectedBoardRoles(playerCount: number, boardId?: string | null): {
+  byCamp: Record<RoleCamp, number>;
+  byRole: Record<Role, number>;
+  total: number;
+} {
+  const byCamp: Record<RoleCamp, number> = { wolf: 0, god: 0, villager: 0 };
+  const byRole = Object.fromEntries(ALL_ROLE_KEYS.map((role) => [role, 0])) as Record<Role, number>;
+  const roles = resolveBoardPreset(playerCount, boardId).roles;
+  for (const role of roles) {
+    byCamp[getRoleCapabilities(role).camp] += 1;
+    byRole[role] += 1;
+  }
+  return { byCamp, byRole, total: roles.length };
+}
+
 /** 依 id 取得版型 */
 export function getBoardById(id: string): BoardPreset | undefined {
   return OFFICIAL_BOARDS.find((board) => board.id === id);

@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+
+process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
+process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "boards-test-key";
 import test from "node:test";
 import { getRoleConfiguration } from "@/lib/role-configuration";
 import {
@@ -9,8 +12,12 @@ import {
   getBoardRoleKinds,
   getBoardRoles,
   getBoardRuleFlags,
+  countSelectedBoardRoles,
   getBoardsByPlayerCount,
   getDefaultBoard,
+  getSelectedBoardRoleKinds,
+  getSelectedBoardRoles,
+  resolveBoardPreset,
   validateBoardPreset,
   type BoardPreset,
 } from "@/lib/rules/boards";
@@ -194,6 +201,42 @@ test("版型註冊表：預女獵白＝預言家/女巫/獵人/白痴＋4 平民
   assert.equal(getDefaultBoard(12).id, "official-12-classic");
 });
 
+test("版型選擇：身份偏好清單＝選定版型的角色種類（每個官方版型的角色都必須在清單內）", () => {
+  for (const board of OFFICIAL_BOARDS) {
+    const kinds = getSelectedBoardRoleKinds(board.playerCount, board.id);
+    for (const role of board.roles) {
+      assert.ok(kinds.includes(role), `${board.id} 的 ${role} 必須出現在身份偏好清單（${kinds.join("、")}）`);
+    }
+    assert.deepEqual(getSelectedBoardRoles(board.playerCount, board.id), [...board.roles]);
+    assert.deepEqual(
+      countSelectedBoardRoles(board.playerCount, board.id).total,
+      board.roles.length,
+      `${board.id} 的陣營統計總數應等於人數`
+    );
+  }
+  // 具體案例：白狼騎士要能選到騎士、預女守白不該出現獵人
+  assert.ok(getSelectedBoardRoleKinds(12, "official-12-white-wolf-knight").includes("Knight"));
+  assert.ok(getSelectedBoardRoleKinds(12, "official-12-seer-witch-hunter-mute").includes("MuteElder"));
+  assert.equal(getSelectedBoardRoleKinds(12, "official-12-seer-witch-guard-idiot").includes("Hunter"), false);
+  // 不選版型＝該人數的預設版型
+  assert.deepEqual(getSelectedBoardRoleKinds(12, ""), getBoardRoleKinds(12));
+});
+
+test("版型解析：人數不符或 id 不存在時退回該人數的預設版型", () => {
+  // 10 人版型 id 用在 12 人 → 退回 12 人預設（經典）
+  assert.equal(resolveBoardPreset(12, "official-10-classic").id, "official-12-classic");
+  assert.equal(resolveBoardPreset(12, "not-exist").id, "official-12-classic");
+  assert.equal(resolveBoardPreset(12, "").id, "official-12-classic");
+  assert.equal(resolveBoardPreset(7, "").id, "official-10-classic");
+  // 相符時照用
+  assert.equal(resolveBoardPreset(12, "official-12-seer-witch-guard-idiot").id, "official-12-seer-witch-guard-idiot");
+  // 12 人選了非預設版型 → 預設解析仍是經典（用來判斷「是否自訂版型」）
+  assert.notEqual(
+    resolveBoardPreset(12, "official-12-white-wolf-knight").id,
+    resolveBoardPreset(12, "").id
+  );
+});
+
 test("版型註冊表：回傳的是複本，修改不會污染註冊表", () => {
   const roles = getBoardRoles(12);
   roles[0] = "Villager";
@@ -348,4 +391,24 @@ test("角色能力表：未知角色退回平民能力，不拋錯", () => {
   assert.equal(fallback.role, "Villager");
   assert.equal(fallback.camp, "villager");
   assert.equal(fallback.canBoom, false);
+});
+
+test("身份偏好：即使帶入自訂版型組成，只要偏好角色在名單內就換給真人", async () => {
+  const { setupPlayers } = await import("@/lib/game-master");
+  const knightBoard = getSelectedBoardRoles(12, "official-12-white-wolf-knight");
+  const characters = Array.from({ length: 11 }, (_, index) => ({
+    displayName: `AI角色${index + 1}`,
+    persona: { voiceRules: [], mbti: "INTJ", gender: "male" as const, age: 30 },
+  }));
+
+  // 騎士在版型內 → 真人拿到騎士
+  const withKnight = setupPlayers(characters, 0, "我", 12, knightBoard, undefined, undefined, undefined, "Knight");
+  assert.equal(withKnight.find((p) => p.isHuman)?.role, "Knight");
+  assert.equal(withKnight.filter((p) => p.role === "Knight").length, 1, "角色數量不能因此多一個");
+
+  // 偏好角色不在版型內（預女守白沒有獵人）→ 維持原樣、不憑空生出獵人
+  const guardBoard = getSelectedBoardRoles(12, "official-12-seer-witch-guard-idiot");
+  const withHunter = setupPlayers(characters, 0, "我", 12, guardBoard, undefined, undefined, undefined, "Hunter");
+  assert.equal(withHunter.some((p) => p.role === "Hunter"), false, "版型裡沒有的角色不該被換進來");
+  assert.equal(withHunter.length, 12);
 });

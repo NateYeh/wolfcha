@@ -285,12 +285,9 @@ export function setupPlayers(
   const roles = getRoleConfiguration(totalPlayers);
   const assignedRoles = fixedRoles && fixedRoles.length === totalPlayers ? fixedRoles : shuffleArray(roles);
 
-  // If the user chose a preferred role (and no dev fixedRoles), swap to ensure the human gets it
-  if (
-    preferredRole &&
-    !(fixedRoles && fixedRoles.length === totalPlayers) &&
-    humanSeat >= 0
-  ) {
+  // 身份偏好：只要該角色在這局的角色組成裡（含版型／開發者指定的組成），就換給真人。
+  // 以前只要帶 fixedRoles 就整段跳過，導致「選了版型就不能再用身份偏好」。
+  if (preferredRole && humanSeat >= 0 && assignedRoles.includes(preferredRole)) {
     const currentRoleAtHumanSeat = assignedRoles[humanSeat];
     if (currentRoleAtHumanSeat !== preferredRole) {
       const targetIndex = assignedRoles.findIndex(

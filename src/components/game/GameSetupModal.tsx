@@ -42,11 +42,20 @@ import {
 import { DEFAULT_GATEWAY_BASE_URL, normalizeGatewayBaseUrl } from "@/lib/gateway-url";
 import { ALL_MODELS, PLAYER_MODELS, filterPlayerModels, type ModelRef, type Role } from "@/types/game";
 
-import { getBoardRoleKinds } from "@/lib/rules/boards";
+import {
+  countSelectedBoardRoles,
+  getBoardsByPlayerCount,
+  getSelectedBoardRoleKinds,
+  resolveBoardPreset,
+} from "@/lib/rules/boards";
 
-/** Return the unique roles present in the default board for a given player count. */
-function getAvailableRoles(playerCount: number): Role[] {
-  return getBoardRoleKinds(playerCount);
+/**
+ * 身份偏好的可選角色＝**目前選定版型**出現過的角色種類。
+ *
+ * 例：12 人選「白狼騎士」時清單要有騎士；選「預女守白」時不該出現獵人。
+ */
+function getAvailableRoles(playerCount: number, boardId: string): Role[] {
+  return getSelectedBoardRoleKinds(playerCount, boardId);
 }
 
 interface GameSetupModalProps {
@@ -55,6 +64,10 @@ interface GameSetupModalProps {
   playerCount: number;
   onPlayerCountChange: (value: number) => void;
   preferredRole: Role | "";
+  /** 目前選定的版型 id（空字串＝依人數預設版型）；身份偏好清單跟著它變 */
+  boardId: string;
+  /** 切換版型（空字串＝依人數預設版型） */
+  onBoardChange: (boardId: string) => void;
   onPreferredRoleChange: (value: Role | "") => void;
   isGenshinMode: boolean;
   onGenshinModeChange: (value: boolean) => void;
@@ -81,6 +94,8 @@ export function GameSetupModal({
   playerCount,
   onPlayerCountChange,
   preferredRole,
+  boardId,
+  onBoardChange,
   onPreferredRoleChange,
   isGenshinMode,
   onGenshinModeChange,
@@ -141,7 +156,13 @@ export function GameSetupModal({
     [t]
   );
 
-  const availableRoles = useMemo(() => getAvailableRoles(playerCount), [playerCount]);
+  const availableRoles = useMemo(() => getAvailableRoles(playerCount, boardId), [playerCount, boardId]);
+  const boardOptions = useMemo(() => getBoardsByPlayerCount(playerCount), [playerCount]);
+  const activeBoard = useMemo(() => resolveBoardPreset(playerCount, boardId), [playerCount, boardId]);
+  const boardSummary = useMemo(() => {
+    const { byCamp } = countSelectedBoardRoles(playerCount, boardId);
+    return t("gameSetup.board.summary", { wolf: byCamp.wolf, god: byCamp.god, villager: byCamp.villager });
+  }, [playerCount, boardId, t]);
 
   // AI 玩家模型池：存放使用者在「設定」裡勾選的模型 id（空＝全部可用）。
   // 惰性初始化直接讀 localStorage；之後每次變更都同步寫回，因此不需要 effect 同步。
@@ -354,6 +375,30 @@ export function GameSetupModal({
               </Select>
             </div>
           )}
+
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-[var(--text-primary)]">{t("gameSetup.board.label")}</div>
+            <Select value={activeBoard.id} onValueChange={onBoardChange}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("gameSetup.board.placeholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {boardOptions.map((board) => (
+                  <SelectItem
+                    key={board.id}
+                    value={board.id}
+                    label={board.tags.join("｜")}
+                    description={board.roles
+                      .map((role) => roleLabels[role] ?? role)
+                      .join(t("common.listSeparator"))}
+                  />
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="text-xs text-[var(--color-text-muted)]">
+              {t("gameSetup.board.hint", { summary: boardSummary })}
+            </div>
+          </div>
 
           {!isSpectatorMode && (
             <div className="space-y-2">

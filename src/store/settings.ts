@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
+import { ALL_ROLE_KEYS, getBoardById } from "@/lib/rules/boards";
 import { ROSTER_POOL_IDS } from "@/lib/roster-pool-ids";
 import type { DifficultyLevel, Role } from "@/types/game";
 
@@ -79,10 +80,10 @@ export const playerCountAtom = atom(
 );
 
 // Preferred role setting (empty string means random)
-const ALL_ROLES: Role[] = ["Villager", "Werewolf", "WhiteWolfKing", "Seer", "Witch", "Hunter", "Guard", "Idiot"];
-
+// 角色清單以規則層為單一真相：新增角色（騎士、禁言長老…）不必再改這裡，
+// 否則舊的硬編清單會把新角色的偏好直接清成「隨機」。
 const normalizePreferredRole = (value: string): Role | "" =>
-  ALL_ROLES.includes(value as Role) ? (value as Role) : "";
+  ALL_ROLE_KEYS.includes(value as Role) ? (value as Role) : "";
 
 const rawPreferredRoleAtom = atomWithStorage<Role | "">("wolfcha.settings.preferred_role", "");
 
@@ -92,6 +93,26 @@ export const preferredRoleAtom = atom(
     const prev = normalizePreferredRole(get(rawPreferredRoleAtom));
     const next = typeof update === "function" ? update(prev) : update;
     set(rawPreferredRoleAtom, normalizePreferredRole(next));
+  }
+);
+
+/**
+ * 版型選擇（空字串＝依人數使用預設版型）。
+ *
+ * 版型決定：開局角色組成、大廳的角色數量摘要、**身份偏好清單**。
+ * 人數改變時不需要清掉這裡的值：人數與版型不符時會自動退回該人數的預設版型
+ * （見 rules/boards.ts 的 resolveBoardPreset）。
+ */
+const normalizeBoardId = (value: string): string => (getBoardById(value) ? value : "");
+
+const rawBoardIdAtom = atomWithStorage<string>("wolfcha.settings.board_id", "");
+
+export const boardIdAtom = atom(
+  (get) => normalizeBoardId(get(rawBoardIdAtom)),
+  (get, set, update: string | ((prev: string) => string)) => {
+    const prev = normalizeBoardId(get(rawBoardIdAtom));
+    const next = typeof update === "function" ? update(prev) : update;
+    set(rawBoardIdAtom, normalizeBoardId(next));
   }
 );
 

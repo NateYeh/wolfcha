@@ -20,8 +20,15 @@ import { UserProfileModal } from "@/components/game/UserProfileModal";
 import { LowCreditModal, LOW_CREDIT_THRESHOLD } from "@/components/game/LowCreditModal";
 import { LocaleSwitcher } from "@/components/game/LocaleSwitcher";
 import { useCredits, type ConsumeCreditResult } from "@/hooks/useCredits";
-import { difficultyAtom, playerCountAtom, preferredRoleAtom, rosterPoolIdAtom } from "@/store/settings";
-import { ALL_ROLE_KEYS, countBoardRoles, getBoardRoles, getBoardsByPlayerCount, validateBoardPreset } from "@/lib/rules/boards";
+import { boardIdAtom, difficultyAtom, playerCountAtom, preferredRoleAtom, rosterPoolIdAtom } from "@/store/settings";
+import {
+  ALL_ROLE_KEYS,
+  countSelectedBoardRoles,
+  getBoardsByPlayerCount,
+  getSelectedBoardRoles,
+  resolveBoardPreset,
+  validateBoardPreset,
+} from "@/lib/rules/boards";
 import {
   getGeneratorModel,
   getModelSource,
@@ -133,12 +140,12 @@ function SponsorCard({
   );
 }
 
-function buildDefaultRoles(playerCount: number): Role[] {
-  return getBoardRoles(playerCount);
+function buildDefaultRoles(playerCount: number, boardId: string): Role[] {
+  return getSelectedBoardRoles(playerCount, boardId);
 }
 
-function getRoleCountConfig(playerCount: number) {
-  const { byCamp, byRole } = countBoardRoles(playerCount);
+function getRoleCountConfig(playerCount: number, boardId: string) {
+  const { byCamp, byRole } = countSelectedBoardRoles(playerCount, boardId);
   return {
     werewolfCount: byRole.Werewolf,
     whiteWolfKingCount: byRole.WhiteWolfKing,
@@ -250,6 +257,7 @@ export function WelcomeScreen({
   const [difficulty, setDifficulty] = useAtom(difficultyAtom);
   const [playerCount, setPlayerCount] = useAtom(playerCountAtom);
   const [preferredRole, setPreferredRole] = useAtom(preferredRoleAtom);
+  const [boardId, setBoardId] = useAtom(boardIdAtom);
   const [rosterPoolId, setRosterPoolId] = useAtom(rosterPoolIdAtom);
   const [githubStars, setGithubStars] = useState<number | null>(null);
   const springCampaignRemainingQuota = springCampaign?.remainingQuota ?? 0;
@@ -429,11 +437,11 @@ export function WelcomeScreen({
   );
 
   const [devRoleOverrideEnabled, setDevRoleOverrideEnabled] = useState(false);
-  const [fixedRoles, setFixedRoles] = useState<(Role | "")[]>(() => buildDefaultRoles(10));
+  const [fixedRoles, setFixedRoles] = useState<(Role | "")[]>(() => buildDefaultRoles(10, ""));
 
   useEffect(() => {
-    setFixedRoles(buildDefaultRoles(playerCount));
-  }, [playerCount]);
+    setFixedRoles(buildDefaultRoles(playerCount, boardId));
+  }, [playerCount, boardId]);
 
   // Fetch GitHub stars
   useEffect(() => {
@@ -448,6 +456,16 @@ export function WelcomeScreen({
         // Silently fail, stars will remain null
       });
   }, []);
+
+  /**
+   * 切換版型：更新設定、把開發者的自選角色重設成該版型，
+   * 並清掉「自選角色覆寫」讓新版型直接生效（身份偏好清單也會跟著變）。
+   */
+  const handleBoardChange = useCallback((nextBoardId: string) => {
+    setBoardId(nextBoardId);
+    setFixedRoles(buildDefaultRoles(playerCount, nextBoardId));
+    setDevRoleOverrideEnabled(false);
+  }, [playerCount, setBoardId]);
 
   const roleConfigValid = useMemo(() => {
     if (fixedRoles.length !== playerCount) return false;
@@ -481,7 +499,7 @@ export function WelcomeScreen({
   }, [fixedRoles, playerCount]);
 
   const roleConfigHint = useMemo(() => {
-    const expected = getRoleCountConfig(playerCount);
+    const expected = getRoleCountConfig(playerCount, boardId);
     const godLabel =
       expected.guardCount > 0 ? t("welcome.roleConfig.godLabelFull") : t("welcome.roleConfig.godLabelNoGuard");
     return t("welcome.roleConfig.hint", {
@@ -489,7 +507,7 @@ export function WelcomeScreen({
       godLabel,
       villagerCount: expected.villagerCount,
     });
-  }, [playerCount, t]);
+  }, [playerCount, boardId, t]);
 
   const canConfirm = useMemo(() => {
     return !!humanName.trim() && !isLoading && !isTransitioning && !creditsLoading;
@@ -648,7 +666,12 @@ export function WelcomeScreen({
   );
 
   const buildStartOptions = (gameSessionId?: string | null): StartGameOptions => {
-    const roles = devTab === "roles" && devRoleOverrideEnabled && roleConfigValid ? (fixedRoles as Role[]) : undefined;
+    // 送 fixedRoles 的情況：選了非預設版型，或開發者開了自選角色覆寫。
+    // 其餘情況不送（維持「身份偏好會直接換到你要的角色」的既有行為）。
+    const usesCustomBoard = resolveBoardPreset(playerCount, boardId).id !== resolveBoardPreset(playerCount, "").id;
+    const roles = roleConfigValid && (devRoleOverrideEnabled || usesCustomBoard)
+      ? (fixedRoles as Role[])
+      : undefined;
     const preset = devTab === "preset" && devPreset ? (devPreset as DevPreset) : undefined;
     return {
       fixedRoles: roles,
@@ -833,6 +856,8 @@ export function WelcomeScreen({
           playerCount={playerCount}
           onPlayerCountChange={setPlayerCount}
           preferredRole={preferredRole}
+          boardId={boardId}
+          onBoardChange={handleBoardChange}
           onPreferredRoleChange={setPreferredRole}
           isGenshinMode={isGenshinMode}
           onGenshinModeChange={onGenshinModeChange}
@@ -1562,6 +1587,8 @@ export function WelcomeScreen({
                           onChange={(e) => {
                             const board = getBoardsByPlayerCount(playerCount).find((b) => b.id === e.target.value);
                             if (!board) return;
+                            // 與主畫面的「版型」選擇共用同一個設定，避免兩處各記一份
+                            handleBoardChange(board.id);
                             setFixedRoles([...board.roles] as Role[]);
                             setDevRoleOverrideEnabled(true);
                           }}

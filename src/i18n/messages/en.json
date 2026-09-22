@@ -525,6 +525,12 @@
     "rosterPool": {
       "label": "Character pool",
       "optionLabel": "{name} ({count} characters)"
+    },
+    "board": {
+      "label": "Board",
+      "placeholder": "Choose a board",
+      "hint": "This game's board: {summary} (the role-preference list follows this board)",
+      "summary": "{wolf} wolves / {god} gods / {villager} villagers"
     }
   },
   "authModal": {

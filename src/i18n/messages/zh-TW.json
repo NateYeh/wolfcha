@@ -525,6 +525,12 @@
     "rosterPool": {
       "label": "角色池",
       "optionLabel": "{name}（{count} 人）"
+    },
+    "board": {
+      "label": "版型",
+      "placeholder": "選擇版型",
+      "hint": "本局版型：{summary}（身份偏好清單依此版型提供）",
+      "summary": "{wolf} 狼 / {god} 神 / {villager} 民"
     }
   },
   "authModal": {

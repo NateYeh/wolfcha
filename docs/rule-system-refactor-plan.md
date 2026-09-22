@@ -302,3 +302,17 @@ WelcomeScreen 開發者面板的「角色」分頁可用「套用官方版型」
 **發言輪整合點**：`getSpeechPhaseOrder()` 過濾被禁言者（`speech-order.ts`），
 因此輪次狀態、下一位發言者、prompt 的順序提示一起生效；`startDayDiscussion` 的首位發言者
 改從過濾後的權威順序取，避免把發言輪交給被禁言者。
+
+### 版型選擇是「設定」的一部分（身份偏好清單跟著版型）
+
+- `store/settings.ts`：新增 `boardIdAtom`（`wolfcha.settings.board_id`，空字串＝依人數的預設版型）；
+  身份偏好的合法角色清單改讀規則層 `ALL_ROLE_KEYS`——舊的硬編 8 角色清單會把「騎士／禁言長老」
+  的偏好直接清成「隨機」。
+- `rules/boards.ts`：`resolveBoardPreset(playerCount, boardId)`（人數或 id 不符就退回該人數預設版型）、
+  `getSelectedBoardRoles`、`getSelectedBoardRoleKinds`、`countSelectedBoardRoles`。
+- `GameSetupModal`：新增「版型」下拉（在身份偏好之前），**身份偏好可選角色＝選定版型的角色種類**；
+  切換版型時若偏好角色不在新版型內會自動回到「隨機分配」。
+- `WelcomeScreen`：開局角色組成與大廳的角色數量摘要都跟著版型；選了非預設版型才會把 `fixedRoles`
+  寫進開局選項（避免無謂地關掉「身份偏好直接換角色」的行為）。開發者面板的版型下拉與主 UI 共用同一個設定。
+- `game-master.setupPlayers`：身份偏好交換改成「只要該角色在這局組成裡就換」，因此**選版型與用身份偏好
+  可以同時生效**（以前只要帶 `fixedRoles` 就整段跳過）。
