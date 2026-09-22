@@ -95,7 +95,8 @@ function makeRuntime(events: RuntimeEvents, captured: { states: GameState[] }) {
     onStartVote: async () => {},
     onBadgeSpeechEnd: async () => {},
     onPkSpeechEnd: async () => {},
-    onWhiteWolfKingBoomCheck: async () => false,
+    onSelfDestructCheck: async () => false,
+    onKnightDuelCheck: async () => ({ action: "none" as const }),
     onPendingLastWords: async (s: GameState, continuation: (x: GameState) => Promise<void>) => {
       events.push(`lastWords:${(s.pendingLastWordsSeats ?? []).join("+")}`);
       await continuation({ ...s, pendingLastWordsSeats: undefined });

@@ -35,18 +35,19 @@ export const ALL_ROLE_KEYS: Role[] = [
   "Hunter",
   "Guard",
   "Idiot",
+  "Knight",
   "Villager",
 ];
 
 /** 神職類角色（用於「重複神職」提醒） */
-const GOD_ROLES: Role[] = ["Seer", "Witch", "Hunter", "Guard", "Idiot", "WhiteWolfKing"];
+const GOD_ROLES: Role[] = ["Seer", "Witch", "Hunter", "Guard", "Idiot", "Knight", "WhiteWolfKing"];
 
 /** 找不到對應人數版型時的後備版型（沿用舊行為：一律退回 10 人版型） */
 const FALLBACK_PLAYER_COUNT = 10;
 
 /**
- * 官方版型。目前只收錄既有 8–12 人版型（行為與改造前逐字相同）；
- * 26 個 12 人局官方版型與自定義版型待功能完成後再添加。
+ * 官方版型。8–11 人為既有經典版型（行為與改造前逐字相同）；
+ * 12 人局目前收錄經典與白狼騎士，其餘官方版型與自定義版型待功能完成後再添加。
  */
 export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
   {
@@ -129,6 +130,26 @@ export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
     ],
     official: true,
     tags: ["經典", "12人"],
+  },
+  {
+    id: "official-12-white-wolf-knight",
+    playerCount: 12,
+    roles: [
+      "Werewolf",
+      "Werewolf",
+      "Werewolf",
+      "WhiteWolfKing",
+      "Seer",
+      "Witch",
+      "Guard",
+      "Knight",
+      "Villager",
+      "Villager",
+      "Villager",
+      "Villager",
+    ],
+    official: true,
+    tags: ["白狼騎士", "12人"],
   },
 ] as const;
 

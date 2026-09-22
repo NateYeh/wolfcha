@@ -13,6 +13,7 @@ import {
   WhiteWolfKingIcon,
   WitchIcon,
   IdiotIcon,
+  KnightIcon,
 } from "@/components/icons/FlatIcons";
 import type { Phase, Role } from "@/types/game";
 import { Switch } from "@/components/ui/switch";
@@ -42,6 +43,7 @@ const ROLE_META: Record<Role, { accent: string; bg: string; Icon: React.Componen
   Hunter: { accent: "var(--color-hunter)", bg: "var(--color-hunter-bg)", Icon: HunterIcon },
   Guard: { accent: "var(--color-guard)", bg: "var(--color-guard-bg)", Icon: GuardIcon },
   Idiot: { accent: "var(--color-villager)", bg: "var(--color-villager-bg)", Icon: IdiotIcon },
+  Knight: { accent: "var(--color-guard)", bg: "var(--color-guard-bg)", Icon: KnightIcon },
   Villager: { accent: "var(--color-villager)", bg: "var(--color-villager-bg)", Icon: VillagerIcon },
 };
 
@@ -114,6 +116,7 @@ export function TutorialOverlay({
       Guard: t("roles.guard"),
       Idiot: t("roles.idiot"),
       WhiteWolfKing: t("roles.whiteWolfKing"),
+      Knight: t("roles.knight"),
       Villager: t("roles.villager"),
     };
     const roleDataMap = t.raw("tutorialOverlay.roles" as any) as Record<Role, {

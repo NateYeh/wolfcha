@@ -30,6 +30,7 @@ import { playNarrator } from "@/lib/narrator-audio-player";
 import { getPlayerDiedKey } from "@/lib/narrator-voice";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { canSelfDestruct, hasAlreadyBoomed, isSelfDestructPhase } from "@/lib/rules/self-destruct";
+import { canDuel } from "@/lib/rules/knight-duel";
 
 type DaySpeechRuntime = {
   token: FlowToken;
@@ -45,6 +46,15 @@ type DaySpeechRuntime = {
   onPkSpeechEnd: (state: GameState) => Promise<void>;
   /** AI 自爆決策：返回 true 表示已自爆（由呼叫方處理後續），false 表示不自爆 */
   onSelfDestructCheck: (state: GameState, wolf: Player) => Promise<boolean>;
+  /**
+   * AI 騎士翻牌決鬥決策：
+   * `night`＝決鬥成功、已進入黑夜；`continue`＝騎士以死謝罪、白天繼續；
+   * `ended`＝這一步直接結束遊戲；`none`＝不發動。
+   */
+  onKnightDuelCheck: (state: GameState, knight: Player) => Promise<{
+    action: "none" | "night" | "continue" | "ended";
+    state?: GameState;
+  }>;
   /** 第一夜死者的遺言佇列：死亡公告後依序發表，完成後呼叫 continuation 續跑白天流程 */
   onPendingLastWords?: (state: GameState, continuation: (s: GameState) => Promise<void>) => Promise<void>;
 };
@@ -238,6 +248,9 @@ ${t("prompts.daySpeech.formatReminder")}`;
     // 提供默认的空实现以保持向后兼容
     if (!raw.onSelfDestructCheck) {
       raw.onSelfDestructCheck = async () => false;
+    }
+    if (!raw.onKnightDuelCheck) {
+      raw.onKnightDuelCheck = async () => ({ action: "none" as const });
     }
     if (!raw.onPendingLastWords) {
       raw.onPendingLastWords = async (state, continuation) => {
@@ -513,10 +526,12 @@ ${t("prompts.daySpeech.formatReminder")}`;
     this.isMovingToNextSpeaker = true;
 
     try {
+      // 發言結束後的技能檢查都在「當前發言者」身上跑，共用同一份旗標。
+      const flags = getBoardRuleFlags(state.players.length);
+      const currentSpeaker = state.players.find((p) => p.seat === state.currentSpeakerSeat);
+
       // AI 自爆決策：發言結束後檢查是否自爆（所有狼陣營角色皆可，見 lib/rules/self-destruct.ts）
       if (isSelfDestructPhase(state.phase)) {
-        const currentSpeaker = state.players.find((p) => p.seat === state.currentSpeakerSeat);
-        const flags = getBoardRuleFlags(state.players.length);
         if (
           currentSpeaker &&
           !currentSpeaker.isHuman &&
@@ -529,23 +544,45 @@ ${t("prompts.daySpeech.formatReminder")}`;
         }
       }
 
+      // AI 騎士翻牌決鬥：白天發言階段（警上 PK 發言與遺言階段不可發動）
+      let effectiveState = state;
+      if (
+        currentSpeaker &&
+        !currentSpeaker.isHuman &&
+        currentSpeaker.alive &&
+        canDuel({
+          phase: state.phase,
+          role: currentSpeaker.role,
+          flags,
+          duelUsedSeats: state.roleAbilities.duelUsedSeats,
+          seat: currentSpeaker.seat,
+        })
+      ) {
+        const duel = await runtime.onKnightDuelCheck(state, currentSpeaker);
+        if (duel.action === "night" || duel.action === "ended") return;
+        if (duel.action === "continue") {
+          // 決鬥失敗：騎士出局、白天繼續 → 用結算後的最新狀態推進到下一位發言者
+          effectiveState = duel.state ?? state;
+        }
+      }
+
       // 实际推进与 Prompt 共用同一个本轮顺序和发言记录来源。
-      const nextSeat = getNextSpeechSeat(state);
+      const nextSeat = getNextSpeechSeat(effectiveState);
 
       if (nextSeat === null) {
-        if (state.phase === "DAY_PK_SPEECH") {
-          await runtime.onPkSpeechEnd(state);
+        if (effectiveState.phase === "DAY_PK_SPEECH") {
+          await runtime.onPkSpeechEnd(effectiveState);
           return;
         }
-        if (state.phase === "DAY_BADGE_SPEECH") {
-          await runtime.onBadgeSpeechEnd(state);
+        if (effectiveState.phase === "DAY_BADGE_SPEECH") {
+          await runtime.onBadgeSpeechEnd(effectiveState);
           return;
         }
-        await runtime.onStartVote(state, runtime.token);
+        await runtime.onStartVote(effectiveState, runtime.token);
         return;
       }
 
-      const currentState = { ...state, currentSpeakerSeat: nextSeat };
+      const currentState = { ...effectiveState, currentSpeakerSeat: nextSeat };
       runtime.setGameState(currentState);
 
       const nextPlayer = currentState.players.find((p) => p.seat === nextSeat);

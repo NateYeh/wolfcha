@@ -30,6 +30,9 @@ import { getRoleCapabilities } from "@/lib/rules/roles";
 import { canSelfDestruct, hasAlreadyBoomed, shouldResumeBadgeElection } from "@/lib/rules/self-destruct";
 import { applySelfDestructToState } from "@/lib/rules/self-destruct-apply";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
+import { canDuel, hasAlreadyDueled } from "@/lib/rules/knight-duel";
+import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
+import { applyKnightDuelToState } from "@/lib/rules/knight-duel-apply";
 import {
   buildGameStartState,
   createInitialGameState,
@@ -42,6 +45,7 @@ import {
   generateDailySummary,
   getRandomHumanSeat,
   generateSelfDestructDecision,
+  generateKnightDuelDecision,
   generateWolfTeamPlan,
   buildHumanWolfTeamPlan,
   type HumanWolfTeamPlanChoice,
@@ -166,6 +170,12 @@ export function useGameLogic() {
   const onBadgeSpeechEndRef = useRef<((state: GameState) => Promise<void>) | null>(null);
   const onPkSpeechEndRef = useRef<((state: GameState) => Promise<void>) | null>(null);
   const selfDestructCheckRef = useRef<((state: GameState, wolf: Player) => Promise<boolean>) | null>(null);
+  /** 騎士翻牌決鬥（AI）：回傳 "night"＝已進黑夜、"continue"＝騎士出局白天繼續、"none"＝不發動 */
+  const knightDuelCheckRef = useRef<
+    ((state: GameState, knight: Player) => Promise<{ action: "none" | "night" | "continue" | "ended"; state?: GameState }>) | null
+  >(null);
+  /** 真人騎士翻牌時記住來源階段（會先切到 KNIGHT_DUEL 選目標） */
+  const knightDuelOriginRef = useRef<Phase | null>(null);
   /** 真人自爆時用來記住「從哪個階段自爆」（白狼王需要先選目標，會先切到 SELF_DESTRUCT 階段） */
   const selfDestructOriginRef = useRef<Phase | null>(null);
   /** 第一夜死者遺言佇列的處理器（由 DaySpeechPhase 在死亡公告後呼叫） */
@@ -367,12 +377,21 @@ export function useGameLogic() {
           await fn(state);
         }
       },
-      onWhiteWolfKingBoomCheck: async (state: GameState, wwk: Player): Promise<boolean> => {
+      // 名稱必須與 DaySpeechPhase 的 runtime 介面一致：先前誤用 onWhiteWolfKingBoomCheck，
+      // 導致 AI 狼的自爆檢查永遠走 fallback（等同 AI 不會自爆）。
+      onSelfDestructCheck: async (state: GameState, wolf: Player): Promise<boolean> => {
         const fn = selfDestructCheckRef.current;
         if (fn) {
-          return fn(state, wwk);
+          return fn(state, wolf);
         }
         return false;
+      },
+      onKnightDuelCheck: async (state: GameState, knight: Player) => {
+        const fn = knightDuelCheckRef.current;
+        if (fn) {
+          return fn(state, knight);
+        }
+        return { action: "none" as const };
       },
       onBadgeTransfer: async (state: GameState, sheriff: Player, afterTransfer: (s: GameState) => Promise<void>) => {
         const fn = badgeTransferRef.current;
@@ -840,6 +859,136 @@ export function useGameLogic() {
     await continueAfterBadge(currentState);
   }, [addSystemMessage, checkWinCondition, setDialogue, setGameState, speakerHost, t]);
 
+  /**
+   * 執行騎士翻牌決鬥（AI 與真人共用）：狀態轉移交給純函式 `applyKnightDuelToState`，
+   * 這裡只負責公告、移交警徽與後續流程（成功＝直接天黑；失敗＝騎士出局、白天繼續）。
+   */
+  const applyKnightDuel = useCallback(async (
+    state: GameState,
+    duelist: Player,
+    targetSeat: number,
+    originPhase: Phase,
+    token: ReturnType<typeof getToken>
+  ): Promise<{ action: "none" | "night" | "continue" | "ended"; state: GameState }> => {
+    const flags = getBoardRuleFlags(state.players.length);
+    const applied = applyKnightDuelToState({
+      state,
+      duelistSeat: duelist.seat,
+      targetSeat,
+      originPhase,
+      flags,
+    });
+
+    // 技能無效：目標已出局（含死訊未公布的第一夜死者）→ 不消耗技能、回到來源階段
+    if (applied.voidedTargetSeat !== undefined) {
+      console.warn(`[wolfcha] 決鬥目標 ${applied.voidedTargetSeat + 1} 號已出局，翻牌決鬥判定無效`);
+      const back = transitionPhase(applied.state, originPhase);
+      setGameState(back);
+      return { action: "continue", state: back };
+    }
+
+    const outcome = applied.outcome!;
+    const target = state.players.find((p) => p.seat === targetSeat);
+    const systemMessages = getSystemMessages();
+    let currentState = applied.state;
+
+    const revealMsg = t("system.knightDuelReveal", {
+      seat: duelist.seat + 1,
+      name: duelist.displayName,
+      targetSeat: targetSeat + 1,
+      targetName: target?.displayName ?? "",
+    });
+    currentState = addSystemMessage(currentState, revealMsg);
+    setDialogue(speakerHost, revealMsg, false);
+
+    const resultMsg = outcome.targetDies
+      ? t("system.knightDuelHitWolf", { targetSeat: targetSeat + 1, targetName: target?.displayName ?? "" })
+      : t("system.knightDuelMissed", {
+        seat: duelist.seat + 1,
+        name: duelist.displayName,
+        targetSeat: targetSeat + 1,
+        targetName: target?.displayName ?? "",
+      });
+    currentState = addSystemMessage(currentState, resultMsg);
+    setDialogue(speakerHost, resultMsg, false);
+
+    // 決鬥成功直接天黑時，補公布尚未公布的夜間死訊（第一夜死者）；奶穿不重複發第二次
+    for (const death of applied.newlyAnnouncedDeaths) {
+      if (death.reason === "milk") continue;
+      const victim = currentState.players.find((p) => p.seat === death.seat);
+      currentState = addSystemMessage(
+        currentState,
+        systemMessages.playerKilled(death.seat + 1, victim?.displayName ?? "")
+      );
+    }
+    setGameState(currentState);
+
+    const deadSeat = applied.deadSeat ?? duelist.seat;
+    const deadPlayer = currentState.players.find((p) => p.seat === deadSeat) ?? duelist;
+
+    /** 決鬥成功：遺言（若有）→ 勝負 → 進入黑夜 */
+    const continueToNight = async (afterState: GameState): Promise<"night" | "ended"> => {
+      const winner = checkWinCondition(afterState);
+      if (winner) {
+        await endGameRef.current?.(afterState, winner);
+        return "ended";
+      }
+      await delay(1200);
+      await proceedToNightRef.current?.(afterState, token);
+      return "night";
+    };
+
+    /** 決鬥失敗（騎士以死謝罪）：白天流程照走，只檢查勝負 */
+    const continueDay = async (afterState: GameState): Promise<"continue" | "ended"> => {
+      const winner = checkWinCondition(afterState);
+      if (winner) {
+        await endGameRef.current?.(afterState, winner);
+        return "ended";
+      }
+      setGameState(afterState);
+      return "continue";
+    };
+
+    const finish = async (afterState: GameState): Promise<"none" | "night" | "continue" | "ended"> => {
+      if (!outcome.goToNight) return await continueDay(afterState);
+      // 第一夜死者的遺言不會被決鬥吃掉：先發表完再進黑夜
+      if ((afterState.pendingLastWordsSeats ?? []).length > 0) {
+        const drain = drainPendingLastWordsRef.current;
+        if (drain) {
+          let result: "night" | "ended" = "night";
+          await drain(afterState, token, async (drainedState) => {
+            result = await continueToNight(drainedState);
+          });
+          return result;
+        }
+        console.warn("[wolfcha] 遺言佇列處理器尚未就緒，決鬥後直接續跑流程");
+      }
+      return await continueToNight(afterState);
+    };
+
+    // 決鬥死者（可能是騎士自己）是警長時，由他自己選傳徽或撕徽
+    if (applied.badgeTransferSeat !== null) {
+      const transferFn = badgeTransferRef.current;
+      if (transferFn) {
+        let result: "none" | "night" | "continue" | "ended" = "none";
+        await transferFn(currentState, deadPlayer, async (afterTransferState) => {
+          result = await finish(afterTransferState);
+        });
+        return { action: result === "none" ? (outcome.goToNight ? "night" : "continue") : result, state: currentState };
+      }
+      console.warn("[wolfcha] 警徽移交處理器尚未就緒，改為直接撕毀警徽");
+      const fallbackMsg = t("system.badgeTorn", { seat: deadPlayer.seat + 1, name: deadPlayer.displayName });
+      currentState = addSystemMessage(
+        { ...currentState, badge: { ...currentState.badge, holderSeat: null } },
+        fallbackMsg
+      );
+      setDialogue(speakerHost, fallbackMsg, false);
+    }
+
+    const action = await finish(currentState);
+    return { action, state: currentState };
+  }, [addSystemMessage, checkWinCondition, setDialogue, setGameState, speakerHost, t, transitionPhase]);
+
   // AI 自爆決策（所有狼陣營角色，見 lib/rules/self-destruct.ts）
   selfDestructCheckRef.current = async (state: GameState, wolf: Player): Promise<boolean> => {
     if (!wolf.agentProfile?.modelRef) return false;
@@ -858,6 +1007,36 @@ export function useGameLogic() {
 
     await applySelfDestruct(state, wolf, decision.targetSeat, decision.reason, state.phase, token);
     return true;
+  };
+
+  // AI 騎士翻牌決鬥（一場一次；白天發言階段）
+  knightDuelCheckRef.current = async (
+    state: GameState,
+    knight: Player
+  ): Promise<{ action: "none" | "night" | "continue" | "ended"; state?: GameState }> => {
+    if (!knight.agentProfile?.modelRef) return { action: "none" };
+    const flags = getBoardRuleFlags(state.players.length);
+    if (!canDuel({
+      phase: state.phase,
+      role: knight.role,
+      flags,
+      duelUsedSeats: state.roleAbilities.duelUsedSeats,
+      seat: knight.seat,
+    })) {
+      return { action: "none" };
+    }
+
+    const decision = await generateKnightDuelDecision(state, knight);
+    if (!decision.duel || decision.targetSeat === null) return { action: "none" };
+
+    const token = getToken();
+    if (!isTokenValid(token)) return { action: "none" };
+
+    const pendingDeathSeats = getPendingDeathSeats(state);
+    const target = state.players.find((p) => p.seat === decision.targetSeat);
+    if (!target?.alive || pendingDeathSeats.includes(target.seat)) return { action: "none" };
+
+    return await applyKnightDuel(state, knight, target.seat, state.phase, token);
   };
 
   // ============================================
@@ -1725,6 +1904,8 @@ export function useGameLogic() {
         gameSessionId: sessionId,
         scenario,
         players,
+        // 版型組成寫進狀態：公開角色配置（prompt）、賽後分析與 UI 都讀這份
+        fixedRoles: fixedRoles && fixedRoles.length === totalPlayers ? [...fixedRoles] : undefined,
         phase: "NIGHT_START",
         day: 1,
         difficulty,
@@ -2227,7 +2408,49 @@ export function useGameLogic() {
         token
       );
     }
-  }, [gameState, humanPlayer, setGameState, setDialogue, setIsWaitingForAI, waitForUnpause, getToken, runNightPhaseAction, resolveNight, startDayPhaseInternal, proceedToNight, endGameSafely, transitionPhase, speakerHost, t, continueAfterHunterShot]);
+    // 騎士翻牌決鬥（真人在白天發言階段選好目標後結算）
+    else if (gameState.phase === "KNIGHT_DUEL" && getRoleCapabilities(humanPlayer.role).canDuel) {
+      const originPhase = knightDuelOriginRef.current;
+      knightDuelOriginRef.current = null;
+      if (!originPhase) {
+        console.warn("[wolfcha] 缺少決鬥來源階段，依白天發言處理");
+      }
+      const result = await applyKnightDuel(
+        currentState,
+        humanPlayer,
+        targetSeat,
+        originPhase ?? "DAY_SPEECH",
+        token
+      );
+      // 決鬥失敗（目標是好人）：騎士出局、白天流程照走 → 推進到下一位發言者
+      if (result.action === "continue") {
+        await runDaySpeechAction(result.state ?? currentState, token, "ADVANCE_SPEAKER");
+      }
+    }
+  }, [gameState, humanPlayer, setGameState, setDialogue, setIsWaitingForAI, waitForUnpause, getToken, runNightPhaseAction, resolveNight, startDayPhaseInternal, proceedToNight, endGameSafely, transitionPhase, speakerHost, t, continueAfterHunterShot, applyKnightDuel, runDaySpeechAction]);
+
+  /** 真人騎士翻牌決鬥（切到 KNIGHT_DUEL 選目標） */
+  const handleKnightDuel = useCallback(async () => {
+    const currentState = gameStateRef.current;
+    if (!humanPlayer || !humanPlayer.alive) return;
+
+    const flags = getBoardRuleFlags(currentState.players.length);
+    if (!canDuel({
+      phase: currentState.phase,
+      role: humanPlayer.role,
+      flags,
+      duelUsedSeats: currentState.roleAbilities.duelUsedSeats,
+      seat: humanPlayer.seat,
+    })) {
+      return;
+    }
+
+    knightDuelOriginRef.current = currentState.phase;
+    const nextState = transitionPhase(currentState, "KNIGHT_DUEL");
+    setGameState(nextState);
+    clearDialogue();
+    setDialogue(speakerHost, t("ui.knightDuelPickTarget"), false);
+  }, [clearDialogue, humanPlayer, setDialogue, setGameState, speakerHost, t, transitionPhase]);
 
   /** 人类白狼王自爆（进入 SELF_DESTRUCT 阶段） */
   /** 真人自爆（所有狼陣營角色；白狼王需要先選帶走的目標） */
@@ -2449,6 +2672,7 @@ export function useGameLogic() {
     handleNightAction,
     handleHumanBadgeTransfer,
     handleSelfDestruct,
+    handleKnightDuel,
     handleNextRound,
     scrollToBottom,
     advanceSpeech,

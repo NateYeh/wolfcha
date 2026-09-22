@@ -140,6 +140,26 @@ export function EventLog({ gameState }: EventLogProps) {
         });
       }
 
+      if (dayRecord.knightDuel) {
+        const duel = dayRecord.knightDuel;
+        entries.push({
+          id: `knight-duel-${day}`,
+          day,
+          order: 32,
+          text: duel.targetIsWolf
+            ? t("eventLog.knightDuel", {
+                duelist: formatSeat(duel.duelistSeat),
+                target: formatSeat(duel.targetSeat),
+              })
+            : t("eventLog.knightDuelMissed", {
+                duelist: formatSeat(duel.duelistSeat),
+                target: formatSeat(duel.targetSeat),
+              }),
+          tone: duel.targetIsWolf ? "success" : "danger",
+          icon: "shot",
+        });
+      }
+
       const idiotSeat = dayRecord.idiotRevealed?.seat;
       if (dayRecord.executed && dayRecord.executed.seat !== idiotSeat) {
         entries.push({

@@ -391,3 +391,25 @@ export const WhiteWolfKingIcon = forwardRef<SVGSVGElement, IconProps>(
   )
 );
 WhiteWolfKingIcon.displayName = "WhiteWolfKingIcon";
+
+// 骑士图标（交叉双剑）
+export const KnightIcon = forwardRef<SVGSVGElement, IconProps>(
+  ({ size = 24, className, ...props }, ref) => (
+    <svg
+      ref={ref}
+      viewBox="0 0 24 24"
+      fill="none"
+      width={size}
+      height={size}
+      className={className}
+      {...props}
+    >
+      <path d="M4 20L14 10" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"/>
+      <path d="M20 20L10 10" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"/>
+      <path d="M14 10L17 7L20 10L17 13L14 10Z" fill="currentColor"/>
+      <path d="M10 10L7 7L4 10L7 13L10 10Z" fill="currentColor"/>
+      <path d="M9 21H15" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"/>
+    </svg>
+  )
+);
+KnightIcon.displayName = "KnightIcon";

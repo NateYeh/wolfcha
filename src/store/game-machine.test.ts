@@ -39,6 +39,9 @@ test("投票中刷新保留每张已提交的票，旧发言延迟保存不能�
     "@/lib/rules/self-destruct": await import("@/lib/rules/self-destruct"),
     "@/lib/rules/boards": await import("@/lib/rules/boards"),
     "@/lib/rules/night-deaths": await import("@/lib/rules/night-deaths"),
+    "@/lib/rules/knight-duel": await import("@/lib/rules/knight-duel"),
+    "@/lib/rules/knight-duel-apply": await import("@/lib/rules/knight-duel-apply"),
+    "@/lib/rules/settle-night-deaths": await import("@/lib/rules/settle-night-deaths"),
   };
   const storage = new Map<string, string>();
   const timers = new Map<number, () => void>(); let serial = 0;

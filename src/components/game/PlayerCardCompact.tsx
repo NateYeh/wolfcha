@@ -119,6 +119,7 @@ export function PlayerCardCompact({
     Guard: t("roles.guard"),
     Idiot: t("roles.idiot"),
     WhiteWolfKing: t("roles.whiteWolfKing"),
+    Knight: t("roles.knight"),
     Villager: t("roles.villager"),
   }), [t]);
   const getRoleLabel = (role: Role) => roleLabels[role] ?? t("roles.villager");

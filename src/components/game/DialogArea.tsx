@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useMemo, useState, useCallback } from "react"
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ChatCircleDots, PaperPlaneTilt, CheckCircle, MoonStars, Eye, Drop, Crosshair, Skull, X, ArrowClockwise, CaretRight, UserCircle, Prohibit, ClipboardText } from "@phosphor-icons/react";
+import { ChatCircleDots, PaperPlaneTilt, CheckCircle, MoonStars, Eye, Drop, Crosshair, Skull, Sword, X, ArrowClockwise, CaretRight, UserCircle, Prohibit, ClipboardText } from "@phosphor-icons/react";
 import { WerewolfIcon, VillagerIcon, VoteIcon } from "@/components/icons/FlatIcons";
 import { VoteResultCard } from "./VoteResultCard";
 import { VotingProgress } from "./VotingProgress";
@@ -28,6 +28,7 @@ import { useTranslations } from "next-intl";
 type WitchActionType = "save" | "poison" | "pass";
 import type { DialogueState } from "@/store/game-machine";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
+import { canDuel, hasAlreadyDueled } from "@/lib/rules/knight-duel";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { canSelfDestruct, hasAlreadyBoomed } from "@/lib/rules/self-destruct";
 
@@ -60,6 +61,7 @@ const ROLE_PORTRAIT_MAP: Record<string, string> = {
   Hunter: '/roles/hunter.png',
   Guard: '/roles/guard.png',
   Idiot: '/roles/idiot.png',
+  Knight: '/roles/guard.png',
   Villager: '/roles/villager.png',
 };
 
@@ -303,6 +305,8 @@ interface DialogAreaProps {
   onBadgeSignup?: (wants: boolean) => void;
   onRestart?: () => void;
   onSelfDestruct?: () => void;
+  /** 騎士翻牌決鬥（白天發言階段，一場一次） */
+  onKnightDuel?: () => void;
   onViewAnalysis?: () => void;
   isAnalysisLoading?: boolean;
   /** 本局 MVP（可能多人並列；分析完成前為 undefined）。 */
@@ -460,6 +464,7 @@ export function DialogArea({
   onBadgeSignup,
   onRestart,
   onSelfDestruct,
+  onKnightDuel,
   onViewAnalysis,
   isAnalysisLoading = false,
   gameMvps,
@@ -1034,6 +1039,7 @@ export function DialogArea({
       case "Hunter": return t("roles.hunter");
       case "Guard": return t("roles.guard");
       case "Idiot": return t("roles.idiot");
+      case "Knight": return t("roles.knight");
       default: return t("roles.villager");
     }
   };
@@ -1090,7 +1096,8 @@ export function DialogArea({
       (phase === "NIGHT_GUARD_ACTION" && humanPlayer?.role === "Guard" && humanPlayer?.alive) ||
       (phase === "HUNTER_SHOOT" && humanPlayer?.role === "Hunter") ||
       (phase === "BADGE_TRANSFER" && humanPlayer && gameState.badge.holderSeat === humanPlayer.seat) ||
-      (phase === "SELF_DESTRUCT" && !!humanPlayer?.alive && getRoleCapabilities(humanPlayer?.role ?? "Villager").boomTakesPlayer && !hasAlreadyBoomed(gameState.roleAbilities.boomedSeats, humanPlayer?.seat ?? -1));
+      (phase === "SELF_DESTRUCT" && !!humanPlayer?.alive && getRoleCapabilities(humanPlayer?.role ?? "Villager").boomTakesPlayer && !hasAlreadyBoomed(gameState.roleAbilities.boomedSeats, humanPlayer?.seat ?? -1)) ||
+      (phase === "KNIGHT_DUEL" && !!humanPlayer?.alive && getRoleCapabilities(humanPlayer?.role ?? "Villager").canDuel && !hasAlreadyDueled(gameState.roleAbilities.duelUsedSeats, humanPlayer?.seat ?? -1));
 
     return Boolean(
       isCorrectRoleForPhase
@@ -1559,6 +1566,7 @@ export function DialogArea({
                   HUNTER_SHOOT: t("dialog.action.hunterShoot"),
                   BADGE_TRANSFER: t("dialog.action.badgeTransfer"),
                   SELF_DESTRUCT: t("dialog.action.selfDestruct"),
+                  KNIGHT_DUEL: t("dialog.action.knightDuel"),
                 };
 
                 const actionColorMap: Record<string, string> = {
@@ -1570,6 +1578,7 @@ export function DialogArea({
                   HUNTER_SHOOT: "text-[var(--color-warning)]",
                   BADGE_TRANSFER: "text-[var(--color-warning)]",
                   SELF_DESTRUCT: "text-[var(--color-danger)]",
+                  KNIGHT_DUEL: "text-[var(--color-warning)]",
                 };
 
                 const actionText = actionTextMap[phase] || t("dialog.action.select");
@@ -1752,6 +1761,19 @@ export function DialogArea({
                       >
                         <Skull size={14} weight="fill" />
                         {t("bottomAction.confirmAction.selfDestructBtn")}
+                      </button>
+                    </div>
+                  )}
+                  {/* 騎士翻牌決鬥按鈕 - 白天發言階段顯示（一場一次） */}
+                  {humanPlayer && humanPlayer.alive && getRoleCapabilities(humanPlayer.role).canDuel && canDuel({ phase, role: humanPlayer.role, flags: getBoardRuleFlags(gameState.players.length), duelUsedSeats: gameState.roleAbilities.duelUsedSeats, seat: humanPlayer.seat }) && (
+                    <div className="flex justify-end">
+                      <button
+                        onClick={onKnightDuel}
+                        className="h-8 px-3 rounded text-xs font-medium bg-amber-600 text-white hover:bg-amber-700 transition-all flex items-center gap-1.5 cursor-pointer"
+                        type="button"
+                      >
+                        <Sword size={14} weight="fill" />
+                        {t("bottomAction.confirmAction.knightDuelBtn")}
                       </button>
                     </div>
                   )}

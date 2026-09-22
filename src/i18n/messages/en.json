@@ -22,7 +22,8 @@
     "witch": "Witch",
     "hunter": "Hunter",
     "guard": "Guard",
-    "idiot": "Idiot"
+    "idiot": "Idiot",
+    "knight": "Knight"
   },
   "alignment": {
     "village": "Villagers",
@@ -196,7 +197,9 @@
         "title": "Role setup ({count} players)",
         "ready": "Ready",
         "seat": "Seat {seat}",
-        "overrideLabel": "Enable role override"
+        "overrideLabel": "Enable role override",
+        "boardLabel": "Apply official board",
+        "boardPlaceholder": "Choose a board…"
       }
     }
   },
@@ -509,7 +512,8 @@
         "witch": "Has one healing potion and one poison potion",
         "hunter": "Can shoot and eliminate a player upon death",
         "guard": "Protect one player from wolf attacks each night",
-        "idiot": "Survives a vote-out by revealing role, but loses voting rights"
+        "idiot": "Survives a vote-out by revealing role, but loses voting rights",
+        "knight": "Once per game during the day speech phase, reveal and duel a player: if they are a wolf they die and night falls immediately; if they are good, the knight dies instead. Wolves killed by the duel cannot trigger death skills"
       }
     },
     "acquaintanceMode": {
@@ -722,7 +726,9 @@
     "restart": "Restart",
     "confirmAction": {
       "selfDestructWithTarget": "Self-destruct and take Seat {seat}",
-      "selfDestructBtn": "Self-destruct"
+      "selfDestructBtn": "Self-destruct",
+      "knightDuel": "Duel seat {seat}",
+      "knightDuelBtn": "Reveal & duel"
     },
     "guardAbstain": "Abstain"
   },
@@ -951,6 +957,18 @@
           "Timing is everything for self-destruct",
           "Seer checks you as Werewolf"
         ]
+      },
+      "knight": {
+        "title": "Knight",
+        "subtitle": "One call by day decides who lives - guess wrong and it costs you.",
+        "abilities": [
+          "Once per game, during the day speech phase, reveal and duel one player",
+          "Target is a wolf: they die and night falls at once. Target is good: you die instead and the day continues"
+        ],
+        "tips": [
+          "Only duel when you are confident - a wrong call throws your life away",
+          "A wolf killed by the duel cannot trigger death skills"
+        ]
       }
     },
     "nextStep": {
@@ -962,7 +980,8 @@
       "villager": "You don't act yet. Listen and observe.",
       "idiot": "You don't act yet. Listen and observe. You'll auto-survive if voted out.",
       "whiteWolfKing": "When it's your turn, select a player to attack. During day, you can self-destruct.",
-      "default": "The stage is set. Follow the host's prompts."
+      "default": "The stage is set. Follow the host's prompts.",
+      "knight": "On your speech turn you can press \"Reveal & duel\" to challenge a player."
     }
   },
   "speakers": {
@@ -1020,7 +1039,10 @@
     },
     "selfDestruct": "Seat {seat} {name} self-destructed",
     "selfDestructWithTarget": "Seat {seat} {name} self-destructed and took Seat {targetSeat} {targetName}",
-    "badgeLost": "The badge is lost - there will be no sheriff this game"
+    "badgeLost": "The badge is lost - there will be no sheriff this game",
+    "knightDuelReveal": "{seat} {name} reveals and duels {targetSeat} {targetName}",
+    "knightDuelHitWolf": "{targetSeat} {targetName} is a werewolf - out by duel, night falls immediately",
+    "knightDuelMissed": "{targetSeat} {targetName} is good - {seat} {name} dies paying for the failed duel"
   },
   "ui": {
     "waitingSeer": "Select a player to check. Tap a player card to select.",
@@ -1054,7 +1076,8 @@
     "seatWithName": "Seat {seat} {name}",
     "seatOnly": "Seat {seat}",
     "listSeparator": ", ",
-    "selfDestructPickTarget": "Choose who to take with you (you are out at once - no last words, no speech)"
+    "selfDestructPickTarget": "Choose who to take with you (you are out at once - no last words, no speech)",
+    "knightDuelPickTarget": "Click a player card to choose the duel target"
   },
   "prompts": {
     "daySpeech": {
@@ -1207,6 +1230,13 @@
       "badgeLineDay": "- Self-destructing during the day/PK speeches only skips the rest of today's speeches and the vote; the badge is unaffected (if you take the sheriff, the badge is torn as usual)",
       "tactics": "【How to price a self-destruct (your call)】\nYou spend your own life to buy \"skip today's vote + go straight to night\" (the White Wolf King also takes one player). Work out these accounts first:\n- Skipping the vote is itself a gain: if your teammate is the one leaving today, blowing up voids that exile.\n- Timing: it is worth the most when your teammate is already on the stand and the votes are basically settled; early on, when you are still hidden, blowing up your cover is usually a loss.\n- The election maths is finer: the first self-destruct only postpones the election to tomorrow (no information lost, badge still alive), only the second one swallows the badge; a White Wolf King self-destruct in the election swallows it in one shot - before spending it to wreck the opponents' election rhythm, check whether any teammate can take over the election for you.\n- A self-destruct takes no secrets with it: you get no last words, no hint-dropping, no appeal. Say what you want to say in your earlier speeches.",
       "user": "{context}\n\nDo you self-destruct? Return a strict JSON object.\nSelf-destruct example: {jsonFormat}\nDo not self-destruct example: {passJsonFormat}"
+    },
+    "knightDuel": {
+      "base": "【Identity】\nYou are seat {seat} \"{name}\"\nRole: {role}\n\n{coreRules}",
+      "task": "【Reveal & duel (day-speech-only skill, once per game)】\nOn **your own speech turn** you may reveal and duel one player (not during the badge PK speech or the last-words phase).\nThe target must be an **alive** player (anyone already out - including first-night deaths whose deaths are not yet announced - cannot be challenged).\n- Target **is a wolf**: they die at once, the rest of the day ends and night falls immediately.\n- Target **is good**: you die paying for it, and the day continues (the exile vote still happens).\nDuel deaths get no last words; a wolf killed by the duel cannot trigger death skills.\nThe reveal is one-shot: a wrong call throws your life away for free.\n\n【Task】\nDecide from the current situation whether to duel, and whom to challenge.\n\nAlive players: {options}\n\n{tactics}\n\n【Format】\nReturn a strict JSON object only - no code block, no explanation, no extra text.\nDuel example: {jsonFormat}\nPass example: {passJsonFormat}\nKeep reason to one sentence (under 30 words).",
+      "effectLine": "- A successful duel cashes in a wolf on the spot (and saves today's vote); a failed duel kills you and costs the village a god role",
+      "tactics": "【Weighing the call (the decision is yours)】\n- The reveal bets your life on your read: only duel someone you are **very** sure is a wolf; below ~50% certainty, hold it.\n- The best moment: the vote is stuck, you are already suspected, or someone is clearly a wolf in speech but nobody follows - then the duel settles it.\n- A wrong call is expensive: you are out, the village loses a god role, and the skill is spent with no undo.\n- Do not gamble: judge from speech detail and vote patterns, not gut feeling.",
+      "user": "{context}\n\nReveal and duel? Return a strict JSON object.\nDuel example: {jsonFormat}\nPass example: {passJsonFormat}"
     }
   },
   "badgePhase": {
@@ -1301,6 +1331,10 @@
     "selfDestruct": {
       "description": "Self-destruct (wolves may blow up on their own speech turn)",
       "human": "Tap a player card to choose who to take with you"
+    },
+    "knightDuel": {
+      "description": "Duel (knight reveals during the day speech phase)",
+      "human": "Click a player card to choose the duel target"
     }
   },
   "page": {
@@ -1407,7 +1441,8 @@
       "whiteWolfKingBoomBtn": "Self-destruct",
       "badgeTransfer": "Transfer badge to",
       "select": "Select",
-      "selfDestruct": "Self-destruct on"
+      "selfDestruct": "Self-destruct on",
+      "knightDuel": "Duel"
     },
     "input": {
       "lastWordsPlaceholder": "Any last words?",
@@ -1598,7 +1633,9 @@
     "gameEndVillage": "Game over: Villagers win",
     "gameEndWolf": "Game over: Werewolves win",
     "selfDestruct": "{boom} self-destructed",
-    "selfDestructWithTarget": "{boom} self-destructed and took {target}"
+    "selfDestructWithTarget": "{boom} self-destructed and took {target}",
+    "knightDuel": "{duelist} dueled {target} (wolf out)",
+    "knightDuelMissed": "{duelist} dueled {target} (good; knight out)"
   },
   "wolfPlanning": {
     "title": "Wolf coordination",
@@ -1726,15 +1763,16 @@
       "guard": "Guard (good team, protects one player each night)",
       "villager": "Villager (good team)",
       "idiot": "Idiot (good team, immune to exile once, then loses voting rights)",
-      "whiteWolfKing": "White Wolf King (evil team, can self-destruct during day to take one player)"
+      "whiteWolfKing": "White Wolf King (evil team, can self-destruct during day to take one player)",
+      "knight": "Knight (village side; can reveal and duel one player during the day speech phase)"
     },
     "winMotivationNote": "【What you're playing for】\nThis is a game with winners and losers, and you are here to win — not to keep the table company, and not to make the story look good.\nYour character has a personality, a stance, feelings and selfish interests, but would never throw their own side on purpose: tanking, voting at random, or feeding kills for a better story is not you.\nThere is more than one way to win: some read the ledger better, some lie convincingly to the whole table, some steer the votes where they want them, some stay hidden until the final round. Play to your strengths, and switch styles mid-game if you like.\nYou may take risks too: gamble, bluff, and own it when it fails. Nobody blames you for going off-script; they blame you for not trying to win.",
     "humannessNote": "【Imperfection allowed】\nReal players misspeak, forget which night something happened, get nervous, get carried away by emotion, dig in stubbornly, and suddenly change their minds. You do not have to be airtight in every sentence — naming the wrong seat, letting something slip, or changing your story under pressure makes you feel like a real person.\nOnly one line to hold: mistakes can be natural slips, but a lie has to hold up. Nobody docks you for acting badly, but nobody enjoys a player who has no idea what they are doing.",
     "gameFundamentals": {
       "title": "【What game this is】",
       "overview": "This is a multiplayer Werewolf game. The players are split into the good side and the werewolf side: daytime is for speech, deduction and voting out suspects, and each night the werewolves kill one player. Good wins by exiling all werewolves; werewolves win when their number matches the good side's.",
-      "basicRules": "【General rules (public — everyone at the table knows these)】\n- Daily flow: night (werewolves kill) → on day 1 the badge election runs first → dawn announces the deaths → free speech → exile vote, repeating. What happened at night is unknown to everyone until dawn announces it.\n- Deaths do not reveal roles: normal deaths and exile votes keep the role hidden; a role is only confirmed when the host triggers a public ability (Idiot reveal, Hunter shot, wolf self-destruct). Anyone claiming a role or announcing check results is only making a statement — that is not a fact.\n- Exile vote: the player with the most votes is out; on a tie the tied players go to a PK round and vote again. The Sheriff's (badge holder's) vote counts as 1.5; when the Sheriff is out, the badge is handed to someone else.\n- Self-destruct: a wolf may self-destruct on its own speech turn (including badge-election speeches). It is out at once, the rest of the day is cancelled, and night falls immediately. The boomer gets no last words. During the badge election a wolf self-destruct postpones the election to the next dawn; a second wolf self-destruct in the same election ends it at once and the badge is lost (no sheriff for the rest of the game).\n- Badge election: on day 1 the sheriff is elected first; candidates speak in turn and the table votes. The badge can be handed over when its holder is out, or torn up.\n- Last words: a player voted out gets last words; players killed on the **first night** (however many, whatever the cause) also get last words; from the second night on, night deaths get none. Players taken by the Hunter's shot or by a self-destruct get none.",
-      "roleSkills": "【Roles and abilities (public rules you may use to reason about others)】\n- Werewolf: at night you and your teammates decide together whom to kill, and you know who your teammates are; the Seer checks you as a werewolf. During the day you may self-destruct on your own speech turn (see 【Self-destruct】).\n- White Wolf King: werewolf side; on your own speech turn you may self-destruct and take one alive player with you (they get no last words); self-destructing during a badge-election speech also makes the badge lost immediately.\n- Seer: each night check one player as good or werewolf; only you know the result, and in this game only the Seer can check.\n- Witch: one antidote and one poison, each once per game, at most one per night. The antidote saves the player the werewolves attacked that night, but **cannot save yourself** (the witch can never self-save); the poison kills one player; a Hunter poisoned to death cannot shoot.\n- Hunter: when voted out or killed by werewolves you may shoot one alive player; you cannot shoot if the Witch poisoned you; a Hunter taken by a self-destruct can still shoot.\n- Guard: each night you may protect one player from the werewolves' kill (you may protect yourself), or **abstain** (protect nobody); you cannot protect the same player two nights in a row (an abstention is not a protection, so you may abstain several nights in a row); if the Guard and the Witch's antidote both save the same player (milk poison), that player still dies.\n- Idiot: when voted out you reveal and survive (once only); afterwards you lose your vote but may keep speaking.\n- Villager: no night ability; you play through speech and votes.",
+      "basicRules": "【General rules (public — everyone at the table knows these)】\n- Daily flow: night (werewolves kill) → on day 1 the badge election runs first → dawn announces the deaths → free speech → exile vote, repeating. What happened at night is unknown to everyone until dawn announces it.\n- Deaths do not reveal roles: normal deaths and exile votes keep the role hidden; a role is only confirmed when the host triggers a public ability (Idiot reveal, Hunter shot, wolf self-destruct). Anyone claiming a role or announcing check results is only making a statement — that is not a fact.\n- Exile vote: the player with the most votes is out; on a tie the tied players go to a PK round and vote again. The Sheriff's (badge holder's) vote counts as 1.5; when the Sheriff is out, the badge is handed to someone else.\n- Self-destruct: a wolf may self-destruct on its own speech turn (including badge-election speeches). It is out at once, the rest of the day is cancelled, and night falls immediately. The boomer gets no last words. During the badge election a wolf self-destruct postpones the election to the next dawn; a second wolf self-destruct in the same election ends it at once and the badge is lost (no sheriff for the rest of the game).\n- Badge election: on day 1 the sheriff is elected first; candidates speak in turn and the table votes. The badge can be handed over when its holder is out, or torn up.\n- Last words: a player voted out gets last words; players killed on the **first night** (however many, whatever the cause) also get last words; from the second night on, night deaths get none. Players taken by the Hunter's shot or by a self-destruct get none.\n- Knight's duel: during the **day speech phase** the knight may reveal and duel one player (not during the badge PK speech or the last-words phase). The target must be an alive player. If the target **is a wolf**, the wolf dies immediately and night falls at once (skipping the rest of the day's speeches and the exile vote); if the target **is good**, the knight dies instead (paying with his life) and the day continues normally, vote included. Duel deaths get no last words; a wolf killed by the duel cannot trigger death skills (no Wolf King shot, no White Wolf King abduction, no Wolf Beauty sacrifice).",
+      "roleSkills": "【Roles and abilities (public rules you may use to reason about others)】\n- Werewolf: at night you and your teammates decide together whom to kill, and you know who your teammates are; the Seer checks you as a werewolf. During the day you may self-destruct on your own speech turn (see 【Self-destruct】).\n- White Wolf King: werewolf side; on your own speech turn you may self-destruct and take one alive player with you (they get no last words); self-destructing during a badge-election speech also makes the badge lost immediately.\n- Seer: each night check one player as good or werewolf; only you know the result, and in this game only the Seer can check.\n- Witch: one antidote and one poison, each once per game, at most one per night. The antidote saves the player the werewolves attacked that night, but **cannot save yourself** (the witch can never self-save); the poison kills one player; a Hunter poisoned to death cannot shoot.\n- Hunter: when voted out or killed by werewolves you may shoot one alive player; you cannot shoot if the Witch poisoned you; a Hunter taken by a self-destruct can still shoot.\n- Guard: each night you may protect one player from the werewolves' kill (you may protect yourself), or **abstain** (protect nobody); you cannot protect the same player two nights in a row (an abstention is not a protection, so you may abstain several nights in a row); if the Guard and the Witch's antidote both save the same player (milk poison), that player still dies.\n- Idiot: when voted out you reveal and survive (once only); afterwards you lose your vote but may keep speaking.\n- Villager: no night ability; you play through speech and votes.\n- Knight: once per game during the day speech phase, reveal and duel a player: if that player is a wolf, the wolf dies and night falls immediately; if that player is good, the knight dies and the day continues. Duel deaths get no last words, and a wolf killed by the duel cannot trigger death skills.",
       "scopeNote": "Note: the list above is the full role table; which roles are actually in this game, and how many of each, is given by 【Public role configuration】. Roles absent from that configuration do not exist in this game — do not assume they are present."
     },
     "winCondition": {
@@ -1745,7 +1783,8 @@
       "guard": "【Win condition】Good wins when all werewolves are eliminated.",
       "villager": "【Win condition】Good wins when all werewolves are eliminated.",
       "idiot": "【Win condition】Good wins when all werewolves are eliminated.",
-      "whiteWolfKing": "【Win condition】Werewolves win when their count >= good players."
+      "whiteWolfKing": "【Win condition】Werewolves win when their count >= good players.",
+      "knight": "【Win condition】The village wins when all wolves are exiled."
     },
     "persona": {
       "section": "【Persona】\nSpeaking habits: {voiceRules}\nStyle: {riskLabel}",

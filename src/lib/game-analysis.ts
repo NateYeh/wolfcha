@@ -52,6 +52,7 @@ const ROLE_ALIGNMENT: Record<Role, Alignment> = {
   Guard: "village",
   Idiot: "village",
   WhiteWolfKing: "wolf",
+  Knight: "village",
   Villager: "village",
 };
 

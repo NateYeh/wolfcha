@@ -200,6 +200,7 @@ export const createSinglePlayerContextAuditState = (): GameState => ({
     hunterCanShoot: true,
     idiotRevealed: false,
     boomedSeats: [],
+  duelUsedSeats: [],
   },
   winner: null,
 });

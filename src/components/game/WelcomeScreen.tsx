@@ -21,7 +21,7 @@ import { LowCreditModal, LOW_CREDIT_THRESHOLD } from "@/components/game/LowCredi
 import { LocaleSwitcher } from "@/components/game/LocaleSwitcher";
 import { useCredits, type ConsumeCreditResult } from "@/hooks/useCredits";
 import { difficultyAtom, playerCountAtom, preferredRoleAtom, rosterPoolIdAtom } from "@/store/settings";
-import { countBoardRoles, getBoardRoles } from "@/lib/rules/boards";
+import { countBoardRoles, getBoardRoles, getBoardsByPlayerCount, validateBoardPreset } from "@/lib/rules/boards";
 import {
   getGeneratorModel,
   getModelSource,
@@ -416,6 +416,7 @@ export function WelcomeScreen({
       Villager: t("roles.villager"),
       Werewolf: t("roles.werewolf"),
       WhiteWolfKing: t("roles.whiteWolfKing"),
+      Knight: t("roles.knight"),
       Seer: t("roles.seer"),
       Witch: t("roles.witch"),
       Hunter: t("roles.hunter"),
@@ -459,22 +460,21 @@ export function WelcomeScreen({
       Guard: 0,
       Idiot: 0,
       WhiteWolfKing: 0,
+      Knight: 0,
     };
     for (const r of fixedRoles) {
       counts[r as Role] += 1;
     }
 
-    const expected = getRoleCountConfig(playerCount);
-    return (
-      counts.Werewolf === expected.werewolfCount &&
-      counts.WhiteWolfKing === expected.whiteWolfKingCount &&
-      counts.Seer === expected.seerCount &&
-      counts.Witch === expected.witchCount &&
-      counts.Hunter === expected.hunterCount &&
-      counts.Guard === expected.guardCount &&
-      counts.Idiot === expected.idiotCount &&
-      counts.Villager === expected.villagerCount
-    );
+    // 以規則層的版型驗證為準：任何合法組成都能開局（白狼騎士、自定義版型）
+    const { errors } = validateBoardPreset({
+      id: "custom",
+      playerCount,
+      roles: fixedRoles as Role[],
+      official: false,
+      tags: [],
+    });
+    return errors.length === 0;
   }, [fixedRoles, playerCount]);
 
   const roleConfigHint = useMemo(() => {
@@ -1551,6 +1551,27 @@ export function WelcomeScreen({
 
                   {devTab === "roles" && (
                     <div className="space-y-3">
+                      {/* 官方版型一鍵套用（同人數可能有多個版型，例：12人經典／白狼騎士） */}
+                      <div className="space-y-1">
+                        <div className="text-xs font-semibold text-gray-300">{t("welcome.dev.roles.boardLabel")}</div>
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const board = getBoardsByPlayerCount(playerCount).find((b) => b.id === e.target.value);
+                            if (!board) return;
+                            setFixedRoles([...board.roles] as Role[]);
+                            setDevRoleOverrideEnabled(true);
+                          }}
+                          className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-yellow-400"
+                        >
+                          <option value="">{t("welcome.dev.roles.boardPlaceholder")}</option>
+                          {getBoardsByPlayerCount(playerCount).map((board) => (
+                            <option key={board.id} value={board.id}>
+                              {board.tags.join("｜")}（{board.roles.length}人）
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                       <div className="flex items-center justify-between">
                         <div className="text-xs font-semibold text-gray-300">
                           {t("welcome.dev.roles.title", { count: playerCount })}

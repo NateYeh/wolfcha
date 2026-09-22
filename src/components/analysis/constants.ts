@@ -8,6 +8,7 @@ export const ROLE_ICONS: Record<Role, string> = {
   Guard: "/roles/guard.png",
   Idiot: "/roles/idiot.png",
   WhiteWolfKing: "/roles/white-wolf-king.png",
+  Knight: "/roles/guard.png",
   Villager: "/roles/guard.png",
 };
 
@@ -19,6 +20,7 @@ export const ROLE_NAMES: Record<Role, string> = {
   Guard: "守卫",
   Idiot: "白痴",
   WhiteWolfKing: "白狼王",
+  Knight: "骑士",
   Villager: "平民",
 };
 
@@ -30,6 +32,7 @@ export const ROLE_SHORT: Record<Role, string> = {
   Guard: "守",
   Idiot: "痴",
   WhiteWolfKing: "王",
+  Knight: "骑",
   Villager: "民",
 };
 

@@ -96,6 +96,7 @@ const getRoleLabel = (role?: Role | null) => {
     case "Hunter": return t("roles.hunter");
     case "Guard": return t("roles.guard");
     case "Idiot": return t("roles.idiot");
+    case "Knight": return t("roles.knight");
     case "WhiteWolfKing": return t("roles.whiteWolfKing");
     case "Villager": return t("roles.villager");
     default: return "?";
@@ -168,6 +169,7 @@ export default function Home() {
     handleNightAction,
     handleHumanBadgeTransfer,
     handleSelfDestruct,
+    handleKnightDuel,
     handleNextRound,
     waitingForNextRound,
     advanceSpeech,
@@ -1605,6 +1607,7 @@ export default function Home() {
                       onBadgeSignup={handleBadgeSignup}
                       onRestart={restartGame}
                       onSelfDestruct={handleSelfDestruct}
+                      onKnightDuel={handleKnightDuel}
                       onViewAnalysis={handleViewAnalysis}
                       isAnalysisLoading={isAnalysisLoading}
                       gameMvps={analysisData?.awards?.mvp}

@@ -33,6 +33,8 @@ export const getRoleText = (role: string) => {
       return t("promptUtils.roleText.guard");
     case "Idiot":
       return t("promptUtils.roleText.idiot");
+    case "Knight":
+      return t("promptUtils.roleText.knight");
     default:
       return t("promptUtils.roleText.villager");
   }
@@ -74,6 +76,8 @@ export const getRoleWinCondition = (role: string): string => {
       return t("promptUtils.winCondition.guard");
     case "Idiot":
       return t("promptUtils.winCondition.idiot");
+    case "Knight":
+      return t("promptUtils.winCondition.knight");
     default:
       return t("promptUtils.winCondition.villager");
   }
@@ -105,6 +109,7 @@ const PUBLIC_ROLE_ORDER: Role[] = [
   "Hunter",
   "Guard",
   "Idiot",
+  "Knight",
   "Villager",
 ];
 
@@ -113,10 +118,17 @@ const PUBLIC_ROLE_ORDER: Role[] = [
  * This deliberately reads the public player-count configuration instead of
  * state.players, so no seat-to-role or alive-role information can leak.
  */
-export const buildPublicRoleConfiguration = (playerCount: number): string => {
+export const buildPublicRoleConfiguration = (state: Pick<GameState, "players" | "fixedRoles">): string => {
   const { t } = getI18n();
+  const playerCount = state.players.length;
   const counts = new Map<Role, number>();
-  getRoleConfiguration(playerCount).forEach((role) => {
+  // 自定義／非預設版型（如白狼騎士）以 state.fixedRoles 為準；
+  // 這裡只統計角色數量，不帶座位與存活資訊，因此不會洩漏座位身分。
+  const roles =
+    state.fixedRoles && state.fixedRoles.length === playerCount
+      ? state.fixedRoles
+      : getRoleConfiguration(playerCount);
+  roles.forEach((role) => {
     counts.set(role, (counts.get(role) ?? 0) + 1);
   });
 
@@ -1115,7 +1127,7 @@ alive_count: ${alivePlayers.length}
 
   // Public setup information only: aggregate role counts and public rules.
   // Never derive this section from seat assignments in state.players.
-  context += `\n\n${buildPublicRoleConfiguration(totalSeats)}`;
+  context += `\n\n${buildPublicRoleConfiguration(state)}`;
 
   const publicRoleReveals = buildPublicRoleReveals(state);
   if (publicRoleReveals) {

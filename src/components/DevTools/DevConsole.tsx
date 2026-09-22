@@ -109,6 +109,7 @@ const useRoleNames = () => {
     Hunter: t("devConsole.roles.Hunter"),
     Guard: t("devConsole.roles.Guard"),
     Idiot: t("devConsole.roles.Idiot"),
+    Knight: t("roles.knight"),
   } as Record<Role, string>), [t]);
 };
 

@@ -57,6 +57,7 @@ const state: GameState = {
     hunterCanShoot: true,
     idiotRevealed: false,
     boomedSeats: [],
+  duelUsedSeats: [],
   },
   winner: null,
 };

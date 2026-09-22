@@ -194,6 +194,7 @@ const createUniqueSeerClaimState = (): GameState => {
       hunterCanShoot: true,
       idiotRevealed: false,
       boomedSeats: [],
+  duelUsedSeats: [],
     },
     winner: null,
   };

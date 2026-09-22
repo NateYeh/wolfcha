@@ -67,6 +67,7 @@ const makeState = (overrides: Partial<GameState> = {}): GameState => ({
     hunterCanShoot: true,
     idiotRevealed: false,
     boomedSeats: [],
+  duelUsedSeats: [],
   },
   winner: null,
   ...overrides,

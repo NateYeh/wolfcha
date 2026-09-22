@@ -85,6 +85,16 @@ function getRoleMeta(role: Player["role"], t: ReturnType<typeof useTranslations>
         abilities: t.raw("roleReveal.roles.guard.abilities"),
         tips: t.raw("roleReveal.roles.guard.tips"),
       };
+    case "Knight":
+      return {
+        title: t("roleReveal.roles.knight.title"),
+        subtitle: t("roleReveal.roles.knight.subtitle"),
+        color: "var(--color-guard)",
+        bg: "var(--color-guard-bg)",
+        Icon: GuardIcon,
+        abilities: t.raw("roleReveal.roles.knight.abilities"),
+        tips: t.raw("roleReveal.roles.knight.tips"),
+      };
     case "Idiot":
       return {
         title: t("roleReveal.roles.idiot.title"),
@@ -135,6 +145,8 @@ function getNextStepText(role: Player["role"], phase: Phase, t: ReturnType<typeo
         return t("roleReveal.nextStep.hunter");
       case "Idiot":
         return t("roleReveal.nextStep.idiot");
+      case "Knight":
+        return t("roleReveal.nextStep.knight");
       default:
         return t("roleReveal.nextStep.villager");
     }

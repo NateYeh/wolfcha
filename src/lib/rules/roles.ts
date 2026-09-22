@@ -29,9 +29,11 @@ export interface RoleCapabilities {
   boomTakesPlayer: boolean;
   /** 競選發言自爆時是否直接吞警徽（白狼王專屬；普通狼靠雙爆） */
   boomSwallowsBadgeOnElection: boolean;
+  /** 白天發言階段可否翻牌決鬥（騎士；一場一次） */
+  canDuel: boolean;
 }
 
-/** 八個既有角色的能力表 */
+/** 角色能力表（與 ALL_ROLE_KEYS 同步） */
 export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
   Werewolf: {
     role: "Werewolf",
@@ -42,6 +44,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     canBoom: true,
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
+    canDuel: false,
   },
   WhiteWolfKing: {
     role: "WhiteWolfKing",
@@ -52,6 +55,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     canBoom: true,
     boomTakesPlayer: true,
     boomSwallowsBadgeOnElection: true,
+    canDuel: false,
   },
   Seer: {
     role: "Seer",
@@ -62,6 +66,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     canBoom: false,
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
+    canDuel: false,
   },
   Witch: {
     role: "Witch",
@@ -72,6 +77,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     canBoom: false,
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
+    canDuel: false,
   },
   Hunter: {
     role: "Hunter",
@@ -82,6 +88,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     canBoom: false,
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
+    canDuel: false,
   },
   Guard: {
     role: "Guard",
@@ -92,6 +99,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     canBoom: false,
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
+    canDuel: false,
   },
   Idiot: {
     role: "Idiot",
@@ -102,6 +110,18 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     canBoom: false,
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
+    canDuel: false,
+  },
+  Knight: {
+    role: "Knight",
+    camp: "god",
+    nightAction: "none",
+    canAbstain: true,
+    canSelfTarget: false,
+    canBoom: false,
+    boomTakesPlayer: false,
+    boomSwallowsBadgeOnElection: false,
+    canDuel: true,
   },
   Villager: {
     role: "Villager",
@@ -112,6 +132,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     canBoom: false,
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
+    canDuel: false,
   },
 };
 

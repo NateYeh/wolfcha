@@ -6,6 +6,7 @@ import { NightPhase } from "../phases/NightPhase";
 import { DaySpeechPhase } from "../phases/DaySpeechPhase";
 import { BadgePhase } from "../phases/BadgePhase";
 import { HunterPhase } from "../phases/HunterPhase";
+import { KnightDuelPhase } from "../phases/KnightDuelPhase";
 import { SelfDestructPhase } from "../phases/SelfDestructPhase";
 
 export class PhaseManager {
@@ -18,6 +19,7 @@ export class PhaseManager {
     const badgePhase = new BadgePhase();
     const hunterPhase = new HunterPhase();
     const selfDestructPhase = new SelfDestructPhase();
+    const knightDuelPhase = new KnightDuelPhase();
     this.phases = {
       NIGHT_START: nightPhase,
       NIGHT_GUARD_ACTION: nightPhase,
@@ -34,6 +36,7 @@ export class PhaseManager {
       BADGE_TRANSFER: badgePhase,
       HUNTER_SHOOT: hunterPhase,
       SELF_DESTRUCT: selfDestructPhase,
+      KNIGHT_DUEL: knightDuelPhase,
     };
   }
 

@@ -12,6 +12,7 @@ import { createInitialGameState } from "@/lib/game-master";
 import { GAME_SESSION_RESUME_WINDOW_MS } from "@/lib/game-session-policy";
 import { getI18n } from "@/i18n/translator";
 import { getRoleCapabilities } from "@/lib/rules/roles";
+import { hasAlreadyDueled } from "@/lib/rules/knight-duel";
 import { isPendingDeath } from "@/lib/rules/night-deaths";
 import { hasAlreadyBoomed } from "@/lib/rules/self-destruct";
 
@@ -899,6 +900,30 @@ export const PHASE_CONFIGS: Record<Phase, PhaseConfig> = {
     },
     actionType: "night_action",
   },
+  KNIGHT_DUEL: {
+    phase: "KNIGHT_DUEL",
+    description: "phase.knightDuel.description",
+    humanDescription: () => {
+      const { t } = getI18n();
+      return t("phase.knightDuel.human");
+    },
+    // 騎士翻牌後進入這個階段選目標（一場一次）
+    requiresHumanInput: (hp, gs) =>
+      Boolean(
+        hp?.alive &&
+          getRoleCapabilities(hp.role).canDuel &&
+          !hasAlreadyDueled(gs.roleAbilities.duelUsedSeats, hp.seat)
+      ) || false,
+    canSelectPlayer: (hp, target, gs) => {
+      if (!hp?.alive || !getRoleCapabilities(hp.role).canDuel) return false;
+      if (!target.alive || target.isHuman) return false;
+      if (target.seat === hp.seat) return false;
+      // 已經出局的人（含死訊未公布的第一夜死者）不能挑戰
+      if (isPendingDeath(gs, target.seat)) return false;
+      return true;
+    },
+    actionType: "night_action",
+  },
   GAME_END: {
     phase: "GAME_END",
     description: "phase.gameEnd.description",
@@ -1038,10 +1063,10 @@ export const VALID_TRANSITIONS: Record<Phase, Phase[]> = {
   // 白天流程: 开始 -> 发言 -> 投票 -> 结算
   DAY_START: ["DAY_BADGE_SIGNUP", "DAY_SPEECH"],
   DAY_BADGE_SIGNUP: ["DAY_BADGE_SPEECH", "DAY_SPEECH"],
-  DAY_BADGE_SPEECH: ["DAY_BADGE_ELECTION", "SELF_DESTRUCT"],
+  DAY_BADGE_SPEECH: ["DAY_BADGE_ELECTION", "SELF_DESTRUCT", "KNIGHT_DUEL"],
   DAY_BADGE_ELECTION: ["DAY_PK_SPEECH", "DAY_SPEECH"],
   DAY_PK_SPEECH: ["DAY_BADGE_ELECTION", "DAY_VOTE", "SELF_DESTRUCT"],
-  DAY_SPEECH: ["DAY_VOTE", "SELF_DESTRUCT"],
+  DAY_SPEECH: ["DAY_VOTE", "SELF_DESTRUCT", "KNIGHT_DUEL"],
   DAY_VOTE: ["DAY_RESOLVE"],
   DAY_RESOLVE: ["DAY_PK_SPEECH", "DAY_LAST_WORDS", "BADGE_TRANSFER", "NIGHT_START", "GAME_END"],
   DAY_LAST_WORDS: ["NIGHT_START", "HUNTER_SHOOT", "BADGE_TRANSFER", "GAME_END"],
@@ -1050,6 +1075,8 @@ export const VALID_TRANSITIONS: Record<Phase, Phase[]> = {
   BADGE_TRANSFER: ["DAY_LAST_WORDS", "HUNTER_SHOOT", "NIGHT_START", "DAY_SPEECH", "GAME_END"],
   HUNTER_SHOOT: ["DAY_START", "NIGHT_START", "BADGE_TRANSFER", "GAME_END"],
   SELF_DESTRUCT: ["NIGHT_START", "HUNTER_SHOOT", "GAME_END", "BADGE_TRANSFER", "DAY_LAST_WORDS"],
+  // 決鬥成功＝直接天黑（也可能先移交警徽或補發表遺言）；失敗＝回到白天原階段繼續
+  KNIGHT_DUEL: ["NIGHT_START", "HUNTER_SHOOT", "GAME_END", "BADGE_TRANSFER", "DAY_LAST_WORDS", "DAY_SPEECH", "DAY_BADGE_SPEECH"],
   GAME_END: ["LOBBY"], // 允许重新开始
 };
 

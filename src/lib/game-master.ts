@@ -33,6 +33,8 @@ import { buildPublicRecordForRemark } from "@/lib/public-record";
 import { getRoleConfiguration } from "@/lib/role-configuration";
 import { canWitchSave, getGuardEligibleSeats, isAbstainKeyword } from "@/lib/rules/actions";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
+import { canDuel } from "@/lib/rules/knight-duel";
+import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
 
@@ -201,6 +203,7 @@ export type GameStartStateOptions = Pick<
   | "isSpectatorMode"
   | "isAcquaintanceGame"
   | "characterStats"
+  | "fixedRoles"
 >;
 
 /**
@@ -253,6 +256,7 @@ export function createInitialGameState(): GameState {
       hunterCanShoot: true,
       idiotRevealed: false,
       boomedSeats: [],
+  duelUsedSeats: [],
     },
     winner: null,
   };
@@ -2921,6 +2925,123 @@ export async function generateSelfDestructDecision(
   }
 }
 
+
+/**
+ * 騎士翻牌決鬥決策（AI）：只在騎士自己的白天發言輪被呼叫。
+ *
+ * 回傳 `{ duel: false }` 表示不發動；`targetSeat` 為 0 基座位。
+ * 解析失敗或上游逾時一律視為不發動（翻牌是不可逆的豪賭，寧可保守）。
+ */
+export async function generateKnightDuelDecision(
+  state: GameState,
+  player: Player
+): Promise<{ duel: boolean; targetSeat: number | null; reason: string }> {
+  const prompt = resolvePhasePrompt("KNIGHT_DUEL", state, player);
+  const flags = getBoardRuleFlags(state.players.length);
+  const pendingDeathSeats = getPendingDeathSeats(state);
+  const alivePlayers = state.players.filter(
+    (p) => p.alive && p.playerId !== player.playerId && !pendingDeathSeats.includes(p.seat)
+  );
+  const startTime = Date.now();
+  let attempts = 0;
+  const { messages } = buildMessagesForPrompt(prompt);
+  const validSeats = alivePlayers.map((p) => p.seat);
+  const noDuel = { duel: false, targetSeat: null } as const;
+
+  if (!canDuel({
+    phase: state.phase,
+    role: player.role,
+    flags,
+    duelUsedSeats: state.roleAbilities.duelUsedSeats,
+    seat: player.seat,
+  }) || validSeats.length === 0) {
+    return { ...noDuel, reason: "" };
+  }
+
+  try {
+    const completion = await withCriticalRetry(
+      "knight_duel_decision",
+      async () => {
+        attempts += 1;
+        return await generateCompletionAndParse<{ duel: boolean; targetSeat: number | null }>(
+          mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+            model: player.agentProfile!.modelRef.model,
+            messages,
+            promptScope: "gameplay",
+            temperature: GAME_TEMPERATURE.ACTION,
+            response_format: { type: "json_object" },
+          }),
+          (cleaned) => {
+            const parsed = parseLLMJson<unknown>(cleaned);
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return parseFail();
+
+            const record = parsed as Record<string, unknown>;
+            const action = String(record.action ?? record.type ?? "").trim().toLowerCase();
+            const seatValue = record.seat ?? record.targetSeat ?? record.target ?? record.duel;
+            const wantsPass =
+              action.includes("pass") ||
+              action.includes("skip") ||
+              action.includes("none") ||
+              seatValue === null ||
+              seatValue === 0 ||
+              seatValue === "0";
+
+            if (wantsPass) return parseOk(noDuel);
+            const wantsDuel =
+              action === "" ||
+              action.includes("duel") ||
+              action.includes("challenge") ||
+              action.includes("reveal");
+            if (!wantsDuel) return parseFail();
+
+            const target = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "duel"]);
+            return target === null ? parseFail() : parseOk({ duel: true, targetSeat: target });
+          }
+        );
+      },
+    );
+    const decision = completion.parsed ?? noDuel;
+    const duelReason = extractJsonTextField(completion.cleaned, "reason");
+
+    await aiLogger.log({
+      type: "knight_duel_decision",
+      request: {
+        model: player.agentProfile!.modelRef.model,
+        messages,
+        player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+      },
+      response: {
+        content: completion.cleaned,
+        raw: completion.result.content,
+        rawResponse: JSON.stringify(completion.result.raw, null, 2),
+        finishReason: completion.result.raw.choices?.[0]?.finish_reason,
+        parsed: { duel: decision.duel, targetSeat: decision.targetSeat, attempts: completion.attempts, reason: duelReason },
+        attempts,
+        duration: Date.now() - startTime,
+      },
+    });
+
+    return { duel: decision.duel, targetSeat: decision.targetSeat, reason: duelReason };
+  } catch (error) {
+    console.warn("[wolfcha] generateKnightDuelDecision failed, passing duel:", error);
+    await aiLogger.log({
+      type: "knight_duel_decision",
+      request: {
+        model: player.agentProfile!.modelRef.model,
+        messages,
+        player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+      },
+      response: {
+        content: "",
+        parsed: { duel: false, targetSeat: null, attempts: 1, reason: "" },
+        attempts,
+        duration: Date.now() - startTime,
+        failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
+      },
+    });
+    return { ...noDuel, reason: "" };
+  }
+}
 
 /** 预取仅在实际提示词完全一致时复用，消息数量不足以代表上下文。 */
 export function getSpeechContextKey(state: GameState, player: Player): string {

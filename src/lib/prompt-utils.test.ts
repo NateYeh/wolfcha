@@ -67,6 +67,7 @@ const makeState = (messages: ChatMessage[] = []): GameState => ({
     hunterCanShoot: true,
     idiotRevealed: false,
     boomedSeats: [],
+  duelUsedSeats: [],
   },
   winner: null,
 });
@@ -88,7 +89,7 @@ const message = (
 });
 
 test("公开角色配置只包含人数板子，不包含座位身份", () => {
-  const config = buildPublicRoleConfiguration(9);
+  const config = buildPublicRoleConfiguration({ players: Array.from({ length: 9 }, () => ({}) as never), fixedRoles: undefined });
 
   assert.match(config, /狼人 × 3/);
   assert.match(config, /预言家 × 1/);

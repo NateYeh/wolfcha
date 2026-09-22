@@ -1,4 +1,13 @@
-export type Role = "Villager" | "Werewolf" | "Seer" | "Witch" | "Hunter" | "Guard" | "Idiot" | "WhiteWolfKing";
+export type Role =
+  | "Villager"
+  | "Werewolf"
+  | "Seer"
+  | "Witch"
+  | "Hunter"
+  | "Guard"
+  | "Idiot"
+  | "Knight"
+  | "WhiteWolfKing";
 
 /** Check if a role belongs to the wolf team (used for seer checks, wolf actions, etc.) */
 export function isWolfRole(role: string | undefined): boolean {
@@ -47,6 +56,7 @@ export type Phase =
   | "BADGE_TRANSFER"        // 警长移交警徽
   | "HUNTER_SHOOT"          // 猎人开枪
   | "SELF_DESTRUCT"  // 自爆（所有狼陣營角色）
+  | "KNIGHT_DUEL"    // 騎士翻牌決鬥（選擇挑戰目標）
   | "GAME_END";
 
 export type Alignment = "village" | "wolf";
@@ -211,6 +221,8 @@ export interface WolfTeamPlan {
 }
 
 export interface GameState {
+  /** 本局版型組成（自定義／非預設版型時存在；公開資訊，會寫進 prompt 的公開角色配置） */
+  fixedRoles?: Role[];
   gameId: string;
   /** 数据库单人游戏会话的唯一身份；进行中的可恢复状态必须存在。 */
   gameSessionId?: string | null;
@@ -301,6 +313,13 @@ export interface GameState {
         suspendedElection?: boolean;
       };
       idiotRevealed?: { seat: number };
+      /** 騎士決鬥紀錄（一場一次；targetIsWolf 決定後續流程） */
+      knightDuel?: {
+        duelistSeat: number;
+        targetSeat: number;
+        targetIsWolf: boolean;
+        goToNight: boolean;
+      };
     }
   >;
   /**
@@ -349,6 +368,8 @@ export interface GameState {
     idiotRevealed: boolean;      // 白痴是否已翻牌（翻牌后失去投票权但不死）
     /** 已自爆過的座位（自爆者出局，僅供防重複與賽後紀錄） */
     boomedSeats: number[];
+    /** 已用過決鬥的騎士座位（一場一次，僅供防重複與賽後紀錄） */
+    duelUsedSeats: number[];
   };
   winner: Alignment | null;
 }

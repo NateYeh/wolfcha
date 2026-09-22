@@ -64,6 +64,7 @@ const makeState = (): GameState => ({
     hunterCanShoot: true,
     idiotRevealed: false,
     boomedSeats: [],
+  duelUsedSeats: [],
   },
   winner: null,
 });
