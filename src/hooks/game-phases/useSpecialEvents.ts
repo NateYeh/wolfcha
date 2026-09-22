@@ -88,8 +88,9 @@ export function useSpecialEvents(
       console.error("[game-session] Failed to end:", err);
     });
 
-    // 赛后感言：身份全公开后，AI 角色依次复盘本局（赢家点评真神/调侃对方
-    // 「卧底」，输家吐槽猪队友）。单个失败仅跳过该角色，不阻断后续。
+    // 赛后感言：身份全公开后，AI 角色并发生成本局复盘（赢家点评真神/调侃对方
+    // 「卧底」，输家吐槽猪队友），全部算完再按座位序逐席播出。
+    // generateGameEndRemark 内部已把失败吞成空感言，Promise.all 不会被打断。
     currentState = addSystemMessage(currentState, texts.t("specialEvents.remarkTitle"));
     setGameState(currentState);
     setIsWaitingForAI(true);
@@ -97,37 +98,35 @@ export function useSpecialEvents(
       const speakers = currentState.players
         .filter((p) => !p.isHuman)
         .sort((a, b) => a.seat - b.seat);
-      for (const speaker of speakers) {
-        try {
-          const result = await generateGameEndRemark(currentState, speaker, winner);
-          // 票先落地：即使感言为空，票仍有效（供系統分析計分）。
-          currentState = {
-            ...currentState,
-            endGameVotes: [
-              ...(currentState.endGameVotes ?? []),
-              {
-                voterId: speaker.playerId,
-                voterName: speaker.displayName,
-                voterRole: speaker.role,
-                mvpPlayerId: result.mvpPlayerId,
-                mvpReason: result.mvpReason,
-                svpPlayerId: result.svpPlayerId,
-                svpReason: result.svpReason,
-              },
-            ],
-          };
-          if (!result.remark.trim()) {
-            console.warn("[game-end] 空感言，跳过:", speaker.displayName);
-            setGameState(currentState);
-            continue;
-          }
-          currentState = addPlayerMessage(currentState, speaker.playerId, result.remark);
-          setGameState(currentState);
-          setDialogue(speaker.displayName, result.remark, false);
-          await delay(DELAY_CONFIG.DIALOGUE);
-        } catch (error) {
-          console.warn("[game-end] 感言生成失败，跳过:", speaker.displayName, error);
+      const results = await Promise.all(
+        speakers.map((speaker) => generateGameEndRemark(currentState, speaker, winner))
+      );
+      // 票先全部落地：即使感言为空，票仍有效（供系統分析計分）。
+      currentState = {
+        ...currentState,
+        endGameVotes: [
+          ...(currentState.endGameVotes ?? []),
+          ...speakers.map((speaker, i) => ({
+            voterId: speaker.playerId,
+            voterName: speaker.displayName,
+            voterRole: speaker.role,
+            mvpPlayerId: results[i].mvpPlayerId,
+            mvpReason: results[i].mvpReason,
+            svpPlayerId: results[i].svpPlayerId,
+            svpReason: results[i].svpReason,
+          })),
+        ],
+      };
+      for (const [i, speaker] of speakers.entries()) {
+        const remark = results[i].remark;
+        if (!remark.trim()) {
+          console.warn("[game-end] 空感言，跳过:", speaker.displayName);
+          continue;
         }
+        currentState = addPlayerMessage(currentState, speaker.playerId, remark);
+        setGameState(currentState);
+        setDialogue(speaker.displayName, remark, false);
+        await delay(DELAY_CONFIG.DIALOGUE);
       }
     } finally {
       setIsWaitingForAI(false);
