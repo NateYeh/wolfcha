@@ -21,7 +21,7 @@ import { LowCreditModal, LOW_CREDIT_THRESHOLD } from "@/components/game/LowCredi
 import { LocaleSwitcher } from "@/components/game/LocaleSwitcher";
 import { useCredits, type ConsumeCreditResult } from "@/hooks/useCredits";
 import { difficultyAtom, playerCountAtom, preferredRoleAtom, rosterPoolIdAtom } from "@/store/settings";
-import { countBoardRoles, getBoardRoles, getBoardsByPlayerCount, validateBoardPreset } from "@/lib/rules/boards";
+import { ALL_ROLE_KEYS, countBoardRoles, getBoardRoles, getBoardsByPlayerCount, validateBoardPreset } from "@/lib/rules/boards";
 import {
   getGeneratorModel,
   getModelSource,
@@ -410,7 +410,8 @@ export function WelcomeScreen({
   const showDevTools =
     process.env.NODE_ENV !== "production" && (process.env.NEXT_PUBLIC_SHOW_DEVTOOLS ?? "true") === "true";
 
-  const roleOptions: Role[] = ["Villager", "Werewolf", "WhiteWolfKing", "Seer", "Witch", "Hunter", "Guard", "Idiot"];
+  // 角色選項以規則層清單為單一真相（新增角色不必再改這裡）
+  const roleOptions: Role[] = ALL_ROLE_KEYS;
   const roleLabels = useMemo<Record<Role, string>>(
     () => ({
       Villager: t("roles.villager"),
@@ -1567,7 +1568,7 @@ export function WelcomeScreen({
                           <option value="">{t("welcome.dev.roles.boardPlaceholder")}</option>
                           {getBoardsByPlayerCount(playerCount).map((board) => (
                             <option key={board.id} value={board.id}>
-                              {board.tags.join("｜")}（{board.roles.length}人）
+                              {board.tags.join("｜")}
                             </option>
                           ))}
                         </select>

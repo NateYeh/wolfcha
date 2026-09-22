@@ -119,6 +119,42 @@ test("版型註冊表：角色種類去重且保留首次出現順序（供 UI �
   }
 });
 
+function countBoardRolesOf(board: { roles: Role[] }): {
+  byCamp: Record<string, number>;
+  byRole: Record<string, number>;
+  total: number;
+} {
+  const byCamp: Record<string, number> = { wolf: 0, god: 0, villager: 0 };
+  const byRole: Record<string, number> = {};
+  for (const role of board.roles) {
+    byCamp[getRoleCapabilities(role).camp] += 1;
+    byRole[role] = (byRole[role] ?? 0) + 1;
+  }
+  return { byCamp, byRole, total: board.roles.length };
+}
+
+test("版型註冊表：預女獵白＝預言家/女巫/獵人/白痴＋4 平民＋4 狼人（純資料新增）", () => {
+  const board = getBoardById("official-12-seer-witch-hunter-idiot");
+  assert.ok(board, "應收錄預女獵白版型");
+  assert.equal(board.official, true);
+  assert.equal(board.playerCount, 12);
+  assert.equal(board.roles.length, 12);
+  assert.deepEqual(countBoardRolesOf(board), {
+    byCamp: { wolf: 4, god: 4, villager: 4 },
+    byRole: { Werewolf: 4, Seer: 1, Witch: 1, Hunter: 1, Idiot: 1, Villager: 4 },
+    total: 12,
+  });
+  // 沒有白狼王、沒有守衛、沒有騎士
+  assert.equal(board.roles.includes("WhiteWolfKing"), false);
+  assert.equal(board.roles.includes("Guard"), false);
+  assert.equal(board.roles.includes("Knight"), false);
+  const { errors, warnings } = validateBoardPreset(board);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(warnings, [], "標準 12 人配置不應有提醒");
+  // 預設版型不受影響：12 人仍以經典為預設（行為不變）
+  assert.equal(getDefaultBoard(12).id, "official-12-classic");
+});
+
 test("版型註冊表：回傳的是複本，修改不會污染註冊表", () => {
   const roles = getBoardRoles(12);
   roles[0] = "Villager";
