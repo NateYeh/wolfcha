@@ -63,9 +63,22 @@ export class AsyncFlowController {
   }
 }
 
-/** 延迟工具函数 */
-export const delay = (ms: number): Promise<void> => 
-  new Promise((resolve) => setTimeout(resolve, ms));
+/** 分頁在背景時，階段節奏延遲縮到這個上限（沒人看動畫，不需要慢慢鋪陳） */
+const HIDDEN_DELAY_MAX_MS = 250;
+
+/** 分頁是否不在前景（瀏覽器會把背景分頁的 setTimeout 節流到最小 1 秒甚至更久） */
+function isDocumentHidden(): boolean {
+  return typeof document !== "undefined" && document.hidden === true;
+}
+
+/**
+ * 延迟工具函数。
+ *
+ * 背景分頁的 setTimeout 會被節流（最小 1 秒），這裡的階段延遲會被拉長到像暫停；
+ * 分頁不在前景時把延遲壓短，讓流程照常推進（真人決策點仍然會正常等待輸入）。
+ */
+export const delay = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, isDocumentHidden() ? Math.min(ms, HIDDEN_DELAY_MAX_MS) : ms));
 
 /** 随机延迟工具函数 */
 export const randomDelay = (minMs: number, maxMs: number): Promise<void> => {
