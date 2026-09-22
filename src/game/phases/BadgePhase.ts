@@ -158,7 +158,10 @@ export class BadgePhase extends GamePhase {
       tearJsonFormat: JSON.stringify({ action: "tear", reason: "一句话说明你为什么撕徽" }),
     }) +
       // 警徽移交经验：仅狼人可见。移交是公开动作，好人会从接徽人倒推死者的关系网。
-      (isWolfRole(player.role) ? t("prompts.badge.transfer.wolfTransferExperience") : "");
+      (isWolfRole(player.role)
+        ? t("prompts.badge.transfer.wolfTransferExperience")
+        // 非狼警長：按生前宣布的警徽流兌現，徽落點是死後的查驗解碼。
+        : t("prompts.badge.transfer.flowHonorNote"));
     const systemParts: SystemPromptPart[] = [
       { text: getSharedPromptRules(), cacheable: true, ttl: "1h" },
     ];
