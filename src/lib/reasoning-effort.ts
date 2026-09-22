@@ -5,25 +5,21 @@
  * `reasoning_effort`；`thinking` / `think` / `reasoning.enabled` / `enable_thinking` /
  * `chat_template_kwargs` 實測全是空操作（reasoning 照樣輸出）。
  *
- * 而且「有效值」逐模型不同（2026-09-22 實測，約 8–10k tokens prompt、max_tokens 3000、各兩次）：
- * - deepseek-v4.1-flash：none＝完全關閉思考（23.6s→1.9s、reasoning 0 字）；
- *   low/minimal 幾乎無效（22.9s／19.5s，思考仍近 4,000 字）。
- * - glm-5.3-flash：low 最有效（27.9s→2.9s、思考 80–232 字）；
- *   none 反而把思考擠進正文（31.7s、內容上千字）；minimal 無效。
- * - gemma4:31b：本來就不思考；送 low 反而開啟思考（1.3s→6.9s），只能不送。
+ * 各值實測差異（2026-09-22，約 8–10k tokens prompt、max_tokens 3000、各兩次）：
+ * - `none`：deepseek 完全關閉思考（23.6s→1.9s、reasoning 0 字）、glm 反而把思考擠進正文
+ *   （31.7s、內容上千字）、gemma 中性。→ 快，但**實戰認知明顯變差**（使用者於對局中裁定不用）。
+ * - `low`：glm 2.9s（思考 80–232 字）；deepseek 22.9s（思考仍約 4,000 字）；
+ *   gemma 6.9s（本來不思考，送 low 會開啟思考）。
+ * - `minimal`：三個模型都幾乎無效。
  *
- * 因此預設值必須逐模型給，不能全域一個值；設定優先序（高→低）：
- *   1. WOLFCHA_REASONING_EFFORT_MAP（逐模型覆寫，格式見下）
- *   2. 內建表 DEFAULT_MODEL_REASONING_EFFORTS
- *   3. WOLFCHA_REASONING_EFFORT（舊的全域值，只影響內建表沒涵蓋的模型）
+ * 現行政策（使用者裁定）：**一律 `low`**——關思考雖然快，但 AI 的判斷力掉太多，
+ * 寧可慢一點；配合 `API_TIMEOUT_MS` 放寬到 120 秒（src/app/api/chat/route.ts）。
+ *
+ * 優先序（高→低）：WOLFCHA_REASONING_EFFORT_MAP → WOLFCHA_REASONING_EFFORT → 內建 low。
  */
 
-/** 依模型名稱樣式給預設思考量；空字串＝不送 reasoning_effort（維持上游預設）。 */
-export const DEFAULT_MODEL_REASONING_EFFORTS: ReadonlyArray<{ pattern: RegExp; effort: string }> = [
-  { pattern: /deepseek/i, effort: "none" },
-  { pattern: /glm|kimi/i, effort: "low" },
-  { pattern: /gemma/i, effort: "" },
-];
+/** 未指定時的預設思考量；空字串＝不送 reasoning_effort（維持上游預設）。 */
+export const DEFAULT_REASONING_EFFORT = "low";
 
 /** 上游接受的 reasoning_effort 值。 */
 export const REASONING_EFFORT_VALUES: ReadonlyArray<string> = ["none", "minimal", "low", "medium", "high"];
@@ -61,6 +57,17 @@ function parseEffortMap(raw: string | undefined): ReadonlyArray<{ keyword: strin
   return entries;
 }
 
+/** 讀全域設定（WOLFCHA_REASONING_EFFORT），無效值 warn 後回 undefined。 */
+function globalReasoningEffort(raw: string | undefined): string | undefined {
+  const value = (raw ?? "").trim().toLowerCase();
+  if (value === "") return undefined;
+  if (!isEffortValue(value)) {
+    console.warn(`[chat] WOLFCHA_REASONING_EFFORT 設定無效（${value}），已忽略`);
+    return undefined;
+  }
+  return value;
+}
+
 /**
  * 決定某個模型要送出的 reasoning_effort；回傳 undefined 表示不送這個欄位。
  * env 以參數注入，方便測試。
@@ -75,15 +82,8 @@ export function resolveReasoningEffort(
     .find((entry) => name.includes(entry.keyword));
   if (mapped) return mapped.effort === "" ? undefined : mapped.effort;
 
-  const builtin = DEFAULT_MODEL_REASONING_EFFORTS.find((entry) => entry.pattern.test(name));
-  if (builtin) return builtin.effort === "" ? undefined : builtin.effort;
+  const global = globalReasoningEffort(env.WOLFCHA_REASONING_EFFORT);
+  if (global) return global;
 
-  // 內建表沒涵蓋的模型（例如日後新增的別名）才吃舊的全域設定。
-  const global = (env.WOLFCHA_REASONING_EFFORT ?? "").trim().toLowerCase();
-  if (global === "") return undefined;
-  if (!isEffortValue(global)) {
-    console.warn(`[chat] WOLFCHA_REASONING_EFFORT 設定無效（${global}），已忽略`);
-    return undefined;
-  }
-  return global;
+  return DEFAULT_REASONING_EFFORT;
 }

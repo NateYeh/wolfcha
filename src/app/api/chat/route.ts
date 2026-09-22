@@ -43,7 +43,7 @@ const DASHSCOPE_API_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v
 const DASHSCOPE_CHAT_COMPLETIONS_URL = `${DASHSCOPE_API_BASE_URL}/chat/completions`;
 
 // API 调用超时时间（毫秒）；非流式请求要在这段时间内跑完，1 分钟足够正常模型响应，超时快速失败可触发重试。
-const API_TIMEOUT_MS = 60000;
+const API_TIMEOUT_MS = 120000;
 // 逾時訊息要能直接看懂：過去只會留下 Chrome 的 "This operation was aborted"，事後查不出原因。
 const UPSTREAM_TIMEOUT_MESSAGE = `上游模型无响应（超时 ${API_TIMEOUT_MS / 1000}s）`;
 const MAX_BATCH_REQUESTS = 12;
