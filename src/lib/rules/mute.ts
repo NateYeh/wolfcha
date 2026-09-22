@@ -19,10 +19,20 @@ export const MUTE_BLOCKED_SPEECH_PHASES: readonly Phase[] = [
   "DAY_PK_SPEECH",
 ] as const;
 
-/** 當日被禁言的座位（nightActions.mutedTarget），沒有則 null */
+/**
+ * 當日被禁言的座位，沒有則 null。
+ *
+ * 天亮公告時 `nightActions.mutedTarget` 會清空（它只是「已指定、待公告」的暫存），
+ * 禁言紀錄則寫進 `dayHistory[day].muted`。這裡必須以當日紀錄為準，否則公告之後
+ * 就查不到禁言 → 發言順序不會過濾 → 被禁言的人照樣拿到發言輪。
+ *
+ * 只看當日：禁言不跨日殘留（隔天沒有紀錄就自動失效）。
+ */
 export function getMutedSeat(state: GameState): number | null {
-  const seat = state.nightActions?.mutedTarget;
-  return typeof seat === "number" && seat >= 0 ? seat : null;
+  const announced = state.dayHistory?.[state.day]?.muted?.seat;
+  if (typeof announced === "number" && announced >= 0) return announced;
+  const pending = state.nightActions?.mutedTarget;
+  return typeof pending === "number" && pending >= 0 ? pending : null;
 }
 
 /** 這個座位今天是否被禁言 */

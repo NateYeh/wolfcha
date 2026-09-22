@@ -207,3 +207,37 @@ test("禁言長老 AI 決策：合法座位換算成 0 基並記 mute_action log
     globalThis.fetch = originalFetch;
   }
 });
+
+test("天亮公告之後仍然禁言：狀態改讀當日紀錄，不因 mutedTarget 清空而失效", () => {
+  const { state, elderSeat } = stateWithElder();
+  const mutedSeat = state.players.find((p) => p.seat !== elderSeat)!.seat;
+  // 公告完成後的狀態：mutedTarget 已消耗清空，只剩當日紀錄
+  const announced: GameState = {
+    ...state,
+    currentSpeakerSeat: null,
+    daySpeechStartSeat: state.players.find((p) => p.alive)!.seat,
+    nightActions: { ...state.nightActions, mutedTarget: undefined },
+    dayHistory: { ...(state.dayHistory || {}), [state.day]: { muted: { seat: mutedSeat } } },
+  };
+
+  assert.equal(getMutedSeat(announced), mutedSeat, "公告後仍要查得到禁言");
+  assert.equal(isMutedSeat(announced, mutedSeat), true);
+  assert.equal(canSpeakInPhase(announced, mutedSeat, "DAY_SPEECH"), false);
+  assert.equal(getSpeechPhaseOrder(announced).includes(mutedSeat), false, "公告後發言輪仍須排除被禁言者");
+  assert.equal(canSpeakInPhase(announced, mutedSeat, "DAY_LAST_WORDS"), true, "禁言不擋遺言");
+});
+
+test("禁言不跨日：隔天沒有當日紀錄就自動失效", () => {
+  const { state, elderSeat } = stateWithElder();
+  const mutedSeat = state.players.find((p) => p.seat !== elderSeat)!.seat;
+  const nextDay: GameState = {
+    ...state,
+    day: state.day + 1,
+    nightActions: { ...state.nightActions, mutedTarget: undefined },
+    dayHistory: { ...(state.dayHistory || {}), [state.day]: { muted: { seat: mutedSeat } } },
+  };
+
+  assert.equal(getMutedSeat(nextDay), null);
+  assert.equal(isMutedSeat(nextDay, mutedSeat), false);
+  assert.equal(getSpeechPhaseOrder(nextDay).includes(mutedSeat), true);
+});

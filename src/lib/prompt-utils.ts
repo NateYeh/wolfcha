@@ -6,6 +6,7 @@ import type { LLMMessage } from "./llm";
 import { getSystemMessages, getSystemPatterns } from "./game-texts";
 import { getI18n } from "@/i18n/translator";
 import { getRoleName } from "./game-constants";
+import { getMutedSeat } from "./rules/mute";
 import { getRoleConfiguration } from "./role-configuration";
 import {
   resolveBadgeElectionWinner,
@@ -1122,7 +1123,7 @@ export const buildGameContextParts = (
   privateParts.push(`you: {seat: ${player.seat + 1}, name: ${player.displayName}}`);
 
   // 禁言是公開資訊：天亮時主持人會宣布，所以放進公共 game_state（逐日一致、可共用快取）
-  const mutedSeat = typeof state.nightActions?.mutedTarget === "number" ? state.nightActions.mutedTarget : null;
+  const mutedSeat = getMutedSeat(state);
   const mutedLine = mutedSeat !== null
     ? `\nmuted: [${mutedSeat + 1}]`
     : "";
