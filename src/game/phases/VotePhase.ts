@@ -19,7 +19,6 @@ import {
   generateAIVote,
   tallyVotes,
   transitionPhase,
-  warmUpVotePrompt,
 } from "@/lib/game-master";
 import { canUseDeathShot } from "@/lib/rules/death-skills";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
@@ -105,12 +104,8 @@ export class VotePhase extends GamePhase {
     let tokenInvalidated = false;
     setIsWaitingForAI(true);
     try {
-      // 逐席單發吃不到彼此的快取，先補一發同前綴暖機（實測 0~52% → ~99%）。
-      // 只有 AI 席位 ≥2 才值得（單發自己就是冷啟動）。
-      // 逐席單發吃不到彼此的快取，先補一發同前綴暖機（實測 0~52% → ~99%）。
-      // 只有 AI 席位 ≥2 才值得（單發自己就是冷啟動）。
-      if (aiPlayers.length >= 2) await warmUpVotePrompt(currentState, aiPlayers[0]);
-
+      // 第一席本身就是暖機：它的 prefill 會把共用前綴（系統＋逐字發言紀錄）寫進上游快取，
+      // 等它算完，後面席位的併發請求直接命中（不必再送 max_tokens=1 暖機——那只是把同樣的計算提前付一次）。
       const writeVote = (aiPlayer: (typeof aiPlayers)[number], vote: { seat: number; reason: string }) => {
         setGameState((prevState) => ({
           ...prevState,
@@ -136,10 +131,9 @@ export class VotePhase extends GamePhase {
       }
 
       // 其餘席位**併發**送（逐席 await 會讓總時間＝各席加總）。
-      // 票是同一時間投的，彼此看不到對方；只有第一席的票在公共資訊裡。
+      // 票是同一時間投的，彼此看不到對方；只有第一席的票在公共資訊裡，
+      // 共用前綴已被第一席的 prefill 寫進快取，併發批直接命中。
       if (!tokenInvalidated && laterVoters.length > 0) {
-        // 前綴多了第一席的票 → 再暖一發，讓這批並發全部命中快取
-        if (laterVoters.length >= 2) await warmUpVotePrompt(currentState, laterVoters[0]);
         const settledVotes = await Promise.all(
           laterVoters.map(async (aiPlayer) => {
             try {

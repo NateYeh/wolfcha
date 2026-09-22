@@ -1,6 +1,6 @@
 import { areNightResultsVisible } from "./night-visibility";
 import { v4 as uuidv4 } from "uuid";
-import { generateCompletion, generateCompletionBatch, generateCompletionStream, extractPromptCacheUsage, mergeOptionsFromModelRef, stripMarkdownCodeFences, stripReasoningArtifacts, warmUpCompletion, type GenerateOptions, type LLMMessage } from "./llm";
+import { generateCompletion, generateCompletionBatch, generateCompletionStream, extractPromptCacheUsage, mergeOptionsFromModelRef, stripMarkdownCodeFences, stripReasoningArtifacts, type GenerateOptions, type LLMMessage } from "./llm";
 import type { ChatCompletionResponse, CompletionUsage } from "./llm";
 import { StreamingSpeechParser } from "./streaming-speech-parser";
 import {
@@ -1197,16 +1197,6 @@ function planVoteRequest(
   };
 }
 
-/**
- * 放逐投票前的前綴快取暖機：投票是逐席單發，實測未暖機時命中 0~52%，
- * 先補一發同前綴（max_tokens=1）就能讓後續席位約 99% 命中。詳見 llm.ts warmUpCompletion。
- */
-export async function warmUpVotePrompt(state: GameState, player: Player): Promise<void> {
-  const plan = planVoteRequest(state, player);
-  if (!plan) return;
-  await warmUpCompletion(plan.options);
-}
-
 export async function generateAIVote(
   state: GameState,
   player: Player
@@ -1599,13 +1589,6 @@ function planBadgeVoteRequest(
       response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "badge_vote", validSeats),
     }),
   };
-}
-
-/** 警徽投票前的前綴快取暖機（同放逐投票的理据）。 */
-export async function warmUpBadgeVotePrompt(state: GameState, player: Player): Promise<void> {
-  const plan = planBadgeVoteRequest(state, player);
-  if (!plan) return;
-  await warmUpCompletion(plan.options);
 }
 
 export async function generateAIBadgeVote(
