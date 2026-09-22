@@ -18,6 +18,8 @@ import {
 } from "@/components/icons/FlatIcons";
 import type { GameState, Player, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
+import { ABSTAIN_SEAT } from "@/lib/rules/actions";
+import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { useTranslations } from "next-intl";
 
 type WitchActionType = "save" | "poison" | "pass";
@@ -55,6 +57,14 @@ export function BottomActionPanel({
   const neutralCardClass = isNight
     ? "bg-white/5 border border-white/10 text-white/70"
     : "bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)]";
+
+  const ruleFlags = getBoardRuleFlags(gameState.players.length);
+  /** 今晚可救的刀口座位（不可自救的規則下，刀口是自己就沒有解藥選項）；null＝今晚沒有解藥可用 */
+  const witchSaveOfferSeat =
+    gameState.nightActions.wolfTarget !== undefined &&
+    (ruleFlags.witchCanSelfSave || gameState.nightActions.wolfTarget !== humanPlayer?.seat)
+      ? gameState.nightActions.wolfTarget
+      : null;
 
   return (
     <div className="wc-bottom-action-panel min-h-[40px] flex items-center justify-center w-full">
@@ -191,14 +201,14 @@ export function BottomActionPanel({
               className="wc-witch-action-row flex flex-col gap-1.5 w-full"
             > 
               <div className="flex items-center gap-2 w-full">
-              {gameState.nightActions.wolfTarget !== undefined && (
+              {witchSaveOfferSeat !== null && (
                 <button 
-                  onClick={() => onNightAction(gameState.nightActions.wolfTarget!, "save")}
+                  onClick={() => onNightAction(witchSaveOfferSeat, "save")}
                   disabled={gameState.roleAbilities.witchHealUsed}
                   className="inline-flex items-center justify-center gap-2 h-10 text-sm font-medium rounded-sm border-none cursor-pointer active:scale-[0.98] transition-all duration-150 bg-[var(--color-success)] text-white hover:bg-[#059669] disabled:opacity-50 disabled:cursor-not-allowed flex-1"
                 >
                   <Drop size={18} weight="fill" />
-                  {t("bottomAction.saveTarget", { seat: gameState.nightActions.wolfTarget + 1 })}
+                  {t("bottomAction.saveTarget", { seat: witchSaveOfferSeat + 1 })}
                 </button>
               )}
               
@@ -220,14 +230,38 @@ export function BottomActionPanel({
                 {t("bottomAction.pass")}
               </button>
               </div>
-              {/* 解藥仍在、今晚有刀口時提示毒奶規則：救了可能被守衛疊加守護而死 */}
-              {gameState.nightActions.wolfTarget !== undefined && !gameState.roleAbilities.witchHealUsed && (
+              {/* 解藥仍在、今晚有刀口且可救時提示毒奶規則：救了可能被守衛疊加守護而死 */}
+              {witchSaveOfferSeat !== null && !gameState.roleAbilities.witchHealUsed && (
                 <div className={`w-full text-center text-[11px] leading-tight ${isNight ? "text-white/50" : "text-[var(--text-muted)]"}`}>
                   {t("bottomAction.milkRuleHint")}
                 </div>
               )}
             </motion.div>
           )
+        )}
+
+        {/* 守卫空守（不保護任何人） */}
+        {phase === "NIGHT_GUARD_ACTION" &&
+          humanPlayer?.role === "Guard" &&
+          humanPlayer?.alive &&
+          !isWaitingForAI &&
+          selectedSeat === null &&
+          ruleFlags.guardCanAbstain && (
+          <motion.div
+            key="guard-abstain"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="wc-bottom-action-row flex gap-2 w-full items-center"
+          >
+            <button
+              onClick={() => onNightAction(ABSTAIN_SEAT, "pass")}
+              className={`inline-flex items-center justify-center gap-2 h-10 text-sm font-medium rounded-sm cursor-pointer active:scale-[0.98] transition-all duration-150 flex-1 ${neutralButtonClass}`}
+            >
+              <Shield size={16} />
+              {t("bottomAction.guardAbstain")}
+            </button>
+          </motion.div>
         )}
 
         {/* 猎人弃枪 */}

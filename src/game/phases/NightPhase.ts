@@ -20,6 +20,8 @@ import {
   humanWolfNeedsNightInput,
   transitionPhase as rawTransitionPhase,
 } from "@/lib/game-master";
+import { canWitchSave, getGuardEligibleSeats } from "@/lib/rules/actions";
+import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { DELAY_CONFIG } from "@/lib/game-constants";
 import {
@@ -653,6 +655,7 @@ export class NightPhase extends GamePhase {
 
   private buildGuardPrompt(state: GameContext["state"], player: Player): PromptResult {
     const { t } = getI18n();
+    const flags = getBoardRuleFlags(state.players.length);
     const context = buildGameContext(state, player);
     const { todayTranscript, selfSpeech } = this.buildNightEnhancements(state, player);
     const alivePlayers = state.players.filter((p) => p.alive);
@@ -664,15 +667,24 @@ export class NightPhase extends GamePhase {
       role: getRoleText("Guard"),
       coreRules: getRolePromptCore("Guard"),
     });
-    const eligiblePlayers = alivePlayers.filter((p) => p.seat !== lastTarget);
+    const eligibleSeats = getGuardEligibleSeats({
+      aliveSeats: alivePlayers.map((p) => p.seat),
+      lastGuardTarget: lastTarget,
+      flags,
+    });
+    const eligiblePlayers = alivePlayers.filter((p) => eligibleSeats.includes(p.seat));
     const options = eligiblePlayers
       .map((p) => t("prompts.night.option", { seat: p.seat + 1, name: p.displayName }))
       .join(t("promptUtils.gameContext.listSeparator"));
     const lastTargetLine =
-      lastTarget !== undefined ? t("prompts.night.guard.lastTarget", { seat: lastTarget + 1 }) : "";
+      flags.guardCannotRepeat && lastTarget !== undefined
+        ? t("prompts.night.guard.lastTarget", { seat: lastTarget + 1 })
+        : "";
+    const abstainLine = flags.guardCanAbstain ? t("prompts.night.guard.abstainLine") : "";
     const dynamicContent = t("prompts.night.guard.task", {
       options,
       lastTargetLine,
+      abstainLine,
     });
     const systemParts: SystemPromptPart[] = [
       { text: cacheableContent, cacheable: true, ttl: "1h" },
@@ -700,15 +712,22 @@ export class NightPhase extends GamePhase {
       (p) => p.alive && p.playerId !== player.playerId
     );
 
-    const canSave =
-      !state.roleAbilities.witchHealUsed &&
-      wolfTarget !== undefined;
+    const flags = getBoardRuleFlags(state.players.length);
+
+    const canSave = canWitchSave({
+      healUsed: state.roleAbilities.witchHealUsed,
+      witchSeat: player.seat,
+      wolfTarget,
+      flags,
+    });
     const canPoison = !state.roleAbilities.witchPoisonUsed;
 
     const victimInfo =
       wolfTarget !== undefined && !state.roleAbilities.witchHealUsed
         ? state.players.find((p) => p.seat === wolfTarget)
         : null;
+    // 刀口是女巫自己、且規則禁止自救：講清楚「這瓶藥救不了你」，避免 AI 硬選 save 觸發重試。
+    const selfVictim = wolfTarget !== undefined && wolfTarget === player.seat && !flags.witchCanSelfSave;
 
     const cacheableContent = t("prompts.night.witch.base", {
       seat: player.seat + 1,
@@ -722,14 +741,18 @@ export class NightPhase extends GamePhase {
     const statusPoison = state.roleAbilities.witchPoisonUsed
       ? t("promptUtils.gameContext.used")
       : t("promptUtils.gameContext.available");
-    const tonightInfo = victimInfo
-      ? t("prompts.night.witch.victimLine", { seat: wolfTarget! + 1, name: victimInfo.displayName })
-      : state.roleAbilities.witchHealUsed
-        ? t("prompts.night.witch.noSense")
-        : t("prompts.night.witch.noAttack");
+    const tonightInfo = selfVictim
+      ? t("prompts.night.witch.selfVictimLine", { seat: wolfTarget! + 1 })
+      : victimInfo
+        ? t("prompts.night.witch.victimLine", { seat: wolfTarget! + 1, name: victimInfo.displayName })
+        : state.roleAbilities.witchHealUsed
+          ? t("prompts.night.witch.noSense")
+          : t("prompts.night.witch.noAttack");
     const saveLine = canSave
       ? t("prompts.night.witch.saveOption", { seat: wolfTarget! + 1 })
-      : t("prompts.night.witch.noSave");
+      : selfVictim
+        ? t("prompts.night.witch.saveLineSelfVictim")
+        : t("prompts.night.witch.noSave");
     const poisonLine = canPoison ? t("prompts.night.witch.poisonOption") : t("prompts.night.witch.noPoison");
     const poisonTargets = alivePlayers
       .map((p) => t("promptUtils.gameContext.seatLabel", { seat: p.seat + 1 }))
@@ -740,6 +763,9 @@ export class NightPhase extends GamePhase {
       tonightInfo,
       saveLine,
       poisonLine,
+      selfSaveRule: flags.witchCanSelfSave
+        ? t("prompts.night.witch.selfSaveAllowed")
+        : t("prompts.night.witch.selfSaveForbidden"),
       poisonTargets,
       saveJsonFormat: JSON.stringify({ action: "save", reason: "一句话说明你的判断" }),
       poisonJsonFormat: JSON.stringify({ action: "poison", seat: (alivePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你的判断" }),

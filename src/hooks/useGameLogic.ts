@@ -24,6 +24,8 @@ import { getGatewayModels } from "@/lib/api-keys";
 import { PLAYER_MODELS, isWolfRole, type GameState, type Player, type Phase, type Role, type DevPreset, type ModelRef, type StartGameOptions, type WolfTeamPlan } from "@/types/game";
 import { gameStateAtom, isValidTransition, clearPersistedGameState, isRestorableGameState } from "@/store/game-machine";
 import { getGeneratorModel, getModelSource } from "@/lib/api-keys";
+import { isAbstainSeat } from "@/lib/rules/actions";
+import { getBoardRuleFlags } from "@/lib/rules/boards";
 import {
   buildGameStartState,
   createInitialGameState,
@@ -797,7 +799,9 @@ export function useGameLogic() {
     gameSessionTracker.incrementRound().catch(() => {});
 
     const systemMessages = getSystemMessages();
-    const lastGuardTarget = state.nightActions.guardTarget ?? state.nightActions.lastGuardTarget;
+    // 只帶入「剛結束那一晚」的守護目標；守衛空守時為 undefined，代表限制一併清除
+    // （空守不算守護，因此之後仍可守任何人）。
+    const lastGuardTarget = state.nightActions.guardTarget;
     // Preserve seerHistory across nights
     const seerHistory = state.nightActions.seerHistory;
     let nextState = {
@@ -1881,16 +1885,28 @@ export function useGameLogic() {
 
     // 守卫保护
     if (gameState.phase === "NIGHT_GUARD_ACTION" && humanPlayer.role === "Guard") {
-      if (currentState.nightActions.lastGuardTarget === targetSeat) {
+      const guardFlags = getBoardRuleFlags(currentState.players.length);
+      const abstain = isAbstainSeat(targetSeat);
+      if (abstain && !guardFlags.guardCanAbstain) return;
+      if (!abstain && guardFlags.guardCannotRepeat && currentState.nightActions.lastGuardTarget === targetSeat) {
         toast.error(t("gameLogicMessages.guardNoRepeat"));
         return;
       }
-      const targetPlayer = currentState.players.find((p) => p.seat === targetSeat);
+      const targetPlayer = abstain ? undefined : currentState.players.find((p) => p.seat === targetSeat);
       currentState = {
         ...currentState,
-        nightActions: { ...currentState.nightActions, guardTarget: targetSeat },
+        nightActions: {
+          ...currentState.nightActions,
+          guardTarget: abstain ? undefined : targetSeat,
+        },
       };
-      setDialogue(t("speakers.system"), t("gameLogicMessages.youProtected", { seat: targetSeat + 1, name: targetPlayer?.displayName || "" }), false);
+      setDialogue(
+        t("speakers.system"),
+        abstain
+          ? t("gameLogicMessages.youAbstainedGuard")
+          : t("gameLogicMessages.youProtected", { seat: targetSeat + 1, name: targetPlayer?.displayName || "" }),
+        false
+      );
       setGameState(currentState);
 
       await delay(1000);
@@ -1923,6 +1939,13 @@ export function useGameLogic() {
     }
     // 女巫用药
     else if (gameState.phase === "NIGHT_WITCH_ACTION" && humanPlayer.role === "Witch") {
+      const witchFlags = getBoardRuleFlags(currentState.players.length);
+      const selfSaveForbidden =
+        !witchFlags.witchCanSelfSave && currentState.nightActions.wolfTarget === humanPlayer.seat;
+      if (witchAction === "save" && selfSaveForbidden) {
+        toast.error(t("gameLogicMessages.witchNoSelfSave"));
+        return;
+      }
       if (witchAction === "save" && !currentState.roleAbilities.witchHealUsed) {
         currentState = {
           ...currentState,

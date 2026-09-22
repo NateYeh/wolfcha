@@ -1421,7 +1421,8 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
     ...state,
     nightActions: {
       ...state.nightActions,
-      lastGuardTarget: guardTargetEffective ?? state.nightActions.lastGuardTarget,
+      // 空守（guardTargetEffective undefined）時一併清除限制：空守不算守護，之後仍可守任何人
+      lastGuardTarget: guardTargetEffective,
     },
   };
 

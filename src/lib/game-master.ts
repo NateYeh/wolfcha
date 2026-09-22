@@ -31,6 +31,8 @@ import { parseLLMJson } from "./llm-json";
 import { getI18n } from "@/i18n/translator";
 import { buildPublicRecordForRemark } from "@/lib/public-record";
 import { getRoleConfiguration } from "@/lib/role-configuration";
+import { canWitchSave, getGuardEligibleSeats, isAbstainKeyword } from "@/lib/rules/actions";
+import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
 
 export { getRoleConfiguration } from "@/lib/role-configuration";
@@ -1349,6 +1351,22 @@ function firstSeat(validSeats: number[]): number | undefined {
   return [...validSeats].sort((a, b) => a - b)[0];
 }
 
+/**
+ * 判斷守衛的回應是否為「空守」（今晚不保護任何人）。
+ *
+ * 接受的寫法：`seat: 0`（顯示座位從 1 起算）、`seat: null`、或 action 字樣含
+ * abstain／skip／pass／none。寬鬆解析是為了避免 AI 選空守時被誤判成格式錯誤而觸發重試。
+ */
+function isGuardAbstainResponse(cleaned: string): boolean {
+  const parsed = parseLLMJson<unknown>(cleaned);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return false;
+  const record = parsed as Record<string, unknown>;
+  const seatValue = record.seat ?? record.targetSeat ?? record.target ?? record.protect;
+  if (seatValue === null || seatValue === 0 || seatValue === "0") return true;
+  if (record.abstain === true || record.abstain === "true") return true;
+  return isAbstainKeyword(record.action ?? record.type ?? record.decision);
+}
+
 function supportsStrictJsonSchema(modelRef: Pick<ModelRef, "provider" | "model">): boolean {
   if (modelRef.provider === "dashscope") return false;
   const model = modelRef.model.toLowerCase();
@@ -1370,16 +1388,22 @@ function structuredResponseFormat(
 function seatSelectionResponseFormat(
   modelRef: Pick<ModelRef, "provider" | "model">,
   name: string,
-  validSeats: number[]
+  validSeats: number[],
+  options?: { allowAbstain?: boolean }
 ): NonNullable<GenerateOptions["response_format"]> {
   // 夜間行動（查验/出刀/守護）與白天放逐投票一樣帶 reason：留一句思路供日誌除錯與賽後復盤。
   const withReason = ["day_vote", "seer_action", "wolf_action", "guard_action", "badge_vote"].includes(name);
+  // 空守（守衛可選擇不守護任何人）以「0」表示：顯示坐位從 1 起算，0 不會與真實坐位衝突，
+  // 且留在 enum 內可讓 strict json_schema 繼續通過驗證。
+  const seatEnum = options?.allowAbstain
+    ? [0, ...validSeats.map((seat) => seat + 1)]
+    : validSeats.map((seat) => seat + 1);
   return structuredResponseFormat(modelRef, name, {
     type: "object",
     properties: {
       seat: {
         type: "integer",
-        enum: validSeats.map((seat) => seat + 1),
+        enum: seatEnum,
       },
       ...(withReason ? { reason: { type: "string" } } : {}),
     },
@@ -2275,9 +2299,12 @@ export async function generateWitchAction(
   // 關鍵決策：上游逾時會自動重試一次；這裡記錄實際發出幾次請求，寫進 log 分辨「逾時」與「AI 自己的選擇」。
   let attempts = 0;
   const { messages } = buildMessagesForPrompt(prompt);
-  const canSave =
-    !state.roleAbilities.witchHealUsed &&
-    wolfTarget !== undefined;
+  const canSave = canWitchSave({
+    healUsed: state.roleAbilities.witchHealUsed,
+    witchSeat: player.seat,
+    wolfTarget,
+    flags: getBoardRuleFlags(state.players.length),
+  });
   const canPoison = !state.roleAbilities.witchPoisonUsed;
   const validPoisonSeats = state.players
     .filter((p) => p.alive && p.playerId !== player.playerId)
@@ -2382,17 +2409,21 @@ export async function generateGuardAction(
   player: Player
 ): Promise<NightActionOutcome | undefined> {
   const prompt = resolvePhasePrompt("NIGHT_GUARD_ACTION", state, player);
+  const flags = getBoardRuleFlags(state.players.length);
   const lastTarget = state.nightActions.lastGuardTarget;
-  const alivePlayers = state.players.filter(
-    (p) => p.alive && p.seat !== lastTarget
-  );
+  const eligibleSeats = getGuardEligibleSeats({
+    aliveSeats: state.players.filter((p) => p.alive).map((p) => p.seat),
+    lastGuardTarget: lastTarget,
+    flags,
+  });
+  const alivePlayers = state.players.filter((p) => eligibleSeats.includes(p.seat));
   const startTime = Date.now();
   // 關鍵決策：上游逾時會自動重試一次；這裡記錄實際發出幾次請求，寫進 log 分辨「逾時」與「AI 自己的選擇」。
   let attempts = 0;
   const { messages } = buildMessagesForPrompt(prompt);
   const validSeats = alivePlayers.map((p) => p.seat);
 
-  if (validSeats.length === 0) return undefined;
+  if (validSeats.length === 0 && !flags.guardCanAbstain) return undefined;
 
   try {
     const completion = await withCriticalRetry(
@@ -2405,9 +2436,15 @@ export async function generateGuardAction(
             messages,
             promptScope: "gameplay",
             temperature: GAME_TEMPERATURE.ACTION,
-            response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "guard_action", validSeats),
+            response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "guard_action", validSeats, {
+              allowAbstain: flags.guardCanAbstain,
+            }),
           }),
           (cleaned) => {
+            // 空守：允許明確回報 abstain／seat:null／seat:0（規則見 RuleFlags.guardCanAbstain）
+            if (flags.guardCanAbstain && isGuardAbstainResponse(cleaned)) {
+              return parseOk(undefined);
+            }
             const parsedSeat = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "protect"]);
             return parsedSeat === null ? parseFail() : parseOk(parsedSeat);
           }
@@ -2428,7 +2465,11 @@ export async function generateGuardAction(
         raw: completion.result.content,
         rawResponse: JSON.stringify(completion.result.raw, null, 2),
         finishReason: completion.result.raw.choices?.[0]?.finish_reason,
-        parsed: { targetSeat: parsedSeat, reason: extractActionReason(completion.cleaned) },
+        parsed: {
+          targetSeat: parsedSeat ?? null,
+          abstain: parsedSeat === undefined,
+          reason: extractActionReason(completion.cleaned),
+        },
         attempts,
         duration: Date.now() - startTime,
       },

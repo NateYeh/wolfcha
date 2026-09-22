@@ -834,7 +834,7 @@ ${checks.join("\n")}`;
     }
     // 用藥記錄的讀法：救過的人＝狼當晚目標（偏好人），日夜都用得到，兩邊都拼。
     witchInfo += `\n${t("promptUtils.gameContext.witchPotionReadingNote")}`;
-    // 解藥的時機：首夜救人的價值 vs 留著自救；日夜都拼（白天要盤算、被質疑時也要用得上）。
+    // 解藥的時機：首夜救人的價值 vs 留著救關鍵好人（女巫全程不可自救）；日夜都拼（白天要盤算、被質疑時也要用得上）。
     witchInfo += `\n${t("promptUtils.gameContext.witchHealTimingNote")}`;
     // 毒藥的時機：修正「等確認的狼人才用」導致毒藥留到死的傾向，日夜都拼（白天也要盤算）。
     witchInfo += `\n${t("promptUtils.gameContext.witchPoisonTimingNote")}`;

@@ -1119,16 +1119,16 @@ test("猎人的枪口风险只给狼看：刀／炸／毒代价不同，好人�
   assert.doesNotMatch(buildGameContext(state, villager), /【猎人在场时的刀口风险】/);
 });
 
-test("女巫解药时机：首夜救人 vs 留药自救的取舍要带进 prompt，其他角色拿不到", () => {
+test("女巫解藥時機：首夜救人 vs 留藥救關鍵好人的取捨要帶進 prompt，其他角色拿不到", () => {
   const state = fresh("NIGHT_WITCH_ACTION");
   const witch = state.players.find((p) => p.role === "Witch")!;
   const ctx = buildGameContext(state, witch);
   assert.match(ctx, /【解药什么时候该用】/);
-  assert.match(ctx, /解药全局只有一瓶，而且可以自救/);
-  assert.match(ctx, /留药自救不是怕死/);
+  assert.match(ctx, /解药全局只有一瓶，而且不能自救/);
+  assert.match(ctx, /别把「留药」当成保命手段/);
   assert.match(ctx, /怎么权衡你自己决定/);
-  // 解藥用完的兩個代價都要寫到：救不了自己、看不到刀口。
-  assert.match(ctx, /你被刀就没人能救你/);
+  // 不能自救的兩個代價都要寫到：自己被刀就是死、看不到刀口。
+  assert.match(ctx, /你自己被刀就只能死/);
   assert.match(ctx, /看不到之后的刀口/);
 
   const villager = state.players.find((p) => p.role === "Villager")!;
