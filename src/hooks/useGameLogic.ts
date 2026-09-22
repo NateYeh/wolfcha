@@ -763,6 +763,13 @@ export function useGameLogic() {
       setDialogue(speakerHost, lostMsg, false);
     }
 
+    if (applied.voidedTargetSeat !== undefined) {
+      // 技能只能帶走場上存活的人：指定了已出局（含第一夜死者）的目標 → 技能無效
+      console.warn(
+        `[wolfcha] 自爆目標 ${applied.voidedTargetSeat + 1} 號已出局（或死訊未公布），自爆技能判定無效`
+      );
+    }
+
     // 公告：補公布尚未公布的夜間死訊（第一夜死者）；奶穿（同刀同毒）不重複發第二次
     for (const death of applied.newlyAnnouncedDeaths) {
       if (death.reason === "milk") continue;

@@ -2,6 +2,7 @@ import type { GameState, Phase } from "@/types/game";
 import { getCurrentSpeechRoundMessages } from "@/lib/speech-order";
 import type { RuleFlags } from "./flags";
 import { getPendingLastWordsSeats } from "./last-words";
+import { getPendingDeathSeats } from "./night-deaths";
 import { resolveSelfDestructOutcome, type SelfDestructOutcome } from "./self-destruct";
 
 /**
@@ -47,8 +48,10 @@ export interface SelfDestructApplyInput {
 export interface SelfDestructApplyResult {
   state: GameState;
   outcome: SelfDestructOutcome;
-  /** 這次被帶走的座位（沒有帶人則 undefined） */
+  /** 這次被帶走的座位（沒有帶人、或指定了已出局者則 undefined） */
   victimSeat?: number;
+  /** 指定了已出局者而被判技能無效的座位 */
+  voidedTargetSeat?: number;
   /** 尚未公布、這次要補公布的夜間死亡（依天數、再依記錄順序） */
   newlyAnnouncedDeaths: NewlyAnnouncedDeath[];
   /** 需要移交警徽的座位（警長死亡且警徽還在）；null＝不需要移交 */
@@ -86,11 +89,13 @@ export function applySelfDestructToState(input: SelfDestructApplyInput): SelfDes
     },
   };
 
-  // 2) 帶人（只有能帶人的角色）
+  // 2) 帶人（只有能帶人的角色，且只能帶「場上存活」的人）
+  //    第一夜死者即使死訊還沒公布也已經算出局，指定他們視為技能無效。
+  const pendingDeathSeats = getPendingDeathSeats(state);
   let victimSeat: number | undefined;
   if (outcome.takesPlayer && targetSeat !== null) {
     const target = currentState.players.find((player) => player.seat === targetSeat);
-    if (target?.alive) {
+    if (target?.alive && !pendingDeathSeats.includes(targetSeat)) {
       currentState = markDead(currentState, targetSeat);
       victimSeat = targetSeat;
     }
@@ -120,18 +125,21 @@ export function applySelfDestructToState(input: SelfDestructApplyInput): SelfDes
 
   // 4) 補公布尚未公布的夜間死訊（第一夜死者），並把第一夜遺言排進佇列
   const newlyAnnouncedDeaths: NewlyAnnouncedDeath[] = [];
-  let pendingLastWordsSeats = [...(currentState.pendingLastWordsSeats ?? [])];
+  let pendingLastWordsSeats = [...new Set(currentState.pendingLastWordsSeats ?? [])];
   const history = currentState.nightHistory ?? {};
   const unannouncedDays = Object.entries(history)
     .filter(([, record]) => record && record.resultsAnnounced === false && (record.deaths ?? []).length > 0)
     .sort(([a], [b]) => Number(a) - Number(b));
 
+  const announcedSeats = new Set<number>();
   for (const [day, record] of unannouncedDays) {
     const nightDay = Number(day);
     const deathSeats: number[] = [];
     for (const death of record.deaths ?? []) {
+      if (announcedSeats.has(death.seat)) continue; // 同一座位只公告一次
       const victim = currentState.players.find((player) => player.seat === death.seat);
       if (!victim) continue;
+      announcedSeats.add(death.seat);
       if (victim.alive) currentState = markDead(currentState, victim.seat);
       // 被毒死的獵人不能開槍（沿用死亡公告規則）
       if (death.reason === "poison" && victim.role === "Hunter") {
@@ -191,10 +199,14 @@ export function applySelfDestructToState(input: SelfDestructApplyInput): SelfDes
     },
   };
 
+  const voidedTargetSeat =
+    outcome.takesPlayer && targetSeat !== null && victimSeat === undefined ? targetSeat : undefined;
+
   return {
     state: currentState,
     outcome,
     victimSeat,
+    voidedTargetSeat,
     newlyAnnouncedDeaths,
     badgeTransferSeat: deadSheriffSeat,
     pendingLastWordsSeats,

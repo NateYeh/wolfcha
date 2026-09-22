@@ -38,6 +38,7 @@ test("投票中刷新保留每张已提交的票，旧发言延迟保存不能�
     "@/lib/rules/flags": await import("@/lib/rules/flags"),
     "@/lib/rules/self-destruct": await import("@/lib/rules/self-destruct"),
     "@/lib/rules/boards": await import("@/lib/rules/boards"),
+    "@/lib/rules/night-deaths": await import("@/lib/rules/night-deaths"),
   };
   const storage = new Map<string, string>();
   const timers = new Map<number, () => void>(); let serial = 0;

@@ -41,8 +41,8 @@ function withFirstNightOutcome(state: GameState, wolfVictim: number, poisonVicti
       },
     },
     nightActions: { ...state.nightActions, pendingWolfVictim: wolfVictim, pendingPoisonVictim: poisonVictim },
-    // resolveNight 會把第一夜死者排入遺言佇列
-    pendingLastWordsSeats: [wolfVictim, poisonVictim],
+    // resolveNight 會把第一夜死者排入遺言佇列（同一座位只算一次）
+    pendingLastWordsSeats: [...new Set([wolfVictim, poisonVictim])],
     badge: {
       ...state.badge,
       holderSeat: null,
@@ -161,8 +161,12 @@ test("雙爆吞警徽（標準流程）：第二隻狼再自爆＝警徽流失�
 test("白狼王競選自爆：一次就吞警徽（不必等第二爆），且帶走一人", () => {
   const base = createSinglePlayerContextAuditState();
   const wwk = seatOf(base, "WhiteWolfKing");
-  const target = base.players.find((p) => p.alive && p.seat !== wwk && p.role === "Villager")!.seat;
-  const state = withFirstNightOutcome(base, target, target);
+  const nightVictim = base.players.find((p) => p.alive && p.seat !== wwk && p.role === "Villager")!.seat;
+  // 目標必須是「場上存活」的人：挑一個不是第一夜死者的人
+  const target = base.players.find(
+    (p) => p.alive && p.seat !== wwk && p.seat !== nightVictim && p.role === "Villager"
+  )!.seat;
+  const state = withFirstNightOutcome(base, nightVictim, nightVictim);
 
   const applied = applySelfDestructToState({
     state,
@@ -176,8 +180,55 @@ test("白狼王競選自爆：一次就吞警徽（不必等第二爆），且�
   assert.equal(applied.outcome.swallowBadge, true);
   assert.equal(applied.state.badge.lost, true);
   assert.equal(applied.victimSeat, target);
-  // 被帶走的人沒有遺言（第一夜死亡名單雖然含他，但佇列以「第一夜死亡」為準仍會排入）
   assert.equal(applied.state.players.find((p) => p.seat === target)?.alive, false);
+  // 第一夜死者照常發表遺言（技能只能指向活人，第一夜死者的遺言權不受影響）
+  assert.deepEqual(applied.pendingLastWordsSeats, [nightVictim]);
+  // 白狼王自己因發動技能而沒有遺言
+  assert.ok(!applied.pendingLastWordsSeats.includes(wwk));
+});
+
+test("白狼王指定第一夜死者（死訊未公布）→ 技能無效，第一夜死者遺言權不受影響", () => {
+  const base = createSinglePlayerContextAuditState();
+  const wwk = seatOf(base, "WhiteWolfKing");
+  const nightVictim = base.players.find((p) => p.alive && p.seat !== wwk && p.role === "Villager")!.seat;
+  const poisonVictim = base.players.find(
+    (p) => p.alive && p.seat !== wwk && p.seat !== nightVictim && p.role === "Villager"
+  )!.seat;
+  const state = withFirstNightOutcome(base, nightVictim, poisonVictim);
+
+  const applied = applySelfDestructToState({
+    state,
+    boomerSeat: wwk,
+    targetSeat: nightVictim, // 硬要指定第一夜死者
+    originPhase: "DAY_SPEECH",
+    flags,
+  });
+
+  assert.equal(applied.victimSeat, undefined, "不能帶走已出局的人");
+  assert.equal(applied.voidedTargetSeat, nightVictim, "應記錄技能無效的目標");
+  // 技能無效：這次自爆沒有造成額外死亡；第一夜死者的出局來自「夜晚結算＋死訊公布」而非自爆
+  assert.deepEqual(applied.newlyAnnouncedDeaths.map((d) => d.seat), [nightVictim, poisonVictim]);
+  assert.equal(applied.state.players.find((p) => p.seat === nightVictim)?.alive, false);
+  // 白狼王自己仍然出局且沒有遺言
+  assert.equal(applied.state.players.find((p) => p.seat === wwk)?.alive, false);
+  assert.ok(!applied.pendingLastWordsSeats.includes(wwk));
+  assert.deepEqual(applied.pendingLastWordsSeats, [nightVictim, poisonVictim], "第一夜死者遺言照常排入");
+});
+
+test("白狼王自爆 prompt：目標名單不得包含死訊未公布的第一夜死者", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("@/game/core/PhaseManager");
+  const base = createSinglePlayerContextAuditState();
+  const wwk = seatOf(base, "WhiteWolfKing");
+  const nightVictim = base.players.find((p) => p.alive && p.seat !== wwk && p.role === "Villager")!.seat;
+  const state = withFirstNightOutcome(base, nightVictim, nightVictim);
+
+  const actor = state.players.find((p) => p.seat === wwk)!;
+  const prompt = new PhaseManager().getPrompt("SELF_DESTRUCT", { state }, actor)!;
+  const optionLine = prompt.system.split("\n").find((line) => line.startsWith("存活玩家: ")) ?? "";
+  assert.ok(optionLine.length > 0, "應列出存活玩家");
+  assert.doesNotMatch(optionLine, new RegExp(`${nightVictim + 1}号`), "第一夜死者不得出現在目標名單");
+  assert.match(prompt.system, /已经出局的人不能带走/);
 });
 
 test("非競選階段自爆：不吞警徽、不順延競選，第二夜起死亡也沒有遺言", () => {

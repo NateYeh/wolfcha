@@ -8,6 +8,7 @@ import {
   buildSystemTextFromParts,
 } from "@/lib/prompt-utils";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
+import { excludePendingDeathPlayers } from "@/lib/rules/night-deaths";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { getI18n } from "@/i18n/translator";
 
@@ -30,8 +31,10 @@ export class SelfDestructPhase extends GamePhase {
     const takesPlayer =
       capabilities.boomTakesPlayer && flags.boom.takesPlayerRoles.includes(capabilities.role);
     const gameContext = buildDecisionContext(state, player);
-    const alivePlayers = state.players.filter(
-      (p) => p.alive && p.playerId !== player.playerId
+    // 只能帶走「場上存活」的人：已死但死訊未公布的第一夜死者也要排除
+    const alivePlayers = excludePendingDeathPlayers(
+      state,
+      state.players.filter((p) => p.alive && p.playerId !== player.playerId)
     );
     const exampleSeat = (alivePlayers[0]?.seat ?? player.seat) + 1;
 

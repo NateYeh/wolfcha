@@ -12,6 +12,7 @@ import { createInitialGameState } from "@/lib/game-master";
 import { GAME_SESSION_RESUME_WINDOW_MS } from "@/lib/game-session-policy";
 import { getI18n } from "@/i18n/translator";
 import { getRoleCapabilities } from "@/lib/rules/roles";
+import { isPendingDeath } from "@/lib/rules/night-deaths";
 import { hasAlreadyBoomed } from "@/lib/rules/self-destruct";
 
 // ============ 游戏状态持久化配置 ============
@@ -890,8 +891,10 @@ export const PHASE_CONFIGS: Record<Phase, PhaseConfig> = {
           getRoleCapabilities(hp.role).boomTakesPlayer &&
           !hasAlreadyBoomed(gs.roleAbilities.boomedSeats, hp.seat)
       ) || false,
-    canSelectPlayer: (hp, target) => {
+    canSelectPlayer: (hp, target, gs) => {
       if (!hp || !getRoleCapabilities(hp.role).boomTakesPlayer || !target.alive || target.isHuman) return false;
+      // 第一夜死者即使死訊還沒公布也已經算出局，不能當作自爆帶走的目標
+      if (isPendingDeath(gs, target.seat)) return false;
       return true;
     },
     actionType: "night_action",
