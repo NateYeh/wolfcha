@@ -42,16 +42,11 @@ import {
 import { DEFAULT_GATEWAY_BASE_URL, normalizeGatewayBaseUrl } from "@/lib/gateway-url";
 import { ALL_MODELS, PLAYER_MODELS, filterPlayerModels, type ModelRef, type Role } from "@/types/game";
 
-/** Return the unique roles present in the default configuration for a given player count. */
+import { getBoardRoleKinds } from "@/lib/rules/boards";
+
+/** Return the unique roles present in the default board for a given player count. */
 function getAvailableRoles(playerCount: number): Role[] {
-  const configs: Record<number, Role[]> = {
-    8: ["Werewolf", "Seer", "Witch", "Hunter", "Villager"],
-    9: ["Werewolf", "Seer", "Witch", "Hunter", "Villager"],
-    10: ["Werewolf", "WhiteWolfKing", "Seer", "Witch", "Hunter", "Guard", "Villager"],
-    11: ["Werewolf", "WhiteWolfKing", "Seer", "Witch", "Hunter", "Guard", "Idiot", "Villager"],
-    12: ["Werewolf", "WhiteWolfKing", "Seer", "Witch", "Hunter", "Guard", "Idiot", "Villager"],
-  };
-  return configs[playerCount] ?? configs[10];
+  return getBoardRoleKinds(playerCount);
 }
 
 interface GameSetupModalProps {

@@ -21,6 +21,7 @@ import { LowCreditModal, LOW_CREDIT_THRESHOLD } from "@/components/game/LowCredi
 import { LocaleSwitcher } from "@/components/game/LocaleSwitcher";
 import { useCredits, type ConsumeCreditResult } from "@/hooks/useCredits";
 import { difficultyAtom, playerCountAtom, preferredRoleAtom, rosterPoolIdAtom } from "@/store/settings";
+import { countBoardRoles, getBoardRoles } from "@/lib/rules/boards";
 import {
   getGeneratorModel,
   getModelSource,
@@ -133,88 +134,21 @@ function SponsorCard({
 }
 
 function buildDefaultRoles(playerCount: number): Role[] {
-  switch (playerCount) {
-    case 8:
-      return ["Werewolf", "Werewolf", "Werewolf", "Seer", "Witch", "Hunter", "Villager", "Villager"];
-    case 9:
-      return [
-        "Werewolf",
-        "Werewolf",
-        "Werewolf",
-        "Seer",
-        "Witch",
-        "Hunter",
-        "Villager",
-        "Villager",
-        "Villager",
-      ];
-    case 11:
-      return [
-        "Werewolf",
-        "Werewolf",
-        "Werewolf",
-        "WhiteWolfKing",
-        "Seer",
-        "Witch",
-        "Hunter",
-        "Guard",
-        "Idiot",
-        "Villager",
-        "Villager",
-      ];
-    case 12:
-      return [
-        "Werewolf",
-        "Werewolf",
-        "Werewolf",
-        "WhiteWolfKing",
-        "Seer",
-        "Witch",
-        "Hunter",
-        "Guard",
-        "Idiot",
-        "Villager",
-        "Villager",
-        "Villager",
-      ];
-    case 10:
-    default:
-      return [
-        "Werewolf",
-        "Werewolf",
-        "WhiteWolfKing",
-        "Seer",
-        "Witch",
-        "Hunter",
-        "Guard",
-        "Villager",
-        "Villager",
-        "Villager",
-      ];
-  }
+  return getBoardRoles(playerCount);
 }
 
 function getRoleCountConfig(playerCount: number) {
-  const werewolfCount = playerCount >= 11 ? 3 : 2;
-  const whiteWolfKingCount = 1;
-  const wolfCount = werewolfCount + whiteWolfKingCount;
-  const guardCount = playerCount >= 10 ? 1 : 0;
-  const idiotCount = playerCount >= 11 ? 1 : 0;
-  const seerCount = 1;
-  const witchCount = 1;
-  const hunterCount = 1;
-  const godCount = seerCount + witchCount + hunterCount + guardCount + idiotCount;
-  const villagerCount = Math.max(0, playerCount - wolfCount - godCount);
+  const { byCamp, byRole } = countBoardRoles(playerCount);
   return {
-    werewolfCount,
-    whiteWolfKingCount,
-    wolfCount,
-    guardCount,
-    seerCount,
-    witchCount,
-    hunterCount,
-    idiotCount,
-    villagerCount,
+    werewolfCount: byRole.Werewolf,
+    whiteWolfKingCount: byRole.WhiteWolfKing,
+    wolfCount: byCamp.wolf,
+    guardCount: byRole.Guard,
+    seerCount: byRole.Seer,
+    witchCount: byRole.Witch,
+    hunterCount: byRole.Hunter,
+    idiotCount: byRole.Idiot,
+    villagerCount: byRole.Villager,
   };
 }
 
