@@ -418,6 +418,7 @@ export function WelcomeScreen({
       Werewolf: t("roles.werewolf"),
       WhiteWolfKing: t("roles.whiteWolfKing"),
       Knight: t("roles.knight"),
+      MuteElder: t("roles.muteElder"),
       Seer: t("roles.seer"),
       Witch: t("roles.witch"),
       Hunter: t("roles.hunter"),
@@ -462,6 +463,7 @@ export function WelcomeScreen({
       Idiot: 0,
       WhiteWolfKing: 0,
       Knight: 0,
+      MuteElder: 0,
     };
     for (const r of fixedRoles) {
       counts[r as Role] += 1;

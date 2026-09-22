@@ -4,7 +4,7 @@ import type { Role } from "@/types/game";
 export type RoleCamp = "wolf" | "god" | "villager";
 
 /** 夜間行動型別（none＝夜間無行動） */
-export type NightActionKind = "none" | "kill" | "protect" | "inspect" | "potion";
+export type NightActionKind = "none" | "kill" | "protect" | "inspect" | "potion" | "silence";
 
 /**
  * 角色能力表（單一真相）。
@@ -106,6 +106,18 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     camp: "god",
     nightAction: "none",
     canAbstain: true,
+    canSelfTarget: false,
+    canBoom: false,
+    boomTakesPlayer: false,
+    boomSwallowsBadgeOnElection: false,
+    canDuel: false,
+  },
+  MuteElder: {
+    role: "MuteElder",
+    camp: "god",
+    nightAction: "silence",
+    // 每晚都要指定一個目標（不能空過），也不能禁言自己
+    canAbstain: false,
     canSelfTarget: false,
     canBoom: false,
     boomTakesPlayer: false,

@@ -13,6 +13,7 @@ import { GAME_SESSION_RESUME_WINDOW_MS } from "@/lib/game-session-policy";
 import { getI18n } from "@/i18n/translator";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { hasAlreadyDueled } from "@/lib/rules/knight-duel";
+import { isValidMuteTarget } from "@/lib/rules/mute";
 import { isPendingDeath } from "@/lib/rules/night-deaths";
 import { hasAlreadyBoomed } from "@/lib/rules/self-destruct";
 
@@ -218,7 +219,7 @@ export function getRestorePhase(state: GameState): Phase {
 // All valid Phase values for validation
 const VALID_PHASES: readonly string[] = [
   "LOBBY", "SETUP",
-  "NIGHT_START", "NIGHT_GUARD_ACTION", "NIGHT_WOLF_ACTION",
+  "NIGHT_START", "NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_WOLF_ACTION",
   "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION", "NIGHT_RESOLVE",
   "DAY_START", "DAY_BADGE_SIGNUP", "DAY_BADGE_SPEECH", "DAY_BADGE_ELECTION",
   "DAY_PK_SPEECH", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_VOTE", "DAY_RESOLVE",
@@ -633,6 +634,21 @@ export const PHASE_CONFIGS: Record<Phase, PhaseConfig> = {
       // 不能连续保护同一人
       if (gs.nightActions.lastGuardTarget === target.seat) return false;
       return true;
+    },
+    actionType: "night_action",
+  },
+  NIGHT_MUTE_ACTION: {
+    phase: "NIGHT_MUTE_ACTION",
+    description: "phase.nightMute.description",
+    humanDescription: () => {
+      const { t } = getI18n();
+      return t("phase.nightMute.human");
+    },
+    // 真人禁言長老：選一個存活玩家（不能選自己、不能選死訊未公布的死者）
+    requiresHumanInput: (hp) => hp?.alive && hp?.role === "MuteElder" || false,
+    canSelectPlayer: (hp, target, gs) => {
+      if (!hp || hp.role !== "MuteElder") return false;
+      return isValidMuteTarget(gs, hp.seat, target.seat);
     },
     actionType: "night_action",
   },
@@ -1053,8 +1069,9 @@ export const VALID_TRANSITIONS: Record<Phase, Phase[]> = {
   SETUP: ["NIGHT_START"],
   
   // 夜晚流程: 守卫 -> 狼人 -> 女巫 -> 预言家 -> 结算
-  NIGHT_START: ["NIGHT_GUARD_ACTION", "NIGHT_WOLF_ACTION"],
-  NIGHT_GUARD_ACTION: ["NIGHT_WOLF_ACTION"],
+  NIGHT_START: ["NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_WOLF_ACTION"],
+  NIGHT_GUARD_ACTION: ["NIGHT_MUTE_ACTION", "NIGHT_WOLF_ACTION"],
+  NIGHT_MUTE_ACTION: ["NIGHT_WOLF_ACTION"],
   NIGHT_WOLF_ACTION: ["NIGHT_WITCH_ACTION"],
   NIGHT_WITCH_ACTION: ["NIGHT_SEER_ACTION"],
   NIGHT_SEER_ACTION: ["NIGHT_RESOLVE"],

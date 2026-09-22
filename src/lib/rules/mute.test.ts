@@ -1,0 +1,209 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createSinglePlayerContextAuditState } from "../../../scripts/single-player-context-audit";
+import { setLocale } from "@/i18n/locale-store";
+import { getBoardById, validateBoardPreset } from "@/lib/rules/boards";
+import {
+  canSpeakInPhase,
+  getMuteEligibleSeats,
+  getMutedSeat,
+  isMutedSeat,
+  isValidMuteTarget,
+} from "@/lib/rules/mute";
+import { getNextSpeechSeat, getSpeechPhaseOrder } from "@/lib/speech-order";
+import type { GameState } from "@/types/game";
+
+process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
+process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "mute-rule-key";
+
+setLocale("zh-CN");
+
+function seatOf(state: GameState, role: string): number {
+  const player = state.players.find((p) => p.role === role);
+  assert.ok(player, `找不到角色 ${role}`);
+  return player.seat;
+}
+
+/** 12 人經典盤把白痴換成禁言長老（人數、狼數、警徽都不變） */
+function stateWithElder(mutedSeat: number | null = null): { state: GameState; elderSeat: number } {
+  const base = createSinglePlayerContextAuditState();
+  const target = base.players.find((p) => p.role === "Idiot") ?? base.players[base.players.length - 1];
+  const state: GameState = {
+    ...base,
+    phase: "DAY_SPEECH",
+    day: 2,
+    fixedRoles: base.players.map((p) => (p.seat === target.seat ? "MuteElder" : p.role)),
+    players: base.players.map((p) => (p.seat === target.seat ? { ...p, role: "MuteElder" as const } : p)),
+    nightActions: { ...base.nightActions, ...(mutedSeat !== null ? { mutedTarget: mutedSeat } : {}) },
+  };
+  return { state, elderSeat: target.seat };
+}
+
+test("版型：預女獵禁＝預言家/女巫/獵人/禁言長老＋4 平民＋4 狼人", () => {
+  const board = getBoardById("official-12-seer-witch-hunter-mute");
+  assert.ok(board, "應收錄預女獵禁版型");
+  assert.equal(board.playerCount, 12);
+  assert.deepEqual(board.roles.filter((r) => r === "Werewolf").length, 4);
+  assert.deepEqual(board.roles.filter((r) => r === "Villager").length, 4);
+  for (const role of ["Seer", "Witch", "Hunter", "MuteElder"]) {
+    assert.equal(board.roles.filter((r) => r === role).length, 1, `應有 1 名 ${role}`);
+  }
+  assert.equal(board.roles.includes("Guard"), false);
+  assert.equal(board.roles.includes("WhiteWolfKing"), false);
+  const { errors, warnings } = validateBoardPreset(board);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(warnings, []);
+});
+
+test("禁言目標：只能選存活玩家、不能選自己、不能選死訊未公布的死者", () => {
+  const { state, elderSeat } = stateWithElder();
+  const eligible = getMuteEligibleSeats(state, elderSeat);
+  assert.equal(eligible.includes(elderSeat), false, "不能禁言自己");
+  const pendingCount = Object.values({
+    wolf: state.nightActions.pendingWolfVictim,
+    poison: state.nightActions.pendingPoisonVictim,
+  }).filter((seat) => typeof seat === "number" && seat !== elderSeat).length;
+  assert.equal(
+    eligible.length,
+    state.players.filter((p) => p.alive && p.seat !== elderSeat).length - pendingCount,
+    "存活玩家扣掉自己與死訊未公布的死者"
+  );
+
+  // 死訊未公布的第一夜死者不能當目標
+  const victim = state.players.find((p) => p.alive && p.seat !== elderSeat)!.seat;
+  const pendingState: GameState = {
+    ...state,
+    nightActions: { ...state.nightActions, pendingWolfVictim: victim },
+  };
+  assert.equal(getMuteEligibleSeats(pendingState, elderSeat).includes(victim), false);
+  assert.equal(isValidMuteTarget(pendingState, elderSeat, victim), false);
+  assert.equal(isValidMuteTarget(state, elderSeat, elderSeat), false);
+  assert.equal(isValidMuteTarget(state, elderSeat, eligible[0]), true);
+
+  // 已出局者也不能當目標
+  const deadSeat = eligible[0];
+  const deadState: GameState = {
+    ...state,
+    players: state.players.map((p) => (p.seat === deadSeat ? { ...p, alive: false } : p)),
+  };
+  assert.equal(isValidMuteTarget(deadState, elderSeat, deadSeat), false);
+});
+
+test("禁言效果：只擋發言（含競選發言），不擋遺言與投票", () => {
+  const { state, elderSeat } = stateWithElder();
+  const mutedSeat = state.players.find((p) => p.seat !== elderSeat)!.seat;
+  const muted: GameState = { ...state, nightActions: { ...state.nightActions, mutedTarget: mutedSeat } };
+
+  assert.equal(getMutedSeat(muted), mutedSeat);
+  assert.equal(isMutedSeat(muted, mutedSeat), true);
+  assert.equal(isMutedSeat(muted, elderSeat), false);
+
+  for (const phase of ["DAY_SPEECH", "DAY_BADGE_SPEECH", "DAY_PK_SPEECH"] as const) {
+    assert.equal(canSpeakInPhase(muted, mutedSeat, phase), false, `${phase} 應被禁言擋下`);
+  }
+  // 遺言與投票（投票由 VotePhase 處理，這裡確認發言判斷不誤擋遺言）
+  assert.equal(canSpeakInPhase(muted, mutedSeat, "DAY_LAST_WORDS"), true, "禁言不擋遺言");
+  assert.equal(canSpeakInPhase(muted, elderSeat, "DAY_SPEECH"), true);
+});
+
+test("發言順序：被禁言者不在當日輪次內，也不影響遺言輪", () => {
+  const { state, elderSeat } = stateWithElder();
+  const mutedSeat = state.players.find((p) => p.seat !== elderSeat)!.seat;
+  const muted: GameState = {
+    ...state,
+    currentSpeakerSeat: null,
+    daySpeechStartSeat: state.players.find((p) => p.alive)!.seat,
+    nightActions: { ...state.nightActions, mutedTarget: mutedSeat },
+  };
+
+  const order = getSpeechPhaseOrder(muted);
+  assert.equal(order.includes(mutedSeat), false, "白天發言輪不得包含被禁言者");
+  assert.equal(order.length, muted.players.filter((p) => p.alive).length - 1);
+
+  // 競選發言：被禁言的候選人也不能發言（但仍保留競選投票）
+  const campaign: GameState = {
+    ...muted,
+    phase: "DAY_BADGE_SPEECH",
+    badge: { ...muted.badge, candidates: muted.players.filter((p) => p.alive).map((p) => p.seat) },
+  };
+  assert.equal(getSpeechPhaseOrder(campaign).includes(mutedSeat), false);
+  assert.equal(campaign.badge.candidates.includes(mutedSeat), true, "被禁言仍可上警");
+
+  // 遺言階段不受影響（該階段順序就是當前發言者）
+  const lastWords: GameState = { ...muted, phase: "DAY_LAST_WORDS", currentSpeakerSeat: mutedSeat };
+  assert.deepEqual(getSpeechPhaseOrder(lastWords), [mutedSeat]);
+
+  // 推進時要跳過被禁言者
+  const beforeMuted: GameState = {
+    ...muted,
+    currentSpeakerSeat: state.players.filter((p) => p.alive && p.seat < mutedSeat).map((p) => p.seat).pop() ?? null,
+  };
+  const next = getNextSpeechSeat(beforeMuted);
+  assert.notEqual(next, mutedSeat, "不得把發言輪交給被禁言者");
+});
+
+test("夜間順序：禁言長老在守衛之後、狼人之前", async () => {
+  // 動態載入：game-machine 會拉起 supabase，必須在 env 設定之後才 import
+  const { isValidTransition } = await import("@/store/game-machine");
+  assert.equal(isValidTransition("NIGHT_START", "NIGHT_MUTE_ACTION"), true);
+  assert.equal(isValidTransition("NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION"), true);
+  assert.equal(isValidTransition("NIGHT_MUTE_ACTION", "NIGHT_WOLF_ACTION"), true);
+  assert.equal(isValidTransition("NIGHT_MUTE_ACTION", "NIGHT_WITCH_ACTION"), false);
+  assert.equal(isValidTransition("NIGHT_WOLF_ACTION", "NIGHT_MUTE_ACTION"), false);
+});
+
+test("禁言長老 prompt（AI 契約）與公共資訊", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("@/game/core/PhaseManager");
+  const { buildGameContext } = await import("@/lib/prompt-utils");
+  const { state: dayState, elderSeat } = stateWithElder();
+  const state: GameState = { ...dayState, phase: "NIGHT_MUTE_ACTION" };
+  const actor = state.players.find((p) => p.seat === elderSeat)!;
+  const prompt = new PhaseManager().getPrompt("NIGHT_MUTE_ACTION", { state }, actor)!;
+
+  const optionLine = prompt.system.split("\n").find((line) => line.startsWith("存活玩家: ")) ?? "";
+  assert.ok(optionLine.length > 0, "應列出可禁言玩家");
+  assert.doesNotMatch(optionLine, new RegExp(`${elderSeat + 1}号`), "不能禁言自己");
+  assert.match(prompt.system, /不能指定自己/);
+  assert.match(prompt.system, /仍然可以投票/);
+  assert.match(prompt.system, /（警徽竞选投票、放逐投票）|可以留遗言/);
+
+  // 禁言是公開資訊：被禁言者會出現在公共 game_state，所有人都看得到
+  const mutedSeat = state.players.find((p) => p.seat !== elderSeat)!.seat;
+  const mutedState: GameState = { ...state, nightActions: { ...state.nightActions, mutedTarget: mutedSeat } };
+  const context = buildGameContext(mutedState, actor);
+  assert.match(context, new RegExp(`muted: \\[${mutedSeat + 1}\\]`));
+});
+
+test("禁言長老 AI 決策：合法座位換算成 0 基並記 mute_action log；非法座位＝不發動", async () => {
+  const { generateMuteAction } = await import("@/lib/game-master");
+  const { aiLogger } = await import("@/lib/ai-logger");
+  const { state, elderSeat } = stateWithElder();
+  const actor = state.players.find((p) => p.seat === elderSeat)!;
+  const targetSeat = state.players.filter((p) => p.alive && p.seat !== elderSeat)[0].seat;
+  const originalFetch = globalThis.fetch;
+  const logs: string[] = [];
+  const unsubscribe = aiLogger.subscribe((entry) => { logs.push(entry.type); });
+  const stub = (content: string) => {
+    globalThis.fetch = (async () => new Response(JSON.stringify({
+      id: "mute",
+      choices: [{ message: { role: "assistant", content }, finish_reason: "stop" }],
+    }), { status: 200, headers: { "content-type": "application/json" } })) as typeof globalThis.fetch;
+  };
+
+  try {
+    stub(JSON.stringify({ seat: targetSeat + 1, reason: "他白天最会带节奏" }));
+    const outcome = await generateMuteAction(state, actor);
+    assert.deepEqual(outcome, { targetSeat, reason: "他白天最会带节奏" });
+    assert.equal(logs.at(-1), "mute_action");
+
+    // 非法座位（自己／不在名單內）→ 不發動
+    stub(JSON.stringify({ seat: elderSeat + 1, reason: "想禁言自己" }));
+    assert.equal(await generateMuteAction(state, actor), undefined);
+    stub(JSON.stringify({ seat: 99, reason: "不存在" }));
+    assert.equal(await generateMuteAction(state, actor), undefined);
+  } finally {
+    unsubscribe();
+    globalThis.fetch = originalFetch;
+  }
+});

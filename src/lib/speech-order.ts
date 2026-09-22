@@ -1,4 +1,5 @@
 import type { ChatMessage, GameState, SpeechDirection } from "@/types/game";
+import { MUTE_BLOCKED_SPEECH_PHASES, getMutedSeat } from "@/lib/rules/mute";
 
 const SPEECH_PHASES = new Set([
   "DAY_BADGE_SPEECH",
@@ -59,7 +60,20 @@ export function getSpeakingOrder(
 /**
  * 当前发言阶段的权威顺序。实际推进和 AI Prompt 必须共同使用这里的结果。
  */
+/**
+ * 当前发言阶段的权威顺序（含禁言过滤）。
+ *
+ * 被禁言者當天不能發言（含競選發言），但仍保留遺言：所以只在會被禁言影響的
+ * 階段過濾掉，`DAY_LAST_WORDS` 不受影響。
+ */
 export function getSpeechPhaseOrder(state: GameState): number[] {
+  const ordered = computeSpeechPhaseOrder(state);
+  const mutedSeat = getMutedSeat(state);
+  if (mutedSeat === null || !MUTE_BLOCKED_SPEECH_PHASES.includes(state.phase)) return ordered;
+  return ordered.filter((seat) => seat !== mutedSeat);
+}
+
+function computeSpeechPhaseOrder(state: GameState): number[] {
   const startSeat = state.daySpeechStartSeat ?? state.currentSpeakerSeat;
 
   if (state.phase === "DAY_LAST_WORDS") {

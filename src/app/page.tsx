@@ -97,6 +97,7 @@ const getRoleLabel = (role?: Role | null) => {
     case "Guard": return t("roles.guard");
     case "Idiot": return t("roles.idiot");
     case "Knight": return t("roles.knight");
+    case "MuteElder": return t("roles.muteElder");
     case "WhiteWolfKing": return t("roles.whiteWolfKing");
     case "Villager": return t("roles.villager");
     default: return "?";
@@ -1182,6 +1183,7 @@ export default function Home() {
       phase === "NIGHT_SEER_ACTION" ||
       phase === "NIGHT_WOLF_ACTION" ||
       phase === "NIGHT_GUARD_ACTION" ||
+      phase === "NIGHT_MUTE_ACTION" ||
       phase === "HUNTER_SHOOT" ||
       phase === "SELF_DESTRUCT" ||
       phase === "KNIGHT_DUEL"

@@ -413,3 +413,23 @@ export const KnightIcon = forwardRef<SVGSVGElement, IconProps>(
   )
 );
 KnightIcon.displayName = "KnightIcon";
+
+// 禁言长老图标（喇叭打叉）
+export const MuteElderIcon = forwardRef<SVGSVGElement, IconProps>(
+  ({ size = 24, className, ...props }, ref) => (
+    <svg
+      ref={ref}
+      viewBox="0 0 24 24"
+      fill="none"
+      width={size}
+      height={size}
+      className={className}
+      {...props}
+    >
+      <path d="M4 9.5H7.5L12 5.5V18.5L7.5 14.5H4V9.5Z" fill="currentColor"/>
+      <path d="M15 9L21 15" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+      <path d="M21 9L15 15" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+    </svg>
+  )
+);
+MuteElderIcon.displayName = "MuteElderIcon";

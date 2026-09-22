@@ -9,6 +9,7 @@ export const ROLE_ICONS: Record<Role, string> = {
   Idiot: "/roles/idiot.png",
   WhiteWolfKing: "/roles/white-wolf-king.png",
   Knight: "/roles/guard.png",
+  MuteElder: "/roles/guard.png",
   Villager: "/roles/guard.png",
 };
 
@@ -21,6 +22,7 @@ export const ROLE_NAMES: Record<Role, string> = {
   Idiot: "白痴",
   WhiteWolfKing: "白狼王",
   Knight: "骑士",
+  MuteElder: "禁言长老",
   Villager: "平民",
 };
 
@@ -33,6 +35,7 @@ export const ROLE_SHORT: Record<Role, string> = {
   Idiot: "痴",
   WhiteWolfKing: "王",
   Knight: "骑",
+  MuteElder: "禁",
   Villager: "民",
 };
 
@@ -57,6 +60,7 @@ export const DAY_EVENT_LABELS: Record<string, string> = {
   badge: "警长竞选",
   hunter_shot: "猎人开枪",
   self_destruct: "狼人自爆",
+  mute: "禁言",
   idiot_reveal: "白痴翻牌",
 };
 

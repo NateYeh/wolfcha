@@ -140,6 +140,17 @@ export function EventLog({ gameState }: EventLogProps) {
         });
       }
 
+      if (dayRecord.muted) {
+        entries.push({
+          id: `muted-${day}`,
+          day,
+          order: 24,
+          text: t("eventLog.playerMuted", { seat: formatSeat(dayRecord.muted.seat) }),
+          tone: "warning",
+          icon: "shot",
+        });
+      }
+
       if (dayRecord.knightDuel) {
         const duel = dayRecord.knightDuel;
         entries.push({

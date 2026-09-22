@@ -7,6 +7,7 @@ export type Role =
   | "Guard"
   | "Idiot"
   | "Knight"
+  | "MuteElder"
   | "WhiteWolfKing";
 
 /** Check if a role belongs to the wolf team (used for seer checks, wolf actions, etc.) */
@@ -40,6 +41,7 @@ export type Phase =
   | "SETUP"
   | "NIGHT_START"
   | "NIGHT_GUARD_ACTION"   // 守卫保护
+  | "NIGHT_MUTE_ACTION"    // 禁言长老指定明天要禁言的人
   | "NIGHT_WOLF_ACTION"    // 狼人出刀
   | "NIGHT_WITCH_ACTION"   // 女巫用药
   | "NIGHT_SEER_ACTION"    // 预言家查验
@@ -313,6 +315,8 @@ export interface GameState {
         suspendedElection?: boolean;
       };
       idiotRevealed?: { seat: number };
+      /** 當日禁言紀錄（禁言長老前一晚指定） */
+      muted?: { seat: number };
       /** 騎士決鬥紀錄（一場一次；targetIsWolf 決定後續流程） */
       knightDuel?: {
         duelistSeat: number;
@@ -335,6 +339,9 @@ export interface GameState {
   dailySummaryVoteData?: Record<number, DailySummaryVoteData>;
   nightActions: {
     guardTarget?: number;        // 守卫保护的目标
+    /** 禁言長老指定的目標（次日白天不能發言；警徽投票／放逐投票／遺言不受限） */
+    mutedTarget?: number;
+    muteReason?: string;
     lastGuardTarget?: number;    // 上一晚守卫保护的目标（不能连续保护同一人）
     wolfVotes?: Record<string, number>;
     wolfTarget?: number;         // 狼人出刀目标

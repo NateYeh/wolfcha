@@ -23,6 +23,7 @@ export class PhaseManager {
     this.phases = {
       NIGHT_START: nightPhase,
       NIGHT_GUARD_ACTION: nightPhase,
+      NIGHT_MUTE_ACTION: nightPhase,
       NIGHT_WOLF_ACTION: nightPhase,
       NIGHT_WITCH_ACTION: nightPhase,
       NIGHT_SEER_ACTION: nightPhase,

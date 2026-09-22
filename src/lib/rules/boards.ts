@@ -36,18 +36,28 @@ export const ALL_ROLE_KEYS: Role[] = [
   "Guard",
   "Idiot",
   "Knight",
+  "MuteElder",
   "Villager",
 ];
 
 /** 神職類角色（用於「重複神職」提醒） */
-const GOD_ROLES: Role[] = ["Seer", "Witch", "Hunter", "Guard", "Idiot", "Knight", "WhiteWolfKing"];
+const GOD_ROLES: Role[] = [
+  "Seer",
+  "Witch",
+  "Hunter",
+  "Guard",
+  "Idiot",
+  "Knight",
+  "MuteElder",
+  "WhiteWolfKing",
+];
 
 /** 找不到對應人數版型時的後備版型（沿用舊行為：一律退回 10 人版型） */
 const FALLBACK_PLAYER_COUNT = 10;
 
 /**
  * 官方版型。8–11 人為既有經典版型（行為與改造前逐字相同）；
- * 12 人局目前收錄經典、預女獵白與白狼騎士，其餘官方版型與自定義版型待功能完成後再添加。
+ * 12 人局目前收錄經典、預女獵白、預女獵禁與白狼騎士，其餘官方版型與自定義版型待功能完成後再添加。
  */
 export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
   {
@@ -130,6 +140,26 @@ export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
     ],
     official: true,
     tags: ["經典", "12人"],
+  },
+  {
+    id: "official-12-seer-witch-hunter-mute",
+    playerCount: 12,
+    roles: [
+      "Werewolf",
+      "Werewolf",
+      "Werewolf",
+      "Werewolf",
+      "Seer",
+      "Witch",
+      "Hunter",
+      "MuteElder",
+      "Villager",
+      "Villager",
+      "Villager",
+      "Villager",
+    ],
+    official: true,
+    tags: ["預女獵禁", "12人"],
   },
   {
     id: "official-12-seer-witch-hunter-idiot",

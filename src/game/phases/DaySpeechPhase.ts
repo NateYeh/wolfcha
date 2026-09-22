@@ -21,7 +21,8 @@ import {
   killPlayer,
   transitionPhase,
 } from "@/lib/game-master";
-import { getNextSpeechSeat, getSpeechRoundStatus } from "@/lib/speech-order";
+import { getNextSpeechSeat, getSpeechPhaseOrder, getSpeechRoundStatus } from "@/lib/speech-order";
+import { getMutedSeat } from "@/lib/rules/mute";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { getI18n } from "@/i18n/translator";
 import { DELAY_CONFIG } from "@/lib/game-constants";
@@ -382,6 +383,27 @@ ${formatReminder}`;
       }
     }
 
+    // 禁言公告（公開資訊）：天亮時宣布今天誰不能發言，並寫進當日紀錄
+    const mutedSeat = getMutedSeat(currentState);
+    if (mutedSeat !== null) {
+      const mutedPlayer = currentState.players.find((p) => p.seat === mutedSeat);
+      if (mutedPlayer) {
+        const mutedMsg = systemMessages.playerMuted(mutedPlayer.seat + 1, mutedPlayer.displayName);
+        currentState = addSystemMessage(currentState, mutedMsg);
+        runtime.setDialogue(speakerHost, mutedMsg, false);
+        currentState = {
+          ...currentState,
+          dayHistory: {
+            ...(currentState.dayHistory || {}),
+            [currentState.day]: {
+              ...(currentState.dayHistory?.[currentState.day] || {}),
+              muted: { seat: mutedPlayer.seat },
+            },
+          },
+        };
+      }
+    }
+
     currentState = {
       ...currentState,
       nightHistory: {
@@ -392,6 +414,8 @@ ${formatReminder}`;
         ...currentState.nightActions,
         pendingWolfVictim: undefined,
         pendingPoisonVictim: undefined,
+        // 禁言只作用於「次日白天」，公告後即消耗；下一晚由禁言長老重新指定
+        mutedTarget: undefined,
       },
     };
     runtime.setGameState(currentState);
@@ -510,14 +534,17 @@ ${formatReminder}`;
       startSeat = aliveSeats[0] ?? null;
     }
 
-    const firstSpeaker =
-      startSeat !== null ? alivePlayers.find((p) => p.seat === startSeat) || null : null;
+    // 首位發言者要從「已過濾禁言」的權威順序取，否則被禁言者會拿到發言輪
     speechState = {
       ...speechState,
       daySpeechStartSeat: startSeat,
-      currentSpeakerSeat: firstSpeaker?.seat ?? null,
+      currentSpeakerSeat: null,
       speechDirection,
     };
+    const orderedSeats = getSpeechPhaseOrder(speechState);
+    const firstSeat = orderedSeats[0] ?? null;
+    const firstSpeaker = firstSeat !== null ? alivePlayers.find((p) => p.seat === firstSeat) || null : null;
+    speechState = { ...speechState, currentSpeakerSeat: firstSpeaker?.seat ?? null };
 
     runtime.setDialogue(speakerHost, uiText.speechOrder, false);
     runtime.setGameState(speechState);

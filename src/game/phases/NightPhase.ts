@@ -3,6 +3,7 @@ import { isWolfRole } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "../core/types";
 import {
+  buildDecisionContext,
   buildGameContext,
   buildTodayTranscript,
   buildPlayerTodaySpeech,
@@ -13,6 +14,7 @@ import {
 import {
   addSystemMessage,
   generateGuardAction,
+  generateMuteAction,
   generateSeerAction,
   generateWitchAction,
   generateWolfAction,
@@ -21,6 +23,7 @@ import {
   transitionPhase as rawTransitionPhase,
 } from "@/lib/game-master";
 import { canWitchSave, getGuardEligibleSeats } from "@/lib/rules/actions";
+import { getMuteEligibleSeats, isValidMuteTarget } from "@/lib/rules/mute";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { DELAY_CONFIG } from "@/lib/game-constants";
@@ -55,10 +58,14 @@ export class NightPhase extends GamePhase {
   getPrompt(context: GameContext, player: Player): PromptResult {
     const state = context.state;
     const extras = context.extras ?? {};
+    // 用呼叫端要求的階段（resolvePhasePrompt 會覆寫 state.phase，但直接呼叫時不會）
+    const phase = context.phase ?? state.phase;
 
-    switch (state.phase) {
+    switch (phase) {
       case "NIGHT_GUARD_ACTION":
         return this.buildGuardPrompt(state, player);
+      case "NIGHT_MUTE_ACTION":
+        return this.buildMutePrompt(state, player);
       case "NIGHT_WOLF_ACTION":
         return this.buildWolfPrompt(
           state,
@@ -88,6 +95,10 @@ export class NightPhase extends GamePhase {
     }
     if (_action.type === "CONTINUE_NIGHT_AFTER_GUARD") {
       await this.continueNightAfterGuard(_context.state, runtime);
+      return;
+    }
+    if (_action.type === "CONTINUE_NIGHT_AFTER_MUTE") {
+      await this.continueNightAfterMute(_context.state, runtime);
       return;
     }
     if (_action.type === "CONTINUE_NIGHT_AFTER_WOLF") {
@@ -166,6 +177,104 @@ export class NightPhase extends GamePhase {
     await playNarrator("guardClose");
 
     return currentState;
+  }
+
+  /**
+   * 禁言長老的夜間行動：指定明天不能發言的人。
+   *
+   * 順序：天黑 →（守衛）→ **禁言長老** → 狼人 → 女巫 → 預言家。
+   * 禁言只限制發言：警徽競選投票、放逐投票、遺言都不受限。
+   */
+  private async runMuteAction(state: GameState, runtime: NightPhaseRuntime): Promise<GameState> {
+    const { t } = getI18n();
+    const speakerSystem = t("speakers.system");
+    const systemMessages = getSystemMessages();
+    const uiText = getUiText();
+    const elder = state.players.find((p) => p.role === "MuteElder" && p.alive);
+
+    let currentState = this.transitionPhase(state, "NIGHT_MUTE_ACTION");
+    currentState = addSystemMessage(currentState, systemMessages.muteActionStart);
+    runtime.setGameState(currentState);
+
+    runtime.setIsWaitingForAI(true);
+    runtime.setDialogue(speakerSystem, uiText.muteActing, false);
+    await playNarrator("muteWake");
+
+    if (!elder) {
+      await delay(randomFakeActionDelay());
+      await runtime.waitForUnpause();
+      if (!runtime.isTokenValid(runtime.token)) return currentState;
+      runtime.setIsWaitingForAI(false);
+      await playNarrator("muteClose");
+      return currentState;
+    }
+
+    if (elder.isHuman) {
+      runtime.setIsWaitingForAI(false);
+      runtime.setDialogue(speakerSystem, uiText.waitingMute, false);
+      return currentState;
+    }
+
+    const muteOutcome = await generateMuteAction(currentState, elder);
+    await runtime.waitForUnpause();
+
+    if (!runtime.isTokenValid(runtime.token)) return currentState;
+
+    if (muteOutcome !== undefined && isValidMuteTarget(currentState, elder.seat, muteOutcome.targetSeat)) {
+      currentState = {
+        ...currentState,
+        nightActions: {
+          ...currentState.nightActions,
+          mutedTarget: muteOutcome.targetSeat,
+          ...(muteOutcome.reason ? { muteReason: muteOutcome.reason } : {}),
+        },
+      };
+    } else if (muteOutcome !== undefined) {
+      console.warn("[wolfcha] 禁言目標不合法，本晚不發動禁言");
+    }
+    runtime.setGameState(currentState);
+    runtime.setIsWaitingForAI(false);
+
+    await playNarrator("muteClose");
+
+    return currentState;
+  }
+
+  /** 禁言長老 AI 提示：只能選存活玩家、不能選自己 */
+  private buildMutePrompt(state: GameState, player: Player): PromptResult {
+    const { t } = getI18n();
+    const gameContext = buildDecisionContext(state, player);
+    const eligible = getMuteEligibleSeats(state, player.seat);
+    const options = eligible
+      .map((seat) => {
+        const target = state.players.find((p) => p.seat === seat);
+        return t("prompts.night.option", { seat: seat + 1, name: target?.displayName ?? "" });
+      })
+      .join(t("promptUtils.gameContext.listSeparator"));
+    const exampleSeat = (eligible[0] ?? 0) + 1;
+
+    const cacheableContent = t("prompts.mute.base", {
+      seat: player.seat + 1,
+      name: player.displayName,
+      role: getRoleText(player.role),
+      coreRules: getRolePromptCore(player.role),
+    });
+    const dynamicContent = t("prompts.mute.task", {
+      options,
+      tactics: t("prompts.mute.tactics"),
+      jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "<一句话：为什么禁言他>" }),
+    });
+    const systemParts: SystemPromptPart[] = [
+      { text: cacheableContent, cacheable: true, ttl: "1h" },
+      { text: dynamicContent },
+    ];
+    const system = buildSystemTextFromParts(systemParts);
+    const user = t("prompts.mute.user", {
+      context: gameContext,
+      jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "<一句话：为什么禁言他>" }),
+    });
+
+    return { system, user, systemParts };
   }
 
   private async runWolfAction(state: GameState, runtime: NightPhaseRuntime): Promise<GameState> {
@@ -418,53 +527,40 @@ export class NightPhase extends GamePhase {
       if (!runtime.isTokenValid(runtime.token)) return;
     }
 
-    currentState = await this.runWolfAction(currentState, runtime);
-    if (!runtime.isTokenValid(runtime.token)) return;
+    // 禁言長老 → 狼人 → 女巫 → 預言家（與真人的續跑鏈共用同一個方法，避免分歧）
+    await this.continueNightAfterMute(currentState, runtime);
+    return;
 
-    if (humanWolfNeedsNightInput(currentState)) {
-      return;
-    }
-
-    await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
-    await runtime.waitForUnpause();
-    if (!runtime.isTokenValid(runtime.token)) return;
-
-    currentState = await this.runWitchAction(currentState, runtime);
-    if (!runtime.isTokenValid(runtime.token)) return;
-
-    const witch = currentState.players.find((p) => p.role === "Witch" && p.alive);
-    const canWitchAct = witch && (!currentState.roleAbilities.witchHealUsed || !currentState.roleAbilities.witchPoisonUsed);
-    if (witch?.isHuman && canWitchAct) {
-      const decided =
-        currentState.nightActions.witchSave !== undefined ||
-        currentState.nightActions.witchPoison !== undefined;
-      if (!decided) return;
-    }
-
-    await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
-    await runtime.waitForUnpause();
-    if (!runtime.isTokenValid(runtime.token)) return;
-
-    currentState = await this.runSeerAction(currentState, runtime);
-    if (!runtime.isTokenValid(runtime.token)) return;
-
-    const seer = currentState.players.find((p) => p.role === "Seer" && p.alive);
-    if (seer?.isHuman && currentState.nightActions.seerTarget === undefined) {
-      return;
-    }
-
-    await delay(DELAY_CONFIG.DIALOGUE);
-    await runtime.waitForUnpause();
-    if (!runtime.isTokenValid(runtime.token)) return;
-
-    await runtime.onNightComplete(currentState);
   }
 
   private async continueNightAfterGuard(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
-    const currentState = await this.runWolfAction(state, runtime);
+    await this.continueNightAfterMute(state, runtime);
+  }
+
+  /** 禁言長老 → 狼人 → 女巫 → 預言家（AI 與真人共用同一條續跑鏈） */
+  private async continueNightAfterMute(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
+    let currentState = state;
+
+    // 真人禁言長老選完目標後，狀態已停在 NIGHT_MUTE_ACTION，不再重跑一次行動
+    if (currentState.phase !== "NIGHT_MUTE_ACTION") {
+      const hasMuteElder = currentState.players.some((p) => p.role === "MuteElder");
+      if (hasMuteElder) {
+        currentState = await this.runMuteAction(currentState, runtime);
+        if (!runtime.isTokenValid(runtime.token)) return;
+
+        const elder = currentState.players.find((p) => p.role === "MuteElder" && p.alive);
+        if (elder?.isHuman && currentState.nightActions.mutedTarget === undefined) return;
+
+        await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
+        await runtime.waitForUnpause();
+        if (!runtime.isTokenValid(runtime.token)) return;
+      }
+    }
+
+    const afterWolf = await this.runWolfAction(currentState, runtime);
     if (!runtime.isTokenValid(runtime.token)) return;
 
-    if (humanWolfNeedsNightInput(currentState)) {
+    if (humanWolfNeedsNightInput(afterWolf)) {
       return;
     }
 
@@ -472,7 +568,7 @@ export class NightPhase extends GamePhase {
     await runtime.waitForUnpause();
     if (!runtime.isTokenValid(runtime.token)) return;
 
-    await this.continueNightAfterWolf(currentState, runtime);
+    await this.continueNightAfterWolf(afterWolf, runtime);
   }
 
   private async continueNightAfterWolf(state: GameState, runtime: NightPhaseRuntime): Promise<void> {

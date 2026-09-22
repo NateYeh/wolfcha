@@ -1094,6 +1094,7 @@ export function DialogArea({
       (phase === "NIGHT_SEER_ACTION" && humanPlayer?.role === "Seer" && humanPlayer?.alive && gameState.nightActions.seerTarget === undefined) ||
       (phase === "NIGHT_WOLF_ACTION" && humanPlayer && isWolfRole(humanPlayer.role) && humanPlayer.alive) ||
       (phase === "NIGHT_GUARD_ACTION" && humanPlayer?.role === "Guard" && humanPlayer?.alive) ||
+      (phase === "NIGHT_MUTE_ACTION" && humanPlayer?.role === "MuteElder" && humanPlayer?.alive && gameState.nightActions.mutedTarget === undefined) ||
       (phase === "HUNTER_SHOOT" && humanPlayer?.role === "Hunter") ||
       (phase === "BADGE_TRANSFER" && humanPlayer && gameState.badge.holderSeat === humanPlayer.seat) ||
       (phase === "SELF_DESTRUCT" && !!humanPlayer?.alive && getRoleCapabilities(humanPlayer?.role ?? "Villager").boomTakesPlayer && !hasAlreadyBoomed(gameState.roleAbilities.boomedSeats, humanPlayer?.seat ?? -1)) ||
@@ -1563,6 +1564,7 @@ export function DialogArea({
                   NIGHT_SEER_ACTION: t("dialog.action.seerCheck"),
                   NIGHT_WOLF_ACTION: t("dialog.action.wolfKill"),
                   NIGHT_GUARD_ACTION: t("dialog.action.guardProtect"),
+                  NIGHT_MUTE_ACTION: t("dialog.action.mute"),
                   HUNTER_SHOOT: t("dialog.action.hunterShoot"),
                   BADGE_TRANSFER: t("dialog.action.badgeTransfer"),
                   SELF_DESTRUCT: t("dialog.action.selfDestruct"),
@@ -1575,6 +1577,7 @@ export function DialogArea({
                   NIGHT_SEER_ACTION: "text-[var(--color-seer)]",
                   NIGHT_WOLF_ACTION: "text-[var(--color-danger)]",
                   NIGHT_GUARD_ACTION: "text-[var(--color-success)]",
+                  NIGHT_MUTE_ACTION: "text-[var(--color-seer)]",
                   HUNTER_SHOOT: "text-[var(--color-warning)]",
                   BADGE_TRANSFER: "text-[var(--color-warning)]",
                   SELF_DESTRUCT: "text-[var(--color-danger)]",

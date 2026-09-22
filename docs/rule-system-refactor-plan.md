@@ -278,3 +278,25 @@ WelcomeScreen 開發者面板的「角色」分頁可用「套用官方版型」
 - 兩種 log（`self_destruct_decision`／`knight_duel_decision`）都保留：沿用發言決定時
   寫 `parsed.source = "speech"`、`attempts = 0`，可用來量測合併成功率；發言的 `speech` log
   也帶 `response.parsed.skill`（`"missing"` 表示模型漏寫）。
+
+## 禁言長老（MuteElder）與預女獵禁版型
+
+**版型**：`official-12-seer-witch-hunter-mute`＝預言家、女巫、獵人、禁言長老、4 平民、4 狼人。
+
+**規則（`lib/rules/mute.ts` 為單一真相）**：
+
+| 項目 | 規則 |
+| --- | --- |
+| 夜間行動 | 每晚指定一名**存活**玩家禁言；不能指定自己、不能指定死訊未公布的死者；沒有次數上限（可連續禁言同一人） |
+| 效果 | 被禁言者**次日白天不能發言**（`DAY_SPEECH`／`DAY_BADGE_SPEECH`／`DAY_PK_SPEECH`） |
+| 不受限 | **警徽競選投票、放逐投票、遺言**（`DAY_LAST_WORDS` 明確不過濾）、上警報名 |
+| 公開性 | 天亮時主持人公告（`system.playerMuted`），並寫進 `dayHistory[day].muted`；prompt 公共 `game_state` 也有 `muted: [N]` |
+| 副作用 | 被禁言的狼人當天沒有發言輪 → 也無法當天自爆（規則的自然結果） |
+| 生命週期 | 公告後即消耗（`nightActions.mutedTarget` 清空），下一晚重新指定 |
+
+**夜間順序**：天黑 →（守衛）→ **禁言長老** → 狼人 → 女巫 → 預言家 → 結算。
+`NightPhase` 的 AI／真人續跑鏈統一走 `continueNightAfterMute()`，避免 AI 與真人的分支分歧。
+
+**發言輪整合點**：`getSpeechPhaseOrder()` 過濾被禁言者（`speech-order.ts`），
+因此輪次狀態、下一位發言者、prompt 的順序提示一起生效；`startDayDiscussion` 的首位發言者
+改從過濾後的權威順序取，避免把發言輪交給被禁言者。

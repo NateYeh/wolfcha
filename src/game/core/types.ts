@@ -15,6 +15,7 @@ export interface PromptResult {
 export type GameAction =
   | { type: "START_NIGHT" }
   | { type: "CONTINUE_NIGHT_AFTER_GUARD" }
+  | { type: "CONTINUE_NIGHT_AFTER_MUTE" }
   | { type: "CONTINUE_NIGHT_AFTER_WOLF" }
   | { type: "CONTINUE_NIGHT_AFTER_WITCH" }
   | { type: "START_DAY_SPEECH_AFTER_BADGE"; options?: { skipAnnouncements?: boolean } }

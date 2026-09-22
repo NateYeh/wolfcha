@@ -39,6 +39,7 @@ import {
   resolveSpeechSkillKind,
   type SpeechSkillDecision,
 } from "@/lib/speech-skill";
+import { getMuteEligibleSeats } from "@/lib/rules/mute";
 import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
@@ -2492,6 +2493,87 @@ export async function generateGuardAction(
 }
 
 // ...
+
+/**
+ * 禁言長老的夜間行動：指定明天不能發言的人。
+ *
+ * 只能選存活玩家、不能選自己（見 lib/rules/mute.ts）；禁言只限制發言，
+ * 警徽競選投票、放逐投票與遺言都不受限。
+ */
+export async function generateMuteAction(
+  state: GameState,
+  player: Player
+): Promise<NightActionOutcome | undefined> {
+  const prompt = resolvePhasePrompt("NIGHT_MUTE_ACTION", state, player);
+  const eligibleSeats = getMuteEligibleSeats(state, player.seat);
+  const eligiblePlayers = state.players.filter((p) => eligibleSeats.includes(p.seat));
+  const startTime = Date.now();
+  let attempts = 0;
+  const { messages } = buildMessagesForPrompt(prompt);
+  const validSeats = eligiblePlayers.map((p) => p.seat);
+
+  if (validSeats.length === 0) return undefined;
+
+  try {
+    const completion = await withCriticalRetry(
+      "mute_action",
+      async () => {
+        attempts += 1;
+        return await generateCompletionAndParse<number>(
+          mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+            model: player.agentProfile!.modelRef.model,
+            messages,
+            promptScope: "gameplay",
+            temperature: GAME_TEMPERATURE.ACTION,
+            response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "mute_action", validSeats),
+          }),
+          (cleaned) => {
+            const parsedSeat = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "mute", "silence"]);
+            return parsedSeat === null ? parseFail() : parseOk(parsedSeat);
+          }
+        );
+      },
+    );
+    const parsedSeat = completion.parsed ?? undefined;
+    await aiLogger.log({
+      type: "mute_action",
+      request: {
+        model: player.agentProfile!.modelRef.model,
+        messages,
+        player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+      },
+      response: {
+        content: completion.cleaned,
+        raw: completion.result.content,
+        rawResponse: JSON.stringify(completion.result.raw, null, 2),
+        finishReason: completion.result.raw.choices?.[0]?.finish_reason,
+        parsed: { targetSeat: parsedSeat, attempts: completion.attempts },
+        attempts,
+        duration: Date.now() - startTime,
+      },
+    });
+    return parsedSeat === undefined ? undefined : { targetSeat: parsedSeat, reason: extractActionReason(completion.cleaned) };
+  } catch (error) {
+    console.warn("[wolfcha] generateMuteAction failed, skipping silence:", error);
+    await aiLogger.log({
+      type: "mute_action",
+      request: {
+        model: player.agentProfile!.modelRef.model,
+        messages,
+        player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+      },
+      response: {
+        content: "",
+        parsed: { targetSeat: undefined },
+        attempts,
+        duration: Date.now() - startTime,
+        failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
+      },
+      error: String(error),
+    });
+    return undefined;
+  }
+}
 
 export async function generateHunterShoot(
   state: GameState,

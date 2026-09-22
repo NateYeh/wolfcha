@@ -16,6 +16,7 @@ import {
   VillagerIcon,
   IdiotIcon,
   KnightIcon,
+  MuteElderIcon,
 } from "@/components/icons/FlatIcons";
 
 export type RoleRevealEntry = {
@@ -52,6 +53,7 @@ const ROLE_META: Record<Role, { Icon: ComponentType<{ size?: number; className?:
   Guard: { Icon: GuardIcon, color: "var(--color-guard)", bg: "var(--color-guard-bg)" },
   Idiot: { Icon: IdiotIcon, color: "var(--color-villager)", bg: "var(--color-villager-bg)" },
   Knight: { Icon: KnightIcon, color: "var(--color-guard)", bg: "var(--color-guard-bg)" },
+  MuteElder: { Icon: MuteElderIcon, color: "var(--color-seer)", bg: "var(--color-seer-bg)" },
   Villager: { Icon: VillagerIcon, color: "var(--color-villager)", bg: "var(--color-villager-bg)" },
 };
 
@@ -72,6 +74,7 @@ export function RoleRevealHistoryCard({
     Guard: t("roles.guard"),
     Idiot: t("roles.idiot"),
     Knight: t("roles.knight"),
+    MuteElder: t("roles.muteElder"),
     Villager: t("roles.villager"),
   };
 

@@ -31,6 +31,7 @@ import { canSelfDestruct, hasAlreadyBoomed, shouldResumeBadgeElection } from "@/
 import { applySelfDestructToState } from "@/lib/rules/self-destruct-apply";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { canDuel, hasAlreadyDueled } from "@/lib/rules/knight-duel";
+import { isValidMuteTarget } from "@/lib/rules/mute";
 import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
 import { applyKnightDuelToState } from "@/lib/rules/knight-duel-apply";
 import {
@@ -443,7 +444,7 @@ export function useGameLogic() {
   );
 
   const runNightPhaseAction = useCallback(
-    async (state: GameState, token: ReturnType<typeof getToken>, action: "START_NIGHT" | "CONTINUE_NIGHT_AFTER_GUARD" | "CONTINUE_NIGHT_AFTER_WOLF" | "CONTINUE_NIGHT_AFTER_WITCH") => {
+    async (state: GameState, token: ReturnType<typeof getToken>, action: "START_NIGHT" | "CONTINUE_NIGHT_AFTER_GUARD" | "CONTINUE_NIGHT_AFTER_MUTE" | "CONTINUE_NIGHT_AFTER_WOLF" | "CONTINUE_NIGHT_AFTER_WITCH") => {
       const phaseImpl = phaseManagerRef.current.getPhase("NIGHT_START");
       if (!phaseImpl) return;
       await phaseImpl.handleAction(
@@ -1215,6 +1216,21 @@ export function useGameLogic() {
           void runNightPhaseAction(s, token, "START_NIGHT");
         }
         // 人类守卫等待输入
+        break;
+      }
+
+      case "NIGHT_MUTE_ACTION": {
+        // 禁言長老階段：已完成（或沒有禁言長老）就往下走
+        hasContinuedAfterRevealRef.current = true;
+        isAwaitingRoleRevealRef.current = false;
+        const elder = s.players.find((p) => p.role === "MuteElder" && p.alive);
+        if (!elder || s.nightActions.mutedTarget !== undefined) {
+          void runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_MUTE");
+        } else if (!elder.isHuman) {
+          // AI 禁言長老需要重新選擇
+          void runNightPhaseAction(s, token, "START_NIGHT");
+        }
+        // 真人禁言長老等待輸入
         break;
       }
 
@@ -2262,6 +2278,25 @@ export function useGameLogic() {
       await delay(1000);
       await waitForUnpause();
       await runNightPhaseAction(currentState, token, "CONTINUE_NIGHT_AFTER_GUARD");
+    }
+    // 禁言長老（真人）：指定明天不能發言的人
+    else if (gameState.phase === "NIGHT_MUTE_ACTION" && humanPlayer.role === "MuteElder") {
+      if (!isValidMuteTarget(currentState, humanPlayer.seat, targetSeat)) return;
+      const targetPlayer = currentState.players.find((p) => p.seat === targetSeat);
+      currentState = {
+        ...currentState,
+        nightActions: { ...currentState.nightActions, mutedTarget: targetSeat },
+      };
+      setDialogue(
+        speakerHost,
+        t("gameLogicMessages.youMuted", { seat: targetSeat + 1, name: targetPlayer?.displayName || "" }),
+        false
+      );
+      setGameState(currentState);
+
+      await delay(1000);
+      await waitForUnpause();
+      await runNightPhaseAction(currentState, token, "CONTINUE_NIGHT_AFTER_MUTE");
     }
     // 狼人击杀
     else if (gameState.phase === "NIGHT_WOLF_ACTION" && isWolfRole(humanPlayer.role)) {
