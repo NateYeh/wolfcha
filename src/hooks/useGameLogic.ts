@@ -679,7 +679,7 @@ export function useGameLogic() {
     setAfterLastWords: (cb) => { afterLastWordsRef.current = cb; },
   });
 
-  const { startLastWordsPhase, runAISpeech, isSpeechBlocked } = dayPhase;
+  const { startLastWordsPhase, runAISpeech, isSpeechBlocked, takeSkillDecision } = dayPhase;
   runAISpeechRef.current = runAISpeech;
 
   // ============================================
@@ -998,7 +998,13 @@ export function useGameLogic() {
     if (!wolf.agentProfile?.modelRef) return false;
     if (hasAlreadyBoomed(state.roleAbilities.boomedSeats, wolf.seat)) return false;
 
-    const decision = await generateSelfDestructDecision(state, wolf);
+    // 發言請求若已附帶技能決定就直接沿用（一次發送）；模型漏寫才退回獨立請求
+    const fromSpeech = takeSkillDecision(state, wolf);
+    const decision = await generateSelfDestructDecision(
+      state,
+      wolf,
+      fromSpeech?.kind === "self_destruct" ? { fromSpeech } : undefined
+    );
     if (!decision.boom) return false;
 
     const token = getToken();
@@ -1030,7 +1036,13 @@ export function useGameLogic() {
       return { action: "none" };
     }
 
-    const decision = await generateKnightDuelDecision(state, knight);
+    // 發言請求若已附帶技能決定就直接沿用（一次發送）；模型漏寫才退回獨立請求
+    const fromSpeech = takeSkillDecision(state, knight);
+    const decision = await generateKnightDuelDecision(
+      state,
+      knight,
+      fromSpeech?.kind === "knight_duel" ? { fromSpeech } : undefined
+    );
     if (!decision.duel || decision.targetSeat === null) return { action: "none" };
 
     const token = getToken();

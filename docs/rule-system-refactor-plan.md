@@ -254,3 +254,27 @@ WelcomeScreen 開發者面板的「角色」分頁可用「套用官方版型」
 **共用機制**：`lib/rules/settle-night-deaths.ts` 把「補公布未宣布的夜間死亡＋第一夜遺言入列」
 抽出來，自爆與決鬥兩條「提前結束白天」的路徑共用；`lib/rules/knight-duel-apply.ts` 是決鬥的
 唯一狀態真相（`game-master.knight-duel.test.ts` 驗 AI 契約、`rules/knight-duel.test.ts` 驗規則與狀態）。
+
+### 發言階段技能合併成一次請求（自爆／翻牌決鬥）
+
+原本每個狼／騎士的發言輪會送**兩次**請求：先發言，再由 `generateSelfDestructDecision` /
+`generateKnightDuelDecision` 單獨問一次技能（第二次的盤面與逐字稿幾乎與第一次相同，等於白花
+一次 7～10k token 的 context）。
+
+現在技能角色改成輸出**單一 JSON 物件**：
+
+```json
+{"speech": ["第一段。", "第二段。"], "skill": {"action": "boom", "seat": 5, "reason": "…"}}
+{"speech": ["…"], "skill": {"action": "none"}}
+```
+
+- `StreamingSpeechParser` 只把 public 欄位（`speech`）當字幕／TTS，`skill` 整棵子樹不會外洩到畫面，
+  所以合併輸出不會洩漏私有決定。
+- `lib/speech-skill.ts`：`resolveSpeechSkillKind()`（prompt 與解析共用同一份判斷）＋
+  `extractSpeechSkillDecision()`（容忍 `skill`／`skill_decision`／`ability` 欄位名與 `boom|duel|pass` 等寫法）。
+- `useDayPhase` 以「gameId:day:phase:playerId」為回合識別碼存放決定（預取路徑也帶著 `skill` 一起沿用），
+  `useGameLogic` 的兩個技能檢查先取用、取不到才退回獨立請求。
+- 模型漏寫、寫壞或走恢復路徑時 → **行為與改動前完全相同**（退回獨立請求），只是多一次呼叫。
+- 兩種 log（`self_destruct_decision`／`knight_duel_decision`）都保留：沿用發言決定時
+  寫 `parsed.source = "speech"`、`attempts = 0`，可用來量測合併成功率；發言的 `speech` log
+  也帶 `response.parsed.skill`（`"missing"` 表示模型漏寫）。

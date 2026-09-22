@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import type { SpeechRequest } from "@/lib/speech-request";
 import type { Player, Phase } from "@/types/game";
+import type { SpeechSkillDecision } from "@/lib/speech-skill";
 
 export interface DialogueState {
   speaker: string;
@@ -32,6 +33,8 @@ export interface PrefetchedSpeech {
   day: number;
   messageCount: number;
   segments: string[];
+  /** 發言附帶的技能決定（狼的自爆／騎士的翻牌）；null＝模型沒寫 */
+  skill?: SpeechSkillDecision | null;
   isComplete: boolean;
   createdAt: number;
 }
@@ -264,7 +267,8 @@ export function useDialogueManager() {
     }
 
     prefetchedSpeechRef.current = null;
-    return prefetch.segments;
+    // 技能決定要跟著段落一起沿用，否則預取過的發言還得再送一次技能請求
+    return { segments: prefetch.segments, skill: prefetch.skill ?? null };
   }, []);
 
   /** 重置所有对话状态 */

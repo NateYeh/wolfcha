@@ -31,6 +31,7 @@ import { getPlayerDiedKey } from "@/lib/narrator-voice";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { canSelfDestruct, hasAlreadyBoomed, isSelfDestructPhase } from "@/lib/rules/self-destruct";
 import { canDuel } from "@/lib/rules/knight-duel";
+import { resolveSpeechSkillKind } from "@/lib/speech-skill";
 
 type DaySpeechRuntime = {
   token: FlowToken;
@@ -193,6 +194,18 @@ export class DaySpeechPhase extends GamePhase {
         : "";
     const phaseHintSection = phaseHint ? t("prompts.daySpeech.phaseSection", { phaseHint }) : "";
 
+    // 發言階段技能（自爆／翻牌決鬥）：併進同一次發言請求，省掉一輪完整 context
+    // 第二次請求。模型漏寫 skill 時，呼叫端會退回獨立決策請求（見 lib/speech-skill.ts）。
+    const skillKind = resolveSpeechSkillKind(state, player);
+    const skillContract = skillKind === "self_destruct"
+      ? t("prompts.daySpeech.skillContract.selfDestruct")
+      : skillKind === "knight_duel"
+        ? t("prompts.daySpeech.skillContract.knightDuel")
+        : "";
+    const formatReminder = skillKind
+      ? t("prompts.daySpeech.formatReminderWithSkill")
+      : t("prompts.daySpeech.formatReminder");
+
     const user = t("prompts.daySpeech.user", {
       sharedContext: gameContextParts.shared,
       privateContext: [
@@ -202,6 +215,7 @@ export class DaySpeechPhase extends GamePhase {
         taskSection,
         publicFactsForPlayer,
         wolfLastWordsSection,
+        skillContract,
       ].filter(Boolean).join("\n\n"),
       todayTranscript: todayTranscript || t("prompts.daySpeech.userNoTranscript", { speakOrder }),
       selfSpeech: selfSpeechContext || t("prompts.daySpeech.userNoSelfSpeech"),
@@ -211,7 +225,7 @@ export class DaySpeechPhase extends GamePhase {
       ? "你是本轮最后发言者，之后直接进入下一阶段；现在给出结论，不要等待本轮不存在的后续回应。"
       : "尚未发言者没有本轮新观点，不要把前一位的话归到他们名下。"}
 
-${t("prompts.daySpeech.formatReminder")}`;
+${formatReminder}`;
 
     return { system, user, systemParts };
   }

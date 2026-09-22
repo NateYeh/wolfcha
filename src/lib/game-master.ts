@@ -34,6 +34,11 @@ import { getRoleConfiguration } from "@/lib/role-configuration";
 import { canWitchSave, getGuardEligibleSeats, isAbstainKeyword } from "@/lib/rules/actions";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { canDuel } from "@/lib/rules/knight-duel";
+import {
+  extractSpeechSkillDecision,
+  resolveSpeechSkillKind,
+  type SpeechSkillDecision,
+} from "@/lib/speech-skill";
 import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
@@ -947,6 +952,8 @@ export async function generateAISpeechSegments(
 }
 
 export interface StreamingSpeechOptions {
+  /** 技能角色（狼／騎士）發言時附帶的技能決定；null＝模型沒寫（呼叫端退回獨立請求） */
+  onSkillDecision?: (decision: SpeechSkillDecision | null) => void;
   signal?: AbortSignal;
   onSegmentReceived?: (segment: string, index: number) => void;
   onProgress?: (current: number) => void;
@@ -1025,7 +1032,8 @@ export async function generateAISpeechSegmentsStream(
   const startTime = Date.now();
   const { messages } = buildMessagesForPrompt(prompt);
 
-  // 数组位置就是段落身份；相同文字可以是两个有意重复的段落。
+  // 技能角色（狼／騎士）在同一次發言請求裡附帶技能決定；漏寫時由呼叫端退回獨立請求。
+  const skillKind = resolveSpeechSkillKind(state, player);
   const emittedSegments: string[] = [];
   let parseError: string | undefined;
   let recoveryDetails: Awaited<ReturnType<typeof recoverPublicSpeech>> | undefined;
@@ -1074,6 +1082,8 @@ export async function generateAISpeechSegmentsStream(
     parser.end();
 
     const logAndComplete = async (result: string[]): Promise<string[]> => {
+      const skillDecision = skillKind ? extractSpeechSkillDecision(accumulatedContent, skillKind) : null;
+      if (skillKind) options.onSkillDecision?.(skillDecision);
       await aiLogger.log({
         type: "speech",
         request: {
@@ -1092,6 +1102,7 @@ export async function generateAISpeechSegmentsStream(
           rawResponse: recoveryDetails ? JSON.stringify({ recovery: recoveryDetails }) : undefined,
           duration: Date.now() - startTime,
           ...(streamUsage ? { cache: extractPromptCacheUsage(streamUsage) } : {}),
+          ...(skillKind ? { parsed: { skill: skillDecision ?? "missing" } } : {}),
         },
         error: resolveSpeechParseError(parseError, parser, Boolean(recoveryDetails)),
       });
@@ -2821,8 +2832,34 @@ export async function generateGameEndRemark(
  */
 export async function generateSelfDestructDecision(
   state: GameState,
-  player: Player
+  player: Player,
+  options?: { fromSpeech?: SpeechSkillDecision }
 ): Promise<{ boom: boolean; targetSeat: number | null; reason: string }> {
+  // 發言請求已經附帶決定時，直接沿用（不再送第二次完整 context）；只記錄 log。
+  if (options?.fromSpeech) {
+    const fromSpeech = options.fromSpeech;
+    const takesPlayerNow =
+      getRoleCapabilities(player.role).boomTakesPlayer &&
+      getBoardRuleFlags(state.players.length).boom.takesPlayerRoles.includes(player.role);
+    const boom = fromSpeech.action === "use";
+    const targetSeat = boom && takesPlayerNow ? fromSpeech.seat : null;
+    await aiLogger.log({
+      type: "self_destruct_decision",
+      request: {
+        model: player.agentProfile!.modelRef.model,
+        messages: [{ role: "system", content: "[由發言請求附帶的 skill 欄位取得，未另送請求]" }],
+        player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+      },
+      response: {
+        content: JSON.stringify({ action: boom ? "boom" : "none", seat: fromSpeech.seat }),
+        parsed: { boom, targetSeat, attempts: 0, reason: fromSpeech.reason, source: "speech" },
+        attempts: 0,
+        duration: 0,
+      },
+    });
+    return { boom, targetSeat, reason: fromSpeech.reason };
+  }
+
   const prompt = resolvePhasePrompt("SELF_DESTRUCT", state, player);
   const takesPlayer = getRoleCapabilities(player.role).boomTakesPlayer;
   const alivePlayers = state.players.filter(
@@ -2934,8 +2971,30 @@ export async function generateSelfDestructDecision(
  */
 export async function generateKnightDuelDecision(
   state: GameState,
-  player: Player
+  player: Player,
+  options?: { fromSpeech?: SpeechSkillDecision }
 ): Promise<{ duel: boolean; targetSeat: number | null; reason: string }> {
+  // 發言請求已經附帶決定時，直接沿用（不再送第二次完整 context）；只記錄 log。
+  if (options?.fromSpeech) {
+    const fromSpeech = options.fromSpeech;
+    const duel = fromSpeech.action === "use";
+    await aiLogger.log({
+      type: "knight_duel_decision",
+      request: {
+        model: player.agentProfile!.modelRef.model,
+        messages: [{ role: "system", content: "[由發言請求附帶的 skill 欄位取得，未另送請求]" }],
+        player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+      },
+      response: {
+        content: JSON.stringify({ action: duel ? "duel" : "none", seat: fromSpeech.seat }),
+        parsed: { duel, targetSeat: duel ? fromSpeech.seat : null, attempts: 0, reason: fromSpeech.reason, source: "speech" },
+        attempts: 0,
+        duration: 0,
+      },
+    });
+    return { duel, targetSeat: duel ? fromSpeech.seat : null, reason: fromSpeech.reason };
+  }
+
   const prompt = resolvePhasePrompt("KNIGHT_DUEL", state, player);
   const flags = getBoardRuleFlags(state.players.length);
   const pendingDeathSeats = getPendingDeathSeats(state);

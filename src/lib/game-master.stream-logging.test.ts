@@ -105,6 +105,8 @@ test("生产流式链路不泄露 analysis，字幕、返回值和日志保留�
   const outputs = [
     { input: '[{"analysis":"我是狼人，不能公开身份","speech":"不对。"},{"speech":"继续核对发言。"},{"speech":"不对。"}]', expected: ["不对。", "继续核对发言。", "不对。"] },
     { input: '{"messages":["继续核对发言。","不对。","不对。"]}', expected: ["继续核对发言。", "不对。", "不对。"] },
+    // 技能角色（狼／騎士）的物件格式：skill 子樹不得進字幕，speech 照常逐段輸出
+    { input: '{"speech":["第一段。","第二段。"],"skill":{"action":"boom","reason":"票台要出去的是我队友"}}', expected: ["第一段。", "第二段。"] },
     { input: '{"content":"第一句"},\n{"content":"第二句"}', expected: ["第一句", "第二句"] },
     { input: '[{"content":"不能公开的提示词","role":"user"},{"role":"assistant","content":"[\\"公开发言\\"]"}]', expected: ["公开发言"] },
     { input: '{"analysis":"我是狼人，准备装预言家"}', expected: ["恢复公开发言"], hasError: true },
@@ -133,6 +135,42 @@ test("生产流式链路不泄露 analysis，字幕、返回值和日志保留�
       assert.doesNotMatch(emitted.join(""), /我是狼人|准备装|不能公开/);
     }
   } finally { unsubscribe(); globalThis.fetch = originalFetch; }
+});
+
+test("技能角色發言：物件格式的 skill 被抽出並寫進 log，且不進字幕", async () => {
+  const [{ aiLogger }, { generateAISpeechSegmentsStream }] = await Promise.all([
+    import("./ai-logger"),
+    import("./game-master"),
+  ]);
+  const originalFetch = globalThis.fetch;
+  const logs: AILogEntry[] = [];
+  const unsubscribe = aiLogger.subscribe((entry) => { logs.push(entry); });
+  const wolfState: GameState = { ...state, players: [{ ...player, role: "Werewolf", alignment: "wolf" }] };
+  const decisions: Array<{ action: string; seat: number | null } | null> = [];
+
+  try {
+    globalThis.fetch = async (input, init) => {
+      if (String(input) === "/api/demo-config") return Response.json({ active: false, enabled: false });
+      if (!JSON.parse(String(init?.body)).stream) return Response.json({ choices: [{ message: { content: '{"segments":["恢复公开发言"]}' } }] });
+      const payload = '{"speech":["我先说两句。","票台该出去的是他。"],"skill":{"action":"boom","reason":"票台要出去的是我队友"}}';
+      const events = [...payload].map((ch) => `data: ${JSON.stringify({ choices: [{ delta: { content: ch } }] })}\n\n`).join("");
+      return new Response(events + "data: [DONE]\n\n", { headers: { "Content-Type": "text/event-stream" } });
+    };
+    const emitted: string[] = [];
+    const result = await generateAISpeechSegmentsStream(wolfState, wolfState.players[0], {
+      onSegmentReceived: (segment, index) => { emitted.push(segment); assert.equal(index, emitted.length - 1); },
+      onSkillDecision: (decision) => decisions.push(decision),
+    });
+
+    assert.deepEqual(result, ["我先说两句。", "票台该出去的是他。"]);
+    assert.deepEqual(emitted, result);
+    assert.doesNotMatch(emitted.join(""), /boom|票台要出去的是我队友/);
+    assert.deepEqual(decisions, [{ kind: "self_destruct", action: "use", seat: null, reason: "票台要出去的是我队友" }]);
+    assert.deepEqual(logs.at(-1)?.response.parsed, { skill: decisions[0] });
+  } finally {
+    unsubscribe();
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("非流式段落入口遵守相同公开字段约束，私有对象不能触发原文兜底", async () => {

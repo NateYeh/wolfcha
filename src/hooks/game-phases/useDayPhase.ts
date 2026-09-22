@@ -25,6 +25,7 @@ import { createSpeechRequest, type SpeechRequest } from "@/lib/speech-request";
 import { generateUUID } from "@/lib/utils";
 import { withTimeout } from "@/lib/request-timeout";
 import { isGameSessionExpiredMessage } from "@/lib/llm";
+import type { SpeechSkillDecision } from "@/lib/speech-skill";
 
 // 發言等待上限：必須不早於伺服器端的 API_TIMEOUT_MS（現為 120 秒，
 // src/app/api/chat/route.ts），否則思考較久的模型還在跑就被前端提前放棄。
@@ -41,11 +42,18 @@ export interface DayPhaseCallbacks {
   appendToSpeechQueue: (segment: string, requestId?: string, index?: number) => void;
   finalizeSpeechQueue: (options?: { nextSpeakerIsAI?: boolean; requestId?: string }) => void;
   setPrefetchedSpeech: (prefetch: PrefetchedSpeech | null) => void;
-  consumePrefetchedSpeech: (criteria: PrefetchCriteria) => string[] | null;
+  consumePrefetchedSpeech: (criteria: PrefetchCriteria) => { segments: string[]; skill?: SpeechSkillDecision | null } | null;
   setAfterLastWords: (callback: ((s: GameState) => Promise<void>) | null) => void;
 }
 
 export interface DayPhaseActions {
+  /**
+   * 取出（並清除）某位玩家這次發言附帶的技能決定。
+   *
+   * 只在「同一回合」有效：回合識別碼（day/phase/玩家/訊息數）不符就視為沒有，
+   * 呼叫端會退回獨立技能請求（見 lib/speech-skill.ts）。
+   */
+  takeSkillDecision: (state: GameState, player: Player) => SpeechSkillDecision | null;
   isSpeechBlocked: () => boolean;
   startLastWordsPhase: (state: GameState, seat: number, afterLastWords: (s: GameState) => Promise<void>, token: FlowToken) => Promise<void>;
   runAISpeech: (state: GameState, player: Player, options?: { afterSpeech?: (s: GameState) => Promise<void> }) => Promise<void>;
@@ -55,6 +63,11 @@ export interface DayPhaseActions {
  * 白天阶段 Hook
  * 负责管理白天流程：发言、遗言等
  */
+/** 技能決定的回合識別碼：同一角色同一天同階段只會發言一次 */
+function skillDecisionKey(state: GameState, player: Player): string {
+  return `${state.gameId}:${state.day}:${state.phase}:${player.playerId}`;
+}
+
 export function useDayPhase(
   humanPlayer: Player | null,
   callbacks: DayPhaseCallbacks
@@ -79,6 +92,8 @@ export function useDayPhase(
 
   const store = useStore();
   const activeRequestRef = useRef<(SpeechRequest & { controller: AbortController }) | null>(null);
+  /** 發言附帶的技能決定：key＝回合識別碼，避免同一角色下一回合誤用舊決定 */
+  const skillDecisionsRef = useRef(new Map<string, SpeechSkillDecision>());
   const prefetchControllerRef = useRef<AbortController | null>(null);
   const failedRequestRef = useRef<SpeechRequest | null>(null);
   const isSpeechBlocked = useCallback(() => failedRequestRef.current?.isValid() === true, []);
@@ -109,9 +124,13 @@ export function useDayPhase(
       messageCount: state.messages.length, segments: [], isComplete: false, createdAt: Date.now(),
     };
     setPrefetchedSpeech(base);
+    let skill: SpeechSkillDecision | null = null;
     try {
-      const segments = await generateAISpeechSegmentsStream(state, player, { signal: controller.signal });
-      if (isValid()) setPrefetchedSpeech({ ...base, segments, isComplete: true });
+      const segments = await generateAISpeechSegmentsStream(state, player, {
+        signal: controller.signal,
+        onSkillDecision: (decision) => { skill = decision; },
+      });
+      if (isValid()) setPrefetchedSpeech({ ...base, segments, skill, isComplete: true });
     } catch {
       if (isValid()) setPrefetchedSpeech(null);
     }
@@ -138,6 +157,11 @@ export function useDayPhase(
     const voiceId = resolveVoiceId(player.agentProfile?.persona?.voiceId,
       player.agentProfile?.persona?.gender, player.agentProfile?.persona?.age, getLocale() as AppLocale);
     const collected: string[] = [];
+    // 回合識別碼不含 messages.length：取用時（發言已寫入訊息）長度必然不同
+    const skillKey = skillDecisionKey(state, player);
+    const rememberSkill = (decision: SpeechSkillDecision | null) => {
+      if (decision) skillDecisionsRef.current.set(skillKey, decision);
+    };
     let displayedCount = 0;
     let displayChain = Promise.resolve();
     let audioChain = Promise.resolve();
@@ -182,6 +206,7 @@ export function useDayPhase(
       gameId: state.gameId, contextKey: getSpeechContextKey(state, player),
       playerId: player.playerId, phase: state.phase, day: state.day, messageCount: state.messages.length,
     });
+    if (prefetched?.skill) rememberSkill(prefetched.skill);
     prefetchControllerRef.current?.abort();
     initStreamingSpeechQueue(player, afterSpeech, request);
     setIsWaitingForAI(true);
@@ -201,8 +226,12 @@ export function useDayPhase(
 
     try {
       const streamPromise = prefetched
-        ? Promise.resolve(prefetched.forEach(appendSegment))
-        : generateAISpeechSegmentsStream(state, player, { signal: controller.signal, onSegmentReceived: appendSegment });
+        ? Promise.resolve(prefetched.segments.forEach(appendSegment))
+        : generateAISpeechSegmentsStream(state, player, {
+          signal: controller.signal,
+          onSegmentReceived: appendSegment,
+          onSkillDecision: rememberSkill,
+        });
       const result = await Promise.race([streamPromise, timeoutPromise]);
       if (result === "timeout" || !isValid()) return;
       await displayChain;
@@ -282,9 +311,17 @@ export function useDayPhase(
     });
   }, [setGameState, setDialogue, setWaitingForNextRound, isTokenValid, runAISpeech, setAfterLastWords, speakerHost, t]);
 
+  const takeSkillDecision = useCallback((state: GameState, player: Player): SpeechSkillDecision | null => {
+    const key = skillDecisionKey(state, player);
+    const decision = skillDecisionsRef.current.get(key) ?? null;
+    if (decision) skillDecisionsRef.current.delete(key);
+    return decision;
+  }, []);
+
   return {
     isSpeechBlocked,
     startLastWordsPhase,
     runAISpeech,
+    takeSkillDecision,
   };
 }
