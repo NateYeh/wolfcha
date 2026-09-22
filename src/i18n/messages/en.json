@@ -765,7 +765,9 @@
     "wolfTeam": "Wolf team",
     "badgeHolder": "Sheriff",
     "badgeCandidate": "Candidate",
-    "joining": "Joining..."
+    "joining": "Joining...",
+    "muted": "Muted",
+    "mutedHint": "Silenced today - cannot speak (voting and last words still allowed)"
   },
   "voteResult": {
     "seatLabel": "Seat {seat}",

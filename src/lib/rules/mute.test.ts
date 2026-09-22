@@ -7,9 +7,11 @@ import {
   canSpeakInPhase,
   getMuteEligibleSeats,
   getMutedSeat,
+  isMutePublic,
   isMutedSeat,
   isValidMuteTarget,
 } from "@/lib/rules/mute";
+import { buildGameContextParts } from "@/lib/prompt-utils";
 import { getNextSpeechSeat, getSpeechPhaseOrder } from "@/lib/speech-order";
 import type { GameState } from "@/types/game";
 
@@ -168,11 +170,13 @@ test("禁言長老 prompt（AI 契約）與公共資訊", async () => {
   assert.match(prompt.system, /仍然可以投票/);
   assert.match(prompt.system, /（警徽竞选投票、放逐投票）|可以留遗言/);
 
-  // 禁言是公開資訊：被禁言者會出現在公共 game_state，所有人都看得到
+  // 禁言是公開資訊，但只在天亮宣佈之後（白天）揭露：白天看得到、夜裡看不到
   const mutedSeat = state.players.find((p) => p.seat !== elderSeat)!.seat;
-  const mutedState: GameState = { ...state, nightActions: { ...state.nightActions, mutedTarget: mutedSeat } };
-  const context = buildGameContext(mutedState, actor);
-  assert.match(context, new RegExp(`muted: \\[${mutedSeat + 1}\\]`));
+  const pendingMute = { ...state.nightActions, mutedTarget: mutedSeat };
+  const dayContext = buildGameContext({ ...state, phase: "DAY_SPEECH", nightActions: pendingMute }, actor);
+  assert.match(dayContext, new RegExp(`muted: \\[${mutedSeat + 1}\\]`));
+  const nightContext = buildGameContext({ ...state, nightActions: pendingMute }, actor);
+  assert.doesNotMatch(nightContext, /muted: \[/, "夜間不揭露禁言（否則狼隊夜裡就知道長老禁了誰）");
 });
 
 test("禁言長老 AI 決策：合法座位換算成 0 基並記 mute_action log；非法座位＝不發動", async () => {
@@ -240,4 +244,36 @@ test("禁言不跨日：隔天沒有當日紀錄就自動失效", () => {
   assert.equal(getMutedSeat(nextDay), null);
   assert.equal(isMutedSeat(nextDay, mutedSeat), false);
   assert.equal(getSpeechPhaseOrder(nextDay).includes(mutedSeat), true);
+});
+
+test("禁言公開時機：夜間不揭露，白天（含競選、投票、自爆決鬥）才公開", () => {
+  const { state, elderSeat } = stateWithElder();
+  const mutedSeat = state.players.find((p) => p.seat !== elderSeat)!.seat;
+  const base: GameState = {
+    ...state,
+    nightActions: { ...state.nightActions, mutedTarget: mutedSeat },
+    dayHistory: { ...(state.dayHistory || {}), [state.day]: { muted: { seat: mutedSeat } } },
+  };
+
+  for (const phase of [
+    "DAY_BADGE_ELECTION",
+    "DAY_BADGE_SPEECH",
+    "DAY_PK_SPEECH",
+    "DAY_SPEECH",
+    "DAY_VOTE",
+    "DAY_LAST_WORDS",
+    "SELF_DESTRUCT",
+    "KNIGHT_DUEL",
+  ] as const) {
+    assert.equal(isMutePublic({ ...base, phase }), true, `${phase} 應公開禁言資訊`);
+  }
+  for (const phase of ["NIGHT_START", "NIGHT_MUTE_ACTION", "NIGHT_WOLF_ACTION", "HUNTER_SHOOT"] as const) {
+    assert.equal(isMutePublic({ ...base, phase }), false, `${phase} 不該揭露禁言資訊（夜裡狼隊不該看到）`);
+  }
+
+  // 公共 prompt：白天看得到 muted，夜間看不到
+  const dayContext = buildGameContextParts({ ...base, phase: "DAY_SPEECH" }, base.players[0]).shared;
+  assert.match(dayContext, /muted: \[\d+\]/, "白天公共區塊應揭露禁言");
+  const nightContext = buildGameContextParts({ ...base, phase: "NIGHT_WOLF_ACTION" }, base.players[0]).shared;
+  assert.doesNotMatch(nightContext, /muted: \[/, "夜間公共區塊不該揭露禁言");
 });

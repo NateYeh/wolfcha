@@ -41,6 +41,7 @@ import { BADGE_TRANSFER_TORN } from "@/lib/game-master";
 // Components
 import { WelcomeScreen } from "@/components/game/WelcomeScreen";
 import { PlayerCardCompact } from "@/components/game/PlayerCardCompact";
+import { getMutedSeat, isMutePublic } from "@/lib/rules/mute";
 import { DialogArea } from "@/components/game/DialogArea";
 import { BottomActionPanel } from "@/components/game/BottomActionPanel";
 import { Notebook } from "@/components/game/Notebook";
@@ -581,6 +582,8 @@ export default function Home() {
   const ritualCueQueueRef = useRef<Array<{ id: string; title: string; subtitle?: string }>>([]);
   const lastAdvanceTimeRef = useRef(0);
   const canShowRole = hasShownRoleReveal || (gameState.day >= 1 && gameState.phase !== "LOBBY");
+  // 當日禁言（公開資訊，天亮宣佈後全場可見；夜間不揭露）
+  const mutedSeat = isMutePublic(gameState) ? getMutedSeat(gameState) : null;
   const selectionTone = useMemo(() => {
     if (!humanPlayer) return undefined;
     switch (gameState.phase) {
@@ -1573,6 +1576,7 @@ export default function Home() {
                             seerCheckResult={seerResult}
                             isBadgeHolder={gameState.badge.holderSeat === player.seat}
                             isBadgeCandidate={isBadgeCandidate}
+                            isMuted={mutedSeat === player.seat}
                             showRoleBadge={canShowRole}
                             showModel
                             selectionTone={selectionTone}
@@ -1650,6 +1654,7 @@ export default function Home() {
                               seerCheckResult={seerResult}
                               isBadgeHolder={gameState.badge.holderSeat === player.seat}
                               isBadgeCandidate={isBadgeCandidate}
+                              isMuted={mutedSeat === player.seat}
                               variant="mobile"
                               showRoleBadge={canShowRole}
                               selectionTone={selectionTone}
@@ -1689,6 +1694,7 @@ export default function Home() {
                             seerCheckResult={seerResult}
                             isBadgeHolder={gameState.badge.holderSeat === player.seat}
                             isBadgeCandidate={isBadgeCandidate}
+                            isMuted={mutedSeat === player.seat}
                             showRoleBadge={canShowRole}
                             showModel
                             selectionTone={selectionTone}

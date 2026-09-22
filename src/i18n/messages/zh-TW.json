@@ -765,7 +765,9 @@
     "wolfTeam": "狼隊",
     "badgeHolder": "警長",
     "badgeCandidate": "競選",
-    "joining": "正在入場"
+    "joining": "正在入場",
+    "muted": "禁言",
+    "mutedHint": "本日被禁言，不能發言（仍可投票、仍可留遺言）"
   },
   "voteResult": {
     "seatLabel": "{seat}號",

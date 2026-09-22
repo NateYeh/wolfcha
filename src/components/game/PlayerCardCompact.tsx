@@ -27,6 +27,8 @@ interface PlayerCardCompactProps {
   humanPlayer?: Player | null;
   isBadgeHolder?: boolean;
   isBadgeCandidate?: boolean;
+  /** 本日被禁言（禁言長老指定，全場可見；隔日自動消失） */
+  isMuted?: boolean;
   variant?: "default" | "mobile";
   isInSelectionPhase?: boolean;
 }
@@ -49,6 +51,7 @@ export function PlayerCardCompact({
   humanPlayer,
   isBadgeHolder = false,
   isBadgeCandidate = false,
+  isMuted = false,
   variant = "default",
   isInSelectionPhase = false,
 }: PlayerCardCompactProps) {
@@ -337,6 +340,14 @@ export function PlayerCardCompact({
                 {t("common.you")}
               </span>
             )}
+            {isMuted && isReady && !isDead && (
+              <span
+                className="shrink-0 text-[10px] leading-none bg-[var(--color-witch)] text-white px-1 py-0.5 rounded-sm shadow-sm"
+                title={t("playerCard.mutedHint")}
+              >
+                🔇
+              </span>
+            )}
           </div>
         ) : (
           <>
@@ -385,6 +396,16 @@ export function PlayerCardCompact({
                   title={modelLabel}
                 >
                   {modelLabel}
+                </motion.span>
+              )}
+              {isMuted && isReady && !isDead && (
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="shrink-0 text-[10px] leading-none font-semibold bg-[var(--color-witch)] text-white px-1.5 py-0.5 rounded-sm shadow-sm whitespace-nowrap"
+                  title={t("playerCard.mutedHint")}
+                >
+                  🔇 {t("playerCard.muted")}
                 </motion.span>
               )}
             </div>

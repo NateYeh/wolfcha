@@ -20,6 +20,28 @@ export const MUTE_BLOCKED_SPEECH_PHASES: readonly Phase[] = [
 ] as const;
 
 /**
+ * 禁言資訊對外公開的階段。
+ *
+ * 規則是「天亮時主持人宣佈誰被禁言」，所以夜間不該揭露（否則狼隊在夜裡就知道
+ * 長老禁了誰）；白天（含競選、發言、投票、自爆／決鬥）則全場可見。
+ */
+export const MUTE_PUBLIC_PHASES: readonly Phase[] = [
+  "DAY_BADGE_ELECTION",
+  "DAY_BADGE_SPEECH",
+  "DAY_PK_SPEECH",
+  "DAY_SPEECH",
+  "DAY_VOTE",
+  "DAY_LAST_WORDS",
+  "SELF_DESTRUCT",
+  "KNIGHT_DUEL",
+] as const;
+
+/** 現在這個階段，禁言資訊是否可以公開（UI 標記與 prompt 公共區塊共用） */
+export function isMutePublic(state: GameState): boolean {
+  return MUTE_PUBLIC_PHASES.includes(state.phase);
+}
+
+/**
  * 當日被禁言的座位，沒有則 null。
  *
  * 天亮公告時 `nightActions.mutedTarget` 會清空（它只是「已指定、待公告」的暫存），
