@@ -41,15 +41,19 @@ function seatOf(state: GameState, role: string, aliveOnly = true): number {
   return player.seat;
 }
 
-test("決鬥時機：白天發言與警徽競選發言可以翻牌；警上 PK 與遺言階段不行", () => {
+test("決鬥時機：只有白天發言階段可以翻牌；整個警長競選階段與遺言階段都不行", () => {
   assert.equal(isKnightDuelPhase("DAY_SPEECH"), true);
-  assert.equal(isKnightDuelPhase("DAY_BADGE_SPEECH"), true);
+  // 整個警長競選階段都不能發動
+  assert.equal(isKnightDuelPhase("DAY_BADGE_SIGNUP"), false);
+  assert.equal(isKnightDuelPhase("DAY_BADGE_SPEECH"), false);
+  assert.equal(isKnightDuelPhase("DAY_BADGE_ELECTION"), false);
   assert.equal(isKnightDuelPhase("DAY_PK_SPEECH"), false);
   assert.equal(isKnightDuelPhase("DAY_LAST_WORDS"), false);
 
   assert.equal(canDuel({ phase: "DAY_SPEECH", role: "Knight", flags, seat: 0 }), true);
-  assert.equal(canDuel({ phase: "DAY_PK_SPEECH", role: "Knight", flags, seat: 0 }), false);
-  assert.equal(canDuel({ phase: "DAY_LAST_WORDS", role: "Knight", flags, seat: 0 }), false);
+  for (const phase of ["DAY_BADGE_SIGNUP", "DAY_BADGE_SPEECH", "DAY_BADGE_ELECTION", "DAY_PK_SPEECH", "DAY_LAST_WORDS"] as const) {
+    assert.equal(canDuel({ phase, role: "Knight", flags, seat: 0 }), false, `${phase} 不該能翻牌`);
+  }
   // 非騎士角色一律不能翻牌
   assert.equal(canDuel({ phase: "DAY_SPEECH", role: "Villager", flags, seat: 0 }), false);
   assert.equal(canDuel({ phase: "DAY_SPEECH", role: "Werewolf", flags, seat: 0 }), false);
@@ -90,28 +94,28 @@ test("決鬥死亡的狼人不能發動死亡技能；白狼王只有自爆能�
   assert.equal(canTriggerDeathSkill("hunter", "WhiteWolfKing", flags), false);
 });
 
-test("決鬥成功：狼人出局、直接進入黑夜、當天競選順延（不吃掉第一夜死訊與遺言）", () => {
+test("決鬥成功：狼人出局、直接進入黑夜（不動競選狀態）", () => {
   const base = auditStateWithKnight();
   const knight = seatOf(base, "Knight");
   const wolf = seatOf(base, "Werewolf");
   const nightVictim = base.players.find((p) => p.alive && p.seat !== knight && p.seat !== wolf && p.role === "Villager")!.seat;
   const state: GameState = {
     ...base,
-    phase: "DAY_BADGE_SPEECH",
-    day: 1,
+    phase: "DAY_SPEECH",
+    day: 2,
     nightHistory: {
-      1: {
+      2: {
         wolfTarget: nightVictim,
         deaths: [{ seat: nightVictim, reason: "wolf" as const }],
         resultsAnnounced: false,
       },
     },
     nightActions: { ...base.nightActions, pendingWolfVictim: nightVictim },
-    pendingLastWordsSeats: [nightVictim],
-    badge: { ...base.badge, holderSeat: null, candidates: [wolf, knight], electionBooms: 0, electionSuspended: false },
+    pendingLastWordsSeats: [],
+    badge: { ...base.badge, holderSeat: 6, electionBooms: 0, electionSuspended: false },
   };
 
-  const applied = applyKnightDuelToState({ state, duelistSeat: knight, targetSeat: wolf, originPhase: "DAY_BADGE_SPEECH", flags });
+  const applied = applyKnightDuelToState({ state, duelistSeat: knight, targetSeat: wolf, originPhase: "DAY_SPEECH", flags });
   const after = applied.state;
 
   assert.equal(applied.outcome?.targetDies, true);
@@ -122,15 +126,19 @@ test("決鬥成功：狼人出局、直接進入黑夜、當天競選順延（�
   assert.deepEqual(after.roleAbilities.duelUsedSeats, [knight], "一場一次");
   // 補公布第一夜死訊＋遺言照常排入
   assert.deepEqual(applied.newlyAnnouncedDeaths.map((d) => d.seat), [nightVictim]);
-  assert.deepEqual(applied.pendingLastWordsSeats, [nightVictim]);
-  assert.equal(after.nightHistory?.[1]?.resultsAnnounced, true);
-  // 競選順延（不動 electionBooms：決鬥不是自爆）
-  assert.equal(after.badge.electionSuspended, true);
+  // 防禦性補公布：即使還有未宣布的夜間死亡，也會被套用並標記已公布
+  // （決鬥只能在白天發言階段發生，正常流程這時死訊早已公布）
+  // 但第二夜起的夜間死亡沒有遺言，所以佇列不會增加
+  assert.deepEqual(applied.pendingLastWordsSeats, []);
+  assert.equal(after.nightHistory?.[2]?.resultsAnnounced, true);
+  // 決鬥只能發生在白天發言階段（競選早已結束），不動任何競選狀態
+  assert.equal(after.badge.electionSuspended, false, "決鬥不動競選狀態");
   assert.equal(after.badge.electionBooms, 0);
+  assert.equal(after.badge.holderSeat, 6);
   assert.equal(after.badge.lost, undefined);
   // 決鬥紀錄
-  assert.equal(after.dayHistory?.[1]?.knightDuel?.targetIsWolf, true);
-  assert.equal(after.dayHistory?.[1]?.knightDuel?.goToNight, true);
+  assert.equal(after.dayHistory?.[2]?.knightDuel?.targetIsWolf, true);
+  assert.equal(after.dayHistory?.[2]?.knightDuel?.goToNight, true);
 });
 
 test("決鬥失敗：騎士出局、白天繼續、技能消耗、沒有遺言", () => {

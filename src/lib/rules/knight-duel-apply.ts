@@ -1,5 +1,4 @@
 import type { GameState, Phase } from "@/types/game";
-import { getCurrentSpeechRoundMessages } from "@/lib/speech-order";
 import type { RuleFlags } from "./flags";
 import {
   canDuel,
@@ -18,8 +17,8 @@ import {
  * 騎士翻牌決鬥的**狀態轉移**（純函式，不含 UI／LLM／音效）。
  *
  * 流程（2026-09-22 拍板）：
- * - 挑戰目標是狼人 → 該狼人出局，**隨即進入黑夜**（跳過當天剩餘發言與放逐投票）；
- *   若當天競選還沒結束，競選順延到下一個天亮（不吃掉第一夜死訊與遺言）。
+ * - 挑戰目標是狼人 → 該狼人出局，**隨即進入黑夜**（跳過當天剩餘發言與放逐投票）。
+ *   決鬥只能發生在白天發言階段（警徽競選早已結束），因此不影響競選狀態。
  * - 挑戰目標是好人 → 騎士以死謝罪出局，**白天流程照走**。
  * - 決鬥死亡沒有遺言；被決鬥出局的狼人不能發動死亡技能。
  */
@@ -101,21 +100,11 @@ export function applyKnightDuelToState(input: KnightDuelApplyInput): KnightDuelA
   // 3) 直接天黑：競選還沒結束就順延（不動 electionBooms），並補公布未宣布的夜間死訊
   let newlyAnnouncedDeaths: NewlyAnnouncedDeath[] = [];
   let pendingLastWordsSeats = [...new Set(currentState.pendingLastWordsSeats ?? [])];
-  let badge = { ...currentState.badge };
+  const badge = { ...currentState.badge };
   let nextPhase: Phase = originPhase;
 
   if (outcome.goToNight) {
     nextPhase = "KNIGHT_DUEL";
-    if (originPhase === "DAY_BADGE_SPEECH") {
-      const spokenToday = getCurrentSpeechRoundMessages(state)
-        .map((message) => state.players.find((player) => player.playerId === message.playerId)?.seat)
-        .filter((seat): seat is number => seat !== undefined);
-      badge = {
-        ...badge,
-        electionSuspended: true,
-        electionSpokenSeats: [...new Set([...(badge.electionSpokenSeats ?? []), ...spokenToday])],
-      };
-    }
     const settled = settleUnannouncedNightDeaths(currentState);
     currentState = settled.state;
     newlyAnnouncedDeaths = settled.newlyAnnouncedDeaths;

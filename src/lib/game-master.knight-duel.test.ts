@@ -169,8 +169,8 @@ test("騎士決鬥決策：非決鬥階段或已用過技能時完全不送請�
   const { generateKnightDuelDecision } = await import("./game-master");
   const players = [makePlayer("knight", 0, "Knight"), makePlayer("wolf", 1, "Werewolf")];
 
-  // 警上 PK 發言階段不能翻牌
-  const pkState = makeState(players, "DAY_PK_SPEECH");
+  // 整個警長競選階段都不能翻牌（這裡用競選發言階段）
+  const pkState = makeState(players, "DAY_BADGE_SPEECH");
   const pk = stubFetch(JSON.stringify({ action: "duel", seat: 2 }));
   try {
     const decision = await generateKnightDuelDecision(pkState, players[0]);

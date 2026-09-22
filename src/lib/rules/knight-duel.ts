@@ -5,8 +5,8 @@ import { getRoleCapabilities, isWolfRole } from "./roles";
 /**
  * 騎士翻牌決鬥（單一真相）。
  *
- * 時機：**白天發言階段**與**警徽競選發言階段**可以翻牌；
- * 警上 PK 發言與遺言階段不可翻牌。
+ * 時機：**只有白天發言階段**可以翻牌；整個警長競選階段（競選發言、競選投票、警上 PK 發言）
+ * 與遺言階段都不可發動。
  *
  * 結果：
  * - 挑戰目標是狼人 → 該狼人出局，**隨即進入黑夜**（跳過當天剩餘發言與放逐投票）。
@@ -16,11 +16,14 @@ import { getRoleCapabilities, isWolfRole } from "./roles";
  * （狼王開槍、白狼王帶人、狼美人殉情；只有自爆是例外，而自爆要活著才能做）。
  */
 
-/** 可以翻牌決鬥的階段（使用者裁定：警上 PK 發言與遺言階段之外） */
-export const KNIGHT_DUEL_PHASES: readonly Phase[] = ["DAY_SPEECH", "DAY_BADGE_SPEECH"] as const;
+/** 可以翻牌決鬥的階段（使用者裁定：只有白天發言階段） */
+export const KNIGHT_DUEL_PHASES: readonly Phase[] = ["DAY_SPEECH"] as const;
 
-/** 明確不可決鬥的階段（供文件與測試對照） */
+/** 明確不可決鬥的階段（供文件與測試對照）：整個警長競選階段＋遺言階段 */
 export const KNIGHT_DUEL_FORBIDDEN_PHASES: readonly Phase[] = [
+  "DAY_BADGE_SIGNUP",
+  "DAY_BADGE_SPEECH",
+  "DAY_BADGE_ELECTION",
   "DAY_PK_SPEECH",
   "DAY_LAST_WORDS",
 ] as const;
