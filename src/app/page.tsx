@@ -42,6 +42,7 @@ import { BADGE_TRANSFER_TORN } from "@/lib/game-master";
 import { WelcomeScreen } from "@/components/game/WelcomeScreen";
 import { PlayerCardCompact } from "@/components/game/PlayerCardCompact";
 import { getMutedSeat, isMutePublic } from "@/lib/rules/mute";
+import { getAutoAdvanceRoundSignature, getAutoAdvanceSignature } from "@/lib/auto-advance";
 import { DialogArea } from "@/components/game/DialogArea";
 import { BottomActionPanel } from "@/components/game/BottomActionPanel";
 import { Notebook } from "@/components/game/Notebook";
@@ -819,9 +820,9 @@ export default function Home() {
         if (completedText !== currentDialogue.text) return;
       }
 
-      const signature = currentDialogue.isStreaming
-        ? `DIALOGUE_DONE::${currentDialogue.speaker}::${completedText}`
-        : `DIALOGUE::${currentDialogue.speaker}::${currentDialogue.text}`;
+      // 簽章要帶日與階段：主持人每天講同一句話（「天亮了」…），
+      // 只比對講者與文字會讓第二天那句話被當成「已排過」而不再自動推進。
+      const signature = getAutoAdvanceSignature(currentDialogue, completedText, gameState.day, gameState.phase);
 
       if (lastAutoAdvanceSignatureRef.current === signature) return;
       lastAutoAdvanceSignatureRef.current = signature;
@@ -836,7 +837,7 @@ export default function Home() {
     }
 
     if (waitingForNextRound) {
-      const signature = `NEXT::${gameState.phase}::${gameState.day}::${String(gameState.currentSpeakerSeat ?? "")}`;
+      const signature = getAutoAdvanceRoundSignature(gameState.phase, gameState.day, gameState.currentSpeakerSeat ?? null);
       if (lastAutoAdvanceSignatureRef.current === signature) return;
       lastAutoAdvanceSignatureRef.current = signature;
 
