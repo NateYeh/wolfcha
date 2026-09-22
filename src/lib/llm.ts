@@ -860,58 +860,81 @@ async function generateCompletionBatchInternal(
     ...request,
     request_id: generateUUID(),
   }));
-  const response = await fetchWithRetry(
-    "/api/chat",
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ requests: requestsWithIds }),
-    },
-    3,
-    effectiveSource,
-    logicalRequestId,
-  );
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
-    throw buildApiError(response, errorText);
-  }
+  /** 送出一批請求並把結果對齊回該批的順序（缺漏的回應一律補成失敗項，避免索引錯位）。 */
+  const sendBatch = async (
+    batchRequests: typeof requestsWithIds,
+  ): Promise<{ raw: unknown[]; parsed: BatchCompletionResult[] }> => {
+    const response = await fetchWithRetry(
+      "/api/chat",
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ requests: batchRequests }),
+      },
+      3,
+      effectiveSource,
+      logicalRequestId,
+    );
 
-  const data: unknown = await response.json();
-  const results = isRecord(data) && Array.isArray(data.results) ? data.results : [];
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw buildApiError(response, errorText);
+    }
 
-  const parsedResults = results.map((item): BatchCompletionResult => {
-    if (!isRecord(item) || item.ok !== true) {
-      const recoveryAction = isRecord(item) ? item.recoveryAction : undefined;
-      if (recoveryAction === "reauthorize_api_key") {
-        setTokenPayConnected(false);
+    const data: unknown = await response.json();
+    const incoming = isRecord(data) && Array.isArray(data.results) ? data.results : [];
+    const raw = batchRequests.map((_request, index) => incoming[index] ?? { ok: false, error: "Missing batch result" });
+
+    const parsed = raw.map((item): BatchCompletionResult => {
+      if (!isRecord(item) || item.ok !== true) {
+        const recoveryAction = isRecord(item) ? item.recoveryAction : undefined;
+        if (recoveryAction === "reauthorize_api_key") {
+          setTokenPayConnected(false);
+        }
+        const recoveryError = recoveryAction === "top_up_balance"
+          ? `${QUOTA_EXHAUSTED_MARKER} TokenPay 余额不足，请到账户中心充值后重试`
+          : recoveryAction === "reauthorize_api_key"
+            ? "TokenPay 授权已失效，请到账户中心重新授权"
+            : recoveryAction === "api_key_quota"
+              ? `${QUOTA_EXHAUSTED_MARKER} TokenPay API Key 已达到额度限制，请稍后重试或重新授权`
+              : null;
+        return {
+          ok: false,
+          error: recoveryError ?? String(isRecord(item) ? (item.error ?? "Unknown error") : "Unknown error"),
+          status: isRecord(item) && typeof item.status === "number" ? item.status : undefined,
+        };
       }
-      const recoveryError = recoveryAction === "top_up_balance"
-        ? `${QUOTA_EXHAUSTED_MARKER} TokenPay 余额不足，请到账户中心充值后重试`
-        : recoveryAction === "reauthorize_api_key"
-          ? "TokenPay 授权已失效，请到账户中心重新授权"
-          : recoveryAction === "api_key_quota"
-            ? `${QUOTA_EXHAUSTED_MARKER} TokenPay API Key 已达到额度限制，请稍后重试或重新授权`
-            : null;
+      const rawData = item.data as ChatCompletionResponse;
+      const choice = rawData?.choices?.[0];
+      const assistantMessage = choice?.message;
+      if (!assistantMessage) {
+        return { ok: false, error: "No response from model" };
+      }
       return {
-        ok: false,
-        error: recoveryError ?? String(isRecord(item) ? (item.error ?? "Unknown error") : "Unknown error"),
-        status: isRecord(item) && typeof item.status === "number" ? item.status : undefined,
+        ok: true,
+        content: stripReasoningArtifacts(assistantMessage.content),
+        reasoning_details: assistantMessage.reasoning_details,
+        raw: rawData,
       };
-    }
-    const raw = item.data as ChatCompletionResponse;
-    const choice = raw?.choices?.[0];
-    const assistantMessage = choice?.message;
-    if (!assistantMessage) {
-      return { ok: false, error: "No response from model" };
-    }
-    return {
-      ok: true,
-      content: stripReasoningArtifacts(assistantMessage.content),
-      reasoning_details: assistantMessage.reasoning_details,
-      raw,
-    };
-  });
+    });
+
+    return { raw, parsed };
+  };
+
+  // 前綴快取暖機：這條路徑（如警徽報名 11 席）原本整批同時啟動，上游還來不及把公共前綴
+  // 寫進 prefix cache，並行首波只有一半吃得到快取。改為先單獨送出第一個請求暖快取，
+  // 其餘請求再並行送出；暖機項與其餘項各自獨立結算，順序仍與 requests 一致。
+  const [warmupRequest, ...remainingRequests] = requestsWithIds;
+  const warmupBatch = warmupRequest
+    ? await sendBatch([warmupRequest])
+    : { raw: [], parsed: [] };
+  const remainingBatch = remainingRequests.length > 0
+    ? await sendBatch(remainingRequests)
+    : { raw: [] as unknown[], parsed: [] as BatchCompletionResult[] };
+
+  const results = [...warmupBatch.raw, ...remainingBatch.raw];
+  const parsedResults: BatchCompletionResult[] = [...warmupBatch.parsed, ...remainingBatch.parsed];
 
   if (allowTopUpRecovery && effectiveSource === "tokenpay") {
     const retryIndexes = getTokenPayTopUpRetryIndexes(results);

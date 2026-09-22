@@ -89,13 +89,13 @@ test("警徽报名批处理为每个玩家建立独立 Prompt，并按返回顺�
   ];
   const state = makeState(players);
   const originalFetch = globalThis.fetch;
-  let requestBody: {
+  const bodies: Array<{
     requests: Array<{
       model?: string;
       messages: Array<{ content: string | unknown[] }>;
       response_format?: { type?: string; json_schema?: { strict?: boolean } };
     }>;
-  } | undefined;
+  }> = [];
 
   globalThis.fetch = async (_input, init) => {
     if (!init?.body) {
@@ -111,14 +111,15 @@ test("警徽报名批处理为每个玩家建立独立 Prompt，并按返回顺�
         response_format?: { type?: string; json_schema?: { strict?: boolean } };
       }>;
     };
-    requestBody = body;
+    bodies.push(body);
     return new Response(JSON.stringify({
-      results: body.requests.map((_, index) => ({
+      results: body.requests.map((request) => ({
         ok: true,
         data: {
-          id: `badge-${index}`,
+          id: "badge",
           choices: [{
-            message: { role: "assistant", content: JSON.stringify({ signup: index === 0 }) },
+            // 以角色提示判定，不看批內序號：預言家上警、守衛不上警。
+            message: { role: "assistant", content: JSON.stringify({ signup: requestText(request).includes("<your_seer_checks>") }) },
             finish_reason: "stop",
           }],
         },
@@ -129,8 +130,11 @@ test("警徽报名批处理为每个玩家建立独立 Prompt，并按返回顺�
   try {
     const result = await generateAIBadgeSignupBatch(state, players);
 
-    const requests = requestBody?.requests;
-    assert.ok(requests);
+    // 前綴快取暖機：先單獨送第一個請求暖快取，其餘再一起送；順序仍與 players 一致。
+    assert.equal(bodies.length, 2);
+    assert.equal(bodies[0].requests.length, 1);
+    assert.equal(bodies[1].requests.length, players.length - 1);
+    const requests = bodies.flatMap((body) => body.requests);
     assert.equal(requests.length, players.length);
     assert.deepEqual(result, { seer: true, guard: false });
     for (const request of requests) {
@@ -169,26 +173,31 @@ test("警徽报名单个响应非法或失败时只将对应玩家判为不上�
   ];
   const state = makeState(players);
   const originalFetch = globalThis.fetch;
+  let batchIndex = 0;
 
-  globalThis.fetch = async () => new Response(JSON.stringify({
-    results: [
-      {
+  // 回應內容改以「呼叫次數」判定，而不是固定用批內序號：暖機後第一批只剩 1 個請求。
+  globalThis.fetch = async () => {
+    batchIndex += 1;
+    const results = batchIndex === 1
+      ? [{
         ok: true,
         data: {
           id: "badge-0",
           choices: [{ message: { role: "assistant", content: '{"signup":true}' }, finish_reason: "stop" }],
         },
-      },
-      {
-        ok: true,
-        data: {
-          id: "badge-1",
-          choices: [{ message: { role: "assistant", content: "maybe" }, finish_reason: "stop" }],
+      }]
+      : [
+        {
+          ok: true,
+          data: {
+            id: "badge-1",
+            choices: [{ message: { role: "assistant", content: "maybe" }, finish_reason: "stop" }],
+          },
         },
-      },
-      { ok: false, error: "player request failed" },
-    ],
-  }), { status: 200, headers: { "content-type": "application/json" } });
+        { ok: false, error: "player request failed" },
+      ];
+    return new Response(JSON.stringify({ results }), { status: 200, headers: { "content-type": "application/json" } });
+  };
 
   try {
     const result = await generateAIBadgeSignupBatch(state, players);
@@ -216,17 +225,26 @@ test("警徽报名：reason 一併解析並記進 log", async () => {
     if (entry.type === "badge_signup") logs.push(entry as { response: { parsed?: { signup?: boolean; reason?: string } } });
   });
 
+  let batchIndex = 0;
   globalThis.fetch = async (_input, init) => {
     const body = JSON.parse(String(init?.body)) as {
       requests: Array<{ messages: Array<{ content: string | unknown[] }> }>;
     };
+    batchIndex += 1;
+    // 暖機後第一批只有 1 個玩家，序號不能當玩家身分用，改以呼叫次數區分。
+    const isFirstBatch = batchIndex === 1;
     return new Response(JSON.stringify({
-      results: body.requests.map((_, index) => ({
+      results: body.requests.map(() => ({
         ok: true,
         data: {
-          id: `badge-reason-${index}`,
+          id: "badge-reason",
           choices: [{
-            message: { role: "assistant", content: JSON.stringify({ signup: index === 0, reason: index === 0 ? "我有查验要第一时间报" : "手上没东西，先不上警" }) },
+            message: {
+              role: "assistant",
+              content: JSON.stringify(isFirstBatch
+                ? { signup: true, reason: "我有查验要第一时间报" }
+                : { signup: false, reason: "手上没东西，先不上警" }),
+            },
             finish_reason: "stop",
           }],
         },
