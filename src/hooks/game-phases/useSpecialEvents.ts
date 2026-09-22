@@ -18,6 +18,7 @@ import { delay, type FlowToken } from "@/lib/game-flow-controller";
 import { playNarrator } from "@/lib/narrator-audio-player";
 import { gameSessionTracker } from "@/lib/game-session-tracker";
 import { addPlayerMessage, generateGameEndRemark } from "@/lib/game-master";
+import { getPendingLastWordsSeats } from "@/lib/rules/last-words";
 
 export interface SpecialEventsCallbacks {
   setDialogue: (speaker: string, text: string, isStreaming?: boolean) => void;
@@ -256,9 +257,18 @@ export function useSpecialEvents(
       addNightDeath(witchPoison, "poison");
     }
 
+    // 遺言規則：只有第一夜死者有遺言（無論幾個、無論死因）。先入列，
+    // 實際發表排在死亡公告之後（DaySpeechPhase.startDaySpeechAfterBadge）。
+    const pendingLastWordsSeats = getPendingLastWordsSeats({
+      nightDay: currentState.day,
+      deathSeats: nightDeaths.map((death) => death.seat),
+      pending: currentState.pendingLastWordsSeats,
+    });
+
     // 更新状态
     currentState = {
       ...currentState,
+      pendingLastWordsSeats,
       nightActions: {
         ...currentState.nightActions,
         lastGuardTarget: guardTarget,

@@ -25,6 +25,7 @@ import { PLAYER_MODELS, isWolfRole, type GameState, type Player, type Phase, typ
 import { gameStateAtom, isValidTransition, clearPersistedGameState, isRestorableGameState } from "@/store/game-machine";
 import { getGeneratorModel, getModelSource } from "@/lib/api-keys";
 import { isAbstainSeat } from "@/lib/rules/actions";
+import { takeNextLastWordsSeat } from "@/lib/rules/last-words";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import {
   buildGameStartState,
@@ -162,6 +163,17 @@ export function useGameLogic() {
   const onBadgeSpeechEndRef = useRef<((state: GameState) => Promise<void>) | null>(null);
   const onPkSpeechEndRef = useRef<((state: GameState) => Promise<void>) | null>(null);
   const wwkBoomCheckRef = useRef<((state: GameState, wwk: Player) => Promise<boolean>) | null>(null);
+  /** 第一夜死者遺言佇列的處理器（由 DaySpeechPhase 在死亡公告後呼叫） */
+  const pendingLastWordsRef = useRef<
+    ((state: GameState, continuation: (s: GameState) => Promise<void>) => Promise<void>) | null
+  >(null);
+  const drainPendingLastWordsRef = useRef<
+    ((
+      state: GameState,
+      token: ReturnType<typeof getToken>,
+      continuation: (s: GameState) => Promise<void>
+    ) => Promise<void>) | null
+  >(null);
 
   // 游戏启动相关 refs
   const pendingStartStateRef = useRef<GameState | null>(null);
@@ -368,6 +380,15 @@ export function useGameLogic() {
         if (fn) {
           await fn(state, hunter, diedAtNight);
         }
+      },
+      onPendingLastWords: async (state: GameState, continuation: (s: GameState) => Promise<void>) => {
+        const fn = pendingLastWordsRef.current;
+        if (fn) {
+          await fn(state, continuation);
+          return;
+        }
+        console.warn("[wolfcha] 遺言佇列處理器尚未就緒，直接續跑白天流程");
+        await continuation(state);
       },
       onGameEnd: async (state: GameState, winner: "village" | "wolf") => {
         const fn = endGameRef.current;
@@ -1127,6 +1148,41 @@ export function useGameLogic() {
         }
       });
     });
+  };
+
+  // 第一夜死者的遺言：死亡公告後依序發表（見 GameState.pendingLastWordsSeats）。
+  // 人類遺言由 UI 完成後續跑（startLastWordsPhase 會保存 callback），因此這裡用 ref 遞迴串接。
+  drainPendingLastWordsRef.current = async (state, token, continuation) => {
+    const { seat, rest } = takeNextLastWordsSeat(state.pendingLastWordsSeats);
+    if (seat === null) {
+      await continuation(state);
+      return;
+    }
+    const cleared: GameState = { ...state, pendingLastWordsSeats: rest };
+    await startLastWordsPhase(
+      cleared,
+      seat,
+      async (after) => {
+        const drain = drainPendingLastWordsRef.current;
+        if (!drain) {
+          console.warn("[wolfcha] 遺言佇列處理器遺失，直接續跑白天流程");
+          await continuation(after);
+          return;
+        }
+        await drain(after, token, continuation);
+      },
+      token
+    );
+  };
+
+  pendingLastWordsRef.current = async (state, continuation) => {
+    const drain = drainPendingLastWordsRef.current;
+    if (!drain) {
+      console.warn("[wolfcha] 遺言佇列處理器尚未就緒，直接續跑白天流程");
+      await continuation(state);
+      return;
+    }
+    await drain(state, getToken(), continuation);
   };
 
   const handleVoteComplete = useCallback(async (

@@ -288,6 +288,14 @@ export interface GameState {
       idiotRevealed?: { seat: number };
     }
   >;
+  /**
+   * 待發表遺言的座位佇列。
+   *
+   * 規則：只有「第一夜」死亡的玩家有遺言（無論幾個、無論死因）；第二夜起夜間死亡者不發表遺言。
+   * 因為第一天是「先競選、後報刀」，死亡公告排在警徽競選之後，若中途被自爆／警徽事件中斷，
+   * 這裡的佇列會留在狀態中，於下一次天亮（死亡公告後）補發表，不會因為直接天黑而遺失。
+   */
+  pendingLastWordsSeats?: number[];
   dailySummaries: Record<number, string[]>; // day -> summary bullet list
   dailySummaryFacts: Record<number, DailySummaryFact[]>; // day -> structured facts
   dailySummaryVoteData?: Record<number, DailySummaryVoteData>;

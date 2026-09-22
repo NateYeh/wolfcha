@@ -43,6 +43,8 @@ type DaySpeechRuntime = {
   onPkSpeechEnd: (state: GameState) => Promise<void>;
   /** AI白狼王自爆决策：返回 true 表示已自爆（由调用方处理后续），false 表示不自爆 */
   onWhiteWolfKingBoomCheck: (state: GameState, wwk: Player) => Promise<boolean>;
+  /** 第一夜死者的遺言佇列：死亡公告後依序發表，完成後呼叫 continuation 續跑白天流程 */
+  onPendingLastWords?: (state: GameState, continuation: (s: GameState) => Promise<void>) => Promise<void>;
 };
 
 export class DaySpeechPhase extends GamePhase {
@@ -229,6 +231,11 @@ ${t("prompts.daySpeech.formatReminder")}`;
     if (!raw.onWhiteWolfKingBoomCheck) {
       raw.onWhiteWolfKingBoomCheck = async () => false;
     }
+    if (!raw.onPendingLastWords) {
+      raw.onPendingLastWords = async (state, continuation) => {
+        await continuation(state);
+      };
+    }
     return raw;
   }
 
@@ -239,9 +246,7 @@ ${t("prompts.daySpeech.formatReminder")}`;
   ): Promise<void> {
     const { t } = getI18n();
     const systemMessages = getSystemMessages();
-    const uiText = getUiText();
     const speakerHost = t("speakers.host");
-    const speakerHint = t("speakers.hint");
     let currentState = state;
     const skipAnnouncements = options?.skipAnnouncements === true;
 
@@ -344,6 +349,23 @@ ${t("prompts.daySpeech.formatReminder")}`;
     };
     runtime.setGameState(currentState);
 
+    /**
+     * 死亡公告之後、白天討論之前：先讓待發表遺言的死者（第一夜死者）依序發言。
+     *
+     * 若白天流程被自爆／警徽事件中斷，佇列會留在狀態裡，於下一次天亮補發表，
+     * 不會因為「直接天黑」而遺失（見 GameState.pendingLastWordsSeats）。
+     */
+    const continueAfterAnnouncement = async (
+      baseState: GameState,
+      startDiscussion: (s: GameState) => Promise<void>
+    ): Promise<void> => {
+      if ((baseState.pendingLastWordsSeats ?? []).length > 0 && runtime.onPendingLastWords) {
+        await runtime.onPendingLastWords(baseState, startDiscussion);
+        return;
+      }
+      await startDiscussion(baseState);
+    };
+
     const currentSheriffSeat = currentState.badge.holderSeat;
     const sheriffPlayer =
       currentSheriffSeat !== null ? currentState.players.find((p) => p.seat === currentSheriffSeat) : null;
@@ -351,65 +373,25 @@ ${t("prompts.daySpeech.formatReminder")}`;
 
     if (deadSheriff) {
       await runtime.onBadgeTransfer(currentState, deadSheriff, async (afterTransferState) => {
-        if (wolfVictim?.role === "Hunter" && afterTransferState.roleAbilities.hunterCanShoot) {
-          await runtime.onHunterDeath(afterTransferState, wolfVictim, true);
-          return;
-        }
-
         const winnerAfterTransfer = checkWinCondition(afterTransferState);
         if (winnerAfterTransfer) {
           await runtime.onGameEnd(afterTransferState, winnerAfterTransfer);
           return;
         }
 
-        let speechState = transitionPhase(afterTransferState, "DAY_SPEECH");
-        speechState = addSystemMessage(speechState, systemMessages.dayDiscussion);
-
-        await playNarrator("discussionStart");
-
-        const alivePlayers = speechState.players.filter((p) => p.alive);
-        const speechDirection = "clockwise" as const;
-        
-        // 判断警徽是否移交成功
-        const newSheriffSeat = speechState.badge.holderSeat;
-        const isNewSheriffAlive = newSheriffSeat !== null && 
-          alivePlayers.some((p) => p.seat === newSheriffSeat);
-        
-        let startSeat: number | null;
-        if (isNewSheriffAlive) {
-          // 警徽移交成功：从新警长下一位开始，新警长最后发言
-          startSeat = getNextAliveSeat(speechState, newSheriffSeat, true, speechDirection);
-        } else {
-          // 警徽撕毁：从死者下一位开始
-          startSeat = getNextAliveSeat(speechState, deadSheriff.seat, false, speechDirection);
-        }
-        
-        const firstSpeaker =
-          startSeat !== null ? alivePlayers.find((p) => p.seat === startSeat) || null : null;
-        speechState = {
-          ...speechState,
-          daySpeechStartSeat: startSeat,
-          currentSpeakerSeat: firstSpeaker?.seat ?? null,
-          speechDirection,
-        };
-
-        runtime.setDialogue(speakerHost, uiText.speechOrder, false);
-        runtime.setGameState(speechState);
-
-        await delay(1500);
-        await runtime.waitForUnpause();
-
-        if (firstSpeaker && !firstSpeaker.isHuman) {
-          await runtime.runAISpeech(speechState, firstSpeaker);
-        } else if (firstSpeaker?.isHuman) {
-          runtime.setDialogue(speakerHint, uiText.yourTurn, false);
-        }
+        const newSheriffSeat = afterTransferState.badge.holderSeat;
+        await continueAfterAnnouncement(afterTransferState, async (discussionState) => {
+          if (wolfVictim?.role === "Hunter" && discussionState.roleAbilities.hunterCanShoot) {
+            await runtime.onHunterDeath(discussionState, wolfVictim, true);
+            return;
+          }
+          await this.startDayDiscussion(discussionState, runtime, {
+            // 警徽移交成功：從新警長下一位開始（新警長最後發言）；撕毀：從死者下一位開始
+            sheriffSeat: newSheriffSeat,
+            fallbackSeat: deadSheriff.seat,
+          });
+        });
       });
-      return;
-    }
-
-    if (wolfVictim?.role === "Hunter" && currentState.roleAbilities.hunterCanShoot) {
-      await runtime.onHunterDeath(currentState, wolfVictim, true);
       return;
     }
 
@@ -419,31 +401,55 @@ ${t("prompts.daySpeech.formatReminder")}`;
       return;
     }
 
-    let speechState = transitionPhase(currentState, "DAY_SPEECH");
+    await continueAfterAnnouncement(currentState, async (discussionState) => {
+      if (wolfVictim?.role === "Hunter" && discussionState.roleAbilities.hunterCanShoot) {
+        await runtime.onHunterDeath(discussionState, wolfVictim, true);
+        return;
+      }
+      await this.startDayDiscussion(discussionState, runtime, {
+        sheriffSeat: discussionState.badge.holderSeat,
+        fallbackSeat: wolfVictim?.seat ?? null,
+      });
+    });
+  }
+
+  /**
+   * 進入白天討論（死亡公告與遺言都已完成）。
+   *
+   * @param anchor 發言起點：`sheriffSeat` 存活時從警長下一位開始（警長最後發言）；
+   *               否則從 `fallbackSeat`（通常為刀口死者）下一位開始；兩者皆無時從最小存活座位開始。
+   */
+  private async startDayDiscussion(
+    state: GameState,
+    runtime: DaySpeechRuntime,
+    anchor: { sheriffSeat: number | null; fallbackSeat: number | null }
+  ): Promise<void> {
+    const { t } = getI18n();
+    const systemMessages = getSystemMessages();
+    const uiText = getUiText();
+    const speakerHost = t("speakers.host");
+    const speakerHint = t("speakers.hint");
+
+    let speechState = transitionPhase(state, "DAY_SPEECH");
     speechState = addSystemMessage(speechState, systemMessages.dayDiscussion);
 
     await playNarrator("discussionStart");
 
     const alivePlayers = speechState.players.filter((p) => p.alive);
     const speechDirection = "clockwise" as const;
-    const sheriffSeat = speechState.badge.holderSeat;
     const isSheriffAlive =
-      typeof sheriffSeat === "number" && alivePlayers.some((p) => p.seat === sheriffSeat);
+      typeof anchor.sheriffSeat === "number" && alivePlayers.some((p) => p.seat === anchor.sheriffSeat);
 
-    // 确定发言起始位置
     let startSeat: number | null;
     if (isSheriffAlive) {
-      // 有警长存活：从警长下一位开始，警长最后发言
-      startSeat = getNextAliveSeat(speechState, sheriffSeat, true, speechDirection);
-    } else if (wolfVictim) {
-      // 无警长但有死者：从死者下一位开始
-      startSeat = getNextAliveSeat(speechState, wolfVictim.seat, false, speechDirection);
+      startSeat = getNextAliveSeat(speechState, anchor.sheriffSeat as number, true, speechDirection);
+    } else if (anchor.fallbackSeat !== null) {
+      startSeat = getNextAliveSeat(speechState, anchor.fallbackSeat, false, speechDirection);
     } else {
-      // 无警长无死者（和平夜）：从最小座位号开始
       const aliveSeats = alivePlayers.map((p) => p.seat).sort((a, b) => a - b);
       startSeat = aliveSeats[0] ?? null;
     }
-    
+
     const firstSpeaker =
       startSeat !== null ? alivePlayers.find((p) => p.seat === startSeat) || null : null;
     speechState = {
