@@ -13,7 +13,7 @@ export type Role =
 
 /** Check if a role belongs to the wolf team (used for seer checks, wolf actions, etc.) */
 export function isWolfRole(role: string | undefined): boolean {
-  return role === "Werewolf" || role === "WhiteWolfKing";
+  return role === "Werewolf" || role === "WhiteWolfKing" || role === "WolfKing";
 }
 
 export type DifficultyLevel = "easy" | "normal" | "hard";
