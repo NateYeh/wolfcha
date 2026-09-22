@@ -1407,14 +1407,7 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
     };
   }
 
-  // 猎人能力：被毒/毒奶死亡不能开枪
-  const hunter = state.players.find((p) => p.role === "Hunter");
-  if (hunter && deaths.some((d) => d.seat === hunter.seat && (d.reason === "poison" || d.reason === "milk"))) {
-    state = {
-      ...state,
-      roleAbilities: { ...state.roleAbilities, hunterCanShoot: false },
-    };
-  }
+  // 被毒/毒奶死亡封槍：改由 canUseDeathShot 查夜史（deaths reason=poison/milk），不全域關 hunterCanShoot
 
   // 更新 lastGuardTarget
   state = {
@@ -1557,13 +1550,7 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
     };
   }
 
-  const hunter = state.players.find((p) => p.role === "Hunter");
-  if (hunter && deaths.some((d) => d.seat === hunter.seat && (d.reason === "poison" || d.reason === "milk"))) {
-    state = {
-      ...state,
-      roleAbilities: { ...state.roleAbilities, hunterCanShoot: false },
-    };
-  }
+  // 被毒/毒奶死亡封槍：改由 canUseDeathShot 查夜史，不全域關 hunterCanShoot
 
   const prev = (state.nightHistory || {})[day] || {};
   state = {

@@ -51,13 +51,8 @@ export function settleUnannouncedNightDeaths(state: GameState): {
       if (!victim) continue;
       announcedSeats.add(death.seat);
       if (victim.alive) currentState = markPlayerDead(currentState, victim.seat);
-      // 被毒死的獵人不能開槍（沿用死亡公告規則）
-      if (death.reason === "poison" && victim.role === "Hunter") {
-        currentState = {
-          ...currentState,
-          roleAbilities: { ...currentState.roleAbilities, hunterCanShoot: false },
-        };
-      }
+      // 被毒死的獵人不能開槍：改由 canUseDeathShot 查夜史（reason=poison）封槍，
+      // 不再全域關 hunterCanShoot（否則會誤傷日後狼王被票出開槍）。
       deathSeats.push(death.seat);
       newlyAnnouncedDeaths.push({ nightDay, seat: death.seat, reason: death.reason });
     }

@@ -71,6 +71,32 @@ test("狼王槍：只剩他這一隻狼時不開窗（出局即終局）", () =>
   assert.equal(canUseDeathShot({ state: withCompany, role: "WolfKing", seat: 0, cause: "exile" }), true);
 });
 
+test("毒史封槍：夜史有 poison/milk 紀錄的座位不能開槍，且不影響其他人", () => {
+  const base = stateWith([[0, "WolfKing"], [1, "Hunter"]]);
+  // 夜 1：狼王被毒奶（同刀同毒）→ 死因紀錄為 poison
+  const state: GameState = {
+    ...base,
+    nightHistory: { 1: { deaths: [{ seat: 0, reason: "poison" }] } },
+  };
+  assert.equal(canUseDeathShot({ state, role: "WolfKing", seat: 0, cause: "exile" }), false, "被毒死的狼王不能開槍");
+  // milk 紀錄同樣封槍
+  const milkState: GameState = { ...base, nightHistory: { 1: { deaths: [{ seat: 0, reason: "milk" }] } } };
+  assert.equal(canUseDeathShot({ state: milkState, role: "WolfKing", seat: 0, cause: "night_kill" }), false, "毒奶死的不能開槍");
+  // 無毒史的狼王照常可開
+  assert.equal(canUseDeathShot({ state: base, role: "WolfKing", seat: 0, cause: "exile" }), true);
+});
+
+test("毒死獵人不誤傷狼王：獵人被毒出局後，狼王隔天被票出仍能開槍", () => {
+  const base = stateWith([[0, "WolfKing"], [1, "Hunter"]]);
+  // 夜 1：女巫毒死獵人（毒史只封獵人自己，不再全域關槍）
+  const state: GameState = {
+    ...base,
+    nightHistory: { 1: { deaths: [{ seat: 1, reason: "poison" }] } },
+  };
+  assert.equal(canUseDeathShot({ state, role: "Hunter", seat: 1, cause: "exile" }), false, "被毒死的獵人自己不能開");
+  assert.equal(canUseDeathShot({ state, role: "WolfKing", seat: 0, cause: "exile" }), true, "毒死獵人不影響狼王被票出開槍");
+});
+
 test("開槍目標：場上存活、不含自己", () => {
   const base = stateWith([[0, "WolfKing"]]);
   const deadSeat = base.players.find((p) => p.seat !== 0)!.seat;

@@ -334,24 +334,14 @@ ${formatReminder}`;
           pendingWolfVictim !== undefined && pendingPoisonVictim === pendingWolfVictim;
 
         if (sameTargetAsWolf) {
-          const overlappedVictim = currentState.players.find((p) => p.seat === pendingPoisonVictim);
-          if (overlappedVictim?.role === "Hunter") {
-            currentState = {
-              ...currentState,
-              roleAbilities: { ...currentState.roleAbilities, hunterCanShoot: false },
-            };
-          }
+          // 同刀同毒（毒奶）：人已隨刀口出局，nightHistory 死因會記為 poison，
+          // canUseDeathShot 查夜史即封槍，不再全域關 hunterCanShoot（否則會誤傷日後狼王被票出開槍）。
         } else {
           hasDeaths = true;
           currentState = killPlayer(currentState, pendingPoisonVictim);
           poisonVictim = currentState.players.find((p) => p.seat === pendingPoisonVictim);
           if (poisonVictim) {
-            if (poisonVictim.role === "Hunter") {
-              currentState = {
-                ...currentState,
-                roleAbilities: { ...currentState.roleAbilities, hunterCanShoot: false },
-              };
-            }
+            // 被毒死者封槍改由 canUseDeathShot 查夜史（reason=poison），不再全域關 hunterCanShoot。
             currentState = addSystemMessage(
               currentState,
               systemMessages.playerKilled(poisonVictim.seat + 1, poisonVictim.displayName)

@@ -378,7 +378,7 @@ export interface GameState {
   roleAbilities: {
     witchHealUsed: boolean;      // 女巫解药是否已用
     witchPoisonUsed: boolean;    // 女巫毒药是否已用
-    hunterCanShoot: boolean;     // 猎人是否能开枪（被毒死不能开枪）
+    hunterCanShoot: boolean;     // 死亡技能系統總開關（獵人槍／狼王槍共用）；「被毒封槍」改由 canUseDeathShot 查夜史
     idiotRevealed: boolean;      // 白痴是否已翻牌（翻牌后失去投票权但不死）
     /** 已自爆過的座位（自爆者出局，僅供防重複與賽後紀錄） */
     boomedSeats: number[];

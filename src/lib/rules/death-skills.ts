@@ -73,6 +73,13 @@ export function canUseDeathShot(input: {
   if (cause === "poison" && !rules.onPoison) return false;
   if (cause === "carried" && !rules.onCarried) return false;
   if (cause === "duel" && !rules.onDuel) return false;
+  // 被毒／毒奶死亡的座位：死亡技能一律封鎖（查夜史死亡紀錄，取代舊的全域 hunterCanShoot=false hack）
+  const diedByToxin = Object.values(state.nightHistory ?? {}).some((record) =>
+    (record?.deaths ?? []).some(
+      (death) => death.seat === seat && (death.reason === "poison" || death.reason === "milk"),
+    ),
+  );
+  if (diedByToxin) return false;
   // 非最後一狼：只剩他這隻狼時，死了就終局，沒有開槍窗口
   if (rules.forbiddenWhenLastWolf) {
     const otherAliveWolves = state.players.filter(

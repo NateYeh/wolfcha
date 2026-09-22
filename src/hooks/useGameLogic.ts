@@ -1548,8 +1548,12 @@ export function useGameLogic() {
           return;
         }
 
-        // 猎人开枪
-        if (executedPlayer?.role === "Hunter" && s.roleAbilities.hunterCanShoot) {
+        // 死亡技能（獵人槍／狼王槍）：以 canUseDeathShot 統一判定，避免寫死 role === "Hunter" 漏掉狼王
+        if (
+          executedPlayer &&
+          s.roleAbilities.hunterCanShoot &&
+          canUseDeathShot({ state: s, role: executedPlayer.role, seat: executedPlayer.seat, cause: "exile" })
+        ) {
           await specialEvents.handleHunterDeath(s, executedPlayer, false, token, async (afterHunterState) => {
             await continueAfterHunterShot(afterHunterState, async (nextState) => {
               await proceedToNight(nextState, token);
