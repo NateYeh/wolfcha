@@ -1,6 +1,7 @@
 import type { Player } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameContext, PromptResult, SystemPromptPart } from "../core/types";
+import { getDeathShotKind } from "@/lib/rules/death-skills";
 import {
   buildDecisionContext,
   getRoleText,
@@ -50,7 +51,7 @@ export class HunterPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      coreRules: getRolePromptCore("Hunter"),
+      coreRules: getRolePromptCore(player.role),
     });
     const options = alivePlayers
       .map((p) => t("prompts.night.option", { seat: p.seat + 1, name: p.displayName }))
@@ -59,10 +60,13 @@ export class HunterPhase extends GamePhase {
     const lastWordsSection = lastWords
       ? t("prompts.hunter.lastWordsContext", { lastWords })
       : "";
-    // 开枪守则：禁止射硬认证好人；放逐后先核实预言家查验链；遗言目标与守则冲突时以守则为准。
-    const shootingRules = t("prompts.hunter.shootingRules");
+    // 開槍守則依角色不同：獵人是「好人最後一槍」，狼王是「狼隊的槍」（目標互換）。
+    const isWolfShot = getDeathShotKind(player.role) === "wolf_gun";
+    const shootingRules = t(isWolfShot ? "prompts.wolfKingShot.shootingRules" : "prompts.hunter.shootingRules");
     const dynamicContent =
-      t("prompts.hunter.task", { options }) + lastWordsSection + shootingRules;
+      t(isWolfShot ? "prompts.wolfKingShot.task" : "prompts.hunter.task", { options }) +
+      lastWordsSection +
+      shootingRules;
     const systemParts: SystemPromptPart[] = [
       { text: cacheableContent, cacheable: true, ttl: "1h" },
       { text: dynamicContent },

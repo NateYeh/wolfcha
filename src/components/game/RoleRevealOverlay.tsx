@@ -11,6 +11,8 @@ import {
   GuardIcon,
   VillagerIcon,
   IdiotIcon,
+  KnightIcon,
+  MuteElderIcon,
   NightIcon,
 } from "@/components/icons/FlatIcons";
 import type { Phase, Player } from "@/types/game";
@@ -85,13 +87,33 @@ function getRoleMeta(role: Player["role"], t: ReturnType<typeof useTranslations>
         abilities: t.raw("roleReveal.roles.guard.abilities"),
         tips: t.raw("roleReveal.roles.guard.tips"),
       };
+    case "MuteElder":
+      return {
+        title: t("roleReveal.roles.muteElder.title"),
+        subtitle: t("roleReveal.roles.muteElder.subtitle"),
+        color: "var(--color-seer)",
+        bg: "var(--color-seer-bg)",
+        Icon: MuteElderIcon,
+        abilities: t.raw("roleReveal.roles.muteElder.abilities"),
+        tips: t.raw("roleReveal.roles.muteElder.tips"),
+      };
+    case "WolfKing":
+      return {
+        title: t("roleReveal.roles.wolfKing.title"),
+        subtitle: t("roleReveal.roles.wolfKing.subtitle"),
+        color: "var(--color-wolf)",
+        bg: "var(--color-wolf-bg)",
+        Icon: WhiteWolfKingIcon,
+        abilities: t.raw("roleReveal.roles.wolfKing.abilities"),
+        tips: t.raw("roleReveal.roles.wolfKing.tips"),
+      };
     case "Knight":
       return {
         title: t("roleReveal.roles.knight.title"),
         subtitle: t("roleReveal.roles.knight.subtitle"),
         color: "var(--color-guard)",
         bg: "var(--color-guard-bg)",
-        Icon: GuardIcon,
+        Icon: KnightIcon,
         abilities: t.raw("roleReveal.roles.knight.abilities"),
         tips: t.raw("roleReveal.roles.knight.tips"),
       };
@@ -147,6 +169,10 @@ function getNextStepText(role: Player["role"], phase: Phase, t: ReturnType<typeo
         return t("roleReveal.nextStep.idiot");
       case "Knight":
         return t("roleReveal.nextStep.knight");
+      case "MuteElder":
+        return t("roleReveal.nextStep.muteElder");
+      case "WolfKing":
+        return t("roleReveal.nextStep.wolfKing");
       default:
         return t("roleReveal.nextStep.villager");
     }

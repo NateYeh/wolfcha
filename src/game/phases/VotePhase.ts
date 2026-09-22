@@ -21,6 +21,7 @@ import {
   transitionPhase,
   warmUpVotePrompt,
 } from "@/lib/game-master";
+import { canUseDeathShot } from "@/lib/rules/death-skills";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { DELAY_CONFIG } from "@/lib/game-constants";
 import { delay, type FlowToken } from "@/lib/game-flow-controller";
@@ -452,8 +453,14 @@ export class VotePhase extends GamePhase {
 
     const executed =
       result ? currentState.players.find((p) => p.seat === result.seat) : null;
-    if (result && executed?.role === "Hunter" && currentState.roleAbilities.hunterCanShoot) {
-      // Defer win check until after hunter shoot resolves.
+    // 死亡技能（獵人槍／狼王槍）：只有在這張表允許的死因下才開窗
+    if (
+      result &&
+      executed &&
+      currentState.roleAbilities.hunterCanShoot &&
+      canUseDeathShot({ state: currentState, role: executed.role, seat: executed.seat, cause: "exile" })
+    ) {
+      // Defer win check until after the death shot resolves.
       await runtime.onVoteComplete(currentState, result);
       return;
     }

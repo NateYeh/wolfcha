@@ -11,6 +11,7 @@ import type { GameAnalysisData } from "@/types/analysis";
 import { createInitialGameState } from "@/lib/game-master";
 import { GAME_SESSION_RESUME_WINDOW_MS } from "@/lib/game-session-policy";
 import { getI18n } from "@/i18n/translator";
+import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { hasAlreadyDueled } from "@/lib/rules/knight-duel";
 import { isValidMuteTarget } from "@/lib/rules/mute";
@@ -883,11 +884,15 @@ export const PHASE_CONFIGS: Record<Phase, PhaseConfig> = {
     description: "phase.hunterShoot.description",
     humanDescription: (hp) => {
       const { t } = getI18n();
-      return hp?.role === "Hunter" ? t("phase.hunterShoot.human") : t("phase.hunterShoot.description");
+      // 獵人槍與狼王槍共用這個開槍窗口
+      return hp && getDeathShotKind(hp.role) !== "none"
+        ? t("phase.hunterShoot.human")
+        : t("phase.hunterShoot.description");
     },
-    requiresHumanInput: (hp, gs) => hp?.role === "Hunter" && gs.roleAbilities.hunterCanShoot || false,
+    requiresHumanInput: (hp, gs) =>
+      Boolean(hp && getDeathShotKind(hp.role) !== "none" && gs.roleAbilities.hunterCanShoot) || false,
     canSelectPlayer: (hp, target) => {
-      if (!hp || hp.role !== "Hunter" || !target.alive || target.isHuman) return false;
+      if (!hp || getDeathShotKind(hp.role) === "none" || !target.alive || target.isHuman) return false;
       return true;
     },
     actionType: "night_action",
@@ -1148,6 +1153,7 @@ export const roleNeedsActionAtom = atom((get) => {
         return true; // 守卫每晚都可以行动
       case "Werewolf":
       case "WhiteWolfKing":
+      case "WolfKing":
         return true; // 狼人每晚都要行动
       case "Witch":
         return !gameState.roleAbilities.witchHealUsed || !gameState.roleAbilities.witchPoisonUsed;

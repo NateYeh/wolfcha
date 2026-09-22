@@ -31,6 +31,7 @@ import { canSelfDestruct, hasAlreadyBoomed, shouldResumeBadgeElection } from "@/
 import { applySelfDestructToState } from "@/lib/rules/self-destruct-apply";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { canDuel, hasAlreadyDueled } from "@/lib/rules/knight-duel";
+import { canUseDeathShot, getDeathShotKind } from "@/lib/rules/death-skills";
 import { isValidMuteTarget } from "@/lib/rules/mute";
 import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
 import { applyKnightDuelToState } from "@/lib/rules/knight-duel-apply";
@@ -806,7 +807,11 @@ export function useGameLogic() {
       const victim = applied.victimSeat !== undefined
         ? afterState.players.find((p) => p.seat === applied.victimSeat)
         : undefined;
-      if (victim?.role === "Hunter" && afterState.roleAbilities.hunterCanShoot) {
+      if (
+        victim &&
+        afterState.roleAbilities.hunterCanShoot &&
+        canUseDeathShot({ state: afterState, role: victim.role, seat: victim.seat, cause: "carried" })
+      ) {
         await delay(1200);
         const hunterFn = hunterDeathRef.current;
         if (hunterFn) await hunterFn(afterState, victim, false);
@@ -1509,7 +1514,16 @@ export function useGameLogic() {
         // 警长死亡，先移交警徽
         if (isSheriff && executedPlayer) {
           afterBadgeTransferRef.current = async (afterTransferState) => {
-            if (executedPlayer?.role === "Hunter" && afterTransferState.roleAbilities.hunterCanShoot) {
+            if (
+              executedPlayer &&
+              afterTransferState.roleAbilities.hunterCanShoot &&
+              canUseDeathShot({
+                state: afterTransferState,
+                role: executedPlayer.role,
+                seat: executedPlayer.seat,
+                cause: "exile",
+              })
+            ) {
               await specialEvents.handleHunterDeath(afterTransferState, executedPlayer, false, token, async (afterHunterState) => {
                 await continueAfterHunterShot(afterHunterState, async (nextState) => {
                   await proceedToNight(nextState, token);
@@ -2385,14 +2399,21 @@ export function useGameLogic() {
       return;
     }
     // 猎人开枪
-    else if (gameState.phase === "HUNTER_SHOOT" && humanPlayer.role === "Hunter") {
+    else if (gameState.phase === "HUNTER_SHOOT" && getDeathShotKind(humanPlayer.role) !== "none") {
       const diedAtNight = (currentState as GameState & { _hunterDiedAtNight?: boolean })._hunterDiedAtNight ?? true;
       if (targetSeat >= 0) {
         currentState = killPlayer(currentState, targetSeat);
         const target = currentState.players.find((p) => p.seat === targetSeat);
         if (target) {
-          currentState = addSystemMessage(currentState, systemMessages.hunterShoot(humanPlayer.seat + 1, targetSeat + 1, target.displayName));
-          setDialogue(speakerHost, systemMessages.hunterShoot(humanPlayer.seat + 1, targetSeat + 1, target.displayName), false);
+          currentState = addSystemMessage(
+            currentState,
+            systemMessages.hunterShoot(humanPlayer.seat + 1, humanPlayer.displayName, targetSeat + 1, target.displayName)
+          );
+          setDialogue(
+            speakerHost,
+            systemMessages.hunterShoot(humanPlayer.seat + 1, humanPlayer.displayName, targetSeat + 1, target.displayName),
+            false
+          );
         }
 
         const shot = { hunterSeat: humanPlayer.seat, targetSeat };

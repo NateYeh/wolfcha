@@ -1,0 +1,132 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createSinglePlayerContextAuditState } from "../../../scripts/single-player-context-audit";
+import { setLocale } from "@/i18n/locale-store";
+import { getBoardById, validateBoardPreset } from "@/lib/rules/boards";
+import {
+  canUseDeathShot,
+  getDeathShotKind,
+  getDeathShotTargets,
+} from "@/lib/rules/death-skills";
+import type { GameState, Player } from "@/types/game";
+
+process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
+process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "death-skills-key";
+
+setLocale("zh-CN");
+
+/** 把 12 人盤的兩個座位換成「狼王」與「獵人」以便測槍 */
+function stateWith(roles: Array<[number, Player["role"]]>): GameState {
+  const base = createSinglePlayerContextAuditState();
+  const map = new Map(roles);
+  return {
+    ...base,
+    phase: "DAY_VOTE",
+    day: 2,
+    players: base.players.map((p) => (map.has(p.seat) ? { ...p, role: map.get(p.seat)!, alive: true } : p)),
+  };
+}
+
+test("死亡技能歸屬：只有獵人與狼王有槍", () => {
+  assert.equal(getDeathShotKind("Hunter"), "hunter_gun");
+  assert.equal(getDeathShotKind("WolfKing"), "wolf_gun");
+  for (const role of ["Villager", "Seer", "Witch", "Guard", "Idiot", "Werewolf", "WhiteWolfKing", "Knight", "MuteElder"]) {
+    assert.equal(getDeathShotKind(role), "none", `${role} 不該有死亡技能`);
+  }
+});
+
+test("獵人槍：放逐／夜刀／被自爆帶走都能開；被毒死不能開", () => {
+  const state = stateWith([[0, "Hunter"]]);
+  for (const cause of ["exile", "night_kill", "carried"] as const) {
+    assert.equal(canUseDeathShot({ state, role: "Hunter", seat: 0, cause }), true, `獵人 ${cause} 應能開槍`);
+  }
+  assert.equal(canUseDeathShot({ state, role: "Hunter", seat: 0, cause: "poison" }), false);
+  assert.equal(canUseDeathShot({ state, role: "Hunter", seat: 0, cause: "duel" }), false, "決鬥出局一律不能開槍");
+});
+
+test("狼王槍：只有白天被放逐能開；夜死／被毒／被帶走／被決鬥都不行", () => {
+  const state = stateWith([[0, "WolfKing"]]);
+  assert.equal(canUseDeathShot({ state, role: "WolfKing", seat: 0, cause: "exile" }), true);
+  for (const cause of ["night_kill", "poison", "carried", "duel"] as const) {
+    assert.equal(canUseDeathShot({ state, role: "WolfKing", seat: 0, cause }), false, `狼王 ${cause} 不該能開槍`);
+  }
+});
+
+test("狼王槍：只剩他這一隻狼時不開窗（出局即終局）", () => {
+  const base = stateWith([[0, "WolfKing"]]);
+  // 先讓其他狼都出局（只留狼王）
+  const lastWolf: GameState = {
+    ...base,
+    players: base.players.map((p) =>
+      p.role === "Werewolf" || (p.role === "WhiteWolfKing" && p.seat !== 0) ? { ...p, alive: false } : p
+    ),
+  };
+  assert.equal(canUseDeathShot({ state: lastWolf, role: "WolfKing", seat: 0, cause: "exile" }), false);
+
+  // 只要還有一隻狼活著就能開槍
+  const withCompany: GameState = {
+    ...lastWolf,
+    players: lastWolf.players.map((p) => (p.role === "Werewolf" ? { ...p, alive: true } : p)),
+  };
+  assert.equal(canUseDeathShot({ state: withCompany, role: "WolfKing", seat: 0, cause: "exile" }), true);
+});
+
+test("開槍目標：場上存活、不含自己", () => {
+  const base = stateWith([[0, "WolfKing"]]);
+  const deadSeat = base.players.find((p) => p.seat !== 0)!.seat;
+  const state: GameState = {
+    ...base,
+    players: base.players.map((p) => (p.seat === deadSeat ? { ...p, alive: false } : p)),
+  };
+  const targets = getDeathShotTargets(state, 0);
+  assert.equal(targets.includes(0), false, "不能打自己");
+  assert.equal(targets.includes(deadSeat), false, "不能打已出局的人");
+  assert.equal(targets.length, state.players.filter((p) => p.alive).length - 1);
+});
+
+test("狼王守衛版型：3 小狼＋狼王＋預女守獵＋4 平民", () => {
+  const board = getBoardById("official-12-wolf-king-guard");
+  assert.ok(board, "應收錄狼王守衛版型");
+  assert.equal(board.playerCount, 12);
+  assert.equal(board.roles.filter((r) => r === "WolfKing").length, 1);
+  assert.equal(board.roles.filter((r) => r === "Werewolf").length, 3);
+  assert.equal(board.roles.filter((r) => r === "Villager").length, 4);
+  for (const role of ["Seer", "Witch", "Guard", "Hunter"]) {
+    assert.equal(board.roles.filter((r) => r === role).length, 1, `應有 1 名 ${role}`);
+  }
+  assert.equal(board.roles.includes("WhiteWolfKing"), false);
+  assert.equal(board.roles.includes("Idiot"), false);
+  const { errors, warnings } = validateBoardPreset(board);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(warnings, []);
+});
+
+test("開槍窗口 prompt：狼王看到的是狼槍任務與狼隊思路，獵人看到獵人版", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("@/game/core/PhaseManager");
+  const manager = new PhaseManager();
+
+  const wolfState = stateWith([[0, "WolfKing"]]);
+  const wolfPrompt = manager.getPrompt("HUNTER_SHOOT", { state: { ...wolfState, phase: "HUNTER_SHOOT" } }, wolfState.players[0])!;
+  assert.match(wolfPrompt.system, /狼王技能（狼枪）/);
+  assert.match(wolfPrompt.system, /只有\*\*白天被投票放逐\*\*时可开枪/);
+  assert.match(wolfPrompt.system, /别打队友/);
+  assert.doesNotMatch(wolfPrompt.system, /你是死前唯一能带走一个人的好人/);
+
+  const hunterState = stateWith([[0, "Hunter"]]);
+  const hunterPrompt = manager.getPrompt("HUNTER_SHOOT", { state: { ...hunterState, phase: "HUNTER_SHOOT" } }, hunterState.players[0])!;
+  assert.match(hunterPrompt.system, /猎人技能/);
+  assert.doesNotMatch(hunterPrompt.system, /【狼王技能（狼枪）】/);
+});
+
+test("公開規則：狼王的技能寫進 roleSkills 與 roleText（AI 才不會照舊規則打）", async () => {
+  const { getSharedPromptRules, getRoleText, getRolePromptCore } = await import("@/lib/prompt-utils");
+  const shared = getSharedPromptRules();
+  assert.match(shared, /狼王/);
+  assert.match(shared, /狼枪|开枪带走一名存活玩家/);
+  assert.match(getRoleText("WolfKing"), /狼王/);
+  assert.match(getRolePromptCore("WolfKing"), /狼王/);
+  // 狼王的勝負條件是狼陣營
+  const { getRoleWinCondition } = await import("@/lib/prompt-utils");
+  assert.match(getRoleWinCondition("WolfKing"), /狼人胜利/);
+});

@@ -32,6 +32,7 @@ import type { Player, Role } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { PHASE_CONFIGS, isGameInProgress } from "@/store/game-machine";
 import { getI18n } from "@/i18n/translator";
+import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { getSystemMessages, getSystemPatterns } from "@/lib/game-texts";
 import { useTranslations } from "next-intl";
 import { useAtom } from "jotai";
@@ -97,6 +98,7 @@ const getRoleLabel = (role?: Role | null) => {
     case "Guard": return t("roles.guard");
     case "Idiot": return t("roles.idiot");
     case "Knight": return t("roles.knight");
+    case "WolfKing": return t("roles.wolfKing");
     case "MuteElder": return t("roles.muteElder");
     case "WhiteWolfKing": return t("roles.whiteWolfKing");
     case "Villager": return t("roles.villager");
@@ -591,7 +593,7 @@ export default function Home() {
       case "NIGHT_WITCH_ACTION":
         return humanPlayer.role === "Witch" ? "witch" : undefined;
       case "HUNTER_SHOOT":
-        return humanPlayer.role === "Hunter" ? "hunter" : undefined;
+        return getDeathShotKind(humanPlayer.role) !== "none" ? "hunter" : undefined;
       case "DAY_BADGE_ELECTION":
       case "BADGE_TRANSFER":
         return "badge";
@@ -924,7 +926,7 @@ export default function Home() {
       case "NIGHT_GUARD_ACTION":
         return "Guard";
       case "HUNTER_SHOOT":
-        return "Hunter";
+        return getDeathShotKind(humanPlayer?.role ?? "Villager") !== "none" ? humanPlayer!.role : null;
       default:
         return null;
     }
@@ -1063,7 +1065,7 @@ export default function Home() {
     const canSeeWolf = isWolfRole(role as Role) && isHumanAlive;
     const canSeeWitch = role === "Witch" && isHumanAlive;
     const canSeeSeer = role === "Seer" && isHumanAlive;
-    const canSeeHunter = role === "Hunter";
+    const canSeeHunter = getDeathShotKind(role as Role) !== "none";
 
     if (canSeeWolf && typeof wolfTarget === "number" && wolfTarget !== last.wolfTarget) {
       queueMicrotask(() => {
@@ -1164,7 +1166,7 @@ export default function Home() {
     }
 
     // 特殊处理：猎人弃枪（当在猎人开枪阶段且没有选择目标时）
-    if (phase === "HUNTER_SHOOT" && selectedSeat === null && humanPlayer?.role === "Hunter") {
+    if (phase === "HUNTER_SHOOT" && selectedSeat === null && getDeathShotKind(humanPlayer?.role ?? "Villager") !== "none") {
       await handleNightAction(-1);
       return;
     }

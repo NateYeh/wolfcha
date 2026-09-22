@@ -1,0 +1,91 @@
+import type { GameState, Role } from "@/types/game";
+import { getRoleCapabilities, isWolfRole, type DeathShotKind } from "./roles";
+
+/**
+ * 死亡技能（「槍」）規則（單一真相）。
+ *
+ * 目前有兩把槍：
+ * - 獵人槍（`hunter_gun`）：被投票放逐、被狼人夜刀、被自爆帶走都可以開；**被毒死不能開**。
+ * - 狼王槍（`wolf_gun`）：**只有白天被投票放逐**能開；非最後一狼、非被毒、非夜間死亡、
+ *   非自爆（自爆沒技能）、被騎士決鬥出局也不能開（見 knight-duel 的決鬥死亡封鎖）。
+ *
+ * 這一張表就是「誰、在什麼死因下、能不能開槍」的唯一答案：流程端只呼叫
+ * `canUseDeathShot()`，不要在各階段自己寫 `role === "Hunter"`。
+ */
+export interface DeathShotRules {
+  /** 被投票放逐時可開槍 */
+  onExile: boolean;
+  /** 夜間被狼人刀死時可開槍 */
+  onNightKill: boolean;
+  /** 被女巫毒死時可開槍（毒藥封鎖死亡技能，一律 false） */
+  onPoison: boolean;
+  /** 被自爆／技能帶走時可開槍（獵人可、狼王不可） */
+  onCarried: boolean;
+  /** 被騎士翻牌決鬥出局時可開槍（一律 false） */
+  onDuel: boolean;
+  /** 只剩自己這一隻狼時不得開槍（狼王專屬） */
+  forbiddenWhenLastWolf: boolean;
+}
+
+const NO_SHOT: DeathShotRules = {
+  onExile: false,
+  onNightKill: false,
+  onPoison: false,
+  onCarried: false,
+  onDuel: false,
+  forbiddenWhenLastWolf: false,
+};
+
+export const DEATH_SHOT_RULES: Record<DeathShotKind, DeathShotRules> = {
+  none: NO_SHOT,
+  hunter_gun: {
+    ...NO_SHOT,
+    onExile: true,
+    onNightKill: true,
+    onCarried: true,
+  },
+  wolf_gun: {
+    ...NO_SHOT,
+    onExile: true,
+    forbiddenWhenLastWolf: true,
+  },
+};
+
+/** 死因（流程端傳入；與 dayHistory／nightHistory 的記法對齊） */
+export type DeathShotCause = "exile" | "night_kill" | "poison" | "carried" | "duel";
+
+/** 這個角色的死亡技能種類 */
+export function getDeathShotKind(role: Role | string): DeathShotKind {
+  return getRoleCapabilities(role).deathShot;
+}
+
+/** 這個座位的槍現在能不能開 */
+export function canUseDeathShot(input: {
+  state: GameState;
+  role: Role | string;
+  seat: number;
+  cause: DeathShotCause;
+}): boolean {
+  const { state, role, seat, cause } = input;
+  const rules = DEATH_SHOT_RULES[getDeathShotKind(role)];
+  if (cause === "exile" && !rules.onExile) return false;
+  if (cause === "night_kill" && !rules.onNightKill) return false;
+  if (cause === "poison" && !rules.onPoison) return false;
+  if (cause === "carried" && !rules.onCarried) return false;
+  if (cause === "duel" && !rules.onDuel) return false;
+  // 非最後一狼：只剩他這隻狼時，死了就終局，沒有開槍窗口
+  if (rules.forbiddenWhenLastWolf) {
+    const otherAliveWolves = state.players.filter(
+      (player) => player.alive && player.seat !== seat && isWolfRole(player.role)
+    ).length;
+    if (otherAliveWolves === 0) return false;
+  }
+  return true;
+}
+
+/** 開槍可選的目標：場上存活、不含自己 */
+export function getDeathShotTargets(state: GameState, shooterSeat: number): number[] {
+  return state.players
+    .filter((player) => player.alive && player.seat !== shooterSeat)
+    .map((player) => player.seat);
+}

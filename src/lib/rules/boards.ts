@@ -37,6 +37,7 @@ export const ALL_ROLE_KEYS: Role[] = [
   "Idiot",
   "Knight",
   "MuteElder",
+  "WolfKing",
   "Villager",
 ];
 
@@ -57,7 +58,7 @@ const FALLBACK_PLAYER_COUNT = 10;
 
 /**
  * 官方版型。8–11 人為既有經典版型（行為與改造前逐字相同）；
- * 12 人局目前收錄經典、預女獵白、預女守白、預女獵禁與白狼騎士，其餘官方版型與自定義版型待功能完成後再添加。
+ * 12 人局目前收錄經典、預女獵白、預女守白、預女獵禁、白狼騎士與狼王守衛，其餘官方版型與自定義版型待功能完成後再添加。
  */
 export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
   {
@@ -180,6 +181,26 @@ export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
     ],
     official: true,
     tags: ["預女獵白", "12人"],
+  },
+  {
+    id: "official-12-wolf-king-guard",
+    playerCount: 12,
+    roles: [
+      "Werewolf",
+      "Werewolf",
+      "Werewolf",
+      "WolfKing",
+      "Seer",
+      "Witch",
+      "Guard",
+      "Hunter",
+      "Villager",
+      "Villager",
+      "Villager",
+      "Villager",
+    ],
+    official: true,
+    tags: ["狼王守衛", "12人"],
   },
   {
     id: "official-12-seer-witch-guard-idiot",

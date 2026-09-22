@@ -8,6 +8,7 @@ export type Role =
   | "Idiot"
   | "Knight"
   | "MuteElder"
+  | "WolfKing"
   | "WhiteWolfKing";
 
 /** Check if a role belongs to the wolf team (used for seer checks, wolf actions, etc.) */

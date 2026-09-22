@@ -32,6 +32,7 @@ import { getPlayerDiedKey } from "@/lib/narrator-voice";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { canSelfDestruct, hasAlreadyBoomed, isSelfDestructPhase } from "@/lib/rules/self-destruct";
 import { canDuel } from "@/lib/rules/knight-duel";
+import { canUseDeathShot } from "@/lib/rules/death-skills";
 import { resolveSpeechSkillKind } from "@/lib/speech-skill";
 
 type DaySpeechRuntime = {
@@ -465,7 +466,11 @@ ${formatReminder}`;
 
         const newSheriffSeat = afterTransferState.badge.holderSeat;
         await this.runPendingLastWords(runtime, afterTransferState, async (discussionState) => {
-          if (wolfVictim?.role === "Hunter" && discussionState.roleAbilities.hunterCanShoot) {
+          if (
+            wolfVictim &&
+            discussionState.roleAbilities.hunterCanShoot &&
+            canUseDeathShot({ state: discussionState, role: wolfVictim.role, seat: wolfVictim.seat, cause: "night_kill" })
+          ) {
             await runtime.onHunterDeath(discussionState, wolfVictim, true);
             return;
           }
@@ -486,7 +491,11 @@ ${formatReminder}`;
     }
 
     await this.runPendingLastWords(runtime, currentState, async (discussionState) => {
-      if (wolfVictim?.role === "Hunter" && discussionState.roleAbilities.hunterCanShoot) {
+      if (
+        wolfVictim &&
+        discussionState.roleAbilities.hunterCanShoot &&
+        canUseDeathShot({ state: discussionState, role: wolfVictim.role, seat: wolfVictim.seat, cause: "night_kill" })
+      ) {
         await runtime.onHunterDeath(discussionState, wolfVictim, true);
         return;
       }

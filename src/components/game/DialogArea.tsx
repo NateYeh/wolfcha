@@ -29,6 +29,7 @@ type WitchActionType = "save" | "poison" | "pass";
 import type { DialogueState } from "@/store/game-machine";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { canDuel, hasAlreadyDueled } from "@/lib/rules/knight-duel";
+import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { canSelfDestruct, hasAlreadyBoomed } from "@/lib/rules/self-destruct";
 
@@ -337,7 +338,7 @@ function NightActionStatus({ phase, humanRole }: { phase: string; humanRole?: st
       (phase === "NIGHT_WOLF_ACTION" && humanRole === "Werewolf") ||
       (phase === "NIGHT_WITCH_ACTION" && humanRole === "Witch") ||
       (phase === "NIGHT_SEER_ACTION" && humanRole === "Seer") ||
-      (phase === "HUNTER_SHOOT" && humanRole === "Hunter");
+      (phase === "HUNTER_SHOOT" && getDeathShotKind(humanRole ?? "Villager") !== "none");
     
     switch (phase) {
       case "NIGHT_WOLF_ACTION":
@@ -1040,6 +1041,8 @@ export function DialogArea({
       case "Guard": return t("roles.guard");
       case "Idiot": return t("roles.idiot");
       case "Knight": return t("roles.knight");
+      case "MuteElder": return t("roles.muteElder");
+      case "WolfKing": return t("roles.wolfKing");
       default: return t("roles.villager");
     }
   };
@@ -1082,7 +1085,7 @@ export function DialogArea({
     && gameState.badge.holderSeat === humanPlayer.seat
     && selectedSeat === null;
   const showHunterPassOption = phase === "HUNTER_SHOOT"
-    && humanPlayer?.role === "Hunter"
+    && getDeathShotKind(humanPlayer?.role ?? "Villager") !== "none"
     && selectedSeat === null;
   const showActionConfirm = (() => {
     const badgeCandidates = gameState.badge.candidates || [];
@@ -1095,7 +1098,7 @@ export function DialogArea({
       (phase === "NIGHT_WOLF_ACTION" && humanPlayer && isWolfRole(humanPlayer.role) && humanPlayer.alive) ||
       (phase === "NIGHT_GUARD_ACTION" && humanPlayer?.role === "Guard" && humanPlayer?.alive) ||
       (phase === "NIGHT_MUTE_ACTION" && humanPlayer?.role === "MuteElder" && humanPlayer?.alive && gameState.nightActions.mutedTarget === undefined) ||
-      (phase === "HUNTER_SHOOT" && humanPlayer?.role === "Hunter") ||
+      (phase === "HUNTER_SHOOT" && getDeathShotKind(humanPlayer?.role ?? "Villager") !== "none") ||
       (phase === "BADGE_TRANSFER" && humanPlayer && gameState.badge.holderSeat === humanPlayer.seat) ||
       (phase === "SELF_DESTRUCT" && !!humanPlayer?.alive && getRoleCapabilities(humanPlayer?.role ?? "Villager").boomTakesPlayer && !hasAlreadyBoomed(gameState.roleAbilities.boomedSeats, humanPlayer?.seat ?? -1)) ||
       (phase === "KNIGHT_DUEL" && !!humanPlayer?.alive && getRoleCapabilities(humanPlayer?.role ?? "Villager").canDuel && !hasAlreadyDueled(gameState.roleAbilities.duelUsedSeats, humanPlayer?.seat ?? -1));
@@ -1537,7 +1540,7 @@ export function DialogArea({
                   (phase === "NIGHT_SEER_ACTION" && humanPlayer?.role === "Seer" && humanPlayer?.alive) ||
                   (phase === "NIGHT_WOLF_ACTION" && humanPlayer && isWolfRole(humanPlayer.role) && humanPlayer.alive) ||
                   (phase === "NIGHT_GUARD_ACTION" && humanPlayer?.role === "Guard" && humanPlayer?.alive) ||
-                  (phase === "HUNTER_SHOOT" && humanPlayer?.role === "Hunter") ||
+                  (phase === "HUNTER_SHOOT" && getDeathShotKind(humanPlayer?.role ?? "Villager") !== "none") ||
                   (phase === "BADGE_TRANSFER" && humanPlayer && gameState.badge.holderSeat === humanPlayer.seat);
 
                 const shouldShowHint =

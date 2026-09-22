@@ -33,7 +33,8 @@ export const getSystemMessages = (locale?: AppLocale) => {
     witchPoison: (seat: number, name: string) => t("system.witchPoison", { seat, name }),
     guardProtect: (seat: number, name: string) => t("system.guardProtect", { seat, name }),
     playerMuted: (seat: number, name: string) => t("system.playerMuted", { seat, name }),
-    hunterShoot: (hunterSeat: number, targetSeat: number, targetName: string) => t("system.hunterShoot", { hunterSeat, targetSeat, targetName }),
+    hunterShoot: (shooterSeat: number, shooterName: string, targetSeat: number, targetName: string) =>
+      t("system.hunterShoot", { shooterSeat, shooterName, targetSeat, targetName }),
     badgeTransferStart: (seat: number, name: string) => t("system.badgeTransferStart", { seat, name }),
     badgeTransferred: (fromSeat: number, toSeat: number, toName: string) => t("system.badgeTransferred", { toSeat, toName }),
     badgeTorn: (seat: number, name: string) => t("system.badgeTorn", { seat, name }),

@@ -35,6 +35,10 @@ export const getRoleText = (role: string) => {
       return t("promptUtils.roleText.idiot");
     case "Knight":
       return t("promptUtils.roleText.knight");
+    case "MuteElder":
+      return t("promptUtils.roleText.muteElder");
+    case "WolfKing":
+      return t("promptUtils.roleText.wolfKing");
     default:
       return t("promptUtils.roleText.villager");
   }
@@ -78,6 +82,10 @@ export const getRoleWinCondition = (role: string): string => {
       return t("promptUtils.winCondition.idiot");
     case "Knight":
       return t("promptUtils.winCondition.knight");
+    case "MuteElder":
+      return t("promptUtils.winCondition.muteElder");
+    case "WolfKing":
+      return t("promptUtils.winCondition.wolfKing");
     default:
       return t("promptUtils.winCondition.villager");
   }

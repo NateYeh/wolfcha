@@ -93,7 +93,7 @@ export function applyKnightDuelToState(input: KnightDuelApplyInput): KnightDuelA
   };
   currentState = markPlayerDead(currentState, deadSeat);
 
-  // 2) 決鬥死亡的狼人不能發動死亡技能（狼王開槍、白狼王帶人、狼美人殉情）。
+  // 2) 決鬥死亡的狼人不能發動死亡技能（含狼王槍：DEATH_SHOT_RULES.wolf_gun.onDuel = false）（狼王開槍、白狼王帶人、狼美人殉情）。
   //    死因記在 dayHistory.knightDuel 與 knight-duel.ts 的 canTriggerDeathSkill()，
   //    由未來角色的死亡技能自行查表；目前白狼王只剩自爆能發動（自爆需存活），故不影響現行流程。
 

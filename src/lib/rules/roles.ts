@@ -6,6 +6,9 @@ export type RoleCamp = "wolf" | "god" | "villager";
 /** 夜間行動型別（none＝夜間無行動） */
 export type NightActionKind = "none" | "kill" | "protect" | "inspect" | "potion" | "silence";
 
+/** 死亡技能（死亡時可帶走一人的槍）種類；規則見 lib/rules/death-skills.ts */
+export type DeathShotKind = "none" | "hunter_gun" | "wolf_gun";
+
 /**
  * 角色能力表（單一真相）。
  *
@@ -31,6 +34,8 @@ export interface RoleCapabilities {
   boomSwallowsBadgeOnElection: boolean;
   /** 白天發言階段可否翻牌決鬥（騎士；一場一次） */
   canDuel: boolean;
+  /** 死亡技能種類（獵人槍／狼王槍；none＝沒有死亡技能） */
+  deathShot: DeathShotKind;
 }
 
 /** 角色能力表（與 ALL_ROLE_KEYS 同步） */
@@ -45,6 +50,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
     canDuel: false,
+    deathShot: "none",
   },
   WhiteWolfKing: {
     role: "WhiteWolfKing",
@@ -56,6 +62,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     boomTakesPlayer: true,
     boomSwallowsBadgeOnElection: true,
     canDuel: false,
+    deathShot: "none",
   },
   Seer: {
     role: "Seer",
@@ -67,6 +74,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
     canDuel: false,
+    deathShot: "none",
   },
   Witch: {
     role: "Witch",
@@ -78,6 +86,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
     canDuel: false,
+    deathShot: "none",
   },
   Hunter: {
     role: "Hunter",
@@ -89,6 +98,20 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
     canDuel: false,
+    deathShot: "hunter_gun",
+  },
+  WolfKing: {
+    role: "WolfKing",
+    camp: "wolf",
+    nightAction: "kill",
+    canAbstain: false,
+    canSelfTarget: false,
+    // 狼王可以自爆（只是自爆後不能開槍：狼槍只在白天被放逐時發動）
+    canBoom: true,
+    boomTakesPlayer: false,
+    boomSwallowsBadgeOnElection: false,
+    canDuel: false,
+    deathShot: "wolf_gun",
   },
   Guard: {
     role: "Guard",
@@ -100,6 +123,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
     canDuel: false,
+    deathShot: "none",
   },
   Idiot: {
     role: "Idiot",
@@ -111,6 +135,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
     canDuel: false,
+    deathShot: "none",
   },
   MuteElder: {
     role: "MuteElder",
@@ -123,6 +148,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
     canDuel: false,
+    deathShot: "none",
   },
   Knight: {
     role: "Knight",
@@ -134,6 +160,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
     canDuel: true,
+    deathShot: "none",
   },
   Villager: {
     role: "Villager",
@@ -145,6 +172,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
     canDuel: false,
+    deathShot: "none",
   },
 };
 

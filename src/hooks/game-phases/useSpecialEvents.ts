@@ -12,6 +12,7 @@ import {
   generateHunterShoot,
 } from "@/lib/game-master";
 import { getSystemMessages } from "@/lib/game-texts";
+import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { getI18n } from "@/i18n/translator";
 import { DELAY_CONFIG } from "@/lib/game-constants";
 import { delay, type FlowToken } from "@/lib/game-flow-controller";
@@ -155,7 +156,12 @@ export function useSpecialEvents(
       // 存储是否夜间死亡的信息，供后续 handleNightAction 使用
       (currentState as GameState & { _hunterDiedAtNight?: boolean })._hunterDiedAtNight = diedAtNight;
       setGameState(currentState);
-      setDialogue(texts.speakerSystem, texts.t("specialEvents.hunterPrompt"), false);
+      // 狼王用的是狼槍：提示文字要換成狼王版，不要說「你是猎人」
+      setDialogue(
+        texts.speakerSystem,
+        texts.t(getDeathShotKind(hunter.role) === "wolf_gun" ? "specialEvents.wolfKingPrompt" : "specialEvents.hunterPrompt"),
+        false
+      );
       return;
     }
 
@@ -171,8 +177,15 @@ export function useSpecialEvents(
       currentState = killPlayer(currentState, targetSeat);
       const target = currentState.players.find((p) => p.seat === targetSeat);
       if (target) {
-        currentState = addSystemMessage(currentState, texts.systemMessages.hunterShoot(hunter.seat + 1, targetSeat + 1, target.displayName));
-        setDialogue(texts.speakerHost, texts.systemMessages.hunterShoot(hunter.seat + 1, targetSeat + 1, target.displayName), false);
+        currentState = addSystemMessage(
+          currentState,
+          texts.systemMessages.hunterShoot(hunter.seat + 1, hunter.displayName, targetSeat + 1, target.displayName)
+        );
+        setDialogue(
+          texts.speakerHost,
+          texts.systemMessages.hunterShoot(hunter.seat + 1, hunter.displayName, targetSeat + 1, target.displayName),
+          false
+        );
       }
 
       // 记录猎人开枪（reason 为猎人自己写下的开枪理由，仅进赛后感言 prompt）

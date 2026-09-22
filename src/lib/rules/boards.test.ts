@@ -159,7 +159,7 @@ test("版型註冊表：預女守白＝預言家/女巫/守衛/白痴＋4 平民
   assert.deepEqual(warnings, []);
 });
 
-test("版型註冊表：四個 12 人版型的陣營統計與預設版型", () => {
+test("版型註冊表：六個 12 人版型的陣營統計與預設版型", () => {
   const twelve = getBoardsByPlayerCount(12).map((board) => board.id);
   // 不鎖 UI 排列順序，只確認這五個版型都在（順序由選單自己決定）
   assert.deepEqual([...twelve].sort(), [
@@ -168,6 +168,7 @@ test("版型註冊表：四個 12 人版型的陣營統計與預設版型", () =
     "official-12-seer-witch-hunter-idiot",
     "official-12-seer-witch-hunter-mute",
     "official-12-white-wolf-knight",
+    "official-12-wolf-king-guard",
   ].sort());
   // 預設 12 人版型仍是經典（既有行為不變）
   assert.equal(getDefaultBoard(12).id, "official-12-classic");
@@ -372,7 +373,7 @@ test("角色能力表：陣營與夜間行動符合現行規則", () => {
 
 test("角色能力表：只有狼陣營可自爆，只有白狼王能帶人與競選吞徽", () => {
   const boomRoles = ALL_ROLE_KEYS.filter((role) => getRoleCapabilities(role).canBoom);
-  assert.deepEqual(boomRoles, ["Werewolf", "WhiteWolfKing"]);
+  assert.deepEqual(boomRoles, ["Werewolf", "WhiteWolfKing", "WolfKing"]);
   assert.equal(getRoleCapabilities("Werewolf").boomTakesPlayer, false);
   assert.equal(getRoleCapabilities("WhiteWolfKing").boomTakesPlayer, true);
   assert.equal(getRoleCapabilities("WhiteWolfKing").boomSwallowsBadgeOnElection, true);

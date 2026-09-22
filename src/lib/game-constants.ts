@@ -84,6 +84,10 @@ export function getRoleName(role: string): string {
       return t("roles.idiot");
     case "Knight":
       return t("roles.knight");
+    case "MuteElder":
+      return t("roles.muteElder");
+    case "WolfKing":
+      return t("roles.wolfKing");
     default:
       return t("roles.villager");
   }

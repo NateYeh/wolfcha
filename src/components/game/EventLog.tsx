@@ -111,6 +111,7 @@ export function EventLog({ gameState }: EventLogProps) {
           id: `night-hunter-shot-${day}`,
           day,
           order: 20,
+          // 夜間只有獵人槍（狼王槍只在白天放逐時開）→ 不需角色判斷
           text: t("eventLog.hunterShot", {
             hunter: formatSeat(nightRecord.hunterShot.hunterSeat),
             target: formatSeat(nightRecord.hunterShot.targetSeat),
@@ -213,8 +214,12 @@ export function EventLog({ gameState }: EventLogProps) {
           id: `day-hunter-shot-${day}`,
           day,
           order: 60,
-          text: t("eventLog.hunterShot", {
-            hunter: formatSeat(dayRecord.hunterShot.hunterSeat),
+          text: t(
+            gameState.players.find((p) => p.seat === dayRecord.hunterShot?.hunterSeat)?.role === "WolfKing"
+              ? "eventLog.wolfKingShot"
+              : "eventLog.hunterShot",
+            {
+              hunter: formatSeat(dayRecord.hunterShot.hunterSeat),
             target: formatSeat(dayRecord.hunterShot.targetSeat),
           }),
           tone: "warning",
