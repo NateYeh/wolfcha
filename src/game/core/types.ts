@@ -15,6 +15,13 @@ export interface PromptResult {
    * 排在主要 user 訊息之前送出（見 game-master 的 buildMessagesForPrompt）。
    */
   historyUser?: string;
+  /**
+   * 角色與任務區塊：整個 prompt 裡**唯一逐任務（甚至逐人）不同的部分**。
+   * 呼叫端要把它當成獨立 user content、排在所有 user 訊息的最後面送出
+   * （見 game-master 的 buildMessagesForPrompt）——共用前綴才能被快取，
+   * 任務指令也才能吃到「最近位置」的注意力。
+   */
+  finalUser?: string;
 }
 
 export type GameAction =

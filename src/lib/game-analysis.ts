@@ -7,7 +7,7 @@ import { ALL_ROLE_KEYS } from "@/lib/rules/boards";
 import type { GameState, Player, Role, Alignment, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { getSummaryModel } from "@/lib/api-keys";
-import { getGameFundamentals } from "@/lib/prompt-utils";
+import { buildSharedSystemParts, buildSystemTextFromParts } from "@/lib/prompt-utils";
 
 import type {
   GameAnalysisData,
@@ -31,15 +31,17 @@ import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
 import { tallyAwards, type AwardBallot } from "@/lib/awards";
 
 /**
- * 復盤用的系統提示：遊戲基本盤（這是什麼遊戲、規則有哪些、角色技能與限制）在前，角色任務在後。
- * 抽成函式是為了讓測試能守住「基本盤必須在」這條契約。
+ * 復盤用的系統提示（與玩家階段同構）：system 只放全家族逐字相同的公開知識。
+ * 抽成函式是為了讓測試能守住「公開知識必須在、且不含任務指令」這條契約。
+ *
+ * 發言壓縮是抄錄型任務，不吃攻略——那是打法判準，對「把發言壓成摘要」沒幫助。
  */
-export const buildSpeechSummarySystemPrompt = (): string =>
-  [getGameFundamentals(), "你是狼人杀游戏记录员，擅长分析场上局势和压缩玩家发言。"].join("\n\n");
+export const buildSpeechSummarySystemPrompt = (state: Pick<GameState, "players" | "fixedRoles" | "isAcquaintanceGame" | "characterStats">): string =>
+  buildSystemTextFromParts(buildSharedSystemParts(state, { includeGuide: false }));
 
-/** 評價用的系統提示：同樣帶基本盤，避免分析者對規則與角色做出錯誤推論。 */
-export const buildAnalysisSystemPrompt = (): string =>
-  [getGameFundamentals(), "你是专业的狼人杀游戏分析师，擅长评价玩家表现并生成有趣的复盘内容。"].join("\n\n");
+/** 評價用的系統提示：公開知識＋攻略（評「這一手好不好」要用攻略當判準）。 */
+export const buildAnalysisSystemPrompt = (state: Pick<GameState, "players" | "fixedRoles" | "isAcquaintanceGame" | "characterStats">): string =>
+  buildSystemTextFromParts(buildSharedSystemParts(state));
 
 const MAX_SPEECH_ITEMS_PER_PHASE = 30;
 const MAX_SPEECH_CONTENT_LENGTH = 280;
@@ -950,7 +952,8 @@ async function generateAISpeechSummaries(
     
     if (!electionText && !discussionText) continue;
     
-    const prompt = `请分析以下狼人杀游戏第${day}天的发言记录，生成：
+    // 角色框架跟著任務走（user），system 只留共用公開知識。
+    const prompt = `你是狼人杀游戏记录员，擅长分析场上局势和压缩玩家发言。\n\n请分析以下狼人杀游戏第${day}天的发言记录，生成：
 1. 每个玩家的发言摘要（第一人称，1-2句话）
 2. 当天发言阶段的整体概括（一段话，50-80字）
 
@@ -976,7 +979,7 @@ ${electionText ? `【竞选阶段发言】\n${electionText}\n\n` : ""}${discussi
       }>({
         model,
         messages: [
-          { role: "system", content: buildSpeechSummarySystemPrompt() },
+          { role: "system", content: buildSpeechSummarySystemPrompt(state) },
           { role: "user", content: prompt },
         ],
         temperature: 0.3,
@@ -1637,7 +1640,7 @@ ${formatSpeechSummaries(speechSummaries, state)}
 
   const analysisMessages: LLMMessage[] = [
     // 復盤分析師也要知道自己在評什麼遊戲：基本盤在前，分析指令在後。
-    { role: "system", content: buildAnalysisSystemPrompt() },
+    { role: "system", content: buildAnalysisSystemPrompt(state) },
     { role: "user", content: prompt },
   ];
   // 解析失敗時要留下原始回覆才能事後對帳（JSON 修復無效的那種）。

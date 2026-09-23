@@ -113,13 +113,17 @@ test("空日总结不会保存原始 JSON，也不会触发第二次模型调用
     // 只有 deepseek 系模型支援嚴格 json_schema；專案模型可換成 glm/gemma，那時會退回 json_object。
     const wantsStrictSchema = String(requestBodies[0].model ?? "").toLowerCase().startsWith("deepseek");
     assert.equal(requestBodies[0].response_format?.type, wantsStrictSchema ? "json_schema" : "json_object");
-    const systemPrompt = requestBodies[0].messages?.find((message) => message.role === "system")?.content;
-    assert.equal(typeof systemPrompt, "string");
-    assert.match(String(systemPrompt), /当天未竞选就只写‘当天无警长竞选’/);
-    assert.match(String(systemPrompt), /死因未公开/);
-    // 記錄員也要知道自己在記什麼遊戲（遊戲基本盤）
-    assert.match(String(systemPrompt), /【这是一局什么游戏】/);
-    assert.match(String(systemPrompt), /【角色与技能/);
+    const messages = requestBodies[0].messages ?? [];
+    const textOf = (content: unknown): string =>
+      typeof content === "string" ? content : JSON.stringify(content ?? "");
+    const systemText = textOf(messages.find((message) => message.role === "system")?.content);
+    const userText = messages.filter((message) => message.role === "user").map((message) => textOf(message.content)).join("\n");
+    // system＝共用公開知識（與玩家階段逐字相同、可快取），逐任務的記錄員指令放最後一個 user
+    assert.match(systemText, /【这是一局什么游戏】/);
+    assert.match(systemText, /【角色与技能/);
+    assert.doesNotMatch(systemText, /当天未竞选就只写‘当天无警长竞选’/);
+    assert.match(userText, /当天未竞选就只写‘当天无警长竞选’/);
+    assert.match(userText, /死因未公开/);
     assert.deepEqual(result.bullets, []);
   } finally {
     globalThis.fetch = originalFetch;

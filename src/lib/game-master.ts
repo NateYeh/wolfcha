@@ -27,7 +27,7 @@ import { aiLogger } from "./ai-logger";
 import { getGeneratorModel, getSummaryModel } from "@/lib/api-keys";
 import { PhaseManager } from "@/game/core/PhaseManager";
 import type { PromptResult } from "@/game/core/types";
-import { bindIdentityAndRoleSetting, buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildSharedSystemParts, buildGameContext, buildFullGameTranscript, buildPastDaysTranscript, getRoleText, getGameFundamentals } from "./prompt-utils";
+import { bindIdentityAndRoleSetting, buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildSharedSystemParts, buildGameContext, buildFullGameTranscript, buildPastDaysTranscript, getRoleText } from "./prompt-utils";
 import { parseLLMJson } from "./llm-json";
 import { getI18n } from "@/i18n/translator";
 import { buildPublicRecordForRemark } from "@/lib/public-record";
@@ -187,6 +187,7 @@ export function buildMessagesForPrompt(
   );
 
   const historyUser = prompt.historyUser?.trim();
+  const finalUser = prompt.finalUser?.trim();
   return {
     systemMessage,
     messages: [
@@ -194,6 +195,8 @@ export function buildMessagesForPrompt(
       // 過往各日紀錄（【第N天 白天記錄】）單獨成一個 user content，排在主要 user 訊息之前。
       ...(historyUser ? [{ role: "user" as const, content: historyUser }] : []),
       { role: "user", content: prompt.user },
+      // 角色與任務：唯一逐任務／逐人不同的部分，一律排在最後（見 PromptResult.finalUser）。
+      ...(finalUser ? [{ role: "user" as const, content: finalUser }] : []),
     ],
   };
 }
@@ -754,14 +757,16 @@ export async function generateDailySummary(
     .join("\n")
     .slice(0, 15000);
 
-  // 記錄員也要知道自己在記什麼遊戲：遊戲基本盤（規則與角色技能）在前，任務指令在後。
-  const system = [getGameFundamentals(), t("gameMaster.dailySummary.systemPrompt")].join("\n\n");
-  const user = t("gameMaster.dailySummary.userPrompt", { day: state.day, transcript });
-
-  const messages: LLMMessage[] = [
-    { role: "system", content: system },
-    { role: "user", content: user },
-  ];
+  // 架構與玩家階段一致：system＝全家族逐字相同的公開知識（快取前綴），
+  // 逐任務不同的「角色與任務」放最後一個 user 訊息（見 PromptResult.finalUser）。
+  // 記錄員是抄錄型任務，不吃攻略（不含打法判準）。
+  const systemParts = buildSharedSystemParts(state, { includeGuide: false });
+  const { messages } = buildMessagesForPrompt({
+    system: buildSystemTextFromParts(systemParts),
+    systemParts,
+    user: t("gameMaster.dailySummary.userPrompt", { day: state.day, transcript }),
+    finalUser: t("gameMaster.dailySummary.systemPrompt"),
+  });
 
   const summaryModelRef = getModelRefForModel(summaryModel);
   const completion = await generateCompletionAndParse(
@@ -2875,21 +2880,12 @@ export async function generateGameEndRemark(
     ? "\n\n" + t("specialEvents.remarkPrivateNotes", { notes: privateNotes.join("\n") })
     : "";
 
+  // 架構與玩家階段一致：system＝公開知識＋攻略（全家族逐字相同、可快取），
+  // 逐人的「你是幾號／什麼身份／投票規格」放最後一個 user 訊息。
+  const systemParts = buildSharedSystemParts(state);
   const prompt: PromptResult = {
-    // 賽後感言也要知道自己在玩什麼遊戲：基本盤在前，感言指令在後。
-    system: [
-      getGameFundamentals(),
-      t("specialEvents.remarkSystem", {
-        seat: player.seat + 1,
-        name: player.displayName,
-        role: getRoleText(player.role),
-        resultLine:
-          (player.alignment === "wolf") === (winner === "wolf")
-            ? t("specialEvents.remarkResultWin")
-            : t("specialEvents.remarkResultLose"),
-        jsonFormat: GAME_END_VOTE_JSON_FORMAT,
-      }),
-    ].join("\n\n"),
+    system: buildSystemTextFromParts(systemParts),
+    systemParts,
     user: t("specialEvents.remarkUser", {
       reveal,
       publicFactsSection,
@@ -2899,8 +2895,18 @@ export async function generateGameEndRemark(
       privateNotes: privateNotesSection,
       personaLine,
     }),
+    finalUser: t("specialEvents.remarkSystem", {
+      seat: player.seat + 1,
+      name: player.displayName,
+      role: getRoleText(player.role),
+      resultLine:
+        (player.alignment === "wolf") === (winner === "wolf")
+          ? t("specialEvents.remarkResultWin")
+          : t("specialEvents.remarkResultLose"),
+      jsonFormat: GAME_END_VOTE_JSON_FORMAT,
+    }),
   };
-  const { messages } = buildMessagesForPrompt(prompt, false);
+  const { messages } = buildMessagesForPrompt(prompt);
   const startTime = Date.now();
   const allSeats = state.players.map((p) => p.seat);
 

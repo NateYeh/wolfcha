@@ -20,21 +20,25 @@ test("分析快取：跨局共用必须按 gameId／版本过滤，否则会先�
   assert.equal(isCurrentAnalysis(null, "g2", VERSION), false);
 });
 
-test("復盤提示詞：記錄員與分析師都必須帶上遊戲基本盤", async () => {
+test("復盤提示詞：記錄員與分析師的 system 只放共用公開知識（任務指令移出 system）", async () => {
   const { setLocale } = await import("@/i18n/locale-store");
   setLocale("zh-CN");
   const { buildAnalysisSystemPrompt, buildSpeechSummarySystemPrompt } = await import("./game-analysis");
+  const { createSinglePlayerContextAuditState } = await import("../../scripts/single-player-context-audit");
+  const state = createSinglePlayerContextAuditState();
 
-  for (const system of [buildAnalysisSystemPrompt(), buildSpeechSummarySystemPrompt()]) {
+  for (const system of [buildAnalysisSystemPrompt(state), buildSpeechSummarySystemPrompt(state)]) {
     assert.match(system, /【这是一局什么游戏】/);
     assert.match(system, /【通用规则/);
     assert.match(system, /【角色与技能/);
-    // 基本盤在前、角色任務在後
-    assert.ok(
-      system.indexOf("【这是一局什么游戏】") < system.indexOf("你是"),
-      "遊戲基本盤要排在角色任務之前"
-    );
+    // 公開知識與玩家階段逐字相同（第一段），且不再混入任何任務指令
+    assert.match(system, /【本局公开角色配置】/);
+    assert.match(system, /【获胜条件】/);
+    // 任務指令不得再留在 system（攻略是共用公開知識，裡面出現「你是」屬正常）
+    assert.doesNotMatch(system, /你是专业的狼人杀游戏分析师/);
+    assert.doesNotMatch(system, /你是狼人杀游戏记录员/);
   }
-  assert.match(buildAnalysisSystemPrompt(), /你是专业的狼人杀游戏分析师/);
-  assert.match(buildSpeechSummarySystemPrompt(), /你是狼人杀游戏记录员/);
+  // 分析師要評「這一手好不好」→ 吃攻略；記錄員是純抄錄 → 不吃攻略
+  assert.match(buildAnalysisSystemPrompt(state), /【狼人杀攻略】/);
+  assert.doesNotMatch(buildSpeechSummarySystemPrompt(state), /【狼人杀攻略】/);
 });

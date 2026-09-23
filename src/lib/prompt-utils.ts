@@ -120,19 +120,23 @@ export const getStrategyGuide = (
  * 逐字相同、跨座位與跨階段都能共用同一段前綴快取；個人身分與當輪任務由呼叫端接在後面。
  */
 export const buildSharedSystemParts = (
-  state: Pick<GameState, "players" | "fixedRoles" | "isAcquaintanceGame" | "characterStats">
+  state: Pick<GameState, "players" | "fixedRoles" | "isAcquaintanceGame" | "characterStats">,
+  options?: { includeGuide?: boolean }
 ): SystemPromptPart[] => {
   const { t } = getI18n();
   const parts: SystemPromptPart[] = [
     // ① 公開知識（這是什麼遊戲／通用規則／角色與技能／本局配置／勝負／口徑）
     { text: buildPublicRoleConfiguration(state), cacheable: true, ttl: "1h" },
-    // ② 攻略＋心態
-    {
+  ];
+  // ② 攻略＋心態。純抄錄型任務（記錄員、發言壓縮）不吃攻略：那是打法判準，
+  //    對「把記錄寫客觀」沒有幫助，只是每次多付幾 k token。
+  if (options?.includeGuide !== false) {
+    parts.push({
       text: `${getStrategyGuide(state)}\n\n${t("promptUtils.winMotivationNote")}\n\n${t("promptUtils.humannessNote")}`,
       cacheable: true,
       ttl: "1h",
-    },
-  ];
+    });
+  }
 
   // 熟人局素材（全桌每個人的平時印象與交手記錄）整局固定不變、逐字不隨座位改變，
   // 因此放 system 攻略之後；非熟人局或無素材時整段不拼。
