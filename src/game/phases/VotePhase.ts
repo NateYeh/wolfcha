@@ -24,6 +24,7 @@ import { canUseDeathShot } from "@/lib/rules/death-skills";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { DELAY_CONFIG } from "@/lib/game-constants";
 import { delay, type FlowToken } from "@/lib/game-flow-controller";
+import { createRevealPacer } from "@/lib/reveal-pacer";
 import { playNarrator } from "@/lib/narrator-audio-player";
 import { getPlayerDiedKey } from "@/lib/narrator-voice";
 
@@ -134,30 +135,26 @@ export class VotePhase extends GamePhase {
       // 票是同一時間投的，彼此看不到對方；只有第一席的票在公共資訊裡，
       // 共用前綴已被第一席的 prefill 寫進快取，併發批直接命中。
       if (!tokenInvalidated && laterVoters.length > 0) {
-        const settledVotes = await Promise.all(
+        // 票一到就寫進 UI（不再等所有人回傳才一次顯示）；節奏器只保證相鄰兩票的最小間隔。
+        const revealVote = createRevealPacer(VOTE_REVEAL_BEAT_MS);
+        await Promise.all(
           laterVoters.map(async (aiPlayer) => {
+            let vote: { seat: number; reason: string };
             try {
-              return { aiPlayer, vote: await generateAIVote(currentState, aiPlayer) };
+              vote = await generateAIVote(currentState, aiPlayer);
             } catch (error) {
               console.warn("[wolfcha] AI vote threw, skipping this seat", error);
-              return null;
+              return;
             }
+            await revealVote(() => {
+              if (!stillCurrent()) {
+                tokenInvalidated = true;
+                return;
+              }
+              writeVote(aiPlayer, vote);
+            });
           })
         );
-        if (!stillCurrent()) {
-          tokenInvalidated = true;
-        } else {
-          for (const settled of settledVotes) {
-            if (!settled) continue;
-            if (!stillCurrent()) {
-              tokenInvalidated = true;
-              break;
-            }
-            writeVote(settled.aiPlayer, settled.vote);
-            // 保留逐票落地的視覺節奏（網路已經併發完成，這裡只錯開畫面更新）
-            await delay(VOTE_REVEAL_BEAT_MS);
-          }
-        }
       }
     } finally {
       if (stillCurrent()) setIsWaitingForAI(false);

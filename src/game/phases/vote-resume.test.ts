@@ -12,7 +12,7 @@ process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "vote-resume-test";
 
 test("实际投票恢复只调用未投 AI，保留已投票和弃票，跳过翻牌白痴和 PK 候选", async () => {
   const modules: Record<string, unknown> = {};
-  for (const id of ["@/lib/vote-rounds", "@/lib/prompt-utils", "@/i18n/translator", "@/lib/game-texts", "@/lib/game-constants", "@/lib/narrator-voice", "@/lib/game-flow-controller", "@/lib/rules/death-skills", "@/types/game"]) modules[id] = await import(id);
+  for (const id of ["@/lib/vote-rounds", "@/lib/prompt-utils", "@/i18n/translator", "@/lib/game-texts", "@/lib/game-constants", "@/lib/narrator-voice", "@/lib/game-flow-controller", "@/lib/rules/death-skills", "@/types/game", "@/lib/reveal-pacer"]) modules[id] = await import(id);
   modules["../core/GamePhase"] = await import("../core/GamePhase");
   modules["@/lib/narrator-audio-player"] = { playNarrator: async () => {} };
   const calls: string[] = [];

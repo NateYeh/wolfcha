@@ -27,7 +27,7 @@ interface Call {
 
 async function runVotePhase(callDurationMs: number): Promise<{ calls: Call[]; state: GameState }> {
   const modules: Record<string, unknown> = {};
-  for (const id of ["@/lib/vote-rounds", "@/lib/prompt-utils", "@/i18n/translator", "@/lib/game-texts", "@/lib/game-constants", "@/lib/narrator-voice", "@/lib/game-flow-controller", "@/lib/rules/death-skills", "@/types/game"]) {
+  for (const id of ["@/lib/vote-rounds", "@/lib/prompt-utils", "@/i18n/translator", "@/lib/game-texts", "@/lib/game-constants", "@/lib/narrator-voice", "@/lib/game-flow-controller", "@/lib/rules/death-skills", "@/types/game", "@/lib/reveal-pacer"]) {
     modules[id] = await import(id);
   }
   modules["../core/GamePhase"] = await import("../core/GamePhase");

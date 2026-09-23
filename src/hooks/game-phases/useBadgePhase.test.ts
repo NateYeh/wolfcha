@@ -18,6 +18,7 @@ test("真实警徽结算：首轮票型公开进入 PK，复投保留各轮候�
     "@/lib/game-texts": await import("@/lib/game-texts"),
     "@/lib/game-constants": await import("@/lib/game-constants"),
     "@/lib/game-flow-controller": { delay: async () => {} },
+    "@/lib/reveal-pacer": { createRevealPacer: () => async (reveal: () => void) => { reveal(); } },
     "@/lib/narrator-audio-player": { playNarrator: async () => {} },
     "@/store/game-machine": { gameStateAtom: {} },
   };
@@ -74,6 +75,7 @@ test("人类玩家夜 1 被刀且死亡未公布时，警徽报名会自行推�
     "@/lib/game-texts": await import("@/lib/game-texts"),
     "@/lib/game-constants": await import("@/lib/game-constants"),
     "@/lib/game-flow-controller": { delay: async () => {} },
+    "@/lib/reveal-pacer": { createRevealPacer: () => async (reveal: () => void) => { reveal(); } },
     "@/lib/narrator-audio-player": { playNarrator: async () => {} },
     "@/store/game-machine": { gameStateAtom: {} },
   };

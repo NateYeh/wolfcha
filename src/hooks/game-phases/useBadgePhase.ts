@@ -20,6 +20,7 @@ import {
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { DELAY_CONFIG, GAME_CONFIG } from "@/lib/game-constants";
 import { delay, type FlowToken } from "@/lib/game-flow-controller";
+import { createRevealPacer } from "@/lib/reveal-pacer";
 import { playNarrator } from "@/lib/narrator-audio-player";
 
 export interface BadgePhaseCallbacks {
@@ -620,16 +621,18 @@ export function useBadgePhase(
       }
 
       if (laterVoters.length > 0) {
-        const settledVotes = await Promise.all(
-          laterVoters.map(async (aiPlayer) => ({ aiPlayer, seat: await fetchBadgeVote(aiPlayer) }))
+        // 票一到就寫進 UI（不再等所有人回傳才一次顯示）；節奏器只保證相鄰兩票的最小間隔。
+        const revealVote = createRevealPacer(BADGE_VOTE_BEAT_MS);
+        await Promise.all(
+          laterVoters.map(async (aiPlayer) => {
+            const seat = await fetchBadgeVote(aiPlayer);
+            await revealVote(() => {
+              if (!sameBadgeRound()) return;
+              writeBadgeVote(aiPlayer, seat);
+            });
+          })
         );
         if (!sameBadgeRound()) return;
-        for (const settled of settledVotes) {
-          if (!sameBadgeRound()) return;
-          writeBadgeVote(settled.aiPlayer, settled.seat);
-          // 保留逐票落地的視覺節奏（網路已併發完成，這裡只錯開畫面更新）
-          await delay(BADGE_VOTE_BEAT_MS);
-        }
       }
     } finally {
       setIsWaitingForAI(false);
