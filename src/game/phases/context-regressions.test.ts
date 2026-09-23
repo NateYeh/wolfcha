@@ -536,7 +536,7 @@ test("統一攻略：進 system 共用前綴，且跨座位、跨階段逐字相
     state.currentSpeakerSeat = player.seat;
     const system = new PhaseManager().getPrompt(phase, { state }, player)!.system;
     assert.match(system, /【狼人杀攻略】/);
-    assert.match(system, /【十一、警徽篇】/);
+    assert.match(system, /【警徽】/);
   }
 });
 
@@ -544,7 +544,7 @@ test("統一攻略：通用判讀與好人陣營段落齊備", async () => {
   const { getI18n } = await import("@/i18n/translator");
   const g = getI18n();
   const basics = g.t("promptUtils.strategyGuide.basics");
-  assert.match(basics, /【一、通用判读】/);
+  assert.match(basics, /【通用判读】/);
   assert.match(basics, /票型是最容易被骗的证据/);
   assert.match(basics, /同一批人反复把票集中到同一个人身上/);
   assert.match(basics, /死人的票价值很低/);
@@ -562,11 +562,14 @@ test("統一攻略：通用判讀與好人陣營段落齊備", async () => {
   assert.match(good, /狼一定藏在没跳的平民里/);
   assert.match(good, /警推在先/);
   assert.match(good, /狼刀在先/);
-  assert.match(good, /金水的用法与陷阱/);
-  assert.match(good, /狼队最想干的事是先刀预言家/);
-  assert.match(good, /金水也可能是狼递的/);
-  assert.match(good, /你可以投金水/);
-  assert.doesNotMatch(good, /不得投金水/);
+
+  // 金水獨立成節（需場上有預言家才拼入）
+  const gold = g.t("promptUtils.strategyGuide.goldWater");
+  assert.match(gold, /金水的用法与陷阱/);
+  assert.match(gold, /狼队最想干的事是先刀预言家/);
+  assert.match(gold, /金水也可能是狼递的/);
+  assert.match(gold, /你可以投金水/);
+  assert.doesNotMatch(gold, /不得投金水/);
 });
 
 test("統一攻略：神職篇（預言家／女巫／守衛／獵人／白痴／騎士／禁言）齊備", async () => {
@@ -657,6 +660,11 @@ test("統一攻略：狼隊篇（配合／悍跳／衝鋒倒勾／讀神民／�
   assert.match(team, /遗言纪律/);
   assert.match(team, /别在遗言里点队友、给队友递话/);
 
+  // 白狼王自爆：獨立成節（有白狼王才拼入）
+  const boomWwk = g.t("promptUtils.strategyGuide.wolfBoomWhiteWolfKing");
+  assert.match(boomWwk, /还会带走一名存活玩家/);
+  assert.match(boomWwk, /警徽直接流失/);
+
   const gun = g.t("promptUtils.strategyGuide.wolfGun");
   assert.match(gun, /优先打好人阵营的关键信息位/);
   assert.match(gun, /别打队友/);
@@ -666,11 +674,16 @@ test("統一攻略：狼隊篇（配合／悍跳／衝鋒倒勾／讀神民／�
   assert.match(knife, /刀口看收益，不只看好杀/);
   assert.match(knife, /别因为「守卫可能守他」就放弃/);
   assert.match(knife, /坐实账/);
-  assert.match(knife, /守卫最可能守护公开跳神的玩家/);
-  assert.match(knife, /今晚连刀X命中率通常最高/);
-  assert.match(knife, /避开第一条里守卫今晚最可能守的座位/);
-  assert.match(knife, /猎人是全场唯一「杀了会反弹」的牌/);
-  assert.match(knife, /被女巫毒死的猎人开不了枪/);
+  assert.doesNotMatch(knife, /守卫最可能守护公开跳神的玩家/);
+  // 守衛博弈（有守衛才拼入）
+  const knifeGuard = g.t("promptUtils.strategyGuide.wolfKnifeGuard");
+  assert.match(knifeGuard, /守卫最可能守护公开跳神的玩家/);
+  assert.match(knifeGuard, /今晚连刀X命中率通常最高/);
+  assert.match(knifeGuard, /避开第一条里守卫今晚最可能守的座位/);
+  // 獵人槍口（有獵人才拼入）
+  const knifeHunter = g.t("promptUtils.strategyGuide.wolfKnifeHunter");
+  assert.match(knifeHunter, /猎人是全场唯一「杀了会反弹」的牌/);
+  assert.match(knifeHunter, /被女巫毒死的猎人开不了枪/);
 });
 
 test("統一攻略：警徽篇（競選／紀律／徽流編解／聽徽流／移交／警長職責）齊備", async () => {
@@ -680,13 +693,16 @@ test("統一攻略：警徽篇（競選／紀律／徽流編解／聽徽流／�
   assert.match(badge, /上警买到的是警长的1.5票/);
   assert.match(badge, /往往是免费暴露/);
   assert.match(badge, /唯一跳预言家的人大概率是真预言家/);
-  assert.match(badge, /徽流是预言家的信息线/);
-  assert.match(badge, /单验式/);
-  assert.match(badge, /顺验式/);
-  assert.match(badge, /金水接徽/);
-  assert.match(badge, /永远进不了徽流/);
-  assert.match(badge, /先查落点逻辑再记账/);
   assert.match(badge, /接徽不等于免疫/);
+
+  // 警徽流：預言家的東西，獨立成節（有預言家才拼入）
+  const flow = getI18n().t("promptUtils.strategyGuide.badgeFlow");
+  assert.match(flow, /徽流是预言家的信息线/);
+  assert.match(flow, /单验式/);
+  assert.match(flow, /顺验式/);
+  assert.match(flow, /金水接徽/);
+  assert.match(flow, /永远进不了徽流/);
+  assert.match(flow, /先查落点逻辑再记账/);
   assert.match(badge, /你是警长时/);
 });
 

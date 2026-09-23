@@ -140,9 +140,9 @@ test("每个实作角色都必须能出现在公开角色配置里（新角色�
   }
 });
 
-test("統一攻略逐字不受本局陣容影響；狼私有段只留帳目（守衛/獵人戰術改由共用攻略承載）", async () => {
-  const { buildSharedSystemParts } = await import("./prompt-utils");
-  // 12 人预女猎禁去掉猎人守卫的变体：狼 4 + 预/女/禁言长老 + 民 5 —— 无守卫、无猎人
+test("攻略按本場陣容動態組合：缺席角色（守衛／獵人／白痴）不出現章節，狼私有段只留帳目", async () => {
+  const { buildSharedSystemParts, getStrategyGuide } = await import("./prompt-utils");
+  // 12 人预女猎禁变体：狼 4 + 预/女/禁言长老 + 民 5 —— 无守卫、无猎人、无白痴
   const roles: Role[] = [
     "Werewolf", "Werewolf", "Werewolf", "Werewolf",
     "Seer", "Witch", "MuteElder",
@@ -154,36 +154,64 @@ test("統一攻略逐字不受本局陣容影響；狼私有段只留帳目（�
   }));
   const state: GameState = { ...makeState(), players, badge: { ...makeState().badge, candidates: [] } };
   const wolf = players[0];
-  const dayContext = buildGameContext(state, wolf);
-  const dayTeam = dayContext.match(/<your_wolf_team>[\s\S]*?<\/your_wolf_team>/)?.[0];
+
+  const guideText = buildSharedSystemParts(state)[2].text;
+  // 本局有的角色：章節要在
+  assert.match(guideText, /【预言家】/);
+  assert.match(guideText, /【女巫】/);
+  assert.match(guideText, /【禁言长老】/);
+  assert.match(guideText, /【村民】/);
+  assert.match(guideText, /【警徽流】/);
+  // 本局沒有的角色：章節不得出現（免得模型去猜不存在的角色）
+  assert.doesNotMatch(guideText, /【守卫】/);
+  assert.doesNotMatch(guideText, /【猎人】/);
+  assert.doesNotMatch(guideText, /【白痴】/);
+  assert.doesNotMatch(guideText, /【骑士】/);
+  assert.doesNotMatch(guideText, /【狼王开枪/);
+  assert.doesNotMatch(guideText, /【白狼王自爆】/);
+  assert.doesNotMatch(guideText, /守卫最可能守护公开跳神的玩家/);
+  assert.doesNotMatch(guideText, /猎人是全场唯一「杀了会反弹」的牌/);
+  // 泛用章節仍在
+  assert.match(guideText, /【通用判读】/);
+  assert.match(guideText, /【狼队】/);
+  assert.match(guideText, /【夜间出刀】/);
+  assert.match(guideText, /【警徽】/);
+
+  // 狼私有段只留帳目
+  const dayTeam = buildGameContext(state, wolf).match(/<your_wolf_team>[\s\S]*?<\/your_wolf_team>/)?.[0];
   assert.ok(dayTeam);
-  // 私有段只留帳目：出刀記錄／存活狼隊仍在，戰術區塊全部移出
   assert.match(dayTeam, /【存活狼队】/);
-  assert.doesNotMatch(dayTeam, /【守卫在场时的刀口账】/);
-  assert.doesNotMatch(dayTeam, /【猎人在场时的刀口风险】/);
   assert.doesNotMatch(dayTeam, /【狼队怎么配合】/);
 
-  // 攻略是全桌同一份（陣容不同也逐字相同）：守衛／獵人章節一律帶著，這是統一攻略的設計取捨
-  const guideText = buildSharedSystemParts(state)[2].text;
-  assert.match(guideText, /【五、守卫】/);
-  assert.match(guideText, /【六、猎人】/);
-  assert.match(guideText, /【十、夜间出刀】/);
+  // 不傳 state＝全節都拼（測試／預覽用）
+  const full = getStrategyGuide();
+  assert.match(full, /【守卫】/);
+  assert.match(full, /【猎人】/);
+  assert.match(full, /【白痴】/);
 });
 
-test("統一攻略逐字不受本局陣容影響：與含守衛獵人的陣容比對", async () => {
+test("攻略按本場陣容動態組合：守衛／獵人／白痴／騎士／狼王在場時章節跟著回來", async () => {
   const { buildSharedSystemParts } = await import("./prompt-utils");
-  const rolesWithGuard: Role[] = [
-    "Werewolf", "Werewolf", "Werewolf", "Werewolf",
-    "Seer", "Witch", "Hunter", "Guard", "MuteElder",
-    "Villager", "Villager", "Villager",
+  const roles: Role[] = [
+    "Werewolf", "Werewolf", "WolfKing", "WhiteWolfKing",
+    "Seer", "Witch", "Hunter", "Guard", "Idiot", "Knight",
+    "Villager", "Villager",
   ];
-  const players: Player[] = rolesWithGuard.map((role, seat) => ({
+  const players: Player[] = roles.map((role, seat) => ({
     playerId: `g${seat}`, seat, displayName: `玩家${seat + 1}`, alive: true, role,
-    alignment: role === "Werewolf" ? "wolf" : "village", isHuman: false,
+    alignment: ["Werewolf", "WolfKing", "WhiteWolfKing"].includes(role) ? "wolf" : "village",
+    isHuman: false,
   }));
   const state: GameState = { ...makeState(), players, badge: { ...makeState().badge, candidates: [] } };
   const guideText = buildSharedSystemParts(state)[2].text;
-  assert.match(guideText, /【十、夜间出刀】/);
+  assert.match(guideText, /【守卫】/);
+  assert.match(guideText, /【猎人】/);
+  assert.match(guideText, /【白痴】/);
+  assert.match(guideText, /【骑士】/);
+  assert.match(guideText, /【狼王开枪/);
+  assert.match(guideText, /【白狼王自爆】/);
+  assert.match(guideText, /【守卫博弈】/);
+  assert.match(guideText, /【猎人在场时的刀口风险】/);
 });
 
 

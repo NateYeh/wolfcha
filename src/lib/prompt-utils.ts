@@ -103,33 +103,47 @@ export const getSharedPromptRules = (): string => {
 };
 
 /**
- * 全桌共用的狼人殺攻略（單一真相）：
- * 不分陣營、逐字相同，所以排在 system 共用前綴（可快取）。
- * 各角色的私有帳目與當輪任務不在這裡，見 buildRolePrivateInfo 與各階段 task。
+ * 全桌共用的狼人殺攻略（單一真相），**按本局實際陣容動態組合**：
+ * 本局沒有的角色（白痴、守衛、騎士…）就不拼它的章節，避免提示模型去猜不存在的角色。
+ * 組出來的文字在同一局內逐字相同（全桌同一份），所以放在 system 共用前綴可快取。
+ * 不傳 state 時＝全節都拼（測試／預覽用）。
  */
-export const getStrategyGuide = (): string => {
+export const getStrategyGuide = (
+  state?: Pick<GameState, "players" | "fixedRoles">
+): string => {
   const { t } = getI18n();
-  const keys = [
-    "basics",
-    "goodCamp",
-    "seer",
-    "witch",
-    "guard",
-    "hunter",
-    "idiot",
-    "villager",
-    "knight",
-    "mute",
-    "wolfTeam",
-    "wolfGun",
-    "wolfKnife",
-    "badge",
-  ] as const;
+  const has = (role: Role): boolean => !state || gameHasRole(state, role);
+  const section = (key: string, enabled: boolean = true): string =>
+    enabled ? t(`promptUtils.strategyGuide.${key}` as Parameters<typeof t>[0]) : "";
+
   return [
-    t("promptUtils.strategyGuide.title"),
-    t("promptUtils.strategyGuide.notice"),
-    ...keys.map((key) => t(`promptUtils.strategyGuide.${key}` as Parameters<typeof t>[0])),
-  ].join("\n\n");
+    section("title"),
+    section("notice"),
+    section("basics"),
+    section("goodCamp"),
+    // 金水／預言家線：需要場上有預言家
+    section("goldWater", has("Seer")),
+    section("seer", has("Seer")),
+    section("witch", has("Witch")),
+    section("guard", has("Guard")),
+    section("hunter", has("Hunter")),
+    section("idiot", has("Idiot")),
+    section("villager", has("Villager")),
+    section("knight", has("Knight")),
+    section("mute", has("MuteElder")),
+    // 狼隊：狼一定在場
+    section("wolfTeam"),
+    section("wolfBoomWhiteWolfKing", has("WhiteWolfKing")),
+    section("wolfGun", has("WolfKing")),
+    section("wolfKnife"),
+    section("wolfKnifeGuard", has("Guard")),
+    section("wolfKnifeHunter", has("Hunter")),
+    section("badge"),
+    // 警徽流（單驗式／順驗式、金水接徽）：預言家的東西
+    section("badgeFlow", has("Seer")),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 };
 
 /**
@@ -144,7 +158,7 @@ export const buildSharedSystemParts = (
     { text: buildPublicRoleConfiguration(state), cacheable: true, ttl: "1h" },
     { text: getGameFundamentals(), cacheable: true, ttl: "1h" },
     {
-      text: `${getStrategyGuide()}\n\n${t("promptUtils.winMotivationNote")}\n\n${t("promptUtils.humannessNote")}`,
+      text: `${getStrategyGuide(state)}\n\n${t("promptUtils.winMotivationNote")}\n\n${t("promptUtils.humannessNote")}`,
       cacheable: true,
       ttl: "1h",
     },
