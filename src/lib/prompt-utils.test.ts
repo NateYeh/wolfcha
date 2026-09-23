@@ -11,6 +11,7 @@ import {
   buildPastDaysTranscript,
   buildPublicRoleConfiguration,
   buildSharedSystemParts,
+  getStrategyGuide,
   buildTodayTranscript,
 } from "./prompt-utils";
 
@@ -822,4 +823,21 @@ test("繁中局：程式碼組出的 prompt 不得混入簡體字（各角色私
   const dayMatch = dayText.match(simplifiedOnly);
   assert.equal(dayMatch, null, `白天 prompt 混入簡體字「${dayMatch?.[0]}」`);
   setLocale("zh-CN");
+});
+
+test("攻略：被查殺時不得認同查殺自己的人（好人自證／狼反打或搶線）", () => {
+  const guide = getStrategyGuide();
+  // 好人通用：不要因為對方「語氣果斷」就認同他，要正面自證，票不送
+  assert.match(guide, /被查杀不要认同对方/);
+  assert.match(guide, /等于替他把自己那一票要齐了/);
+  assert.match(guide, /警徽票和放逐票都不要顺手送给他/);
+  // 狼隊：別替對方背書，只有反打或搶線（悍跳）
+  assert.match(guide, /被查杀时别替对方背书/);
+  assert.match(guide, /等于当场自认狼还把票送出去/);
+  assert.match(guide, /①反打[\s\S]{0,120}②抢线（悍跳）/);
+  // 兩段都要進 system 共用前綴（全桌同文）
+  const state = makeState();
+  const systemText = buildSharedSystemParts(state).map((part) => part.text).join("\n");
+  assert.match(systemText, /被查杀不要认同对方/);
+  assert.match(systemText, /被查杀时别替对方背书/);
 });
