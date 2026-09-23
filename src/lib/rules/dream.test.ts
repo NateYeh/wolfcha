@@ -240,5 +240,6 @@ test("版型：狼王摄梦人 12 人局組成正確且通過驗證", () => {
     assert.equal(count(god), 1, `神職 ${god} 一人`);
   }
   assert.equal(count("Villager"), 4);
-  assert.equal(board.tags.includes("進階"), true);
+  assert.equal(board.tags.includes("進階"), false);
+  assert.deepEqual(board.tags, ["狼王攝夢", "12人"]);
 });
