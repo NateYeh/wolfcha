@@ -73,15 +73,12 @@ export class SelfDestructPhase extends GamePhase {
       jsonFormat: JSON.stringify(boomExample),
       passJsonFormat: JSON.stringify(passExample),
     });
-    const systemParts: SystemPromptPart[] = [
-      ...buildSharedSystemParts(state),
-      { text: cacheableContent, cacheable: true, ttl: "1h" },
-      { text: dynamicContent },
-    ];
+    // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.selfDestruct.user", {
-      context: gameContext,
+      context: [gameContext, cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
       jsonFormat: JSON.stringify(boomExample),
       passJsonFormat: JSON.stringify(passExample),
     });

@@ -41,6 +41,9 @@ function stateWithElder(mutedSeat: number | null = null): { state: GameState; el
   return { state, elderSeat: target.seat };
 }
 
+// 身分與本輪任務已移到 user：斷言 prompt 內容時一律看 system＋user 全文。
+const promptText = (p: { system: string; user: string }): string => `${p.system}\n\n${p.user}`;
+
 test("版型：預女獵禁＝預言家/女巫/獵人/禁言長老＋4 平民＋4 狼人", () => {
   const board = getBoardById("official-12-seer-witch-hunter-mute");
   assert.ok(board, "應收錄預女獵禁版型");
@@ -163,12 +166,12 @@ test("禁言長老 prompt（AI 契約）與公共資訊", async () => {
   const actor = state.players.find((p) => p.seat === elderSeat)!;
   const prompt = new PhaseManager().getPrompt("NIGHT_MUTE_ACTION", { state }, actor)!;
 
-  const optionLine = prompt.system.split("\n").find((line) => line.startsWith("存活玩家: ")) ?? "";
+  const optionLine = promptText(prompt).split("\n").find((line) => line.startsWith("存活玩家: ")) ?? "";
   assert.ok(optionLine.length > 0, "應列出可禁言玩家");
   assert.doesNotMatch(optionLine, new RegExp(`${elderSeat + 1}号`), "不能禁言自己");
-  assert.match(prompt.system, /不能指定自己/);
-  assert.match(prompt.system, /仍然可以投票/);
-  assert.match(prompt.system, /（警徽竞选投票、放逐投票）|可以留遗言/);
+  assert.match(promptText(prompt), /不能指定自己/);
+  assert.match(promptText(prompt), /仍然可以投票/);
+  assert.match(promptText(prompt), /（警徽竞选投票、放逐投票）|可以留遗言/);
 
   // 禁言是公開資訊，但只在天亮宣佈之後（白天）揭露：白天看得到、夜裡看不到
   const mutedSeat = state.players.find((p) => p.seat !== elderSeat)!.seat;

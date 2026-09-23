@@ -41,6 +41,9 @@ function seatOf(state: GameState, role: string, aliveOnly = true): number {
   return player.seat;
 }
 
+// 身分與本輪任務已移到 user：斷言 prompt 內容時一律看 system＋user 全文。
+const promptText = (p: { system: string; user: string }): string => `${p.system}\n\n${p.user}`;
+
 test("決鬥時機：只有白天發言階段可以翻牌；整個警長競選階段與遺言階段都不行", () => {
   assert.equal(isKnightDuelPhase("DAY_SPEECH"), true);
   // 整個警長競選階段都不能發動
@@ -250,13 +253,13 @@ test("騎士 prompt（AI 契約）：列出存活玩家、排除未公布死者�
   const actor = state.players.find((p) => p.seat === knight)!;
   const prompt = new PhaseManager().getPrompt("KNIGHT_DUEL", { state }, actor)!;
 
-  const optionLine = prompt.system.split("\n").find((line) => line.startsWith("存活玩家: ")) ?? "";
+  const optionLine = promptText(prompt).split("\n").find((line) => line.startsWith("存活玩家: ")) ?? "";
   assert.ok(optionLine.length > 0, "應列出存活玩家");
   assert.doesNotMatch(optionLine, new RegExp(`${nightVictim + 1}号`), "未公布死者不得出現在目標名單");
   assert.doesNotMatch(optionLine, new RegExp(`${knight + 1}号`), "不能挑戰自己");
-  assert.match(prompt.system, /翻牌决斗/);
-  assert.match(prompt.system, /直接进入黑夜/);
-  assert.match(prompt.system, /以死谢罪/);
+  assert.match(promptText(prompt), /翻牌决斗/);
+  assert.match(promptText(prompt), /直接进入黑夜/);
+  assert.match(promptText(prompt), /以死谢罪/);
   // user 訊息也要帶規則，且要求嚴格 JSON
   assert.match(prompt.user, /是否翻牌决斗/);
 });

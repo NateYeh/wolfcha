@@ -27,6 +27,9 @@ function stateWith(roles: Array<[number, Player["role"]]>): GameState {
   };
 }
 
+// 身分與本輪任務已移到 user：斷言 prompt 內容時一律看 system＋user 全文。
+const promptText = (p: { system: string; user: string }): string => `${p.system}\n\n${p.user}`;
+
 test("死亡技能歸屬：只有獵人與狼王有槍", () => {
   assert.equal(getDeathShotKind("Hunter"), "hunter_gun");
   assert.equal(getDeathShotKind("WolfKing"), "wolf_gun");
@@ -134,15 +137,15 @@ test("開槍窗口 prompt：狼王看到的是狼槍任務與狼隊思路，獵�
 
   const wolfState = stateWith([[0, "WolfKing"]]);
   const wolfPrompt = manager.getPrompt("HUNTER_SHOOT", { state: { ...wolfState, phase: "HUNTER_SHOOT" } }, wolfState.players[0])!;
-  assert.match(wolfPrompt.system, /狼王技能（狼枪）/);
-  assert.match(wolfPrompt.system, /只有\*\*白天被投票放逐\*\*时可开枪/);
-  assert.match(wolfPrompt.system, /别打队友/);
-  assert.doesNotMatch(wolfPrompt.system, /你是死前唯一能带走一个人的好人/);
+  assert.match(promptText(wolfPrompt), /狼王技能（狼枪）/);
+  assert.match(promptText(wolfPrompt), /只有\*\*白天被投票放逐\*\*时可开枪/);
+  assert.match(promptText(wolfPrompt), /别打队友/);
+  assert.doesNotMatch(promptText(wolfPrompt), /你是死前唯一能带走一个人的好人/);
 
   const hunterState = stateWith([[0, "Hunter"]]);
   const hunterPrompt = manager.getPrompt("HUNTER_SHOOT", { state: { ...hunterState, phase: "HUNTER_SHOOT" } }, hunterState.players[0])!;
-  assert.match(hunterPrompt.system, /猎人技能/);
-  assert.doesNotMatch(hunterPrompt.system, /【狼王技能（狼枪）】/);
+  assert.match(promptText(hunterPrompt), /猎人技能/);
+  assert.doesNotMatch(promptText(hunterPrompt), /【狼王技能（狼枪）】/);
 });
 
 test("公開規則：狼王的技能寫進 roleSkills 與 roleText（AI 才不會照舊規則打）", async () => {

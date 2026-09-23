@@ -80,6 +80,9 @@ const lastWordsMessage = (player: Player, content: string): ChatMessage => ({
   isLastWords: true,
 });
 
+// 身分與本輪任務已移到 user：斷言 prompt 內容時一律看 system＋user 全文。
+const promptText = (p: { system: string; user: string }): string => `${p.system}\n\n${p.user}`;
+
 test("自由发言只声明当前阶段事实，不把警徽投票留到后续", async () => {
   await import("@/lib/game-master");
   const { DaySpeechPhase } = await import("./DaySpeechPhase");
@@ -191,10 +194,10 @@ test("猎人开枪 Prompt 只保留遗言原文，不从原文强制推断动作
   state.messages = [lastWordsMessage(hunter, "我先不开枪，留到明天再打3号")];
   const prompt = new HunterPhase().getPrompt({ state }, hunter);
 
-  assert.match(prompt.system, /一次性猎人开枪窗口/);
-  assert.match(prompt.system, /选择不开枪后，本次开枪机会永久失效/);
-  assert.match(prompt.system, /已经发生的公开记录：你的遗言/);
-  assert.match(prompt.system, /我先不开枪，留到明天再打3号/);
-  assert.doesNotMatch(prompt.system, /请保持开枪决策|请执行你的决定|请保持一致/);
+  assert.match(promptText(prompt), /一次性猎人开枪窗口/);
+  assert.match(promptText(prompt), /选择不开枪后，本次开枪机会永久失效/);
+  assert.match(promptText(prompt), /已经发生的公开记录：你的遗言/);
+  assert.match(promptText(prompt), /我先不开枪，留到明天再打3号/);
+  assert.doesNotMatch(promptText(prompt), /请保持开枪决策|请执行你的决定|请保持一致/);
   assert.match(prompt.user, /\{"action":"pass"\}/);
 });

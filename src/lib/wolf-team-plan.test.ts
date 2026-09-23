@@ -247,8 +247,14 @@ test("狼隊夜間商議（wolf_chat）的 system 必須跟其他階段一樣帶
     // 共用開場三段必須帶 cache_control（1h 前綴快取）
     const cached = parts.filter((part) => part.cache_control);
     assert.ok(cached.length >= 3, `共用開場應可快取，實際只有 ${cached.length} 段`);
-    // 身分／商議任務接在後面（不可快取）
-    assert.match(parts[parts.length - 1].text, /商定狼隊白天的分工|今晚刀口|狼隊/);
+    // system 只剩共用開場（逐人內容不得混進來，否則前綴無法共用）
+    assert.doesNotMatch(joined, /【身份】/);
+    assert.doesNotMatch(joined, /商定狼隊白天的分工/);
+    // 身分／商議任務在 user
+    const userMessage = bodies[0].messages.find((message) => message.role === "user")!;
+    const userText = String(userMessage.content);
+    assert.match(userText, /【身份】/);
+    assert.match(userText, /商定狼隊白天的分工|今晚刀口/);
   } finally {
     globalThis.fetch = original;
   }

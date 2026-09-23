@@ -31,6 +31,9 @@ function fresh(phase: Phase): GameState {
 // 守衛：空守與連守限制（純函式）
 // ─────────────────────────────────────────────────────────────
 
+// 身分與本輪任務已移到 user：斷言 prompt 內容時一律看 system＋user 全文。
+const promptText = (p: { system: string; user: string }): string => `${p.system}\n\n${p.user}`;
+
 test("守衛可守座位：排除上一晚目標，空守（undefined）時全部可選", () => {
   const flags = mergeRuleFlags();
   assert.deepEqual(
@@ -94,9 +97,9 @@ test("守衛 prompt：說明可以空守並給出 seat 0 的寫法", async () =>
   state.currentSpeakerSeat = guard.seat;
   const prompt = new PhaseManager().getPrompt("NIGHT_GUARD_ACTION", { state }, guard)!;
 
-  assert.match(prompt.system, /可以空守/);
-  assert.match(prompt.system, /连续多晚空守/);
-  assert.match(prompt.system, /seat 填 0/);
+  assert.match(promptText(prompt), /可以空守/);
+  assert.match(promptText(prompt), /连续多晚空守/);
+  assert.match(promptText(prompt), /seat 填 0/);
 });
 
 test("守衛 prompt：上一晚守過的人不能被選，且明說今晚不能選", async () => {
@@ -108,11 +111,11 @@ test("守衛 prompt：上一晚守過的人不能被選，且明說今晚不能�
   state.nightActions = { ...state.nightActions, lastGuardTarget: 4 };
 
   const prompt = new PhaseManager().getPrompt("NIGHT_GUARD_ACTION", { state }, guard)!;
-  const lines = prompt.system.split("\n");
+  const lines = promptText(prompt).split("\n");
   const optionLine = lines.find((line) => line.startsWith("可选: ")) ?? "";
   assert.ok(optionLine.length > 0, "應列出可選玩家");
   assert.doesNotMatch(optionLine, /5号/, "上一晚守過的 5 号不得出現在可選名單");
-  assert.match(prompt.system, /上晚保护了5号，今晚不能选/);
+  assert.match(promptText(prompt), /上晚保护了5号，今晚不能选/);
 });
 
 test("女巫 prompt：預設規則下明說不可自救，且刀口是自己時不提供解藥選項", async () => {
@@ -128,9 +131,9 @@ test("女巫 prompt：預設規則下明說不可自救，且刀口是自己時�
     { state, extras: { wolfTarget: other.seat } },
     witch,
   )!;
-  assert.match(normal.system, /女巫全程不可自救/);
-  assert.doesNotMatch(normal.system, /包括自救/);
-  assert.match(normal.system, /可以使用解药救/);
+  assert.match(promptText(normal), /女巫全程不可自救/);
+  assert.doesNotMatch(promptText(normal), /包括自救/);
+  assert.match(promptText(normal), /可以使用解药救/);
 
   // 刀口是自己：不能救，並說明原因
   const selfVictim = new PhaseManager().getPrompt(
@@ -138,9 +141,9 @@ test("女巫 prompt：預設規則下明說不可自救，且刀口是自己時�
     { state, extras: { wolfTarget: witch.seat } },
     witch,
   )!;
-  assert.match(selfVictim.system, /袭击了你自己/);
-  assert.match(selfVictim.system, /解药不能救自己/);
-  assert.doesNotMatch(selfVictim.system, /可以使用解药救/);
+  assert.match(promptText(selfVictim), /袭击了你自己/);
+  assert.match(promptText(selfVictim), /解药不能救自己/);
+  assert.doesNotMatch(promptText(selfVictim), /可以使用解药救/);
 });
 
 test("女巫 prompt：版型開放自救時恢復「包括自救」說明", async () => {

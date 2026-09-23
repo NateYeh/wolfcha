@@ -53,6 +53,9 @@ function withFirstNightOutcome(state: GameState, wolfVictim: number, poisonVicti
   };
 }
 
+// 身分與本輪任務已移到 user：斷言 prompt 內容時一律看 system＋user 全文。
+const promptText = (p: { system: string; user: string }): string => `${p.system}\n\n${p.user}`;
+
 test("雙爆吞警徽（標準流程）：第一隻狼競選自爆＝公布第一夜死訊＋遺言佇列保留＋競選順延＋警徽還在", () => {
   const base = createSinglePlayerContextAuditState();
   const wolf1 = seatOf(base, "Werewolf");
@@ -225,10 +228,10 @@ test("白狼王自爆 prompt：目標名單不得包含死訊未公布的第一�
 
   const actor = state.players.find((p) => p.seat === wwk)!;
   const prompt = new PhaseManager().getPrompt("SELF_DESTRUCT", { state }, actor)!;
-  const optionLine = prompt.system.split("\n").find((line) => line.startsWith("存活玩家: ")) ?? "";
+  const optionLine = promptText(prompt).split("\n").find((line) => line.startsWith("存活玩家: ")) ?? "";
   assert.ok(optionLine.length > 0, "應列出存活玩家");
   assert.doesNotMatch(optionLine, new RegExp(`${nightVictim + 1}号`), "第一夜死者不得出現在目標名單");
-  assert.match(prompt.system, /已经出局的人不能带走/);
+  assert.match(promptText(prompt), /已经出局的人不能带走/);
 });
 
 test("非競選階段自爆：不吞警徽、不順延競選，第二夜起死亡也沒有遺言", () => {

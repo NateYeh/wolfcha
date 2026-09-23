@@ -173,10 +173,8 @@ export class DaySpeechPhase extends GamePhase {
     const guidelinesSection = isGenshinMode
       ? t("prompts.daySpeech.guidelines.genshin")
       : t("prompts.daySpeech.guidelines.default");
-    const systemParts: SystemPromptPart[] = [
-      ...buildSharedSystemParts(state),
-      { text: guidelinesSection, cacheable: true, ttl: "1h" },
-    ];
+    // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；說話要求是本輪任務，放 user。
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
     const system = buildSystemTextFromParts(systemParts);
 
     const phaseHint = isBadgeSpeech
@@ -208,6 +206,7 @@ export class DaySpeechPhase extends GamePhase {
         gameContextParts.private,
         identityContent,
         taskSection,
+        guidelinesSection,
         publicFactsForPlayer,
         skillContract,
       ].filter(Boolean).join("\n\n"),

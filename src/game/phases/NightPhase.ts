@@ -255,14 +255,12 @@ export class NightPhase extends GamePhase {
       options,
       jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "<一句话：为什么禁言他>" }),
     });
-    const systemParts: SystemPromptPart[] = [
-      ...buildSharedSystemParts(state),
-      { text: cacheableContent, cacheable: true, ttl: "1h" },
-      { text: dynamicContent },
-    ];
+    // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
     const system = buildSystemTextFromParts(systemParts);
+
     const user = t("prompts.mute.user", {
-      context: gameContext,
+      context: [gameContext, cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
       jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "<一句话：为什么禁言他>" }),
     });
 
@@ -661,15 +659,12 @@ export class NightPhase extends GamePhase {
       options: optionsList,
     });
 
-    const systemParts: SystemPromptPart[] = [
-      ...buildSharedSystemParts(state),
-      { text: cacheableContent, cacheable: true, ttl: "1h" },
-      { text: dynamicContent },
-    ];
+    // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.night.seer.user", {
-      context: this.buildContextWithDay(context, todayTranscript, selfSpeech),
+      context: [this.buildContextWithDay(context, todayTranscript, selfSpeech), cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
       jsonFormat: JSON.stringify({ seat: (eligiblePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你为什么查验他" }),
     });
 
@@ -723,16 +718,12 @@ export class NightPhase extends GamePhase {
         .join(t("promptUtils.gameContext.listSeparator")),
     });
 
-    const systemParts: SystemPromptPart[] = [
-      ...buildSharedSystemParts(state),
-      { text: identitySection, cacheable: true, ttl: "1h" },
-      { text: cacheableRules, cacheable: true, ttl: "1h" },
-      { text: taskSection },
-    ];
+    // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分（含狼隊友）與本輪任務逐人不同，一律進 user。
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.night.wolf.user", {
-      context: this.buildContextWithDay(context, todayTranscript, selfSpeech),
+      context: [this.buildContextWithDay(context, todayTranscript, selfSpeech), identitySection, cacheableRules, taskSection].filter(Boolean).join("\n\n"),
       jsonFormat: JSON.stringify({ seat: (alivePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你们为什么刀他" }),
     });
 
@@ -772,15 +763,12 @@ export class NightPhase extends GamePhase {
       lastTargetLine,
       abstainLine,
     });
-    const systemParts: SystemPromptPart[] = [
-      ...buildSharedSystemParts(state),
-      { text: cacheableContent, cacheable: true, ttl: "1h" },
-      { text: dynamicContent },
-    ];
+    // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.night.guard.user", {
-      context: this.buildContextWithDay(context, todayTranscript, selfSpeech),
+      context: [this.buildContextWithDay(context, todayTranscript, selfSpeech), cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
       jsonFormat: JSON.stringify({ seat: (eligiblePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你为什么守他" }),
     });
 
@@ -858,14 +846,13 @@ export class NightPhase extends GamePhase {
       poisonJsonFormat: JSON.stringify({ action: "poison", seat: (alivePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你的判断" }),
       passJsonFormat: JSON.stringify({ action: "pass", reason: "一句话说明你的判断" }),
     });
-    const systemParts: SystemPromptPart[] = [
-      ...buildSharedSystemParts(state),
-      { text: cacheableContent, cacheable: true, ttl: "1h" },
-      { text: dynamicContent },
-    ];
+    // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
     const system = buildSystemTextFromParts(systemParts);
 
-    const user = t("prompts.night.witch.user", { context: this.buildContextWithDay(context, todayTranscript, selfSpeech) });
+    const user = t("prompts.night.witch.user", {
+      context: [this.buildContextWithDay(context, todayTranscript, selfSpeech), cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
+    });
 
     return { system, user, systemParts };
   }

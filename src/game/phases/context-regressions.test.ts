@@ -61,11 +61,11 @@ test("夜間行動帶 reason：四職業 prompt 要求一句話理由，jsonForm
   const witch = witchState.players.find((p) => p.role === "Witch")!;
   witchState.currentSpeakerSeat = witch.seat;
   const witchPrompt = new PhaseManager().getPrompt("NIGHT_WITCH_ACTION", { state: witchState }, witch)!;
-  // 女巫的技能段與格式範例都在 system（task 模板）
-  assert.match(witchPrompt.system, /reason 字段用一句话说明你的判断（30字内）/);
-  assert.match(witchPrompt.system, /"action":"save","reason"/);
-  assert.match(witchPrompt.system, /"action":"poison","seat":\d+,"reason"/);
-  assert.match(witchPrompt.system, antiCopyRule);
+  // 女巫的技能段與格式範例（本輪任務）已移到 user
+  assert.match(witchPrompt.user, /reason 字段用一句话说明你的判断（30字内）/);
+  assert.match(witchPrompt.user, /"action":"save","reason"/);
+  assert.match(witchPrompt.user, /"action":"poison","seat":\d+,"reason"/);
+  assert.match(witchPrompt.user, antiCopyRule);
 });
 
 const decisions: Phase[] = ["DAY_BADGE_SIGNUP", "DAY_BADGE_ELECTION", "BADGE_TRANSFER", "DAY_VOTE", "HUNTER_SHOOT", "SELF_DESTRUCT", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"];
@@ -299,9 +299,11 @@ test("发言底线规则：未发言者不得被描述发言风格（禁止凭�
   const villager = state.players.find((p) => p.role === "Villager")!;
   state.currentSpeakerSeat = villager.seat;
   const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
-  assert.match(prompt.system, /【底线规则】/);
-  assert.match(prompt.system, /不得描述他的发言风格或内容/);
-  assert.match(prompt.system, /明说没有依据的直觉/);
+  // 說話要求（本輪任務）在 user；共用開場在 system。
+  const full = `${prompt.system}\n${prompt.user}`;
+  assert.match(full, /【底线规则】/);
+  assert.match(full, /不得描述他的发言风格或内容/);
+  assert.match(full, /明说没有依据的直觉/);
 });
 
 test("獵人開槍思路：被推出去時要看「誰在推你」，帶頭又給不出理由的最該打（已整併進統一攻略）", async () => {
@@ -331,11 +333,12 @@ test("全域动机与人味：每个玩家阶段都收到（想赢、允许不�
   assert.match(nightPrompt.system, /【你在玩什么】/);
   assert.match(nightPrompt.system, /【允许不完美】/);
 
-  // 發言底線：不再要求「立場必須連貫」，改成允許改口
-  assert.match(dayPrompt.system, /立场可以改/);
-  assert.doesNotMatch(dayPrompt.system, /保持立场连贯/);
+  // 發言底線：不再要求「立場必須連貫」，改成允許改口（說話要求在 user）
+  const dayFull = `${dayPrompt.system}\n${dayPrompt.user}`;
+  assert.match(dayFull, /立场可以改/);
+  assert.doesNotMatch(dayFull, /保持立场连贯/);
   // 防幻覺底線仍在（不限制玩法，但不准編造事實）
-  assert.match(dayPrompt.system, /【底线规则】/);
+  assert.match(dayFull, /【底线规则】/);
 });
 
 test("游戏基本盘：每个玩家阶段都收到（这是什么游戏、通用规则、角色技能一览）", async () => {
@@ -407,8 +410,9 @@ test("發言底線規則：要求大白話，禁成語/書面黑話（騎牆教�
   const speaker = state.players[0];
   state.currentSpeakerSeat = speaker.seat;
   const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
-  assert.match(prompt.system, /用大白话说，像平时聊天/);
-  assert.match(prompt.system, /「骑墙」/);
+  const full = `${prompt.system}\n${prompt.user}`;
+  assert.match(full, /用大白话说，像平时聊天/);
+  assert.match(full, /「骑墙」/);
 });
 
 test("發言底線規則：公開翻牌推翻舊判斷時要認錯票（殷离嘴硬教訓）", async () => {
@@ -418,8 +422,9 @@ test("發言底線規則：公開翻牌推翻舊判斷時要認錯票（殷离�
   const speaker = state.players[0];
   state.currentSpeakerSeat = speaker.seat;
   const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
-  assert.match(prompt.system, /这票就是投错了/);
-  assert.match(prompt.system, /仅供参考；采不采纳、怎么用，由你自己决定/);
+  const full = `${prompt.system}\n${prompt.user}`;
+  assert.match(full, /这票就是投错了/);
+  assert.match(full, /仅供参考；采不采纳、怎么用，由你自己决定/);
 });
 
 test("發言經驗參考：不含警徽 meta 知識（模型本身已知；判讀原則走 buildDecisionGrounding）", async () => {
@@ -429,12 +434,13 @@ test("發言經驗參考：不含警徽 meta 知識（模型本身已知；判�
   const speaker = state.players[0];
   state.currentSpeakerSeat = speaker.seat;
   const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
+  const full = `${prompt.system}\n${prompt.user}`;
   // 警徽 meta 知識已依指示移出經驗參考
-  assert.doesNotMatch(prompt.system, /警徽移交值得核对/);
-  assert.doesNotMatch(prompt.system, /徽链是线索不是铁证/);
+  assert.doesNotMatch(full, /警徽移交值得核对/);
+  assert.doesNotMatch(full, /徽链是线索不是铁证/);
   // 行為紀律（認錯票、對帳）保留
-  assert.match(prompt.system, /这票就是投错了/);
-  assert.match(prompt.system, /发言前对一遍账/);
+  assert.match(full, /这票就是投错了/);
+  assert.match(full, /发言前对一遍账/);
 });
 
 test("發言底線規則：發言前先對帳，抓公開事實矛盾＋要關鍵線索", async () => {
@@ -444,9 +450,10 @@ test("發言底線規則：發言前先對帳，抓公開事實矛盾＋要關�
   const speaker = state.players[0];
   state.currentSpeakerSeat = speaker.seat;
   const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
-  assert.match(prompt.system, /发言前对一遍账/);
-  assert.match(prompt.system, /跳女巫却不报救了谁/);
-  assert.match(prompt.system, /由你自己决定/);
+  const full = `${prompt.system}\n${prompt.user}`;
+  assert.match(full, /发言前对一遍账/);
+  assert.match(full, /跳女巫却不报救了谁/);
+  assert.match(full, /由你自己决定/);
 });
 
 test("白狼王自爆决策：farewell 翻桌宣言进 prompt 与解析结果（供带风向发挥）", async () => {
