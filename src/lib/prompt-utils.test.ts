@@ -6,6 +6,7 @@ import { ALL_ROLE_KEYS } from "./rules/boards";
 import { getRoleName } from "./game-constants";
 import {
   buildDecisionGrounding,
+  buildPersonaSection,
   buildGameContext,
   buildPastDaysTranscript,
   buildPublicRoleConfiguration,
@@ -689,6 +690,62 @@ test("開局建構點：LOBBY 與 NIGHT_START 都要帶上熟人局旗標（漏�
   assert.deepEqual(lobbyState.characterStats, characterStats);
 
   // 端到端：這份開局狀態進到 prompt 後，熟人局區塊真的存在
-  const actor = nightState.players[2];
   assert.match(acquaintanceTextOf(nightState), /<acquaintance_notes>/);
+});
+
+test("角色設定分簡繁：hidden 區塊（講話習慣底層欄位、玩家心智）也要跟語系走", () => {
+  const state = makeState();
+  const base = state.players[1];
+  const player: Player = {
+    ...base,
+    agentProfile: {
+      modelRef: { provider: "tokendance", model: "glm-5.3-flash:cloud" },
+      persona: {
+        voiceRules: ["说话直接"],
+        mbti: "ENTP",
+        gender: "male",
+        age: 32,
+        werewolfExperience: "老手",
+        vocabularyStyle: "口语",
+        reasoningStyle: "两层",
+        speechLengthHabit: "短",
+        pressureStyle: "急",
+        uncertaintyStyle: "沉默",
+        mistakePattern: "爱记错票",
+        wolfDeceptionStyle: "话变多",
+      },
+      playerMind: {
+        courage: "偏怂",
+        memoryBias: "记得住数字",
+        suspicionThreshold: "容易起疑",
+        selfProtection: "优先自保",
+        logicDepth: "两层",
+        tablePresence: "存在感强",
+      },
+    },
+  };
+
+  // 繁中：小標題、欄位名、說明句全部要是繁體（過去這幾段寫死在程式碼裡，繁中局照樣吐簡體）
+  setLocale("zh-TW");
+  const tw = buildPersonaSection(player);
+  assert.match(tw, /【角色設定】/);
+  assert.match(tw, /說話習慣/);
+  assert.match(tw, /這些資訊只用於塑造你的狼人殺水平/);
+  for (const label of ["狼人殺理解", "詞彙習慣", "推理方式", "發言長短", "壓力反應", "不確定性", "常見誤判", "拿狼偽裝"]) {
+    assert.match(tw, new RegExp(`- ${label}：`), `${label} 沒轉成繁體`);
+  }
+  for (const label of ["膽量", "記憶偏好", "懷疑閾值", "自保傾向", "邏輯水平", "桌面存在感"]) {
+    assert.match(tw, new RegExp(`- ${label}：`), `${label} 沒轉成繁體`);
+  }
+  assert.doesNotMatch(tw, /这些信息只用于塑造|狼人杀理解|词汇习惯/);
+  assert.doesNotMatch(tw, /【角色设定】/);
+
+  // 簡中：原文不得被改動（SPC 大量斷言依賴這些字串）
+  setLocale("zh-CN");
+  const cn = buildPersonaSection(player);
+  assert.match(cn, /【角色设定】/);
+  assert.match(cn, /这些信息只用于塑造你的狼人杀水平、词汇和发言长度/);
+  assert.match(cn, /这些信息是你稳定的玩家心智/);
+  assert.match(cn, /- 狼人杀理解：老手/);
+  assert.match(cn, /- 胆量：偏怂/);
 });

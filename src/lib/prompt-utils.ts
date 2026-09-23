@@ -330,34 +330,6 @@ export const buildPublicFactsForPlayer = (state: GameState, player: Player): str
   return `<public_facts_for_player>\n【与你有关的公开事实】\n${facts.map((fact) => `- ${fact}`).join("\n")}\n</public_facts_for_player>`;
 }
 
-const buildHiddenCommunicationProfileSection = (persona: Persona, locale: string): string => {
-  if (locale !== "en") {
-    const lines: string[] = [];
-    if (persona.werewolfExperience) lines.push(`狼人杀理解：${persona.werewolfExperience}`);
-    if (persona.vocabularyStyle) lines.push(`词汇习惯：${persona.vocabularyStyle}`);
-    if (persona.reasoningStyle) lines.push(`推理方式：${persona.reasoningStyle}`);
-    if (persona.speechLengthHabit) lines.push(`发言长短：${persona.speechLengthHabit}`);
-    if (persona.pressureStyle) lines.push(`压力反应：${persona.pressureStyle}`);
-    if (persona.uncertaintyStyle) lines.push(`不确定性：${persona.uncertaintyStyle}`);
-    if (persona.mistakePattern) lines.push(`常见误判：${persona.mistakePattern}`);
-    if (persona.wolfDeceptionStyle) lines.push(`拿狼伪装：${persona.wolfDeceptionStyle}`);
-    if (lines.length === 0) return "";
-    return `\n<hidden_communication_profile>\n这些信息只用于塑造你的狼人杀水平、词汇和发言长度，不要向其他玩家明说。其中的缺陷和不确定倾向偶尔体现即可，不要每次发言都表现出来。\n${lines.map((line) => `- ${line}`).join("\n")}\n</hidden_communication_profile>`;
-  }
-
-  const lines: string[] = [];
-  if (persona.werewolfExperience) lines.push(`Werewolf understanding: ${persona.werewolfExperience}`);
-  if (persona.vocabularyStyle) lines.push(`Vocabulary habit: ${persona.vocabularyStyle}`);
-  if (persona.reasoningStyle) lines.push(`Reasoning style: ${persona.reasoningStyle}`);
-  if (persona.speechLengthHabit) lines.push(`Speech length habit: ${persona.speechLengthHabit}`);
-  if (persona.pressureStyle) lines.push(`Pressure response: ${persona.pressureStyle}`);
-  if (persona.uncertaintyStyle) lines.push(`Uncertainty style: ${persona.uncertaintyStyle}`);
-  if (persona.mistakePattern) lines.push(`Common wrong reads: ${persona.mistakePattern}`);
-  if (persona.wolfDeceptionStyle) lines.push(`Wolf disguise habit: ${persona.wolfDeceptionStyle}`);
-  if (lines.length === 0) return "";
-  return `\n<hidden_communication_profile>\nUse this only to shape your Werewolf skill, vocabulary, and speech length. Do not state it to other players. Let the flaws and uncertainty show only occasionally, not in every speech.\n${lines.map((line) => `- ${line}`).join("\n")}\n</hidden_communication_profile>`;
-};
-
 /** 决策前的短事实账本：只取主持人已公布的结果和本人行动，绝不把玩家声明升级为事实。 */
 export function buildDecisionGrounding(state: GameState, player: Player): string {
   const lines: string[] = [];
@@ -389,31 +361,44 @@ ${lines.join("\n")}
 </decision_grounding>`;
 }
 
-const buildHiddenPlayerMindSection = (player: Player, locale: string): string => {
+/**
+ * 人設的「底層欄位」：只有模型自己看得到（逐人不同），用來塑造水平、詞彙與長度。
+ * 文案一律走 i18n，簡中／繁中／英文各自正確，不要在這裡寫死中文。
+ */
+const buildHiddenCommunicationProfileSection = (persona: Persona): string => {
+  const { t } = getI18n();
+  const lines = ([
+    ["promptUtils.persona.hiddenProfileWerewolfExp", persona.werewolfExperience],
+    ["promptUtils.persona.hiddenProfileVocabulary", persona.vocabularyStyle],
+    ["promptUtils.persona.hiddenProfileReasoning", persona.reasoningStyle],
+    ["promptUtils.persona.hiddenProfileLength", persona.speechLengthHabit],
+    ["promptUtils.persona.hiddenProfilePressure", persona.pressureStyle],
+    ["promptUtils.persona.hiddenProfileUncertainty", persona.uncertaintyStyle],
+    ["promptUtils.persona.hiddenProfileMistake", persona.mistakePattern],
+    ["promptUtils.persona.hiddenProfileWolfDisguise", persona.wolfDeceptionStyle],
+  ] as const)
+    .filter(([, value]) => Boolean(value))
+    .map(([key, value]) => `- ${t(key, { v: value as string })}`);
+  if (lines.length === 0) return "";
+  return `\n<hidden_communication_profile>\n${t("promptUtils.persona.hiddenProfileIntro")}\n${lines.join("\n")}\n</hidden_communication_profile>`;
+};
+
+const buildHiddenPlayerMindSection = (player: Player): string => {
+  const { t } = getI18n();
   const mind = player.agentProfile?.playerMind;
   if (!mind) return "";
-
-  if (locale !== "en") {
-    const lines: string[] = [
-      `胆量：${mind.courage}`,
-      `记忆偏好：${mind.memoryBias}`,
-      `怀疑阈值：${mind.suspicionThreshold}`,
-      `自保倾向：${mind.selfProtection}`,
-      `逻辑水平：${mind.logicDepth}`,
-      `桌面存在感：${mind.tablePresence}`,
-    ];
-    return `\n<hidden_player_mind>\n这些信息是你稳定的玩家心智，只用于塑造你如何判断、站边、承压和发言，不要向其他玩家明说。\n${lines.map((line) => `- ${line}`).join("\n")}\n</hidden_player_mind>`;
-  }
-
-  const lines: string[] = [
-    `Courage: ${mind.courage}`,
-    `Memory bias: ${mind.memoryBias}`,
-    `Suspicion threshold: ${mind.suspicionThreshold}`,
-    `Self-protection: ${mind.selfProtection}`,
-    `Logic depth: ${mind.logicDepth}`,
-    `Table presence: ${mind.tablePresence}`,
-  ];
-  return `\n<hidden_player_mind>\nUse this as your stable player mind. It shapes how you judge, take sides, handle pressure, and speak. Do not state it to other players.\n${lines.map((line) => `- ${line}`).join("\n")}\n</hidden_player_mind>`;
+  const lines = ([
+    ["promptUtils.persona.playerMindCourage", mind.courage],
+    ["promptUtils.persona.playerMindMemory", mind.memoryBias],
+    ["promptUtils.persona.playerMindSuspicion", mind.suspicionThreshold],
+    ["promptUtils.persona.playerMindSelfProtect", mind.selfProtection],
+    ["promptUtils.persona.playerMindLogic", mind.logicDepth],
+    ["promptUtils.persona.playerMindPresence", mind.tablePresence],
+  ] as const)
+    .filter(([, value]) => Boolean(value))
+    .map(([key, value]) => `- ${t(key, { v: value as string })}`);
+  if (lines.length === 0) return "";
+  return `\n<hidden_player_mind>\n${t("promptUtils.persona.playerMindIntro")}\n${lines.join("\n")}\n</hidden_player_mind>`;
 };
 
 /**
@@ -431,7 +416,7 @@ export const bindIdentityAndRoleSetting = (
 
 export const buildPersonaSection = (player: Player, isGenshinMode: boolean = false): string => {
   if (isGenshinMode || !player.agentProfile) return "";
-  const { t, locale } = getI18n();
+  const { t } = getI18n();
   const { persona } = player.agentProfile;
   const separator = t("promptUtils.gameContext.listSeparator");
 
@@ -442,8 +427,8 @@ export const buildPersonaSection = (player: Player, isGenshinMode: boolean = fal
   const extraInfo = persona.basicInfo?.trim()
     ? `\n${t("promptUtils.persona.basicInfo", { basicInfo: persona.basicInfo.trim() })}`
     : "";
-  const hiddenCommunicationProfile = buildHiddenCommunicationProfileSection(persona, locale);
-  const hiddenPlayerMind = buildHiddenPlayerMindSection(player, locale);
+  const hiddenCommunicationProfile = buildHiddenCommunicationProfileSection(persona);
+  const hiddenPlayerMind = buildHiddenPlayerMindSection(player);
   return `${base}${extraInfo}${hiddenCommunicationProfile}${hiddenPlayerMind}`;
 };
 
