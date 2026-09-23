@@ -603,23 +603,18 @@ export class NightPhase extends GamePhase {
   private buildNightEnhancements(state: GameContext["state"], player: Player) {
     const { t } = getI18n();
     const todayTranscript = buildTodayTranscript(state);
-    const selfSpeech = buildPlayerTodaySpeech(state, player);
-    const selfSpeechContext = selfSpeech
-      ? t("promptUtils.gameContext.selfSpeechIncludedInTimeline", { seat: player.seat + 1 })
-      : "";
-    return { todayTranscript, selfSpeech: selfSpeechContext };
+    // 自己的發言已在本日討論記錄裡，不再另拼一段重述。
+    return { todayTranscript };
   }
 
   private buildContextWithDay(
     context: string,
-    todayTranscript: string,
-    selfSpeech: string
+    todayTranscript: string
   ): string {
     const { t } = getI18n();
     return [
       context,
       todayTranscript ? `${t("prompts.night.todayDiscussionLabel")}\n${todayTranscript}` : "",
-      selfSpeech ? `${t("prompts.night.selfSpeechLabel")}\n${selfSpeech}` : "",
     ]
       .filter(Boolean)
       .join("\n\n");
@@ -628,7 +623,7 @@ export class NightPhase extends GamePhase {
   private buildSeerPrompt(state: GameContext["state"], player: Player): PromptResult {
     const { t } = getI18n();
     const context = buildGameContext(state, player);
-    const { todayTranscript, selfSpeech } = this.buildNightEnhancements(state, player);
+    const { todayTranscript } = this.buildNightEnhancements(state, player);
     const seerHistory = state.nightActions.seerHistory || [];
     const checkedSeats = seerHistory.map((h) => h.targetSeat);
 
@@ -664,7 +659,7 @@ export class NightPhase extends GamePhase {
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.night.seer.user", {
-      context: [this.buildContextWithDay(context, todayTranscript, selfSpeech), cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
+      context: [this.buildContextWithDay(context, todayTranscript), cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
       jsonFormat: JSON.stringify({ seat: (eligiblePlayers[0]?.seat ?? player.seat) + 1, reason: t("promptUtils.gameContext.jsonReasonSeer") }),
     });
 
@@ -678,7 +673,7 @@ export class NightPhase extends GamePhase {
   ): PromptResult {
     const { t } = getI18n();
     const context = buildGameContext(state, player);
-    const { todayTranscript, selfSpeech } = this.buildNightEnhancements(state, player);
+    const { todayTranscript } = this.buildNightEnhancements(state, player);
     // 狼人可以刀任何存活玩家（包括队友和自己），但通常刀好人
     const alivePlayers = state.players.filter((p) => p.alive);
     const teammates = state.players.filter(
@@ -723,7 +718,7 @@ export class NightPhase extends GamePhase {
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.night.wolf.user", {
-      context: [this.buildContextWithDay(context, todayTranscript, selfSpeech), identitySection, cacheableRules, taskSection].filter(Boolean).join("\n\n"),
+      context: [this.buildContextWithDay(context, todayTranscript), identitySection, cacheableRules, taskSection].filter(Boolean).join("\n\n"),
       jsonFormat: JSON.stringify({ seat: (alivePlayers[0]?.seat ?? player.seat) + 1, reason: t("promptUtils.gameContext.jsonReasonWolf") }),
     });
 
@@ -734,7 +729,7 @@ export class NightPhase extends GamePhase {
     const { t } = getI18n();
     const flags = getBoardRuleFlags(state.players.length);
     const context = buildGameContext(state, player);
-    const { todayTranscript, selfSpeech } = this.buildNightEnhancements(state, player);
+    const { todayTranscript } = this.buildNightEnhancements(state, player);
     const alivePlayers = state.players.filter((p) => p.alive);
     const lastTarget = state.nightActions.lastGuardTarget;
 
@@ -768,7 +763,7 @@ export class NightPhase extends GamePhase {
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.night.guard.user", {
-      context: [this.buildContextWithDay(context, todayTranscript, selfSpeech), cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
+      context: [this.buildContextWithDay(context, todayTranscript), cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
       jsonFormat: JSON.stringify({ seat: (eligiblePlayers[0]?.seat ?? player.seat) + 1, reason: t("promptUtils.gameContext.jsonReasonGuard") }),
     });
 
@@ -782,7 +777,7 @@ export class NightPhase extends GamePhase {
   ): PromptResult {
     const { t } = getI18n();
     const context = buildGameContext(state, player);
-    const { todayTranscript, selfSpeech } = this.buildNightEnhancements(state, player);
+    const { todayTranscript } = this.buildNightEnhancements(state, player);
     const alivePlayers = state.players.filter(
       (p) => p.alive && p.playerId !== player.playerId
     );
@@ -851,7 +846,7 @@ export class NightPhase extends GamePhase {
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.night.witch.user", {
-      context: [this.buildContextWithDay(context, todayTranscript, selfSpeech), cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
+      context: [this.buildContextWithDay(context, todayTranscript), cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
     });
 
     return { system, user, systemParts };

@@ -95,9 +95,11 @@ export class DaySpeechPhase extends GamePhase {
         : "";
     const todayTranscript = buildTodayTranscript(state);
     const selfSpeech = buildPlayerTodaySpeech(state, player);
-    const selfSpeechContext = selfSpeech
-      ? t("promptUtils.gameContext.selfSpeechIncludedInTimeline", { seat: player.seat + 1 })
-      : "";
+    // 自己今天說過的話已經在【本日討論記錄】的實際位置裡，不再另外列一段重述；
+    // 只有「今天還沒開口」時才拼一句提醒（那種情況時間線上確實沒有你的發言）。
+    const selfSpeechSection = selfSpeech
+      ? ""
+      : `${t("prompts.daySpeech.selfSpeechHeader")}\n${t("prompts.daySpeech.userNoSelfSpeech")}`;
 
     const isLastWords = state.phase === "DAY_LAST_WORDS";
     const isBadgeSpeech = state.phase === "DAY_BADGE_SPEECH";
@@ -219,7 +221,7 @@ export class DaySpeechPhase extends GamePhase {
         skillContract,
       ].filter(Boolean).join("\n\n"),
       todayTranscript: todayTranscript || t("prompts.daySpeech.userNoTranscript", { speakOrder }),
-      selfSpeech: selfSpeechContext || t("prompts.daySpeech.userNoSelfSpeech"),
+      selfSpeechSection,
       phaseHintSection,
       speakOrderHint,
     }) + `\n\n${buildDecisionGrounding(state, player)}\n${

@@ -1159,14 +1159,15 @@
       },
       "phaseSection": "【Current phase】\n{phaseHint}",
       "userNoTranscript": "(None yet. You are speaker #{speakOrder}.)",
-      "userNoSelfSpeech": "(None)",
+      "userNoSelfSpeech": "You have not spoken publicly today.",
       "formatReminder": "Output only a JSON string array like [\"First bubble.\",\"Second bubble.\"]; no prose, reasoning, or paragraphs.",
-      "user": "{sharedContext}\n\n【Today's discussion】\n{todayTranscript}\n\n{privateContext}\n\n【Your speech today】\n{selfSpeech}\n\n{phaseHintSection}\n\n【Speaking order】\n{speakOrderHint}\n\nYour turn. Return a JSON array:",
+      "user": "{sharedContext}\n\n【Today's discussion】\n{todayTranscript}\n\n{privateContext}\n\n{selfSpeechSection}\n\n{phaseHintSection}\n\n【Speaking order】\n{speakOrderHint}\n\nYour turn. Return a JSON array:",
       "formatReminderWithSkill": "This turn you also decide on a skill, so output a **single JSON object**:\n'{'\"speech\": [\"First sentence.\", \"Second sentence.\"], \"skill\": '{'\"action\": \"none\"'}}'\n- The speech text goes in the speech array only (shown and voiced sentence by sentence);\n- skill holds only the skill decision - never put it in speech;\n- No explanations, no reasoning, no extra text.",
       "skillContract": {
         "selfDestruct": "【Output format (this turn includes the self-destruct decision)】\nReturn a single JSON object like:\n'{'\"speech\": [\"First sentence.\", \"Second sentence.\"], \"skill\": '{'\"action\": \"none\"'}}'\nTo self-destruct set skill to '{'\"action\": \"boom\", \"reason\": \"one short sentence\"'}'; the White Wolf King adding a player also sets \"seat\": a seat number. \nTo hold, use '{'\"action\": \"none\"'}'. skill takes only these forms and appears exactly once.\nAll speech text stays inside the speech array - never put JSON or skill notes in the speech content.",
         "knightDuel": "【Output format (this turn includes the duel decision)】\nReturn a single JSON object like:\n'{'\"speech\": [\"First sentence.\", \"Second sentence.\"], \"skill\": '{'\"action\": \"none\"'}}'\nTo duel set skill to '{'\"action\": \"duel\", \"seat\": a seat number, \"reason\": \"one short sentence\"'}'.\nTo hold, use '{'\"action\": \"none\"'}'. skill takes only these forms and appears exactly once.\nAll speech text stays inside the speech array - never put JSON or skill notes in the speech content."
-      }
+      },
+      "selfSpeechHeader": "【What you said today】"
     },
     "vote": {
       "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{coreRules}",
@@ -1174,14 +1175,12 @@
       "option": "Seat {seat} ({name})",
       "reasonExample": "one short reason for this vote",
       "userNoTranscript": "(None)",
-      "userNoSelfSpeech": "(You didn't speak today)",
-      "user": "{sharedContext}\n\n【Current step】\nDaytime free discussion is complete. This is now the elimination vote. Your choice determines whom you vote to eliminate; it is not a sheriff vote.\n\n【Today's discussion】\n{todayTranscript}\n\n{privateContext}\n\n【Your speech summary】\n\"{selfSpeech}\"\n\nWhich seat do you vote?\n\n【Format】\nReturn a strict JSON object only. No code blocks, no extra text:\n{voteJsonFormat}"
+      "user": "{sharedContext}\n\n【Current step】\nDaytime free discussion is complete. This is now the elimination vote. Your choice determines whom you vote to eliminate; it is not a sheriff vote.\n\n【Today's discussion】\n{todayTranscript}\n\n{privateContext}\n\nWhich seat do you vote?\n\n【Format】\nReturn a strict JSON object only. No code blocks, no extra text:\n{voteJsonFormat}"
     },
     "night": {
       "option": "Seat {seat} ({name})",
       "optionName": "({name})",
       "todayDiscussionLabel": "【Today's Discussion】",
-      "selfSpeechLabel": "【Your Speech Today】",
       "seer": {
         "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{coreRules}",
         "checkedLine": "Already checked: {list} (avoid repeat checks)",
@@ -1956,9 +1955,7 @@
       "hunterRoleReveal": "- Day {day}: {hunter} was publicly confirmed by the host as the Hunter and shot {target}. A shot performs no check and does not reveal {target}'s role.",
       "idiotRoleReveal": "- Day {day}: {player} was publicly confirmed by the host as the Idiot.",
       "unannouncedNightResult": "The host has not announced last night's deaths. You know only what is explicitly listed in your private role information. An empty death list does not establish a peaceful night, and you cannot assert who died last night.",
-      "selfSpeechIncludedInTimeline": "Your speech is already preserved as Seat {seat} at its actual position in the complete timeline above, so it is not repeated here.",
       "transcriptRound": "Round {round}",
-      "transcriptCurrentlyEliminated": " (currently eliminated)",
       "transcriptPkBadge": "Sheriff election",
       "transcriptPkVote": "Execution vote",
       "transcriptPhaseHeader": "【{phase} (actual chronological order)】",

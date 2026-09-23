@@ -443,7 +443,9 @@ test("当天玩家死亡后仍保留其已发生的发言，并保持遗言的�
 
   const transcript = buildTodayTranscript(state);
 
-  assert.match(transcript, /8号（当前已出局）: 8号先发言/);
+  assert.match(transcript, /8号: 8号先发言/);
+  // 不再逐句標「（当前已出局）」：時間線上後面的放逐／開槍／遺言標記已經說明白了
+  assert.doesNotMatch(transcript, /当前已出局/);
   assert.ok(transcript.indexOf("8号先发言") < transcript.indexOf("9号随后发言"));
   assert.ok(transcript.indexOf("9号随后发言") < transcript.indexOf("我要验竞选了尚未发言的3号"));
   assert.ok(transcript.indexOf("我要验竞选了尚未发言的3号") < transcript.indexOf("3号之后才发言"));
@@ -468,7 +470,11 @@ test("行动者自己的发言仍保留在正式 Prompt 的原始时间位置", 
   assert.ok(prompt.user.indexOf("8号先发言") < prompt.user.indexOf("9号随后发言"));
   assert.ok(prompt.user.indexOf("9号随后发言") < prompt.user.indexOf("我要验尚未发言的3号"));
   assert.ok(prompt.user.indexOf("我要验尚未发言的3号") < prompt.user.indexOf("3号之后才发言"));
-  assert.match(prompt.user, /你的发言已作为1号保留在上方完整时间线的实际位置/);
+  // 自己的發言不再另列一段重述（也不再印「已在時間線上」的自我說明）
+  assert.doesNotMatch(prompt.user, /你的发言已作为1号保留/);
+  assert.doesNotMatch(prompt.user, /【你本日已说过的话】/);
+  // 但發言順序與內容仍留在時間線的實際位置（上面已驗相對順序）
+  assert.match(prompt.user, /【本日讨论记录】/);
 });
 
 test("发言顺序上下文只陈述本轮客观记录，不加入策略建议", async () => {

@@ -855,8 +855,9 @@ const formatTranscriptMessages = (
     const player = state.players.find((p) => p.playerId === m.playerId);
     const speaker = player ? t("mentions.seatLabel", { seat: player.seat + 1 }) : m.playerName;
     const lastWordsLabel = m.isLastWords ? t("promptUtils.gameContext.lastWordsLabel") : "";
-    const statusLabel = m.day === state.day && player && !player.alive ? t("promptUtils.gameContext.transcriptCurrentlyEliminated") : "";
-    lines.push(`${lastWordsLabel}${speaker}${statusLabel}: ${m.content}`);
+    // 不再在名字後面標「（當前已出局）」：這一天的事件（放逐、開槍）就寫在下面幾行，
+    // 逐句標註只會讓時間線變吵，讀的人自己對得出來。
+    lines.push(`${lastWordsLabel}${speaker}: ${m.content}`);
   });
 
   // 沒有 VOTE_RESULT 訊息可當錨點的輪次（例如舊存檔、回滾後的狀態）補在當天最後，

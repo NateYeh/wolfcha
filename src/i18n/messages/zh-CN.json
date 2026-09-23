@@ -1159,14 +1159,15 @@
       },
       "phaseSection": "【当前环节】\n{phaseHint}",
       "userNoTranscript": "（暂无，你是第{speakOrder}个发言）",
-      "userNoSelfSpeech": "（无）",
+      "userNoSelfSpeech": "你今天还没有公开发言。",
       "formatReminder": "只输出 JSON 字符串数组，形如 [\"第一段。\",\"第二段。\"]；不要写解释、思考过程或段落文字。",
-      "user": "{sharedContext}\n\n【本日讨论记录】\n{todayTranscript}\n\n{privateContext}\n\n【你本日已说过的话】\n{selfSpeech}\n\n{phaseHintSection}\n\n【发言顺序】\n{speakOrderHint}\n\n轮到你发言，返回JSON数组：\n",
+      "user": "{sharedContext}\n\n【本日讨论记录】\n{todayTranscript}\n\n{privateContext}\n\n{selfSpeechSection}\n\n{phaseHintSection}\n\n【发言顺序】\n{speakOrderHint}\n\n轮到你发言，返回JSON数组：\n",
       "formatReminderWithSkill": "本回合你同时要决定技能，因此改成输出**单一 JSON 物件**：\n'{'\"speech\": [\"第一段。\", \"第二段。\"], \"skill\": '{'\"action\": \"none\"'}}'\n- 发言正文只能放在 speech 阵列里（每段一句，会被逐段显示与朗读）；\n- skill 只放技能决定，不要写进 speech；\n- 不要输出解释、思考过程或多余文字。",
       "skillContract": {
         "selfDestruct": "【输出格式（本回合含自爆决定）】\n只输出一个 JSON 物件，形如：\n'{'\"speech\": [\"第一段。\", \"第二段。\"], \"skill\": '{'\"action\": \"none\"'}}'\n要自爆时 skill 写 '{'\"action\": \"boom\", \"reason\": \"<一句话>\"'}'；白狼王要带人再加 \"seat\": <目标号>。\n不自爆就写 '{'\"action\": \"none\"'}'。skill 只能是这几种写法，而且只出现一次。\n发言正文只能放在 speech 阵列里，不要把 JSON 或技能说明写进发言内容。",
         "knightDuel": "【输出格式（本回合含翻牌决斗决定）】\n只输出一个 JSON 物件，形如：\n'{'\"speech\": [\"第一段。\", \"第二段。\"], \"skill\": '{'\"action\": \"none\"'}}'\n要翻牌决斗时 skill 写 '{'\"action\": \"duel\", \"seat\": <目标号>, \"reason\": \"<一句话>\"'}'。\n不发动就写 '{'\"action\": \"none\"'}'。skill 只能是这几种写法，而且只出现一次。\n发言正文只能放在 speech 阵列里，不要把 JSON 或技能说明写进发言内容。"
-      }
+      },
+      "selfSpeechHeader": "【你本日已说过的话】"
     },
     "vote": {
       "base": "【身份】\n你是 {seat}号「{name}」\n身份: {role}\n\n{coreRules}",
@@ -1174,14 +1175,12 @@
       "option": "{seat}号({name})",
       "reasonExample": "一句话说明投票依据",
       "userNoTranscript": "（无）",
-      "userNoSelfSpeech": "（你今天没有发言）",
-      "user": "{sharedContext}\n\n【当前环节】\n白天自由发言已经结束，现在进行放逐投票。本次选择决定你投给谁出局，不是警徽投票。\n\n【本日讨论记录】\n{todayTranscript}\n\n{privateContext}\n\n【你本日发言汇总】\n\"{selfSpeech}\"\n\n你投几号？\n\n【格式】\n严格返回 JSON 对象，不要代码块、不要多余文字：\n{voteJsonFormat}\n"
+      "user": "{sharedContext}\n\n【当前环节】\n白天自由发言已经结束，现在进行放逐投票。本次选择决定你投给谁出局，不是警徽投票。\n\n【本日讨论记录】\n{todayTranscript}\n\n{privateContext}\n\n你投几号？\n\n【格式】\n严格返回 JSON 对象，不要代码块、不要多余文字：\n{voteJsonFormat}\n"
     },
     "night": {
       "option": "{seat}号({name})",
       "optionName": "({name})",
       "todayDiscussionLabel": "【今日讨论】",
-      "selfSpeechLabel": "【你今天的发言】",
       "seer": {
         "base": "【身份】\n你是 {seat}号「{name}」\n身份: {role}\n\n{coreRules}",
         "checkedLine": "已查验过: {list}（不建议重复查验）",
@@ -1956,9 +1955,7 @@
       "hunterRoleReveal": "- 第{day}天：{hunter} 已由主持人公开确认为猎人，并开枪带走 {target}；开枪不产生查验结果，也不公开 {target} 的身份。",
       "idiotRoleReveal": "- 第{day}天：{player} 已由主持人公开确认为白痴。",
       "unannouncedNightResult": "主持人尚未公布昨夜死亡结果。你只能知道角色私有信息中明确列出的内容；不能从当前死亡列表为空推断为平安夜，也不能断言谁昨夜出局。",
-      "selfSpeechIncludedInTimeline": "你的发言已作为{seat}号保留在上方完整时间线的实际位置，不在这里重复。",
       "transcriptRound": "第{round}轮",
-      "transcriptCurrentlyEliminated": "（当前已出局）",
       "transcriptPkBadge": "警徽",
       "transcriptPkVote": "放逐",
       "transcriptPhaseHeader": "【{phase}（按实际发生顺序）】",

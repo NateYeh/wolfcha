@@ -185,9 +185,6 @@ export class VotePhase extends GamePhase {
     const { t } = getI18n();
     const todayTranscript = buildTodayTranscript(state);
     const selfSpeech = buildPlayerTodaySpeech(state, player);
-    const selfSpeechContext = selfSpeech
-      ? t("promptUtils.gameContext.selfSpeechIncludedInTimeline", { seat: player.seat + 1 })
-      : "";
 
     // 放逐票和警徽票一樣事後必被復盤；狼隊最容易在票型上整隊暴露，
     // 因此把票型紀律只拼給狼人（好人沒有這個問題，多給反而稀釋其他指引）。
@@ -217,7 +214,6 @@ export class VotePhase extends GamePhase {
       sharedContext: gameContextParts.shared,
       privateContext: privateZone,
       todayTranscript: todayTranscript || t("prompts.vote.userNoTranscript"),
-      selfSpeech: selfSpeechContext || t("prompts.vote.userNoSelfSpeech"),
       voteJsonFormat: JSON.stringify({ seat: exampleSeat }),
     }) + `\n\n${buildDecisionGrounding(state, player)}\n<my_public_position>\n${selfSpeech || t("promptUtils.gameContext.noPublicSpeechToday")}\n</my_public_position>\n投票前核对自己最后明确支持或排除的目标。改口是你的自由——真人也会反悔、会被说服；想改就在 reason 里写一句为什么。如果本轮没有新发言、新事件，沿用自己公开的结论就行，别编造还没发生的回应。不要拿别人的结论当依据：你要引用“某人账算不平”“某人不合逻辑”这类说法，必须自己先核对原始记录（票型、发言、死亡）；核对后发现对方讲的是事实，就不能再用这个理由投票。只输出 {"seat":座位号,"reason":"本次投票依据"}。`;
 

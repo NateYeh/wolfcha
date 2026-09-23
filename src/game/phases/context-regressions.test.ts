@@ -965,7 +965,7 @@ test("ICU 參數漏傳會讓整段退化成 key：所有階段都不得出現未
     "HUNTER_SHOOT", "SELF_DESTRUCT", "KNIGHT_DUEL",
   ];
   // 沒填的 ICU 佔位符會讓 t() 拋 FORMATTING_ERROR 並回傳 key，prompt 就整段壞掉
-  const broken = /\{(coreRules|seat|name|role|day|round|kind|vote|format|jsonFormat|v|who|seats|target|list|text|count|voters|alive|total|bullets|confirmed|phase|taskLine|campaignRequirements|guidelines|persona|options|example|knifeLine|speakOrder|phaseHintSection|phaseHint|todayTranscript|selfSpeech|sharedContext|privateContext|noTranscript|lastWords|lastTarget|abstainLine|saveJsonFormat|poisonJsonFormat|passJsonFormat|tearJsonFormat|optionsLine)\}/;
+  const broken = /\{(coreRules|seat|name|role|day|round|kind|vote|format|jsonFormat|v|who|seats|target|list|text|count|voters|alive|total|bullets|confirmed|phase|taskLine|campaignRequirements|guidelines|persona|options|example|knifeLine|speakOrder|phaseHintSection|phaseHint|todayTranscript|selfSpeech|selfSpeechSection|sharedContext|privateContext|noTranscript|lastWords|lastTarget|abstainLine|saveJsonFormat|poisonJsonFormat|passJsonFormat|tearJsonFormat|optionsLine)\}/;
   const keyLike = /\b(prompts|promptUtils|specialEvents|uiText|badgePhase)\.[a-zA-Z.]+/;
   const checked: string[] = [];
   for (const phase of phases) {
