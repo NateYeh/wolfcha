@@ -60,7 +60,7 @@ export class BadgePhase extends GamePhase {
         options: alivePlayers
           .map((p) => t("prompts.badge.option", { seat: p.seat + 1, name: p.displayName }))
           .join(t("promptUtils.gameContext.listSeparator")),
-        jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "一句话说明你为什么把警徽票投给他" }),
+        jsonFormat: JSON.stringify({ seat: exampleSeat, reason: t("promptUtils.gameContext.jsonReasonBadgeVote") }),
       });
     const systemParts: SystemPromptPart[] = [
       ...buildSharedSystemParts(state),
@@ -141,8 +141,8 @@ export class BadgePhase extends GamePhase {
       options: alivePlayers
         .map((p) => t("prompts.badge.option", { seat: p.seat + 1, name: p.displayName }))
         .join(t("promptUtils.gameContext.listSeparator")),
-      jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "一句话说明你为什么把徽交给他" }),
-      tearJsonFormat: JSON.stringify({ action: "tear", reason: "一句话说明你为什么撕徽" }),
+      jsonFormat: JSON.stringify({ seat: exampleSeat, reason: t("promptUtils.gameContext.jsonReasonBadgeTransfer") }),
+      tearJsonFormat: JSON.stringify({ action: "tear", reason: t("promptUtils.gameContext.jsonReasonBadgeTear") }),
     });
     const systemParts: SystemPromptPart[] = [
       ...buildSharedSystemParts(state),

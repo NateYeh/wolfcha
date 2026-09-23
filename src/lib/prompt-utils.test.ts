@@ -749,3 +749,77 @@ test("角色設定分簡繁：hidden 區塊（講話習慣底層欄位、玩家�
   assert.match(cn, /- 狼人杀理解：老手/);
   assert.match(cn, /- 胆量：偏怂/);
 });
+
+test("繁中局：程式碼組出的 prompt 不得混入簡體字（各角色私有帳目、決策帳本、票型）", async () => {
+  const { createSinglePlayerContextAuditState } = await import("../../scripts/single-player-context-audit");
+  setLocale("zh-TW");
+  const audit = createSinglePlayerContextAuditState();
+  // 只留程式碼/i18n 產生的內容：清掉訊息與簡體字名字、人設，避免把測試 fixture 的簡體算進來
+  const state: GameState = {
+    ...audit,
+    phase: "DAY_SPEECH",
+    messages: [],
+    players: audit.players.map((p, index) => ({
+      ...p,
+      displayName: `甲${index + 1}`,
+      agentProfile: p.agentProfile
+        ? {
+            ...p.agentProfile,
+            persona: {
+              ...p.agentProfile.persona,
+              voiceRules: ["直接講重點"],
+              werewolfExperience: "老手",
+              vocabularyStyle: "口語",
+              reasoningStyle: "兩層",
+              speechLengthHabit: "短",
+              pressureStyle: "急",
+              uncertaintyStyle: "沉默",
+              mistakePattern: "記錯票",
+              wolfDeceptionStyle: "話變多",
+            },
+            playerMind: {
+              courage: "偏慫",
+              memoryBias: "記得數字",
+              suspicionThreshold: "容易起疑",
+              selfProtection: "先自保",
+              logicDepth: "兩層",
+              tablePresence: "存在感強",
+            },
+          }
+        : p.agentProfile,
+    })),
+  };
+
+  // 抽樣「只出現在簡體」的字：出現任何一個就代表某段文案沒走 i18n
+  const simplifiedOnly = /[这说语认为场门后与个号决记录药护忆怀阈倾逻辑胆词汇惯压应误伪装队击杀胜负条规则阵预猎验骑卫]/;
+  const roleTexts: string[] = [];
+  for (const role of ["Seer", "Witch", "Guard", "Werewolf"] as const) {
+    const player = state.players.find((p) => p.role === role);
+    if (!player) continue;
+    const context = buildGameContext({ ...state, phase: "NIGHT_SEER_ACTION" }, player);
+    roleTexts.push(`### ${role}\n${context}\n${buildDecisionGrounding(state, player)}`);
+  }
+  assert.ok(roleTexts.length >= 3, "至少要驗到三個角色的私有帳目");
+  for (const text of roleTexts) {
+    const match = text.match(simplifiedOnly);
+    assert.equal(match, null, `繁中 prompt 混入簡體字「${match?.[0]}」：\n${text.slice(0, 400)}`);
+  }
+
+  // 白天：公開事實、票型輪次、逐字稿的系統訊息前綴也要是繁體
+  const dayPlayer = state.players.find((p) => p.role === "Villager") ?? state.players[0];
+  state.messages = [
+    {
+      id: "m1",
+      playerId: state.players[1].playerId,
+      playerName: state.players[1].displayName,
+      content: "我先講兩句。",
+      phase: "DAY_SPEECH",
+      day: state.day,
+      timestamp: 1,
+    },
+  ];
+  const dayText = buildGameContext(state, dayPlayer);
+  const dayMatch = dayText.match(simplifiedOnly);
+  assert.equal(dayMatch, null, `白天 prompt 混入簡體字「${dayMatch?.[0]}」`);
+  setLocale("zh-CN");
+});

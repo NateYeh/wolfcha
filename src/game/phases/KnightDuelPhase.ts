@@ -45,7 +45,7 @@ export class KnightDuelPhase extends GamePhase {
 
     const effectLine = t("prompts.knightDuel.effectLine");
 
-    const duelExample = { action: "duel", seat: exampleSeat, reason: "<一句话：为什么现在翻牌，挑战谁>" };
+    const duelExample = { action: "duel", seat: exampleSeat, reason: t("promptUtils.gameContext.jsonReasonKnightDuel") };
     const passExample = { action: "pass" };
 
     const dynamicContent = t("prompts.knightDuel.task", {

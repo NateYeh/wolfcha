@@ -63,8 +63,8 @@ export class SelfDestructPhase extends GamePhase {
             : t("prompts.selfDestruct.badgeLineWolfFirst");
 
     const boomExample = takesPlayer
-      ? { action: "boom", seat: exampleSeat, reason: "<一句话：为什么现在炸>" }
-      : { action: "boom", reason: "<一句话：为什么现在炸>" };
+      ? { action: "boom", seat: exampleSeat, reason: t("promptUtils.gameContext.jsonReasonSelfDestruct") }
+      : { action: "boom", reason: t("promptUtils.gameContext.jsonReasonSelfDestruct") };
     const passExample = { action: "pass" };
 
     const dynamicContent = t("prompts.selfDestruct.task", {

@@ -253,7 +253,7 @@ export class NightPhase extends GamePhase {
     }), player, !!state.isGenshinMode);
     const dynamicContent = t("prompts.mute.task", {
       options,
-      jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "<一句话：为什么禁言他>" }),
+      jsonFormat: JSON.stringify({ seat: exampleSeat, reason: t("promptUtils.gameContext.jsonReasonMute") }),
     });
     // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
     const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
@@ -261,7 +261,7 @@ export class NightPhase extends GamePhase {
 
     const user = t("prompts.mute.user", {
       context: [gameContext, cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
-      jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "<一句话：为什么禁言他>" }),
+      jsonFormat: JSON.stringify({ seat: exampleSeat, reason: t("promptUtils.gameContext.jsonReasonMute") }),
     });
 
     return { system, user, systemParts };
@@ -665,7 +665,7 @@ export class NightPhase extends GamePhase {
 
     const user = t("prompts.night.seer.user", {
       context: [this.buildContextWithDay(context, todayTranscript, selfSpeech), cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
-      jsonFormat: JSON.stringify({ seat: (eligiblePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你为什么查验他" }),
+      jsonFormat: JSON.stringify({ seat: (eligiblePlayers[0]?.seat ?? player.seat) + 1, reason: t("promptUtils.gameContext.jsonReasonSeer") }),
     });
 
     return { system, user, systemParts };
@@ -724,7 +724,7 @@ export class NightPhase extends GamePhase {
 
     const user = t("prompts.night.wolf.user", {
       context: [this.buildContextWithDay(context, todayTranscript, selfSpeech), identitySection, cacheableRules, taskSection].filter(Boolean).join("\n\n"),
-      jsonFormat: JSON.stringify({ seat: (alivePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你们为什么刀他" }),
+      jsonFormat: JSON.stringify({ seat: (alivePlayers[0]?.seat ?? player.seat) + 1, reason: t("promptUtils.gameContext.jsonReasonWolf") }),
     });
 
     return { system, user, systemParts };
@@ -769,7 +769,7 @@ export class NightPhase extends GamePhase {
 
     const user = t("prompts.night.guard.user", {
       context: [this.buildContextWithDay(context, todayTranscript, selfSpeech), cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
-      jsonFormat: JSON.stringify({ seat: (eligiblePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你为什么守他" }),
+      jsonFormat: JSON.stringify({ seat: (eligiblePlayers[0]?.seat ?? player.seat) + 1, reason: t("promptUtils.gameContext.jsonReasonGuard") }),
     });
 
     return { system, user, systemParts };
@@ -842,9 +842,9 @@ export class NightPhase extends GamePhase {
         ? t("prompts.night.witch.selfSaveAllowed")
         : t("prompts.night.witch.selfSaveForbidden"),
       poisonTargets,
-      saveJsonFormat: JSON.stringify({ action: "save", reason: "一句话说明你的判断" }),
-      poisonJsonFormat: JSON.stringify({ action: "poison", seat: (alivePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你的判断" }),
-      passJsonFormat: JSON.stringify({ action: "pass", reason: "一句话说明你的判断" }),
+      saveJsonFormat: JSON.stringify({ action: "save", reason: t("promptUtils.gameContext.jsonReasonWitch") }),
+      poisonJsonFormat: JSON.stringify({ action: "poison", seat: (alivePlayers[0]?.seat ?? player.seat) + 1, reason: t("promptUtils.gameContext.jsonReasonWitch") }),
+      passJsonFormat: JSON.stringify({ action: "pass", reason: t("promptUtils.gameContext.jsonReasonWitch") }),
     });
     // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
     const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];

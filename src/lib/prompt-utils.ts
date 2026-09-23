@@ -249,16 +249,17 @@ export const buildPublicFactsForPlayer = (state: GameState, player: Player): str
   const isDaySpeech = state.phase.startsWith("DAY_");
   if (!isDaySpeech) return "";
 
+  const { t } = getI18n();
   const facts: string[] = [];
 
   // --- 1. 当天其他玩家公开点名当前玩家 ---
   const dayStartIndex = getDayStartIndex(state);
   const mentionedBy: number[] = [];
-  const seatStr = `${player.seat + 1}号`;
+  const seatPattern = new RegExp(`${player.seat + 1}\\s*[号號]`);
   for (let i = dayStartIndex; i < state.messages.length; i++) {
     const m = state.messages[i];
     if (m.isSystem || m.playerId === player.playerId) continue;
-    if (m.content.includes(seatStr)) {
+    if (seatPattern.test(m.content)) {
       // 这是对"今天谁点名了我"的历史回读：发言已经发生，与说话人此刻是否存活无关。
       // 若按当前 alive 过滤，会吞掉"当天先发言点名、随后被票出/枪杀"玩家的点名。
       const speaker = state.players.find(p => p.playerId === m.playerId);
@@ -266,8 +267,10 @@ export const buildPublicFactsForPlayer = (state: GameState, player: Player): str
     }
   }
   if (mentionedBy.length > 0) {
-    const who = [...new Set(mentionedBy)].map(s => `${s + 1}号`).join("、");
-    facts.push(`今天已有公开发言中，${who}点名提到过你`);
+    const who = [...new Set(mentionedBy)]
+      .map((s) => t("promptUtils.gameContext.seatLabel", { seat: s + 1 }))
+      .join(t("promptUtils.gameContext.listSeparator"));
+    facts.push(t("promptUtils.gameContext.factsMentionedBy", { who }));
   }
 
   // --- 2. 当前玩家与本日已公布出局玩家相邻 ---
@@ -300,7 +303,11 @@ export const buildPublicFactsForPlayer = (state: GameState, player: Player): str
     return diff === 1 || diff === totalSeats - 1;
   }).map((deadPlayer) => deadPlayer.seat);
   if (adjacentDeadSeats.length > 0) {
-    facts.push(`本日已公布出局的${adjacentDeadSeats.map((seat) => `${seat + 1}号`).join("、")}与你座位相邻`);
+    facts.push(t("promptUtils.gameContext.factsAdjacentDead", {
+      seats: adjacentDeadSeats
+        .map((seat) => t("promptUtils.gameContext.seatLabel", { seat: seat + 1 }))
+        .join(t("promptUtils.gameContext.listSeparator")),
+    }));
   }
 
   // 立场类提示（警长支持/质疑）已移除：与对局事实无关的方向性暗示会推动同一玩家前后立场漂移。
@@ -318,8 +325,13 @@ export const buildPublicFactsForPlayer = (state: GameState, player: Player): str
           .map(([id]) => state.players.find(p => p.playerId === id))
           .filter((p): p is Player => !!p && p.alive);
         if (sameVoters.length > 0) {
-          const names = sameVoters.slice(0, 2).map(p => `${p.seat + 1}号`).join("、");
-          facts.push(`昨天你与${names}都投给了${myVote + 1}号`);
+          const names = sameVoters.slice(0, 2)
+            .map((p) => t("promptUtils.gameContext.seatLabel", { seat: p.seat + 1 }))
+            .join(t("promptUtils.gameContext.listSeparator"));
+          facts.push(t("promptUtils.gameContext.factsSameVoteYesterday", {
+            seats: names,
+            target: t("promptUtils.gameContext.seatLabel", { seat: myVote + 1 }),
+          }));
         }
       }
     }
@@ -327,37 +339,57 @@ export const buildPublicFactsForPlayer = (state: GameState, player: Player): str
 
   if (facts.length === 0) return "";
 
-  return `<public_facts_for_player>\n【与你有关的公开事实】\n${facts.map((fact) => `- ${fact}`).join("\n")}\n</public_facts_for_player>`;
+  return `<public_facts_for_player>\n${t("promptUtils.gameContext.factsHeader")}\n${facts.map((fact) => `- ${fact}`).join("\n")}\n</public_facts_for_player>`;
 }
 
 /** 决策前的短事实账本：只取主持人已公布的结果和本人行动，绝不把玩家声明升级为事实。 */
 export function buildDecisionGrounding(state: GameState, player: Player): string {
+  const { t } = getI18n();
+  const seatLabel = (seat: number): string => t("promptUtils.gameContext.seatLabel", { seat });
   const lines: string[] = [];
   for (let day = 1; day <= state.day; day++) {
     const night = state.nightHistory?.[day];
     if (!areNightResultsVisible(state, day)) {
-      lines.push(`第${day}夜：结果尚未公布。`);
+      lines.push(t("promptUtils.gameContext.groundingNightPending", { day }));
     } else if (!night || !Array.isArray(night.deaths)) {
-      lines.push(`第${day}夜：记录缺失，不能判为平安夜。`);
+      lines.push(t("promptUtils.gameContext.groundingNightMissing", { day }));
     } else {
       const deaths = getRecordedNightDeaths(night);
-      lines.push(`第${day}夜：${deaths.length ? `${deaths.map((d) => `${d.seat + 1}号`).join("、")}出局，不是平安夜` : "无人出局（平安夜）"}。`);
+      lines.push(deaths.length
+        ? t("promptUtils.gameContext.groundingNightDeaths", {
+            day,
+            seats: deaths.map((d) => seatLabel(d.seat + 1)).join(t("promptUtils.gameContext.listSeparator")),
+          })
+        : t("promptUtils.gameContext.groundingNightClean", { day }));
     }
   }
   for (const round of state.voteRounds ?? []) {
     const target = round.votes[player.playerId];
-    const kind = round.kind === "badge" ? "警徽选举" : "放逐";
-    const vote = typeof target === "number" ? target < 0 ? "弃票" : `投给${target + 1}号`
+    const kind = t(round.kind === "badge"
+      ? "promptUtils.gameContext.groundingKindBadge"
+      : "promptUtils.gameContext.groundingKindExile");
+    const vote = typeof target === "number"
+      ? target < 0
+        ? t("promptUtils.gameContext.groundingAbstain")
+        : t("promptUtils.gameContext.groundingVotedFor", { seat: seatLabel(target + 1) })
       : round.candidates.includes(player.seat) && (round.kind === "badge" || round.round > 1)
-        ? "作为候选人没有投票资格" : "没有本人投票记录";
-    lines.push(`本人第${round.day}天${kind}第${round.round}轮：${vote}。`);
+        ? t("promptUtils.gameContext.groundingCandidateNoVote")
+        : t("promptUtils.gameContext.groundingNoVoteRecord");
+    lines.push(t("promptUtils.gameContext.groundingMyVoteLine", {
+      day: round.day,
+      kind,
+      round: round.round,
+      vote,
+    }));
   }
   if ((state.phase === "DAY_BADGE_SPEECH" || (state.phase === "DAY_PK_SPEECH" && state.pkSource === "badge")) &&
-      state.badge.candidates.includes(player.seat)) lines.push("本轮你是警徽候选人，没有选举投票权，不存在投自己或投他人的选举票。");
+      state.badge.candidates.includes(player.seat)) {
+    lines.push(t("promptUtils.gameContext.groundingBadgeCandidateNote"));
+  }
   return `<decision_grounding>
 ${lines.join("\n")}
-复述票型要区分警徽和放逐、投票人和被投人；累计几次平安夜不等于连续几夜。玩家原话是声明，身份只有主持人翻牌才算公开确认；被投出不等于已验明狼人。
-引用发言要核对发言人、日期和完整上下句。对方说错的话（口误）可能是狼露的马脚，也可能只是紧张、打错字——这两种在桌上都会发生，值不值得记他一笔，你自己判断。没有查验记录的座位不能凭空补成金水——「某人说了一句可信」不构成依据；但主持人已公布的事件（谁出局、警徽移交给谁、公开技能翻牌）属于事实，可以作为推论的起点：唯一跳预言家者被夜刀后把警徽交给的人，应按「死者最后的信任／倾向金水」理解，不是「说法矛盾」。你的真实身份与私有查验用于自己判断，不得误把自己列入待查身份；策略性隐瞒或悍跳可以保留。
+${t("promptUtils.gameContext.groundingRulesLine1")}
+${t("promptUtils.gameContext.groundingRulesLine2")}
 </decision_grounding>`;
 }
 
@@ -502,8 +534,9 @@ const getRecordedNightDeaths = (history: NightHistoryRecord | undefined): NightD
 };
 
 const formatSeatName = (state: GameState, seat: number): string => {
+  const { t } = getI18n();
   const player = state.players.find((p) => p.seat === seat);
-  return `${seat + 1}号${player?.displayName || ""}`;
+  return t("promptUtils.gameContext.seatName", { seat: seat + 1, name: player?.displayName || "" });
 };
 
 const buildVoteGroupLines = (
@@ -665,7 +698,9 @@ const formatTranscriptMessages = (
 
   messages.forEach((m) => {
     if (m.isSystem) {
-      if (shouldIncludeHistoricalSystemLine(m.content.trim())) lines.push(`系统: ${m.content.trim()}`);
+      if (shouldIncludeHistoricalSystemLine(m.content.trim())) {
+        lines.push(`${t("promptUtils.gameContext.transcriptSystemPrefix")}${m.content.trim()}`);
+      }
       return;
     }
     if (m.phase !== previousPhase || m.speechRound !== previousRound) {
@@ -812,21 +847,32 @@ const buildRolePrivateInfo = (
     const checks = history.length > 0
       ? history.map((record) => {
           const target = state.players.find((p) => p.seat === record.targetSeat);
-          const resultEmoji = record.isWolf ? "🐺 狼人" : "✓ 好人";
-          return `  第${record.day}夜 → ${record.targetSeat + 1}号${target?.displayName || ""} = ${resultEmoji}`;
+          const result = t(record.isWolf
+            ? "promptUtils.gameContext.seerResultWolf"
+            : "promptUtils.gameContext.seerResultGood");
+          return t("promptUtils.gameContext.seerRecordLine", {
+            day: record.day,
+            seat: t("promptUtils.gameContext.seatLabel", { seat: record.targetSeat + 1 }),
+            name: target?.displayName || "",
+            result,
+          });
         })
       : [t("promptUtils.gameContext.seerHistoryEmpty")];
     
     let seerInfo = `<your_seer_checks>
-【你的查验记录】
+${t("promptUtils.gameContext.seerChecksHeader")}
 ${checks.join("\n")}`;
     seerInfo += `\n</your_seer_checks>`;
     return seerInfo;
   }
   
   if (player.role === "Witch") {
-    const healStatus = state.roleAbilities.witchHealUsed ? "已用" : "可用";
-    const poisonStatus = state.roleAbilities.witchPoisonUsed ? "已用" : "可用";
+    const healStatus = t(state.roleAbilities.witchHealUsed
+      ? "promptUtils.gameContext.witchStatusUsed"
+      : "promptUtils.gameContext.witchStatusAvailable");
+    const poisonStatus = t(state.roleAbilities.witchPoisonUsed
+      ? "promptUtils.gameContext.witchStatusUsed"
+      : "promptUtils.gameContext.witchStatusAvailable");
     const witchActions: string[] = [];
     const wolfTargetInfo: string[] = [];
 
@@ -847,7 +893,11 @@ ${checks.join("\n")}`;
         if (history.wolfTarget !== undefined && witchHadAntidoteThatNight) {
           const targetPlayer = state.players.find(p => p.seat === history.wolfTarget);
           if (targetPlayer) {
-            wolfTargetInfo.push(`  第${day}夜：狼目标为 ${history.wolfTarget + 1}号${targetPlayer.displayName}`);
+            wolfTargetInfo.push(t("promptUtils.gameContext.witchKnifeLine", {
+              day,
+              seat: t("promptUtils.gameContext.seatLabel", { seat: history.wolfTarget + 1 }),
+              name: targetPlayer.displayName,
+            }));
           }
         }
 
@@ -857,28 +907,37 @@ ${checks.join("\n")}`;
             // 守+救叠加(milk)等情形下被救者当晚仍会出局，需据当晚结算标注救援是否生效，避免女巫误以为救活了人。
             // 救援"结果"在天亮公布前不展示，与狼/守卫一致显示"结果待天亮公布"（当晚 outcome 门控）。
             const saveNote = !outcomeKnownForDay(Number(day))
-              ? "（结果待天亮公布）"
+              ? t("promptUtils.gameContext.witchSavePending")
               : getRecordedNightDeaths(history).some((d) => d.seat === history.wolfTarget)
-                ? "（救援未生效，仍出局）"
+                ? t("promptUtils.gameContext.witchSaveFailed")
                 : "";
-            witchActions.push(`  第${day}夜：救了 ${history.wolfTarget + 1}号${savedPlayer.displayName}${saveNote}`);
+            witchActions.push(t("promptUtils.gameContext.witchSaveLine", {
+              day,
+              seat: t("promptUtils.gameContext.seatLabel", { seat: history.wolfTarget + 1 }),
+              name: savedPlayer.displayName,
+              note: saveNote,
+            }));
           }
         }
         if (history.witchPoison !== undefined) {
           const poisonedPlayer = state.players.find(p => p.seat === history.witchPoison);
           if (poisonedPlayer) {
-            witchActions.push(`  第${day}夜：毒了 ${history.witchPoison + 1}号${poisonedPlayer.displayName}`);
+            witchActions.push(t("promptUtils.gameContext.witchPoisonLine", {
+              day,
+              seat: t("promptUtils.gameContext.seatLabel", { seat: history.witchPoison + 1 }),
+              name: poisonedPlayer.displayName,
+            }));
           }
         }
       });
     }
     let witchInfo = `<your_potions>
-【你的药水状态】解药: ${healStatus} | 毒药: ${poisonStatus}`;
+${t("promptUtils.gameContext.witchStatusHeader", { heal: healStatus, poison: poisonStatus })}`;
     if (wolfTargetInfo.length > 0) {
-      witchInfo += `\n【刀口信息】\n${wolfTargetInfo.join('\n')}`;
+      witchInfo += `\n${t("promptUtils.gameContext.witchKnifeHeader")}\n${wolfTargetInfo.join('\n')}`;
     }
     if (witchActions.length > 0) {
-      witchInfo += `\n【用药记录】\n${witchActions.join("\n")}`;
+      witchInfo += `\n${t("promptUtils.gameContext.witchActionsHeader")}\n${witchActions.join("\n")}`;
     }
     witchInfo += `\n</your_potions>`;
     return witchInfo;
@@ -892,19 +951,45 @@ ${checks.join("\n")}`;
         const seat = history.guardTarget!;
         const target = state.players.find((p) => p.seat === seat);
         const deaths = getRecordedNightDeaths(history);
-        const result = !outcomeKnownForDay(Number(day)) ? "守护结果待天亮公布"
-          : !Array.isArray(history.deaths) ? "当夜结算记录缺失，不能判断目标生死或是否平安夜"
-          : `${deaths.some((death) => death.seat === seat) ? "守护目标当夜出局" : "守护目标当夜未出局"}；全场第${day}夜：${deaths.length
-            ? `${deaths.map((death) => `${death.seat + 1}号`).join("、")}出局，并非平安夜`
-            : "无人出局（平安夜）"}`;
-        return `  第${day}夜 → ${seat + 1}号${target?.displayName || ""}：${result}`;
+        const seatList = deaths
+          .map((death) => t("promptUtils.gameContext.seatLabel", { seat: death.seat + 1 }))
+          .join(t("promptUtils.gameContext.listSeparator"));
+        const result = !outcomeKnownForDay(Number(day))
+          ? t("promptUtils.gameContext.guardResultPending")
+          : !Array.isArray(history.deaths)
+            ? t("promptUtils.gameContext.guardResultMissing")
+            : `${
+                t(deaths.some((death) => death.seat === seat)
+                  ? "promptUtils.gameContext.guardTargetDied"
+                  : "promptUtils.gameContext.guardTargetAlive")
+              }；${
+                deaths.length
+                  ? t("promptUtils.gameContext.guardNightSummaryDeaths", { day, seats: seatList })
+                  : t("promptUtils.gameContext.guardNightSummaryClean", { day })
+              }`;
+        return t("promptUtils.gameContext.guardRecordLine", {
+          day,
+          seat: t("promptUtils.gameContext.seatLabel", { seat: seat + 1 }),
+          name: target?.displayName || "",
+          result,
+        });
       });
     const lastSeat = state.nightActions.lastGuardTarget;
     const lastTarget = state.players.find((p) => p.seat === lastSeat);
     let guardInfo = `<your_guard_info>
-【守护记录】${records.length ? `\n${records.join("\n")}` : "暂无已记录的守护行动"}
-【记录含义】守护目标未出局不代表全场平安夜，也不能证明守护生效或目标被狼人袭击。以每夜全场公开结果为准，不得为维护先前发言而改写死亡日期。
-${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.displayName || ""}\n【今晚限制】不能连续守护 ${lastSeat + 1}号` : "【今晚限制】无，可以守护任何存活玩家"}`;
+${t("promptUtils.gameContext.guardRecordsHeader")}${
+      records.length ? `\n${records.join("\n")}` : t("promptUtils.gameContext.guardNoRecords")}
+${t("promptUtils.gameContext.guardMeaningNote")}
+${
+      lastSeat !== undefined
+        ? `${t("promptUtils.gameContext.guardLastTarget", {
+            seat: t("promptUtils.gameContext.seatLabel", { seat: lastSeat + 1 }),
+            name: lastTarget?.displayName || "",
+          })}\n${t("promptUtils.gameContext.guardTonightLimit", {
+            seat: t("promptUtils.gameContext.seatLabel", { seat: lastSeat + 1 }),
+          })}`
+        : t("promptUtils.gameContext.guardNoLimit")
+    }`;
     guardInfo += `\n</your_guard_info>`;
     return guardInfo;
   }
@@ -913,8 +998,13 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
     const allWolves = state.players.filter((p) => isWolfRole(p.role));
     const aliveWolves = allWolves.filter((p) => p.alive);
     const formatWolfList = (wolves: Player[]) => wolves.length > 0
-      ? wolves.map((wolf) => `${wolf.seat + 1}号${wolf.displayName}`).join("、")
-      : "无";
+      ? wolves
+          .map((wolf) => t("promptUtils.gameContext.seatName", {
+            seat: wolf.seat + 1,
+            name: wolf.displayName,
+          }))
+          .join(t("promptUtils.gameContext.listSeparator"))
+      : t("promptUtils.gameContext.wolfNone");
 
     // 狼队历次出刀记录：这是狼阵营自己的夜间行动，属于合法私有信息。
     // 缺失它会导致狼人白天对死者归因/悍跳/自爆时与自己真实刀法脱节。
@@ -929,20 +1019,25 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
           // 目标当晚是否出局（基于夜间结算，公开可知，不泄露被守/被救的具体原因）；
           // 当晚结果在天亮公布前不展示（避免狼在竞选发言阶段提前得知刀法是否成功）。
           const outcome = !outcomeKnownForDay(Number(day))
-            ? "结果待天亮公布"
+            ? t("promptUtils.gameContext.wolfKillPending")
             : getRecordedNightDeaths(history).some((d) => d.seat === history.wolfTarget)
-              ? "目标当晚出局"
-              : "目标当晚存活（被守护或被解药救下）";
-          killRecords.push(`  第${day}夜：刀 ${history.wolfTarget + 1}号${target.displayName} → ${outcome}`);
+              ? t("promptUtils.gameContext.wolfKillDied")
+              : t("promptUtils.gameContext.wolfKillSurvived");
+          killRecords.push(t("promptUtils.gameContext.wolfKillLine", {
+            day,
+            seat: t("promptUtils.gameContext.seatLabel", { seat: history.wolfTarget + 1 }),
+            name: target.displayName,
+            outcome,
+          }));
         });
     }
 
     let wolfInfo = `<your_wolf_team>
-【存活狼队】${formatWolfList(aliveWolves)}
-【已出局狼队】${formatWolfList(allWolves.filter((wolf) => !wolf.alive))}
-【狼人存活】${aliveWolves.length}/${allWolves.length}`;
+${t("promptUtils.gameContext.wolfAliveHeader")}${formatWolfList(aliveWolves)}
+${t("promptUtils.gameContext.wolfDeadHeader")}${formatWolfList(allWolves.filter((wolf) => !wolf.alive))}
+${t("promptUtils.gameContext.wolfAliveCount", { alive: aliveWolves.length, total: allWolves.length })}`;
     if (killRecords.length > 0) {
-      wolfInfo += `\n【狼队出刀记录】\n${killRecords.join("\n")}`;
+      wolfInfo += `\n${t("promptUtils.gameContext.wolfKillHeader")}\n${killRecords.join("\n")}`;
     }
     // 第一夜商定的分工：夜裡的事實，注入所有狼視角（報名、發言、投票都看得到）。
     if (state.wolfTeamPlan) {
@@ -1211,16 +1306,34 @@ alive_count: ${alivePlayers.length}${mutedLine}
 
   const voteRounds = state.voteRounds || [];
   if (voteRounds.length) {
-    const outcomes = { elected: "当选警长", executed: "被放逐出局", "idiot-revealed": "白痴翻牌免死（失去投票权）", tie: "平票", "no-votes": "无有效票" };
+    const outcomes = {
+      elected: t("promptUtils.gameContext.voteRoundOutcomeElected"),
+      executed: t("promptUtils.gameContext.voteRoundOutcomeExecuted"),
+      "idiot-revealed": t("promptUtils.gameContext.voteRoundOutcomeIdiotRevealed"),
+      tie: t("promptUtils.gameContext.voteRoundOutcomeTie"),
+      "no-votes": t("promptUtils.gameContext.voteRoundOutcomeNoVotes"),
+    };
     const rounds = [...voteRounds].sort((a, b) => a.day - b.day || (a.kind === b.kind ? a.round - b.round : a.kind === "badge" ? -1 : 1));
     context += `\n\n<vote_rounds>`;
     for (const round of rounds) {
       const sheriffId = round.sheriffSeat === null ? undefined : state.players.find((p) => p.seat === round.sheriffSeat)?.playerId;
       const lines = buildVoteGroupLines(state, buildVoteGroupsFromPlayerTargets(state, round.votes), sheriffId, true);
-      context += `\n第${round.day}天 ${round.kind === "badge" ? "警徽选举" : "放逐投票"} 第${round.round}轮：`;
-      context += `\n  候选: ${round.candidates.map((seat) => formatSeatName(state, seat)).join("、")}`;
+      context += `\n${t("promptUtils.gameContext.voteRoundHeader", {
+        day: round.day,
+        kind: t(round.kind === "badge"
+          ? "promptUtils.gameContext.voteRoundKindBadge"
+          : "promptUtils.gameContext.voteRoundKindExile"),
+        round: round.round,
+      })}`;
+      context += `\n  ${t("promptUtils.gameContext.voteRoundCandidates", {
+        list: round.candidates
+          .map((seat) => formatSeatName(state, seat))
+          .join(t("promptUtils.gameContext.listSeparator")),
+      })}`;
       context += `\n${lines.join("\n")}`;
-      context += `\n  结果: ${round.winnerSeat === null ? "" : formatSeatName(state, round.winnerSeat) + " "}${outcomes[round.outcome]}`;
+      context += `\n  ${t("promptUtils.gameContext.voteRoundResult", {
+        text: `${round.winnerSeat === null ? "" : formatSeatName(state, round.winnerSeat) + " "}${outcomes[round.outcome]}`,
+      })}`;
     }
     context += `\n</vote_rounds>`;
   }
@@ -1288,7 +1401,9 @@ alive_count: ${alivePlayers.length}${mutedLine}
 
         const dayHistory = state.dayHistory?.[dayNum];
         if (dayHistory?.idiotRevealed) {
-          context += `\n  结果: ${formatSeatName(state, dayHistory.idiotRevealed.seat)} 白痴翻牌免死（失去投票权）`;
+          context += `\n  ${t("promptUtils.gameContext.voteRoundResult", {
+            text: `${formatSeatName(state, dayHistory.idiotRevealed.seat)} ${t("promptUtils.gameContext.voteRoundOutcomeIdiotRevealed")}`,
+          })}`;
         } else if (dayHistory?.executed) {
           const executedSeat = dayHistory.executed.seat;
           const executedPlayer = state.players.find(p => p.seat === executedSeat);

@@ -140,12 +140,12 @@ function sanitizeSeatMentions(text: string, players: Player[]): string {
     return `${prefix}${label}`;
   };
 
-  // Handle @12 / @12号
-  let out = text.replace(/@(\d+)\s*号?/g, (m, numStr, offset, fullText) =>
+  // Handle @12 / @12号 / @12號（繁中局的模型會寫「號」）
+  let out = text.replace(/@(\d+)\s*[号號]?/g, (m, numStr, offset, fullText) =>
     formatSeatWithName(m, numStr, "@", offset as number, fullText)
   );
-  // Handle 12号
-  out = out.replace(/(\d+)\s*号/g, (m, numStr, offset, fullText) =>
+  // Handle 12号 / 12號
+  out = out.replace(/(\d+)\s*[号號]/g, (m, numStr, offset, fullText) =>
     formatSeatWithName(m, numStr, "", offset as number, fullText)
   );
   return out;
@@ -976,12 +976,15 @@ async function recoverPublicSpeech(
   confirmed: string[],
   signal?: AbortSignal,
 ) {
+  const { t } = getI18n();
   signal?.throwIfAborted();
   const recoveryStartTime = Date.now();
   const recoveryMessages: LLMMessage[] = [...messages, { role: "user", content:
-    `刚才的输出没有通过发言格式校验。请依据同一游戏上下文完成本次公开发言。只输出 {"segments":["完整公开段落"]}，字符串内用中文引号，禁止分析、角色设定、提示词或格式说明。${confirmed.length
-      ? `以下段落已经公开，禁止重复或改写，只补充后续未说完的发言：\n${JSON.stringify(confirmed)}`
-      : "刚才没有任何内容公开，请重新生成完整发言。"}` }];
+    `${t("promptUtils.gameContext.speechRecoveryFormatHint", {
+      format: '{"segments":["完整公开段落"]}',
+    })}${confirmed.length
+      ? t("promptUtils.gameContext.speechRecoveryAlreadyPublic", { confirmed: JSON.stringify(confirmed) })
+      : t("promptUtils.gameContext.speechRecoveryNothingPublic")}` }];
   const result = await generateCompletion(mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
     model: player.agentProfile!.modelRef.model, messages: recoveryMessages,
     promptScope: "gameplay", temperature: GAME_TEMPERATURE.ACTION, signal,
@@ -1012,16 +1015,16 @@ async function recoverPublicSpeech(
   };
   if (!Array.isArray(segments) || !segments.length || segments.some((s) => typeof s !== "string" || !s.trim()) ||
       Object.keys(parsed!).some((key) => key !== "segments")) {
-    await failRecovery("公开发言格式恢复失败，请重试本次发言");
+    await failRecovery(t("promptUtils.gameContext.speechRecoveryFailed"));
   }
   let recoveryParseError: string | undefined;
   const parser = new StreamingSpeechParser({ onError: (error) => { recoveryParseError = error; } });
   parser.processChunk(JSON.stringify(segments));
   const sanitized = parser.end().map((s) => sanitizeSeatMentions(sanitizeModelArtifacts(s), state.players)).filter(Boolean);
-  if (recoveryParseError) await failRecovery("公开发言格式恢复失败：公开段落仍包含无效结构");
+  if (recoveryParseError) await failRecovery(t("promptUtils.gameContext.speechRecoveryFailedInvalid"));
   // 模型若把已公开的前缀重发，不按文本全局去重，只移除位置一致的完整前缀。
   if (confirmed.length && confirmed.every((s, i) => sanitized[i] === s)) sanitized.splice(0, confirmed.length);
-  if (!sanitized.length) await failRecovery("公开发言格式恢复失败：没有新增公开段落");
+  if (!sanitized.length) await failRecovery(t("promptUtils.gameContext.speechRecoveryFailedNoNew"));
   return { segments: sanitized, raw: result.content, messages: recoveryMessages };
 }
 
@@ -2047,8 +2050,11 @@ export function buildWolfTeamPlanPrompt(state: GameState, captain: Player): Prom
   const { t } = getI18n();
   const aliveWolves = state.players.filter((p) => isWolfRole(p.role) && p.alive);
   const teammates = aliveWolves
-    .map((wolf) => `${wolf.seat + 1}号${wolf.displayName}`)
-    .join("、");
+    .map((wolf) => t("promptUtils.gameContext.seatName", {
+      seat: wolf.seat + 1,
+      name: wolf.displayName,
+    }))
+    .join(t("promptUtils.gameContext.listSeparator"));
   const humanWolves = aliveWolves.filter((p) => p.isHuman);
   const humanNote =
     humanWolves.length > 0
@@ -2077,7 +2083,7 @@ export function buildWolfTeamPlanPrompt(state: GameState, captain: Player): Prom
         postureCodes[index % postureCodes.length],
       ])
     ),
-    reason: "一句话讲给队友听的计划意图",
+    reason: t("promptUtils.gameContext.jsonReasonWolfPlan"),
   });
 
   const base = bindIdentityAndRoleSetting(
@@ -2780,7 +2786,10 @@ export async function generateGameEndRemark(
   // 不再出现最后一天被从中间截断的情况。
   const keyEvents = Object.entries(state.dailySummaries ?? {})
     .sort(([a], [b]) => Number(a) - Number(b))
-    .map(([day, bullets]) => `第${day}天：${(bullets ?? []).join("；")}`)
+    .map(([day, bullets]) => t("promptUtils.gameContext.gameEndRemarkDaySummary", {
+      day,
+      bullets: (bullets ?? []).join("；"),
+    }))
     .join("\n")
     .slice(0, 3200);
   // 完整逐字发言记录：摘要再详细也是二手转述，逐字记录才是原话；赛后感言要点名具体行为，需要原话。
