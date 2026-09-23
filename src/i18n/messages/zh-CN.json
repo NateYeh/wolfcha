@@ -1945,7 +1945,7 @@
       "eliminated": "（已出局）",
       "lastWordsLabel": "【遗言】",
       "bannedDiscussion": "严禁讨论已出局玩家",
-      "focusReminder": "发言重点放在存活玩家，可引用死亡原因作为推理依据，但不要过度复盘已出局玩家",
+      "focusReminder": "发言重点放在存活玩家。出局玩家说过的话、遗言、票型、被刀原因都是线索，可以引用、可以对账；只是不要反复复述已经公开过的旧信息，也不要请已经出局的玩家再发言。",
       "timeReminder": "【当前时间】第{day}天{phase}，你是{seat}号{name}",
       "publicRoleConfigurationTitle": "【本局公开角色配置】",
       "publicRoleConfigurationItem": "- {role} × {count}",

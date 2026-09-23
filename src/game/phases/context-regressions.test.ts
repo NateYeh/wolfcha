@@ -883,3 +883,20 @@ test("過往白天記錄：用【第N天 白天记录】標題取代 <history>�
   // system 不受影響（公開事實仍在 user）
   assert.doesNotMatch(prompt.system, /白天記錄/);
 });
+
+test("出局玩家是合法線索：有人出局時附上的提醒要允許引用死者原話/遺言/票型/刀口", () => {
+  const state = fresh("DAY_SPEECH");
+  state.day = 3;
+  state.players[4] = { ...state.players[4], alive: false };
+  const ctx = buildGameContext(state, state.players[0]);
+
+  assert.match(ctx, /<focus_reminder>/);
+  // 明確允許：死者的話、遺言、票型、刀口都可引用對賬
+  assert.match(ctx, /出局玩家说过的话、遗言、票型、被刀原因都是线索/);
+  assert.match(ctx, /可以引用、可以对账/);
+  // 只禁止無新資訊的重複與叫死者再發言
+  assert.match(ctx, /不要反复复述已经公开过的旧信息/);
+  assert.match(ctx, /不要请已经出局的玩家再发言/);
+  // 舊的抑制措辭不得殘留
+  assert.doesNotMatch(ctx, /不要过度复盘已出局玩家/);
+});

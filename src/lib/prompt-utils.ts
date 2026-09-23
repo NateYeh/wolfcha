@@ -1299,7 +1299,9 @@ alive_count: ${alivePlayers.length}${mutedLine}
       }
     }
 
-    // Dead players note - softer guideline, allow referencing death causes but focus on alive players
+    // 有人出局才附的發言提醒：死者證據（原話、遺言、票型、刀口）是合法線索，鼓勵引用；
+    // 只禁止無新資訊的重複復盤與「請已出局玩家再發言」。
+    // 歷史：這裡原本是硬禁止討論死者的 <banned_discussion>，上游 eec1ef6 降級成軟提醒。
     context += `\n\n<focus_reminder>${t("promptUtils.gameContext.focusReminder")}</focus_reminder>`;
   }
 

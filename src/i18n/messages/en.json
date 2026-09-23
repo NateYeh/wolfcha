@@ -1945,7 +1945,7 @@
       "eliminated": " (eliminated)",
       "lastWordsLabel": "【Last words】",
       "bannedDiscussion": "Do not discuss eliminated players",
-      "focusReminder": "Focus on living players. You may reference death causes for reasoning, but avoid over-analyzing eliminated players",
+      "focusReminder": "Focus your speech on living players. The words, last words, votes and death causes of eliminated players are legitimate clues — quote them and audit them freely. Just do not repeat already-public information over and over, and do not ask an eliminated player to speak again.",
       "timeReminder": "【Current Time】Day {day} {phase}. You are Seat #{seat} ({name})",
       "publicRoleConfigurationTitle": "【Public role configuration】",
       "publicRoleConfigurationItem": "- {role} × {count}",
