@@ -31,6 +31,10 @@ const makePlayers = (): Player[] =>
     role,
     alignment: role === "Werewolf" || role === "WhiteWolfKing" ? "wolf" : "village",
     isHuman: seat === 7,
+    agentProfile: {
+      modelRef: { provider: "tokendance", model: "gemma4:31b-cloud" },
+      persona: { voiceRules: [], mbti: "INTJ", gender: "male", age: 30 },
+    },
   }));
 
 const makeState = (players: Player[], wolfTeamPlan?: WolfTeamPlan): GameState => ({
@@ -206,6 +210,50 @@ test("主導狼刀口提示的時間錨點：死訊在「同一天天亮」公�
   setLocale("zh-CN");
   assert.match(getI18n().t("prompts.night.wolfTeamPlan.knifeLineNone"), /空刀/);
 });
+test("狼隊夜間商議（wolf_chat）的 system 必須跟其他階段一樣帶共用開場並走前綴快取", async () => {
+  // 回歸：generateWolfTeamPlan 自己拼 system，曾經只帶【身份】＋商議說明，
+  // 沒有 <public_role_configuration>／規則／攻略，也沒有 cache_control，
+  // 於是同一個夜晚的 wolf_action 與 wolf_chat 兩張提示詞長得完全不一樣。
+  const { generateWolfTeamPlan } = await import("./game-master");
+  const state = makeState(makePlayers());
+  const bodies: Array<{ messages: Array<{ role: string; content: string | Array<{ text: string; cache_control?: unknown }> }> }> = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = async (_input, init) => {
+    if (init?.body) bodies.push(JSON.parse(String(init.body)));
+    return new Response(JSON.stringify({
+      id: "wolf-team-plan",
+      choices: [{
+        message: {
+          role: "assistant",
+          content: JSON.stringify({ jumpSeat: 2, signupSeats: [2, 4], postures: { "2": "jump", "4": "hook" }, reason: "2號悍跳，4號衝鋒" }),
+        },
+        finish_reason: "stop",
+      }],
+      usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 },
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  try {
+    const plan = await generateWolfTeamPlan(state);
+    assert.ok(plan, "應該產生狼隊計畫");
+    const systemMessage = bodies[0].messages.find((message) => message.role === "system")!;
+    assert.ok(Array.isArray(systemMessage.content), "system 應該是可快取的分段陣列");
+    const parts = systemMessage.content as Array<{ text: string; cache_control?: unknown }>;
+    const joined = parts.map((part) => part.text).join("\n");
+    assert.match(joined, /<public_role_configuration>/);
+    assert.match(joined, /【狼人杀攻略】/);
+    assert.match(joined, /【狼队】/);
+    assert.match(joined, /【夜间出刀】/);
+    // 共用開場三段必須帶 cache_control（1h 前綴快取）
+    const cached = parts.filter((part) => part.cache_control);
+    assert.ok(cached.length >= 3, `共用開場應可快取，實際只有 ${cached.length} 段`);
+    // 身分／商議任務接在後面（不可快取）
+    assert.match(parts[parts.length - 1].text, /商定狼隊白天的分工|今晚刀口|狼隊/);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 test("buildHumanWolfTeamPlan: 真人狼可以指派自己悍跳（不再排除真人座位）", async () => {
   const { buildHumanWolfTeamPlan } = await import("./game-master");
   const state = makeState(makePlayers());

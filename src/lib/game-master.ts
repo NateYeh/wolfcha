@@ -26,7 +26,7 @@ import { aiLogger } from "./ai-logger";
 import { getGeneratorModel, getSummaryModel } from "@/lib/api-keys";
 import { PhaseManager } from "@/game/core/PhaseManager";
 import type { PromptResult } from "@/game/core/types";
-import { buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildGameContext, buildFullGameTranscript, getRoleText, getGameFundamentals } from "./prompt-utils";
+import { buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildSharedSystemParts, buildGameContext, buildFullGameTranscript, getRoleText, getGameFundamentals } from "./prompt-utils";
 import { parseLLMJson } from "./llm-json";
 import { getI18n } from "@/i18n/translator";
 import { buildPublicRecordForRemark } from "@/lib/public-record";
@@ -2091,17 +2091,21 @@ export async function generateWolfTeamPlan(
   });
   const knowledge = t("prompts.night.wolfTeamPlan.knowledge");
   const task = t("prompts.night.wolfTeamPlan.task", { knifeLine, jsonFormat });
-  const system = buildSystemTextFromParts([
+  // 與其他 prompt 一致的開場：本次陣容 → 規則 → 攻略（全桌同文，可快取）。
+  // 狼隊商議要決定悍跳／上警分工，攻略（狼隊協作、夜間出刀、警徽）必須看得到。
+  const systemParts = [
+    ...buildSharedSystemParts(state),
     { text: base },
     { text: knowledge },
     { text: task },
-  ]);
+  ];
+  const system = buildSystemTextFromParts(systemParts);
   const user = t("prompts.night.wolfTeamPlan.user", {
     context: buildGameContext(state, captain),
     humanNote,
     jsonFormat,
   });
-  const { messages } = buildMessagesForPrompt({ system, user });
+  const { messages } = buildMessagesForPrompt({ system, user, systemParts });
 
   const validSeats = aliveWolves.map((wolf) => wolf.seat + 1);
   const startTime = Date.now();
