@@ -4,7 +4,8 @@ import type { GameContext, PromptResult, SystemPromptPart } from "../core/types"
 import {
   buildDecisionContext,
   getRoleText,
-  getRolePromptCore,
+  buildSharedSystemParts,
+  getRoleWinCondition,
   buildSystemTextFromParts,
 } from "@/lib/prompt-utils";
 import { excludePendingDeathPlayers } from "@/lib/rules/night-deaths";
@@ -36,7 +37,7 @@ export class KnightDuelPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      coreRules: getRolePromptCore(player.role),
+      coreRules: getRoleWinCondition(player.role),
     });
     const options = alivePlayers
       .map((p) => t("prompts.night.option", { seat: p.seat + 1, name: p.displayName }))
@@ -49,12 +50,12 @@ export class KnightDuelPhase extends GamePhase {
 
     const dynamicContent = t("prompts.knightDuel.task", {
       options,
-      tactics: t("prompts.knightDuel.tactics"),
       effectLine,
       jsonFormat: JSON.stringify(duelExample),
       passJsonFormat: JSON.stringify(passExample),
     });
     const systemParts: SystemPromptPart[] = [
+      ...buildSharedSystemParts(state),
       { text: cacheableContent, cacheable: true, ttl: "1h" },
       { text: dynamicContent },
     ];

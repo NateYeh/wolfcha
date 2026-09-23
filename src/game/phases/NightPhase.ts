@@ -2,7 +2,7 @@ import type { GameState, Player, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "../core/types";
-import { buildDecisionContext, buildGameContext, buildTodayTranscript, buildPlayerTodaySpeech, getRoleText, getRolePromptCore, buildSystemTextFromParts, gameHasRole } from "@/lib/prompt-utils";
+import { buildDecisionContext, buildGameContext, buildTodayTranscript, buildPlayerTodaySpeech, getRoleText, getRoleWinCondition, buildSharedSystemParts, buildSystemTextFromParts } from "@/lib/prompt-utils";
 import {
   addSystemMessage,
   generateGuardAction,
@@ -249,14 +249,14 @@ export class NightPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      coreRules: getRolePromptCore(player.role),
+      coreRules: getRoleWinCondition(player.role),
     });
     const dynamicContent = t("prompts.mute.task", {
       options,
-      tactics: t("prompts.mute.tactics"),
       jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "<一句话：为什么禁言他>" }),
     });
     const systemParts: SystemPromptPart[] = [
+      ...buildSharedSystemParts(state),
       { text: cacheableContent, cacheable: true, ttl: "1h" },
       { text: dynamicContent },
     ];
@@ -653,7 +653,7 @@ export class NightPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText("Seer"),
-      coreRules: getRolePromptCore("Seer"),
+      coreRules: getRoleWinCondition("Seer"),
     });
 
     const dynamicContent = t("prompts.night.seer.task", {
@@ -662,6 +662,7 @@ export class NightPhase extends GamePhase {
     });
 
     const systemParts: SystemPromptPart[] = [
+      ...buildSharedSystemParts(state),
       { text: cacheableContent, cacheable: true, ttl: "1h" },
       { text: dynamicContent },
     ];
@@ -710,7 +711,7 @@ export class NightPhase extends GamePhase {
       role: getRoleText(player.role),
     });
     const cacheableRules = t("prompts.night.wolf.rules", {
-      coreRules: getRolePromptCore(player.role),
+      coreRules: getRoleWinCondition(player.role),
     });
     const teammateVotesSection = teammateVotesStr
       ? t("prompts.night.wolf.teammateVotes", { lines: teammateVotesStr })
@@ -723,6 +724,7 @@ export class NightPhase extends GamePhase {
     });
 
     const systemParts: SystemPromptPart[] = [
+      ...buildSharedSystemParts(state),
       { text: identitySection, cacheable: true, ttl: "1h" },
       { text: cacheableRules, cacheable: true, ttl: "1h" },
       { text: taskSection },
@@ -731,11 +733,6 @@ export class NightPhase extends GamePhase {
 
     const user = t("prompts.night.wolf.user", {
       context: this.buildContextWithDay(context, todayTranscript, selfSpeech),
-      // 守卫博弈：出刀前推断守卫动向，避免把刀送进守护位（仅夜间出刀提示）。
-      // 本局没有守卫时不拼（实测 AI 会在 reasoning 里疑惑「config 没列守卫，提示却要我猜守卫」）。
-      guardNote: gameHasRole(state, "Guard") ? t("prompts.night.wolf.guardMindGame") : "",
-      // 刀口优先级：修正「只算命中率」的出刀——收益优先，跳预言家持警徽者是资讯核心。
-      knifeNote: t("prompts.night.wolf.knifePriority"),
       jsonFormat: JSON.stringify({ seat: (alivePlayers[0]?.seat ?? player.seat) + 1, reason: "一句话说明你们为什么刀他" }),
     });
 
@@ -754,7 +751,7 @@ export class NightPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText("Guard"),
-      coreRules: getRolePromptCore("Guard"),
+      coreRules: getRoleWinCondition("Guard"),
     });
     const eligibleSeats = getGuardEligibleSeats({
       aliveSeats: alivePlayers.map((p) => p.seat),
@@ -776,6 +773,7 @@ export class NightPhase extends GamePhase {
       abstainLine,
     });
     const systemParts: SystemPromptPart[] = [
+      ...buildSharedSystemParts(state),
       { text: cacheableContent, cacheable: true, ttl: "1h" },
       { text: dynamicContent },
     ];
@@ -822,7 +820,7 @@ export class NightPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText("Witch"),
-      coreRules: getRolePromptCore("Witch"),
+      coreRules: getRoleWinCondition("Witch"),
     });
     const statusHeal = state.roleAbilities.witchHealUsed
       ? t("promptUtils.gameContext.used")
@@ -861,6 +859,7 @@ export class NightPhase extends GamePhase {
       passJsonFormat: JSON.stringify({ action: "pass", reason: "一句话说明你的判断" }),
     });
     const systemParts: SystemPromptPart[] = [
+      ...buildSharedSystemParts(state),
       { text: cacheableContent, cacheable: true, ttl: "1h" },
       { text: dynamicContent },
     ];

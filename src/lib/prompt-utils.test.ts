@@ -140,7 +140,8 @@ test("每个实作角色都必须能出现在公开角色配置里（新角色�
   }
 });
 
-test("狼视角战术提示按本局角色拼接：没有守卫/猎人时不再出现对应区块", () => {
+test("統一攻略逐字不受本局陣容影響；狼私有段只留帳目（守衛/獵人戰術改由共用攻略承載）", async () => {
+  const { buildSharedSystemParts } = await import("./prompt-utils");
   // 12 人预女猎禁去掉猎人守卫的变体：狼 4 + 预/女/禁言长老 + 民 5 —— 无守卫、无猎人
   const roles: Role[] = [
     "Werewolf", "Werewolf", "Werewolf", "Werewolf",
@@ -154,27 +155,37 @@ test("狼视角战术提示按本局角色拼接：没有守卫/猎人时不再�
   const state: GameState = { ...makeState(), players, badge: { ...makeState().badge, candidates: [] } };
   const wolf = players[0];
   const dayContext = buildGameContext(state, wolf);
-  assert.doesNotMatch(dayContext, /【守卫在场时的刀口账】/, "本局没有守卫，不应提供守卫刀口账");
-  assert.doesNotMatch(dayContext, /【守卫的规则与自报怎么读】/, "本局没有守卫，不应提供守卫自报解读");
-  assert.doesNotMatch(dayContext, /【猎人在场时的刀口风险】/, "本局没有猎人，不应提供猎人枪口风险");
-  // 泛狼战术仍然要在
-  assert.match(dayContext, /【狼队出刀记录】|【存活狼队】/);
+  const dayTeam = dayContext.match(/<your_wolf_team>[\s\S]*?<\/your_wolf_team>/)?.[0];
+  assert.ok(dayTeam);
+  // 私有段只留帳目：出刀記錄／存活狼隊仍在，戰術區塊全部移出
+  assert.match(dayTeam, /【存活狼队】/);
+  assert.doesNotMatch(dayTeam, /【守卫在场时的刀口账】/);
+  assert.doesNotMatch(dayTeam, /【猎人在场时的刀口风险】/);
+  assert.doesNotMatch(dayTeam, /【狼队怎么配合】/);
 
-  // 对照组：把守卫、猎人放回组成，两个区块都要回来
-  const withGuardRoles: Role[] = [
+  // 攻略是全桌同一份（陣容不同也逐字相同）：守衛／獵人章節一律帶著，這是統一攻略的設計取捨
+  const guideText = buildSharedSystemParts(state)[2].text;
+  assert.match(guideText, /【五、守卫】/);
+  assert.match(guideText, /【六、猎人】/);
+  assert.match(guideText, /【十、夜间出刀】/);
+});
+
+test("統一攻略逐字不受本局陣容影響：與含守衛獵人的陣容比對", async () => {
+  const { buildSharedSystemParts } = await import("./prompt-utils");
+  const rolesWithGuard: Role[] = [
     "Werewolf", "Werewolf", "Werewolf", "Werewolf",
     "Seer", "Witch", "Hunter", "Guard", "MuteElder",
     "Villager", "Villager", "Villager",
   ];
-  const guardPlayers: Player[] = withGuardRoles.map((role, seat) => ({
+  const players: Player[] = rolesWithGuard.map((role, seat) => ({
     playerId: `g${seat}`, seat, displayName: `玩家${seat + 1}`, alive: true, role,
     alignment: role === "Werewolf" ? "wolf" : "village", isHuman: false,
   }));
-  const guardState: GameState = { ...makeState(), players: guardPlayers, badge: { ...makeState().badge, candidates: [] } };
-  const guardContext = buildGameContext(guardState, guardPlayers[0]);
-  assert.match(guardContext, /【守卫在场时的刀口账】/);
-  assert.match(guardContext, /【猎人在场时的刀口风险】/);
+  const state: GameState = { ...makeState(), players, badge: { ...makeState().badge, candidates: [] } };
+  const guideText = buildSharedSystemParts(state)[2].text;
+  assert.match(guideText, /【十、夜间出刀】/);
 });
+
 
 test("普通夜间出局只传死因未公开，公开技能死因才按主持人事件传入", () => {
   const state = makeState();
@@ -210,49 +221,46 @@ test("狼人私密队伍按存活状态明确分组，且不包含村民", () =>
   assert.doesNotMatch(wolfTeam, /3号村民玩家/);
 });
 
-test("狼人协作原则只在白天拼入队友劣势时的切割指引，不污染夜间行动", () => {
+test("狼人协作原则已整併進統一攻略：私有段不再重複，日夜都能從共用前綴讀到", async () => {
+  const { buildSharedSystemParts } = await import("./prompt-utils");
   const dayState = makeState();
   const dayTeam = buildGameContext(dayState, dayState.players[1]).match(/<your_wolf_team>[\s\S]*?<\/your_wolf_team>/)?.[0];
   assert.ok(dayTeam);
-  assert.match(dayTeam, /【狼队怎么配合】/);
-  assert.match(dayTeam, /必要时把票投给他（弃车保帅）/);
-  assert.match(dayTeam, /他还有救/);
+  assert.doesNotMatch(dayTeam, /【狼队怎么配合】/);
 
-  const nightState: GameState = { ...makeState(), phase: "NIGHT_WOLF_ACTION" };
-  const nightTeam = buildGameContext(nightState, nightState.players[1]).match(/<your_wolf_team>[\s\S]*?<\/your_wolf_team>/)?.[0];
-  assert.ok(nightTeam);
-  assert.doesNotMatch(nightTeam, /狼队怎么配合/);
+  const guideText = buildSharedSystemParts(dayState)[2].text;
+  assert.match(guideText, /狼队是一个整体/);
+  assert.match(guideText, /必要时把票投给他（弃车保帅）/);
+  assert.match(guideText, /他还有救/);
 });
 
-test("票型不能当铁证：白天对所有阵营提示狼可投队友，夜间不拼入", () => {
+
+test("票型／刀口读法已從 rules 移出：白天所有阵营都從共用攻略讀到同一份", async () => {
+  const { buildSharedSystemParts } = await import("./prompt-utils");
   const dayState = makeState();
   const villager = dayState.players.find((p) => p.role === "Villager")!;
   const wolf = dayState.players.find((p) => p.role === "Werewolf")!;
   for (const actor of [villager, wolf]) {
     const rules = buildGameContext(dayState, actor).match(/<rules>[\s\S]*?<\/rules>/)?.[0];
     assert.ok(rules);
-    assert.match(rules, /【票型怎么读】/);
-    // 票型不能当铁证，但票型集中仍是狼队线索（两个方向都要写清楚）。
-    assert.match(rules, /狼可以投队友/);
-    assert.match(rules, /同一批人反复把票集中到同一个人身上/);
-    assert.match(rules, /尤其是警徽票灌给同一个人/);
-    // 讀刀口：滅口 vs 嫁禍、自刀洗白不成立（同樣只在白天拼入）。
-    assert.match(rules, /【读刀口】/);
-    assert.match(rules, /也可以是嫁祸/);
-    assert.match(rules, /狼会故意刀掉质疑某人最凶的好人/);
-    assert.match(rules, /自刀洗白/);
-    // 預言家線：狼隊不惜代價清除真預言家＝他是真的旁證。
-    assert.match(rules, /白狼王自爆/);
+    // 動態規則區只留時序與刀口常識
+    assert.match(rules, /【刀口常识】/);
+    assert.doesNotMatch(rules, /【票型怎么读】/);
+    assert.doesNotMatch(rules, /【读刀口】/);
   }
 
-  const nightState: GameState = { ...makeState(), phase: "NIGHT_WOLF_ACTION" };
-  const nightRules = buildGameContext(nightState, wolf).match(/<rules>[\s\S]*?<\/rules>/)?.[0];
-  assert.ok(nightRules);
-  assert.doesNotMatch(nightRules, /【票型怎么读】/);
-  assert.doesNotMatch(nightRules, /【读刀口】/);
-  assert.doesNotMatch(nightRules, /狼会故意刀掉质疑某人最凶的好人/);
-  assert.doesNotMatch(nightRules, /白狼王自爆/);
+  // 全桌同一份攻略：票型／刀口讀法（含反例）都在裡面，人人看得到
+  const guideText = buildSharedSystemParts(dayState)[2].text;
+  assert.match(guideText, /票型是最容易被骗的证据/);
+  assert.match(guideText, /狼投队友的时候比谁都真/);
+  assert.match(guideText, /同一批人反复把票集中到同一个人身上/);
+  assert.match(guideText, /尤其是警徽票灌给同一个人/);
+  assert.match(guideText, /也可以是嫁祸/);
+  assert.match(guideText, /故意刀掉质疑某人最凶的好人/);
+  assert.match(guideText, /「自刀洗白」基本不成立/);
+  assert.match(guideText, /白狼王白天能自爆带人/);
 });
+
 
 test("警徽竞选期间明确死亡结果未公布，不能从空死亡列表推断平安夜", () => {
   const state = makeState();
@@ -519,7 +527,8 @@ test("decision_grounding：否認憑空補金水，但承認警徽移交等已�
   assert.match(grounding, /唯一跳预言家者被夜刀后把警徽交给的人，应按「死者最后的信任／倾向金水」理解，不是「说法矛盾」/);
 });
 
-test("白痴：白天拼入打法知识，夜间不拼入（免死翻牌由游戏自动触发）", () => {
+test("白痴打法已整併進統一攻略：不再有私有筆記段（免死翻牌由遊戲自動觸發）", async () => {
+  const { buildSharedSystemParts } = await import("./prompt-utils");
   const dayState = makeState();
   dayState.phase = "DAY_SPEECH";
   const villager = dayState.players.find((p) => p.role === "Villager")!;
@@ -527,16 +536,14 @@ test("白痴：白天拼入打法知识，夜间不拼入（免死翻牌由游�
   const idiot = dayState.players[villager.seat];
 
   const dayCtx = buildGameContext(dayState, idiot);
-  assert.match(dayCtx, /<your_idiot_notes>/);
-  assert.match(dayCtx, /【白痴怎么打/);
-  assert.match(dayCtx, /自动翻牌免死/);
-  assert.match(dayCtx, /免疫只有一次/);
-  assert.match(dayCtx, /没有第二次免疫/);
-  assert.match(dayCtx, /失去投票权/);
+  assert.doesNotMatch(dayCtx, /<your_idiot_notes>/);
+  assert.doesNotMatch(dayCtx, /【白痴怎么打/);
 
-  const nightCtx = buildGameContext({ ...dayState, phase: "NIGHT_WOLF_ACTION" }, idiot);
-  assert.doesNotMatch(nightCtx, /【白痴怎么打/);
+  const guideText = buildSharedSystemParts(dayState)[2].text;
+  assert.match(guideText, /白痴是弱神/);
+  assert.match(guideText, /你会自动翻牌免死|自动翻牌免死/);
 });
+
 
 test("熟人局：注入其他玩家的印象与交手记录；关闭或无素材不拼入，本人不列", () => {
   const dayState = makeState();

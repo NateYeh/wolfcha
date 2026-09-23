@@ -6,12 +6,11 @@ import {
   buildPersonaSection,
   buildTodayTranscript,
   getRoleText,
-  getSharedPromptRules,
+  buildSharedSystemParts,
   getRoleWinCondition,
   buildSystemTextFromParts,
 } from "@/lib/prompt-utils";
 import { getI18n } from "@/i18n/translator";
-import { isWolfRole } from "@/types/game";
 
 export class BadgePhase extends GamePhase {
   async onEnter(): Promise<void> {
@@ -63,12 +62,9 @@ export class BadgePhase extends GamePhase {
           .map((p) => t("prompts.badge.option", { seat: p.seat + 1, name: p.displayName }))
           .join(t("promptUtils.gameContext.listSeparator")),
         jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "一句话说明你为什么把警徽票投给他" }),
-      }) +
-      // 警徽票纪律：仅狼人可见。无对跳时警徽票默认投唯一跳预言家的人，
-      // 不投需有能公开说出口的理由，否则复盘时「警徽票没投预言家」会直接暴露。
-      (isWolfRole(player.role) ? t("prompts.badge.election.wolfBadgeVoteDiscipline") : "");
+      });
     const systemParts: SystemPromptPart[] = [
-      { text: getSharedPromptRules(), cacheable: true, ttl: "1h" },
+      ...buildSharedSystemParts(state),
     ];
     const system = buildSystemTextFromParts(systemParts);
 
@@ -111,12 +107,9 @@ export class BadgePhase extends GamePhase {
       coreRules: "",
       persona,
     }).trim();
-    // 上警收益/成本知識：教判斷不下命令，報不報名由 AI 自己算帳。
-    const dynamicContent = t("prompts.badge.signup.task", {
-      tactics: t("prompts.badge.signup.tactics"),
-    });
+    const dynamicContent = t("prompts.badge.signup.task");
     const systemParts: SystemPromptPart[] = [
-      { text: getSharedPromptRules(), cacheable: true, ttl: "1h" },
+      ...buildSharedSystemParts(state),
     ];
     const system = buildSystemTextFromParts(systemParts);
 
@@ -156,14 +149,9 @@ export class BadgePhase extends GamePhase {
         .join(t("promptUtils.gameContext.listSeparator")),
       jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "一句话说明你为什么把徽交给他" }),
       tearJsonFormat: JSON.stringify({ action: "tear", reason: "一句话说明你为什么撕徽" }),
-    }) +
-      // 警徽移交经验：仅狼人可见。移交是公开动作，好人会从接徽人倒推死者的关系网。
-      (isWolfRole(player.role)
-        ? t("prompts.badge.transfer.wolfTransferExperience")
-        // 非狼警長：按生前宣布的警徽流兌現，徽落點是死後的查驗解碼。
-        : t("prompts.badge.transfer.flowHonorNote"));
+    });
     const systemParts: SystemPromptPart[] = [
-      { text: getSharedPromptRules(), cacheable: true, ttl: "1h" },
+      ...buildSharedSystemParts(state),
     ];
     const system = buildSystemTextFromParts(systemParts);
 

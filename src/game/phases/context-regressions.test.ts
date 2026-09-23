@@ -25,59 +25,6 @@ const message = (state: GameState, content: string, phase: Phase, seat = 0, roun
   content, phase, day: state.day, timestamp: 1, speechRound: round,
 });
 
-test("狼人夜晚出刀提示必须包含守卫博弈推断（守卫可能守谁、连刀逻辑）", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("NIGHT_WOLF_ACTION");
-  const actor = state.players.find((p) => p.role === "Werewolf")!;
-  state.currentSpeakerSeat = actor.seat;
-  const prompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state }, actor)!;
-  assert.match(prompt.user, /【守卫博弈】出刀前先推断守卫今晚会守谁/);
-  // 刀口优先级：修正「只算命中率」——收益优先，跳预言家持警徽者是资讯核心，且排在守卫博弈之后作修正。
-  assert.match(prompt.user, /【刀口优先级】刀口看收益，不只看好杀/);
-  assert.match(prompt.user, /命中率最高不等于赚/);
-  assert.match(prompt.user, /自保式刀口.*不如胜利式刀口/);
-  assert.ok(
-    prompt.user.indexOf("刀口优先级") > prompt.user.indexOf("守卫博弈"),
-    "刀口优先级应排在守卫博弈之后（修正顺序）"
-  );
-  // 守卫倾向目标：公开跳神、警长、金水、昨晚刀口未死的目标。
-  assert.match(prompt.user, /昨晚刀口没死的目标/);
-  // 连刀逻辑：被刀却平安夜的目标，今晚守卫不能连守、女巫解药已用完。
-  assert.match(prompt.user, /今晚连刀 X 命中率通常最高/);
-  assert.match(prompt.user, /避开第 1 条里守卫今晚最可能守的座位/);
-});
-
-test("本局没有守卫时，夜间出刀提示不再包含守卫博弈（战术提示不得提到不存在的角色）", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("NIGHT_WOLF_ACTION");
-  // 12 人预女猎禁变体：狼 4 + 预/女/禁言长老 + 民 5 —— 无守卫、无猎人
-  const roles: Role[] = [
-    "Werewolf", "Werewolf", "Werewolf", "Werewolf",
-    "Seer", "Witch", "MuteElder",
-    "Villager", "Villager", "Villager", "Villager", "Villager",
-  ];
-  state.players = state.players.map((p, seat) => ({
-    ...p,
-    role: roles[seat],
-    alignment: ["Werewolf", "WhiteWolfKing", "WolfKing"].includes(roles[seat]) ? "wolf" : "village",
-  }));
-  const wolf = state.players.find((p) => p.role === "Werewolf")!;
-  state.currentSpeakerSeat = wolf.seat;
-  const prompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state }, wolf)!;
-  assert.doesNotMatch(prompt.user, /【守卫博弈】/, "本局没有守卫，不应让狼去猜守卫动向");
-  assert.match(prompt.user, /【刀口优先级】/, "泛用刀口逻辑仍在");
-  assert.doesNotMatch(prompt.user, /【猎人在场时的刀口风险】/, "本局没有猎人，不应提供猎人枪口风险");
-
-  // 对照组：默认组成有守卫 → 守卫博弈回归
-  const withGuard = fresh("NIGHT_WOLF_ACTION");
-  const guardWolf = withGuard.players.find((p) => p.role === "Werewolf")!;
-  withGuard.currentSpeakerSeat = guardWolf.seat;
-  const guardPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: withGuard }, guardWolf)!;
-  assert.match(guardPrompt.user, /【守卫博弈】/);
-});
-
 test("夜間行動帶 reason：四職業 prompt 要求一句話理由，jsonFormat 範例含 reason 字段", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
@@ -119,117 +66,6 @@ test("夜間行動帶 reason：四職業 prompt 要求一句話理由，jsonForm
   assert.match(witchPrompt.system, /"action":"save","reason"/);
   assert.match(witchPrompt.system, /"action":"poison","seat":\d+,"reason"/);
   assert.match(witchPrompt.system, antiCopyRule);
-});
-
-test("猎人开枪提示必须包含开枪守则，且排在遗言之后（可推翻遗言目标）", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("HUNTER_SHOOT");
-  const actor = state.players.find((p) => p.role === "Hunter")!;
-  state.currentSpeakerSeat = actor.seat;
-  // 模拟遗言里预告开枪目标的锚点
-  state.messages = [message(state, "我这一枪就打3号", "DAY_LAST_WORDS", actor.seat)];
-  const prompt = new PhaseManager().getPrompt("HUNTER_SHOOT", { state }, actor)!;
-  // 硬认证目标：先看认证（知識型，不下禁令）
-  assert.match(prompt.system, /【开枪的思路】/);
-  assert.match(prompt.system, /打掉等于替狼队清场/);
-  // 被预言家阵营放逐时：先核实查验链，射金水等于打光自己的信息源
-  assert.match(prompt.system, /打他的金水等于自己把好人的信息源打光/);
-  // 遗言目标可推翻：以投票时写下的最新判断为准
-  assert.match(prompt.system, /两者冲突时，按最新的来/);
-  const lastWordsIdx = prompt.system.indexOf("【已经发生的公开记录：你的遗言】");
-  const rulesIdx = prompt.system.indexOf("【开枪的思路】");
-  assert.ok(lastWordsIdx >= 0 && rulesIdx > lastWordsIdx, "开枪守则应排在遗言之后");
-  // 开枪需附 reason：供后续对帐分析
-  assert.match(prompt.user, /reason 里写一句话：这枪为什么打他，引用公开事实/);
-  assert.match(prompt.user, /"reason"/);
-});
-
-test("警徽评选：狼人可见警徽票纪律，好人不可见", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("DAY_BADGE_ELECTION");
-  state.badge.candidates = [0, 1];
-  const wolf = state.players.find((p) => p.role === "Werewolf")!;
-  state.currentSpeakerSeat = wolf.seat;
-  const wolfPrompt = new PhaseManager().getPrompt("DAY_BADGE_ELECTION", { state }, wolf)!;
-  // 逐人內容已移到 user 個人區（system 只留全桌共用前綴以共用快取），改看完整 prompt
-  const wolfFull = `${wolfPrompt.system}\n${wolfPrompt.user}`;
-  assert.match(wolfFull, /【警徽票纪律（仅狼人可见）】/);
-  // 无对跳时：唯一跳预言家的人大概率真，默认投他是标准操作
-  assert.match(wolfFull, /唯一跳预言家的人大概率是真预言家/);
-  // 不投需充足理由，否则复盘时暴露
-  assert.match(wolfFull, /警徽票没投预言家」是好人点狼的常用证据/);
-  // 队友已对跳则优先投队友
-  assert.match(wolfFull, /优先把警徽票投给对跳的队友/);
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  state.currentSpeakerSeat = villager.seat;
-  const villagerPrompt = new PhaseManager().getPrompt("DAY_BADGE_ELECTION", { state }, villager)!;
-  assert.doesNotMatch(`${villagerPrompt.system}\n${villagerPrompt.user}`, /警徽票纪律/);
-});
-
-test("放逐票：狼人可见票型纪律，好人不可见", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("DAY_VOTE");
-  const wolf = state.players.find((p) => p.role === "Werewolf")!;
-  const wolfPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, wolf)!;
-  const wolfFull = `${wolfPrompt.system}\n${wolfPrompt.user}`;
-  assert.match(wolfFull, /【放逐票的票型纪律（仅狼人可见）】/);
-  // 别跟队友把票压在同一个目标上（本局 D2 两狼同投 3 号的教训）
-  assert.match(wolfFull, /别跟队友把票压在同一个目标上/);
-  // 队友挡不住票时跟大部队弃车，比另开战场安全
-  assert.match(wolfFull, /跟大部队投他（弃车保帅）比另开一个战场安全/);
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  const villagerPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
-  assert.doesNotMatch(`${villagerPrompt.system}\n${villagerPrompt.user}`, /放逐票的票型纪律/);
-});
-
-test("落后局站位：狼人白天可见，好人不可见", async () => {
-  const state = fresh("DAY_SPEECH");
-  const wolf = state.players.find((p) => p.role === "Werewolf")!;
-  const wolfContext = buildGameContext(state, wolf);
-  assert.match(wolfContext, /【落后局的站位/);
-  // 神位账对上时硬咬等于把自己绑上狼位
-  assert.match(wolfContext, /神位的账已经对上时别硬咬/);
-  // 站过悍跳队友的线被翻牌要认账归队，而不是反手咬神
-  assert.match(wolfContext, /站过悍跳队友那条线又被翻牌/);
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  assert.doesNotMatch(buildGameContext(state, villager), /落后局的站位/);
-});
-
-test("狼人遗言：狼人可见遗言纪律，好人不可见", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("DAY_LAST_WORDS");
-  const wolf = state.players.find((p) => p.role === "Werewolf")!;
-  state.currentSpeakerSeat = wolf.seat;
-  const wolfPrompt = new PhaseManager().getPrompt("DAY_LAST_WORDS", { state }, wolf)!;
-  const wolfFull = `${wolfPrompt.system}\n${wolfPrompt.user}`;
-  assert.match(wolfFull, /【狼人的遗言纪律（仅狼人可见）】/);
-  // 遗言点队友＝替好人点出两人一伙（6 号遗言点 7 号的教训）
-  assert.match(wolfFull, /别在遗言里点队友、给队友递话/);
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  state.currentSpeakerSeat = villager.seat;
-  const villagerPrompt = new PhaseManager().getPrompt("DAY_LAST_WORDS", { state }, villager)!;
-  assert.doesNotMatch(`${villagerPrompt.system}\n${villagerPrompt.user}`, /狼人的遗言纪律/);
-});
-
-test("警徽移交：狼人可见移交经验，好人不可见", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("BADGE_TRANSFER");
-  const wolf = state.players.find((p) => p.role === "Werewolf")!;
-  state.currentSpeakerSeat = wolf.seat;
-  const wolfPrompt = new PhaseManager().getPrompt("BADGE_TRANSFER", { state }, wolf)!;
-  const wolfFull = `${wolfPrompt.system}\n${wolfPrompt.user}`;
-  assert.match(wolfFull, /【警徽移交经验（仅狼人可见）】/);
-  assert.match(wolfFull, /接徽的队友通常第一个被点名/);
-  assert.match(wolfFull, /一条徽链能串出两三只狼/);
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  state.currentSpeakerSeat = villager.seat;
-  const villagerPrompt = new PhaseManager().getPrompt("BADGE_TRANSFER", { state }, villager)!;
-  assert.doesNotMatch(`${villagerPrompt.system}\n${villagerPrompt.user}`, /警徽移交经验/);
 });
 
 const decisions: Phase[] = ["DAY_BADGE_SIGNUP", "DAY_BADGE_ELECTION", "BADGE_TRANSFER", "DAY_VOTE", "HUNTER_SHOOT", "SELF_DESTRUCT", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"];
@@ -456,84 +292,6 @@ test("最后发言者得到明确收尾约束，投票输入末尾保留本人�
   assert.match(vote, /核对后发现对方讲的是事实，就不能再用这个理由投票/);
 });
 
-test("读票型／读刀口知识区块：白天拼入、夜间不拼入", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("DAY_VOTE");
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  state.currentSpeakerSeat = villager.seat;
-  const dayPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
-  // 票型：值錢的是集中灌票；死人的票參考價值低
-  assert.match(dayPrompt.user, /【票型怎么读】/);
-  assert.match(dayPrompt.user, /同一批人反复把票集中到同一个人身上/);
-  assert.match(dayPrompt.user, /死人的票参考价值很低/);
-  // 刀口：滅口／嫁禍兩種讀法、自刀洗白不成立
-  assert.match(dayPrompt.user, /【读刀口】/);
-  assert.match(dayPrompt.user, /也可以是嫁祸/);
-  assert.match(dayPrompt.user, /自刀洗白/);
-  assert.match(dayPrompt.user, /按当时的公开信息算/);
-  // 夜间 prompt（狼出刀）不受污染
-  const nightState = fresh("NIGHT_WOLF_ACTION");
-  const nightWolf = nightState.players.find((p) => p.role === "Werewolf")!;
-  nightState.currentSpeakerSeat = nightWolf.seat;
-  const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, nightWolf)!;
-  assert.doesNotMatch(nightPrompt.user, /【票型怎么读】/);
-  assert.doesNotMatch(nightPrompt.user, /【读刀口】/);
-});
-
-test("警徽知识区块：交徽＝最后表态、接徽不等于免疫；夜间不拼入", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("DAY_VOTE");
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  state.currentSpeakerSeat = villager.seat;
-  const dayPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
-  assert.match(dayPrompt.user, /【警徽的作用与陷阱】/);
-  assert.match(dayPrompt.user, /不是矛盾，是查验后的更新/);
-  assert.match(dayPrompt.user, /接徽不等于免疫/);
-  assert.match(dayPrompt.user, /这套解读作废/);
-  // 排序：線索獨立性之後、金水之前
-  assert.ok(
-    dayPrompt.user.lastIndexOf("【警徽的作用与陷阱】") > dayPrompt.user.lastIndexOf("【线索独立性】") &&
-      dayPrompt.user.lastIndexOf("【警徽的作用与陷阱】") < dayPrompt.user.lastIndexOf("【金水的用法与陷阱】"),
-    "警徽區塊應排在線索獨立性與金水之間"
-  );
-  const nightState = fresh("NIGHT_WOLF_ACTION");
-  const nightWolf = nightState.players.find((p) => p.role === "Werewolf")!;
-  nightState.currentSpeakerSeat = nightWolf.seat;
-  const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, nightWolf)!;
-  assert.doesNotMatch(nightPrompt.user, /【警徽的作用与陷阱】/);
-});
-
-test("金水知识区块：说明用法与陷阱，但不禁止投票（允许自由选择）", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("DAY_VOTE");
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  state.currentSpeakerSeat = villager.seat;
-  const dayPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
-  assert.match(dayPrompt.user, /【金水的用法与陷阱】/);
-  // 陷阱說明：狼最想先刀預言家再騙全場投金水
-  assert.match(dayPrompt.user, /狼队最想干的事/);
-  // 兩邊的陷阱都講（金水也可能是狼遞的）
-  assert.match(dayPrompt.user, /金水也可能是狼递的/);
-  // 自由選擇：明說可以投，但要知道代價
-  assert.match(dayPrompt.user, /你可以投金水/);
-  // 不得再出現硬性禁止
-  assert.doesNotMatch(dayPrompt.user, /不得投金水/);
-  assert.doesNotMatch(dayPrompt.user, /放逐投票不得/);
-  // 排序：緊接警徽之後
-  assert.ok(
-    dayPrompt.user.lastIndexOf("【金水的用法与陷阱】") > dayPrompt.user.lastIndexOf("【警徽的作用与陷阱】"),
-    "金水區塊應在警徽區塊之後"
-  );
-  const nightState = fresh("NIGHT_WOLF_ACTION");
-  const nightWolf = nightState.players.find((p) => p.role === "Werewolf")!;
-  nightState.currentSpeakerSeat = nightWolf.seat;
-  const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, nightWolf)!;
-  assert.doesNotMatch(nightPrompt.user, /【金水的用法与陷阱】/);
-});
-
 test("发言底线规则：未发言者不得被描述发言风格（禁止凭空「说话实」）", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
@@ -546,274 +304,11 @@ test("发言底线规则：未发言者不得被描述发言风格（禁止凭�
   assert.match(prompt.system, /明说没有依据的直觉/);
 });
 
-test("職業白天指引：預言家/女巫/守衛各得報帳守則，村民無；對跳守則緊貼無對跳守則且夜間不拼入", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("DAY_SPEECH");
-  // 預言家私有段（現在首驗也會出現，這裡照樣帶一筆歷史）
-  state.nightActions = { seerHistory: [{ day: 1, targetSeat: 8, isWolf: false }] };
-  const seer = state.players.find((p) => p.role === "Seer")!;
-  const witch = state.players.find((p) => p.role === "Witch")!;
-  const guard = state.players.find((p) => p.role === "Guard")!;
-  const villager = state.players.find((p) => p.role === "Villager")!;
-
-  state.currentSpeakerSeat = seer.seat;
-  const seerPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, seer)!;
-  assert.match(seerPrompt.user, /<your_seer_checks>[\s\S]*查验公布指引/);
-  assert.match(seerPrompt.user, /报完整帐目/);
-  assert.match(seerPrompt.user, /不得编造听感、发言风格或发言内容/);
-  assert.match(seerPrompt.user, /该跳的时机/);
-
-  state.currentSpeakerSeat = witch.seat;
-  const witchPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, witch)!;
-  assert.match(witchPrompt.user, /<your_potions>[\s\S]*用药公布指引/);
-  assert.match(witchPrompt.user, /报帐要完整/);
-  assert.match(witchPrompt.user, /别把旧刀口当作今晚的信息/);
-
-  state.currentSpeakerSeat = guard.seat;
-  const guardPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, guard)!;
-  assert.match(guardPrompt.user, /<your_guard_info>[\s\S]*守护公布指引/);
-  assert.match(guardPrompt.user, /不得为圆先前的发言而改写或补造/);
-  assert.match(guardPrompt.user, /「那晚我守了X」和「我守住了X」是两回事/);
-
-  // 村民/狼不拿到三職業指引
-  state.currentSpeakerSeat = villager.seat;
-  const villagerPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
-  assert.doesNotMatch(villagerPrompt.user, /公布指引/);
-
-  // 夜間查验行動不帶白天指引（夜間提示另有一套）
-  const nightState = fresh("NIGHT_SEER_ACTION");
-  nightState.nightActions = { seerHistory: [{ day: 1, targetSeat: 8, isWolf: false }] };
-  const nightSeer = nightState.players.find((p) => p.role === "Seer")!;
-  nightState.currentSpeakerSeat = nightSeer.seat;
-  const nightSeerPrompt = new PhaseManager().getPrompt("NIGHT_SEER_ACTION", { state: nightState }, nightSeer)!;
-  assert.doesNotMatch(nightSeerPrompt.user, /查验公布指引/);
-
-  // 預言家線讀法：進 rules；無對跳／對跳兩種情境都寫在同一塊知識裡
-  const voteState = fresh("DAY_VOTE");
-  const voteVillager = voteState.players.find((p) => p.role === "Villager")!;
-  voteState.currentSpeakerSeat = voteVillager.seat;
-  const votePrompt = new PhaseManager().getPrompt("DAY_VOTE", { state: voteState }, voteVillager)!;
-  assert.match(votePrompt.user, /【预言家线的读法】/);
-  assert.match(votePrompt.user, /有人对跳：别急着当天定输赢/);
-  assert.match(votePrompt.user, /只排除与公开事实硬矛盾的那个/);
-  assert.match(votePrompt.user, /报查验的节奏不算证据/);
-  const nightWolfState = fresh("NIGHT_WOLF_ACTION");
-  const nightWolf = nightWolfState.players.find((p) => p.role === "Werewolf")!;
-  nightWolfState.currentSpeakerSeat = nightWolf.seat;
-  const nightWolfPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightWolfState }, nightWolf)!;
-  assert.doesNotMatch(nightWolfPrompt.user, /【预言家线的读法】/);
-});
-
-test("預言家：白天拿到警上三件事（警徽流／查殺先講／沒拿到警徽怎麼打），夜間拿到選驗指引", () => {
-  const day = fresh("DAY_BADGE_SPEECH");
-  const daySeer = day.players.find((p) => p.role === "Seer")!;
-  const dayContext = buildGameContext(day, daySeer);
-  assert.match(dayContext, /【警上怎么讲/);
-  assert.match(dayContext, /打警徽流/);
-  assert.match(dayContext, /我倒了警徽给 X 号/);
-  assert.match(dayContext, /白狼王白天能自爆带人、跳过投票/);
-  assert.match(dayContext, /没拿到警徽、或者有人跟你对跳/);
-  assert.match(dayContext, /说话前后连不起来的/);
-  assert.match(dayContext, /怎么权衡你自己决定/);
-  assert.doesNotMatch(dayContext, /查验对象怎么选/);
-
-  const night = fresh("NIGHT_SEER_ACTION");
-  const nightSeer = night.players.find((p) => p.role === "Seer")!;
-  const nightContext = buildGameContext(night, nightSeer);
-  assert.match(nightContext, /【查验对象怎么选/);
-  // 首驗（history 空）不可整段跳過私有段：選人指引就在裡面。
-  assert.match(nightContext, /<your_seer_checks>/);
-  assert.match(nightContext, /还没有查验记录/);
-  assert.match(nightContext, /别拿角色名字、气质、气场当依据/);
-  assert.match(nightContext, /能接棒带队的人/);
-  assert.doesNotMatch(nightContext, /警上怎么讲/);
-
-  // 其他角色拿不到預言家的兩塊知識
-  const villager = day.players.find((p) => p.role === "Villager")!;
-  assert.doesNotMatch(buildGameContext(day, villager), /警上怎么讲/);
-});
-
-test("預言家：警徽流要依據（前置位先報驗人計劃）、對跳者不得進徽流", () => {
-  const day = fresh("DAY_BADGE_SPEECH");
-  const seer = day.players.find((p) => p.role === "Seer")!;
-  const ctx = buildGameContext(day, seer);
-  assert.match(ctx, /有依据时明确说出/);
-  assert.match(ctx, /前置位还没听到任何人发言时/);
-  assert.match(ctx, /今晚打算验谁、为什么/);
-  assert.match(ctx, /警徽流的名单要有依据/);
-  assert.match(ctx, /还没听过的名字别凭空报进去/);
-  assert.match(ctx, /永远进不了徽流/);
-  assert.match(ctx, /是好人徽给1号、是狼徽给X号/);
-});
-
-test("徽流要理由：全員白天聽徽流時拿到核對指引（badgeNote）", () => {
-  const day = fresh("DAY_SPEECH");
-  const villager = day.players.find((p) => p.role === "Villager")!;
-  const ctx = buildGameContext(day, villager);
-  assert.match(ctx, /活人宣布的徽流当场就要核对/);
-  assert.match(ctx, /报了名字，理由呢？/);
-  assert.match(ctx, /说不出理由的承诺本身就值得记上一笔/);
-});
-
-test("狼人：白天拿到衝鋒／倒勾分工與讀神民，悍跳守則含輪次前提與心路歷程", () => {
-  const day = fresh("DAY_SPEECH");
-  const wolf = day.players.find((p) => p.role === "Werewolf")!;
-  const ctx = buildGameContext(day, wolf);
-  assert.match(ctx, /【冲锋与倒勾/);
-  assert.match(ctx, /站边悍跳狼，帮他把票号到真预言家身上/);
-  assert.match(ctx, /倒勾的命，通常是狼队最长的/);
-  assert.match(ctx, /倒勾可以转冲锋/);
-  assert.match(ctx, /【白天读神民/);
-  assert.match(ctx, /多半是民；自信、敢四处给压力找狼/);
-  assert.match(ctx, /跳之前先看形势/);
-  assert.match(ctx, /心路历程要跟你前几天的发言对得上/);
-  assert.match(ctx, /悍跳的徽流也要有理由/);
-  assert.match(ctx, /别把理由往后拖/);
-  assert.match(ctx, /别顺手给狼队友/);
-  assert.match(ctx, /这把尺全桌共用/);
-
-  const night: GameState = { ...day, phase: "NIGHT_WOLF_ACTION" as Phase };
-  const nightWolf = night.players.find((p) => p.role === "Werewolf")!;
-  const nightCtx = buildGameContext(night, nightWolf);
-  assert.doesNotMatch(nightCtx, /【冲锋与倒勾/);
-  assert.doesNotMatch(nightCtx, /【白天读神民/);
-  assert.doesNotMatch(nightCtx, /跳之前先看形势/);
-});
-
-test("村民：白天拿到打法／表水／被查殺心態，夜間不拼，其他角色拿不到", () => {
-  const day = fresh("DAY_SPEECH");
-  const villager = day.players.find((p) => p.role === "Villager")!;
-  const ctx = buildGameContext(day, villager);
-  assert.match(ctx, /<your_villager_notes>/);
-  assert.match(ctx, /【村民怎么打/);
-  assert.match(ctx, /你的技能就是那一票/);
-  assert.match(ctx, /本局必须投一名玩家/);
-  assert.match(ctx, /表水是你唯一的自证手段/);
-  assert.match(ctx, /被假预言家发了查杀别慌/);
-  assert.match(ctx, /狼一定藏在没跳的平民里/);
-  assert.match(ctx, /别穿神的衣服/);
-  assert.match(ctx, /怎么权衡你自己决定/);
-
-  const night: GameState = { ...day, phase: "NIGHT_WOLF_ACTION" as Phase };
-  const nightVillager = night.players.find((p) => p.role === "Villager")!;
-  assert.doesNotMatch(buildGameContext(night, nightVillager), /【村民怎么打/);
-
-  const seer = day.players.find((p) => p.role === "Seer")!;
-  assert.doesNotMatch(buildGameContext(day, seer), /【村民怎么打/);
-});
-
-test("獵人：白天拿到打法／帶隊時機（藏或亮、槍徽流、被毒悶槍），其他角色拿不到", () => {
-  const day = fresh("DAY_SPEECH");
-  const hunter = day.players.find((p) => p.role === "Hunter")!;
-  const ctx = buildGameContext(day, hunter);
-  assert.match(ctx, /<your_gun>/);
-  assert.match(ctx, /【猎人怎么打/);
-  assert.match(ctx, /先想好出局时要带走谁/);
-  assert.match(ctx, /发言好坏参半/);
-  assert.match(ctx, /回头把带头推你的那个带走/);
-  assert.match(ctx, /我今晚要是被刀，枪口对准 X 号/);
-  assert.match(ctx, /有人跳猎人：先自己算轮次/);
-  assert.match(ctx, /「警推在先」指好人只要白天都放逐到狼/);
-  assert.match(ctx, /「狼刀在先」指狼队在刀上已经领先/);
-  assert.match(ctx, /这个只有你有的视角去找他的队友/);
-  assert.match(ctx, /被女巫毒死会闷枪/);
-  assert.match(ctx, /怎么权衡你自己决定/);
-
-  const villager = day.players.find((p) => p.role === "Villager")!;
-  assert.doesNotMatch(buildGameContext(day, villager), /【猎人怎么打/);
-
-  // 夜間不重複拼入（夜間只有出局當下的一槍，走 prompts.hunter.shootingRules）
-  const night: GameState = { ...day, phase: "NIGHT_WOLF_ACTION" as Phase };
-  const nightHunter = night.players.find((p) => p.role === "Hunter")!;
-  assert.doesNotMatch(buildGameContext(night, nightHunter) ?? "", /【猎人怎么打/);
-});
-
-test("獵人開槍思路：被推出去時要看「誰在推你」，帶頭又給不出理由的最該打", async () => {
+test("獵人開槍思路：被推出去時要看「誰在推你」，帶頭又給不出理由的最該打（已整併進統一攻略）", async () => {
   const { getI18n } = await import("@/i18n/translator");
-  const rules = getI18n().t("prompts.hunter.shootingRules");
-  assert.match(rules, /看谁在推你/);
-  assert.match(rules, /带头的那个如果拿不出可核对的理由/);
-});
-
-test("悍跳守则／警长职责／线索独立守则：分眾拼装与排序", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("DAY_SPEECH");
-
-  // 悍跳守则：只拼入狼队私有段（白天）
-  const wolf = state.players.find((p) => p.role === "Werewolf")!;
-  state.currentSpeakerSeat = wolf.seat;
-  const wolfPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, wolf)!;
-  assert.match(wolfPrompt.user, /【悍跳的时机与收益（要不要跳，你自己决定）】/);
-  assert.match(wolfPrompt.user, /报出来的查验必须跟公开事实对得上/);
-  assert.match(wolfPrompt.user, /递金水给队友能绑票/);
-  // 狼隊怎麼配合：知識型（不再是硬編碼條文）
-  assert.match(wolfPrompt.user, /【狼队怎么配合】/);
-  assert.match(wolfPrompt.user, /判断标准是狼队整体收益/);
-
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  state.currentSpeakerSeat = villager.seat;
-  const villagerPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
-  assert.doesNotMatch(villagerPrompt.user, /【悍跳的时机与收益/);
-  assert.doesNotMatch(villagerPrompt.user, /【狼队怎么配合】/);
-
-  // 警长职责：只有拿徽者收到；非拿徽者看不到（避免狼警長免費收割權威）
-  state.phase = "DAY_VOTE";
-  state.badge = { ...state.badge, holderSeat: villager.seat };
-  const holderPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
-  assert.match(holderPrompt.user, /【你现在是警长】/);
-  assert.match(holderPrompt.user, /把票集中起来/);
-  assert.ok(
-    holderPrompt.user.lastIndexOf("【你现在是警长】") > holderPrompt.user.lastIndexOf("【金水的用法与陷阱】"),
-    "警长区块应排在 rules 最末"
-  );
-  state.badge = { ...state.badge, holderSeat: null };
-  const noBadgePrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
-  assert.doesNotMatch(noBadgePrompt.user, /【你现在是警长】/);
-
-  // 线索独立守则：白天 rules 内、夾在查杀未证伪守则与警徽流守则之间
-  assert.match(holderPrompt.user, /【线索独立性】/);
-  assert.match(holderPrompt.user, /把关联当独立证据/);
-  assert.ok(
-    holderPrompt.user.indexOf("【线索独立性】") > holderPrompt.user.indexOf("【预言家线的读法】") &&
-      holderPrompt.user.indexOf("【线索独立性】") < holderPrompt.user.indexOf("【警徽的作用与陷阱】"),
-    "線索獨立性應夾在預言家線與警徽之間"
-  );
-
-  // 夜间三者均不拼入
-  const nightState = fresh("NIGHT_WOLF_ACTION");
-  const nightWolf = nightState.players.find((p) => p.role === "Werewolf")!;
-  nightState.currentSpeakerSeat = nightWolf.seat;
-  const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, nightWolf)!;
-  assert.doesNotMatch(nightPrompt.user, /【悍跳的时机与收益/);
-  assert.doesNotMatch(nightPrompt.user, /【你现在是警长】/);
-  assert.doesNotMatch(nightPrompt.user, /【线索独立性】/);
-});
-
-test("投票不再硬性禁止投谁：保留知识提示，选择权交给玩家", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("DAY_VOTE");
-  const seer = state.players.find((p) => p.role === "Seer")!;
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  state.messages = [
-    message(state, "我得站出来拿个警徽，我是预言家！昨晚我查了10号，就是头狼！", "DAY_BADGE_SPEECH", seer.seat),
-  ];
-  state.currentSpeakerSeat = villager.seat;
-  const votePrompt = new PhaseManager().getPrompt("DAY_VOTE", { state }, villager)!;
-  // 舊的最終硬攔（不得把票投給唯一預言家）已移除
-  assert.doesNotMatch(votePrompt.user, /最终约束/);
-  assert.doesNotMatch(votePrompt.user, /不得把票投给/);
-  assert.doesNotMatch(votePrompt.user, /几乎必然是好人自杀/);
-  // 但仍保留知識：投掉唯一預言家是好人最常見的自殺方式
-  assert.match(votePrompt.user, /好人最常见的自杀方式/);
-  // 改口自由（真人會反悔），只要寫出理由
-  assert.match(votePrompt.user, /改口是你的自由/);
-  // 狼人同樣不受限
-  const wolf = state.players.find((p) => p.role === "Werewolf")!;
-  const wolfVote = new PhaseManager().getPrompt("DAY_VOTE", { state }, wolf)!;
-  assert.doesNotMatch(wolfVote.user, /不得把票投给/);
+  const guide = getI18n().t("promptUtils.strategyGuide.hunter");
+  assert.match(guide, /看谁在推你/);
+  assert.match(guide, /带头的那个如果拿不出可核对的理由/);
 });
 
 test("全域动机与人味：每个玩家阶段都收到（想赢、允许不完美）", async () => {
@@ -875,105 +370,6 @@ test("游戏基本盘：每个玩家阶段都收到（这是什么游戏、通�
   }
 });
 
-test("新補提示（不限制）：女巫用藥記錄讀法、死人遺言兩種讀法、跟大流不構成狼證", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-
-  // 女巫：白天與夜間都拿得到「用藥記錄的讀法」
-  for (const phase of ["DAY_SPEECH", "NIGHT_WITCH_ACTION"] as const) {
-    const state = fresh(phase);
-    const witch = state.players.find((p) => p.role === "Witch")!;
-    state.currentSpeakerSeat = witch.seat;
-    const prompt = new PhaseManager().getPrompt(phase, { state }, witch)!;
-    assert.match(prompt.user, /<your_potions>[\s\S]*【用药记录的读法】/);
-    assert.match(prompt.user, /你救过的人＝那晚狼最想杀的人/);
-    // 只是提示，明說由模型自己決定
-    assert.match(prompt.user, /要不要照着走由你自己决定/);
-  }
-  // 非女巫看不到
-  const vState = fresh("DAY_SPEECH");
-  const villager = vState.players.find((p) => p.role === "Villager")!;
-  vState.currentSpeakerSeat = villager.seat;
-  const vPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state: vState }, villager)!;
-  assert.doesNotMatch(vPrompt.user, /用药记录的读法/);
-
-  // 死人遺言兩種讀法（讀刀口區塊）
-  const dayState = fresh("DAY_VOTE");
-  const voter = dayState.players.find((p) => p.role === "Villager")!;
-  dayState.currentSpeakerSeat = voter.seat;
-  const dayPrompt = new PhaseManager().getPrompt("DAY_VOTE", { state: dayState }, voter)!;
-  assert.match(dayPrompt.user, /死人的话分两种/);
-  assert.match(dayPrompt.user, /也可能是拉一个好人下水/);
-
-  // 跟大流不構成狼證（票型區塊）
-  assert.match(dayPrompt.user, /「随大流」本身不构成狼证/);
-  assert.match(dayPrompt.user, /票跟自己的公开判断对不上/);
-
-  // 夜間不拼入讀票型／讀刀口
-  const nightState = fresh("NIGHT_WOLF_ACTION");
-  const wolf = nightState.players.find((p) => p.role === "Werewolf")!;
-  nightState.currentSpeakerSeat = wolf.seat;
-  const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, wolf)!;
-  assert.doesNotMatch(nightPrompt.user, /死人的话分两种/);
-  assert.doesNotMatch(nightPrompt.user, /随大流/);
-});
-
-test("悍跳引導改為收益／時機（提示不限制）＋狼隊原則補『搶線』", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("DAY_SPEECH");
-  const wolf = state.players.find((p) => p.role === "Werewolf")!;
-  state.currentSpeakerSeat = wolf.seat;
-  const wolfPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, wolf)!;
-
-  // 時機與收益：獨跳沒對跳的那一輪最值錢、越早跳越像真的
-  assert.match(wolfPrompt.user, /最值钱的时机是「真预言家独跳、没人对跳」的那一轮/);
-  assert.match(wolfPrompt.user, /你等于每轮白送一票/);
-  assert.match(wolfPrompt.user, /越早跳越像真的/);
-  // 仍是提示：明說由狼自己決定
-  assert.match(wolfPrompt.user, /要不要跳，你自己决定/);
-  // 風險仍在（沒被拿掉）
-  assert.match(wolfPrompt.user, /被证伪一次，你整条线就废了/);
-
-  // 狼隊原則：切割與搶線並列
-  assert.match(wolfPrompt.user, /切割和抢线是两条路/);
-  // 好人拿不到狼隊私有段落
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  state.currentSpeakerSeat = villager.seat;
-  const vPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
-  assert.doesNotMatch(vPrompt.user, /切割和抢线是两条路/);
-});
-
-test("白狼王自爆：拿得到自爆算帳知識（純提示、不下命令）", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-
-  const state = fresh("SELF_DESTRUCT");
-  const wwk = state.players.find((p) => p.role === "WhiteWolfKing")!;
-  const seer = state.players.find((p) => p.role === "Seer")!;
-  state.currentSpeakerSeat = wwk.seat;
-  state.messages = [
-    message(state, `那我摊牌了，${seer.seat + 1}号${seer.displayName}，预言家。第一夜验的X号，查杀。`, "DAY_BADGE_SPEECH", seer.seat),
-  ];
-
-  const prompt = new PhaseManager().getPrompt("SELF_DESTRUCT", { state }, wwk)!;
-  // 知識：算帳方式（跳過投票的收益、目標價值、有對跳時炸掉一個＝告訴全場被炸的是真的）
-  // 自爆算帳屬於技能說明，與任務同在 system
-  assert.match(prompt.system, /【自爆这笔账怎么算（要不要炸，你自己决定）】/);
-  assert.match(prompt.system, /跳过投票本身就是收益/);
-  assert.match(prompt.system, /第一次自爆只是把竞选拖到明天/);
-  assert.match(prompt.system, /第二次才吞警徽/);
-  // 沒有禁令字眼
-  assert.doesNotMatch(prompt.system, /不得|禁止|必须/);
-
-  // 好人拿不到自爆算帳內容
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  state.phase = "DAY_SPEECH";
-  state.currentSpeakerSeat = villager.seat;
-  const vPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
-  assert.doesNotMatch(vPrompt.user, /自爆这笔账怎么算/);
-});
-
 test("第 2 天起也要知道「第 1 天警徽競選先於死訊公布」（女巫毒錯時間軸的修正）", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
@@ -1004,34 +400,6 @@ test("已死未公布的玩家：警徽報名／發言／投票名單要剔除�
   assert.equal(excludePendingDeathPlayers(cleanState, candidates), candidates);
 });
 
-test("警徽報名 prompt：上警收益/成本知識隨個人區進 prompt，教判斷不下命令", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("DAY_BADGE_SIGNUP");
-  const seer = state.players.find((p) => p.role === "Seer")!;
-  state.currentSpeakerSeat = seer.seat;
-  const prompt = new PhaseManager().getPrompt("DAY_BADGE_SIGNUP", { state }, seer)!;
-  // 逐人內容（含 task）改放 user 個人區尾端：system 只留全桌共用前綴才能共用快取。
-  // 知識與 task 同層、緊鄰輸出契約，模型仍然拿得到。
-  const full = `${prompt.system}\n${prompt.user}`;
-  assert.match(full, /【上警这笔账怎么算（报不报名，你自己决定）】/);
-  // 只檢查知識區塊本身，不把公共規則的文字算進來
-  const tacticsBlock = full.split("【上警这笔账怎么算（报不报名，你自己决定）】")[1]?.split("【输出格式】")[0] ?? "";
-  assert.match(tacticsBlock, /有查验要第一时间报/);
-  assert.match(tacticsBlock, /往往是免费暴露/);
-  assert.match(tacticsBlock, /警徽流是预言家的信息线/);
-  // 教知識不下命令：明說由自己判斷，且無禁令字眼
-  assert.match(tacticsBlock, /由你结合自己的身份/);
-  assert.doesNotMatch(tacticsBlock, /不得|禁止|必须报|不要报名/);
-  // task 的 {tactics} 佔位符已渲染，格式說明仍完整
-  assert.doesNotMatch(full, /\{tactics\}/);
-  assert.match(full, /【输出格式】/);
-  assert.match(full, /"signup":true/);
-  // system 必須全桌逐字相同（逐人內容留在 system 會使後面所有公共區塊無法共用快取）
-  assert.doesNotMatch(prompt.system, /上警这笔账/);
-  assert.doesNotMatch(prompt.system, /1号/);
-});
-
 test("發言底線規則：要求大白話，禁成語/書面黑話（騎牆教訓）", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
@@ -1041,7 +409,6 @@ test("發言底線規則：要求大白話，禁成語/書面黑話（騎牆教�
   const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
   assert.match(prompt.system, /用大白话说，像平时聊天/);
   assert.match(prompt.system, /「骑墙」/);
-  assert.doesNotMatch(prompt.system, /\{tactics\}/);
 });
 
 test("發言底線規則：公開翻牌推翻舊判斷時要認錯票（殷离嘴硬教訓）", async () => {
@@ -1120,165 +487,295 @@ test("白狼王自爆决策：farewell 翻桌宣言进 prompt 与解析结果（
   } finally { globalThis.fetch = originalFetch; }
 });
 
-test("有人跳猎人：白天知識區塊說明獵人自報沒有可核對的帳目，夜間不拼入", () => {
-  const state = fresh("DAY_SPEECH");
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  const dayContext = buildGameContext(state, villager);
-  assert.match(dayContext, /【有人跳猎人时怎么读】/);
-  assert.match(dayContext, /悍跳猎人很常见/);
-  assert.match(dayContext, /守卫的自报（我守了谁）同属这一类，见【守卫的规则与自报怎么读】/);
+// ============================================================================
+// 統一攻略（strategyGuide）：2026-09 改版後的新契約
+// 舊的「逐角色／逐階段分眾拼裝」測試已作廢——策略全部整併進 promptUtils.strategyGuide，
+// 放在 system 共用前綴，全桌每個座位、每個階段看到的逐字相同。
+// 這裡改成驗證三件事：攻略內容齊備、確實進共用前綴、私有區只留帳目。
+// ============================================================================
 
-  const nightState: GameState = { ...state, phase: "NIGHT_WOLF_ACTION" as Phase };
-  const wolf = state.players.find((p) => p.role === "Werewolf")!;
-  assert.doesNotMatch(buildGameContext(nightState, wolf), /【有人跳猎人时怎么读】/);
-});
-
-test("猎人的枪口风险只给狼看：刀／炸／毒代价不同，好人拿不到", () => {
-  const state = fresh("DAY_SPEECH");
-  const wolf = state.players.find((p) => p.role === "Werewolf")!;
-  const wwk = state.players.find((p) => p.role === "WhiteWolfKing")!;
-  const wolfContext = buildGameContext(state, wolf);
-  assert.match(wolfContext, /【猎人在场时的刀口风险】/);
-  assert.match(wolfContext, /被女巫毒死的猎人开不了枪/);
-  assert.match(wolfContext, /被白狼王自爆带走的猎人也会开枪/);
-  // 白狼王自爆決策也在白天，必須拿得到這筆帳，否則會炸掉獵人白送一槍。
-  assert.match(buildGameContext(state, wwk), /【猎人在场时的刀口风险】/);
-
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  assert.doesNotMatch(buildGameContext(state, villager), /【猎人在场时的刀口风险】/);
-});
-
-test("女巫解藥時機：首夜救人 vs 留藥救關鍵好人的取捨要帶進 prompt，其他角色拿不到", () => {
-  const state = fresh("NIGHT_WITCH_ACTION");
-  const witch = state.players.find((p) => p.role === "Witch")!;
-  const ctx = buildGameContext(state, witch);
-  assert.match(ctx, /【解药什么时候该用】/);
-  assert.match(ctx, /解药全局只有一瓶，而且不能自救/);
-  assert.match(ctx, /别把「留药」当成保命手段/);
-  assert.match(ctx, /怎么权衡你自己决定/);
-  // 不能自救的兩個代價都要寫到：自己被刀就是死、看不到刀口。
-  assert.match(ctx, /你自己被刀就只能死/);
-  assert.match(ctx, /看不到之后的刀口/);
-
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  assert.doesNotMatch(buildGameContext(state, villager), /【解药什么时候该用】/);
-});
-
-test("女巫保命：白天要带「药在人活」指引（票压上来跳女巫报药帐），夜间不拼入", () => {
-  const day = fresh("DAY_SPEECH");
-  const dayWitch = day.players.find((p) => p.role === "Witch")!;
-  const dayContext = buildGameContext(day, dayWitch);
-  assert.match(dayContext, /【药在你身上，你活着才有药】/);
-  assert.match(dayContext, /票已经压到你身上/);
-  assert.match(dayContext, /完整药帐/);
-  assert.match(dayContext, /别急着亮身份/);
-  // 帶隊／跳身份時機（攻略 1.3-2）：資訊荒主動跳、雙藥要藏、毒藥當籌碼、悍跳女巫怎麼處理。
-  assert.match(dayContext, /跳不跳看局势/);
-  assert.match(dayContext, /信息荒/);
-  assert.match(dayContext, /双药在身时反而要藏/);
-  assert.match(dayContext, /我今晚就毒谁/);
-  assert.match(dayContext, /悍跳狼多半是临时起意/);
-
-  const night: GameState = { ...day, phase: "NIGHT_WITCH_ACTION" as Phase };
-  const nightWitch = night.players.find((p) => p.role === "Witch")!;
-  assert.doesNotMatch(buildGameContext(night, nightWitch), /【药在你身上，你活着才有药】/);
-  const villager = day.players.find((p) => p.role === "Villager")!;
-  assert.doesNotMatch(buildGameContext(day, villager), /【药在你身上，你活着才有药】/);
-});
-
-test("女巫毒药时机：夜间出药提示要带用药时机知识，其他角色拿不到", async () => {
+test("統一攻略：進 system 共用前綴，且跨座位、跨階段逐字相同", async () => {
   await import("@/lib/game-master");
   const { PhaseManager } = await import("../core/PhaseManager");
-  const state = fresh("NIGHT_WITCH_ACTION");
-  const witch = state.players.find((p) => p.role === "Witch")!;
-  state.currentSpeakerSeat = witch.seat;
-  const witchContext = buildGameContext(state, witch);
-  assert.match(witchContext, /【毒药什么时候该用】/);
-  assert.match(witchContext, /留到死的毒药等于没有毒药/);
-  assert.match(witchContext, /盲毒算的是期望值/);
-  // 毒藥代價：獵人槍不會響、收網階段留藥邊際價值低。
-  assert.match(witchContext, /毒到猎人等于白废一把枪/);
-  assert.match(witchContext, /留药的边际价值已经很低/);
+  const { buildSharedSystemParts } = await import("@/lib/prompt-utils");
 
-  // 毒的優先順序（攻略 1.3-1）：悍跳女巫最優先。
-  assert.match(witchContext, /悍跳女巫的狼最优先/);
-  // 真正送進模型的夜間用藥提示也要帶到（role block 要進 prompt.user，不能只存在 buildGameContext）。
-  const prompt = new PhaseManager().getPrompt("NIGHT_WITCH_ACTION", { state }, witch)!;
-  assert.match(prompt.user, /【毒药什么时候该用】/);
-  // 「不必等到确认」寫在夜間任務文案（system）裡，兩個位置都要帶到。
-  assert.match(prompt.system, /不必等到确认/);
+  const sharedTexts = (role: Role, phase: Phase) => {
+    const state = fresh(phase);
+    const player = state.players.find((p) => p.role === role)!;
+    state.currentSpeakerSeat = player.seat;
+    return buildSharedSystemParts(state).map((part) => part.text);
+  };
 
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  assert.doesNotMatch(buildGameContext(state, villager), /【毒药什么时候该用】/);
+  // 1) 四個開場區塊依序：本次陣容 → 規則與角色說明 → 狼人殺攻略（含心態）
+  const parts = sharedTexts("Villager", "DAY_SPEECH");
+  assert.equal(parts.length, 3);
+  assert.match(parts[0], /<public_role_configuration>/);
+  assert.match(parts[1], /【这是一局什么游戏】/);
+  assert.match(parts[1], /【角色与技能/);
+  assert.match(parts[2], /【狼人杀攻略】/);
+  assert.match(parts[2], /【你在玩什么】/);
+
+  // 2) 全桌逐字相同：不同角色、不同階段拿到的共用前綴必須一致（前綴快取的前提）
+  const baseline = sharedTexts("Villager", "DAY_SPEECH");
+  for (const [role, phase] of [
+    ["Werewolf", "NIGHT_WOLF_ACTION"],
+    ["Seer", "NIGHT_SEER_ACTION"],
+    ["Guard", "NIGHT_GUARD_ACTION"],
+    ["Witch", "NIGHT_WITCH_ACTION"],
+    ["Hunter", "HUNTER_SHOOT"],
+    ["WhiteWolfKing", "SELF_DESTRUCT"],
+    ["Villager", "DAY_VOTE"],
+  ] as Array<[Role, Phase]>) {
+    assert.deepEqual(sharedTexts(role, phase), baseline, `${role}/${phase} 的共用前綴必須與全桌一致`);
+  }
+
+  // 3) 階段 prompt 的 system 也確實帶著攻略（含夜間與放逐投票）
+  for (const [role, phase] of [["Werewolf", "NIGHT_WOLF_ACTION"], ["Villager", "DAY_VOTE"]] as Array<[Role, Phase]>) {
+    const state = fresh(phase);
+    const player = state.players.find((p) => p.role === role)!;
+    state.currentSpeakerSeat = player.seat;
+    const system = new PhaseManager().getPrompt(phase, { state }, player)!.system;
+    assert.match(system, /【狼人杀攻略】/);
+    assert.match(system, /【十一、警徽篇】/);
+  }
 });
 
-test("守人取舍：夜間守衛拿得到（狼隊會反制、連守限制是線索），白天與其他角色拿不到", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
-  const night = fresh("NIGHT_GUARD_ACTION");
-  const guard = night.players.find((p) => p.role === "Guard")!;
-  const nightContext = buildGameContext(night, guard);
-  assert.match(nightContext, /【守人的取舍】/);
-  assert.match(nightContext, /让狼队这一刀落空/);
-  assert.match(nightContext, /连守限制是你自己交出去的线索/);
-  assert.match(nightContext, /收网阶段先算刀数/);
-  assert.match(nightContext, /怎么权衡你自己决定/);
-  // 真正送進模型的夜間守人提示也要帶到（role block 要進 prompt.user）。
-  night.currentSpeakerSeat = guard.seat;
-  const prompt = new PhaseManager().getPrompt("NIGHT_GUARD_ACTION", { state: night }, guard)!;
-  assert.match(prompt.user, /【守人的取舍】/);
+test("統一攻略：通用判讀與好人陣營段落齊備", async () => {
+  const { getI18n } = await import("@/i18n/translator");
+  const g = getI18n();
+  const basics = g.t("promptUtils.strategyGuide.basics");
+  assert.match(basics, /【一、通用判读】/);
+  assert.match(basics, /票型是最容易被骗的证据/);
+  assert.match(basics, /同一批人反复把票集中到同一个人身上/);
+  assert.match(basics, /死人的票价值很低/);
+  assert.match(basics, /「随大流」本身不构成狼证/);
+  assert.match(basics, /跟自己的公开判断对不上/);
+  assert.match(basics, /刀口落在谁身上，通常说明狼觉得谁麻烦/);
+  assert.match(basics, /「自刀洗白」基本不成立/);
+  assert.match(basics, /把关联当独立证据/);
+  assert.match(basics, /每次发言都要交出看法/);
+  assert.match(basics, /直觉要配上账面/);
+  assert.match(basics, /最后一步是拍身份/);
 
-  // 白天沒有選人決策，要的是報帳指引。
-  const day = fresh("DAY_SPEECH");
-  const dayGuard = day.players.find((p) => p.role === "Guard")!;
-  const dayContext = buildGameContext(day, dayGuard);
-  assert.doesNotMatch(dayContext, /【守人的取舍】/);
-  assert.match(dayContext, /守护公布指引/);
-
-  const villager = night.players.find((p) => p.role === "Villager")!;
-  assert.doesNotMatch(buildGameContext(night, villager), /【守人的取舍】/);
+  const good = g.t("promptUtils.strategyGuide.goodCamp");
+  assert.match(good, /神职跳身份的时机/);
+  assert.match(good, /狼一定藏在没跳的平民里/);
+  assert.match(good, /警推在先/);
+  assert.match(good, /狼刀在先/);
+  assert.match(good, /金水的用法与陷阱/);
+  assert.match(good, /狼队最想干的事是先刀预言家/);
+  assert.match(good, /金水也可能是狼递的/);
+  assert.match(good, /你可以投金水/);
+  assert.doesNotMatch(good, /不得投金水/);
 });
 
-test("守衛刀口帳：狼白天拿得到，夜間走既有守衛博弈，好人拿不到", () => {
-  const day = fresh("DAY_SPEECH");
-  const wolf = day.players.find((p) => p.role === "Werewolf")!;
-  const wwk = day.players.find((p) => p.role === "WhiteWolfKing")!;
-  const dayContext = buildGameContext(day, wolf);
-  assert.match(dayContext, /【守卫在场时的刀口账】/);
-  assert.match(dayContext, /自称守卫/);
-  assert.match(dayContext, /刀口前排/);
-  assert.match(dayContext, /就算被守住，损失也最小/);
-  // 白狼王自爆決策也在白天，同樣要拿得到。
-  assert.match(buildGameContext(day, wwk), /【守卫在场时的刀口账】/);
+test("統一攻略：神職篇（預言家／女巫／守衛／獵人／白痴／騎士／禁言）齊備", async () => {
+  const { getI18n } = await import("@/i18n/translator");
+  const g = getI18n();
 
-  // 夜間出刀已經有 prompts.night.wolf.guardMindGame，不重複拼入。
-  const night: GameState = { ...day, phase: "NIGHT_WOLF_ACTION" as Phase };
-  assert.doesNotMatch(buildGameContext(night, wolf), /【守卫在场时的刀口账】/);
+  const seer = g.t("promptUtils.strategyGuide.seer");
+  assert.match(seer, /报完整帐目/);
+  assert.match(seer, /不得编造听感、发言风格或发言内容当依据/);
+  assert.match(seer, /该跳的时机/);
+  assert.match(seer, /别拿角色名字、气质、气场当依据/);
+  assert.match(seer, /能接棒带队的人/);
+  assert.match(seer, /没有对跳时全场都该保他/);
+  assert.match(seer, /对跳的先后以「公开可核对」为准/);
+  assert.match(seer, /白狼王白天能自爆带人、跳过投票/);
+  assert.match(seer, /别预先定罪对跳/);
+  assert.match(seer, /等于把查验方向提前交给狼/);
 
-  const villager = day.players.find((p) => p.role === "Villager")!;
-  assert.doesNotMatch(buildGameContext(day, villager), /【守卫在场时的刀口账】/);
+  const witch = g.t("promptUtils.strategyGuide.witch");
+  assert.match(witch, /解药全局只有一瓶，而且不能自救/);
+  assert.match(witch, /你自己被刀就只能死/);
+  assert.match(witch, /看不到之后的刀口/);
+  assert.match(witch, /留到死的毒药等于没有毒药/);
+  assert.match(witch, /盲毒算的是期望值/);
+  assert.match(witch, /悍跳女巫的狼最优先/);
+  assert.match(witch, /毒到猎人等于白废一把枪/);
+  assert.match(witch, /药在你身上，你活着才有药/);
+  assert.match(witch, /别急着亮身份/);
+  assert.match(witch, /我今晚就毒谁/);
+  assert.match(witch, /悍跳狼多半是临时起意/);
+
+  const guard = g.t("promptUtils.strategyGuide.guard");
+  assert.match(guard, /第一晚怎么守（避免奶穿）/);
+  assert.match(guard, /首晚最稳的选择是空守/);
+  assert.match(guard, /连守限制是你自己交出去的线索/);
+  assert.match(guard, /收网阶段先算刀数/);
+  assert.match(guard, /「那晚我守了X」和「我守住了X」是两回事/);
+
+  const hunter = g.t("promptUtils.strategyGuide.hunter");
+  assert.match(hunter, /先想好出局时要带走谁/);
+  assert.match(hunter, /发言好坏参半就行/);
+  assert.match(hunter, /回头把带头推你的那个带走/);
+  assert.match(hunter, /我今晚要是被刀，枪口对准X号/);
+  assert.match(hunter, /有人跳猎人：先自己算轮次/);
+  assert.match(hunter, /警推在先就直接跳/);
+  assert.match(hunter, /狼刀在先就别跳/);
+  assert.match(g.t("promptUtils.strategyGuide.goodCamp"), /「警推在先」指好人只要白天都放逐到狼/);
+  assert.match(g.t("promptUtils.strategyGuide.goodCamp"), /「狼刀在先」指狼队在刀上已经领先/);
+  assert.match(hunter, /这个只有你有的视角去找他的队友/);
+  assert.match(hunter, /被女巫毒死会闷枪/);
+  assert.match(hunter, /看谁在推你/);
+  assert.match(hunter, /带头的那个如果拿不出可核对的理由/);
+
+  const idiot = g.t("promptUtils.strategyGuide.idiot");
+  assert.match(idiot, /白痴是弱神/);
+  assert.match(idiot, /被悍跳狼发查杀/);
+
+  const villager = g.t("promptUtils.strategyGuide.villager");
+  assert.match(villager, /你的技能就是那一票/);
+  assert.match(villager, /表水是你唯一的自证手段/);
+  assert.match(villager, /被假预言家发了查杀别慌/);
+
+  const knight = g.t("promptUtils.strategyGuide.knight");
+  assert.match(knight, /翻牌决斗是把自己的命押在判断上/);
+
+  const mute = g.t("promptUtils.strategyGuide.mute");
+  assert.match(mute, /禁言不是杀人/);
+  assert.match(mute, /明天说话最有用的人/);
 });
 
-test("守卫连守规则：白天所有角色的规则区块都讲清「不能连续两晚守同一人」，夜間不拼入", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
+test("統一攻略：狼隊篇（配合／悍跳／衝鋒倒勾／讀神民／落後局／票型紀律／自爆／遺言／狼王槍／夜刀）齊備", async () => {
+  const { getI18n } = await import("@/i18n/translator");
+  const g = getI18n();
+
+  const team = g.t("promptUtils.strategyGuide.wolfTeam");
+  assert.match(team, /狼队是一个整体/);
+  assert.match(team, /切割和抢线是两条路/);
+  assert.match(team, /最值钱的时机是「真预言家独跳、没人对跳」的那一轮/);
+  assert.match(team, /越早跳越像真的/);
+  assert.match(team, /递金水给队友能绑票/);
+  assert.match(team, /冲锋/);
+  assert.match(team, /倒勾/);
+  assert.match(team, /多半是民；自信、敢四处给压力/);
+  assert.match(team, /认账归队/);
+  assert.match(team, /别跟队友把票压在同一个目标上/);
+  assert.match(team, /跳过今天的投票加直接进夜/);
+  assert.match(team, /第一次自爆只是把竞选拖到明天/);
+  assert.match(team, /遗言纪律/);
+  assert.match(team, /别在遗言里点队友、给队友递话/);
+
+  const gun = g.t("promptUtils.strategyGuide.wolfGun");
+  assert.match(gun, /优先打好人阵营的关键信息位/);
+  assert.match(gun, /别打队友/);
+  assert.match(gun, /看谁在推你/);
+
+  const knife = g.t("promptUtils.strategyGuide.wolfKnife");
+  assert.match(knife, /刀口看收益，不只看好杀/);
+  assert.match(knife, /别因为「守卫可能守他」就放弃/);
+  assert.match(knife, /坐实账/);
+  assert.match(knife, /守卫最可能守护公开跳神的玩家/);
+  assert.match(knife, /今晚连刀X命中率通常最高/);
+  assert.match(knife, /避开第一条里守卫今晚最可能守的座位/);
+  assert.match(knife, /猎人是全场唯一「杀了会反弹」的牌/);
+  assert.match(knife, /被女巫毒死的猎人开不了枪/);
+});
+
+test("統一攻略：警徽篇（競選／紀律／徽流編解／聽徽流／移交／警長職責）齊備", async () => {
+  const { getI18n } = await import("@/i18n/translator");
+  const badge = getI18n().t("promptUtils.strategyGuide.badge");
+  assert.match(badge, /警长有1.5票/);
+  assert.match(badge, /上警买到的是警长的1.5票/);
+  assert.match(badge, /往往是免费暴露/);
+  assert.match(badge, /唯一跳预言家的人大概率是真预言家/);
+  assert.match(badge, /徽流是预言家的信息线/);
+  assert.match(badge, /单验式/);
+  assert.match(badge, /顺验式/);
+  assert.match(badge, /金水接徽/);
+  assert.match(badge, /永远进不了徽流/);
+  assert.match(badge, /先查落点逻辑再记账/);
+  assert.match(badge, /接徽不等于免疫/);
+  assert.match(badge, /你是警长时/);
+});
+
+test("角色私有區只留帳目與本輪資訊：策略已移出，村民/白痴/獵人不再有私有策略段", async () => {
+  const { buildGameContext } = await import("@/lib/prompt-utils");
   const state = fresh("DAY_SPEECH");
-  // 村民视角：以前拿不到这条规则，才会把「前晚守过、昨晚却死」当成硬矛盾去砸真守卫。
-  const villager = state.players.find((p) => p.role === "Villager")!;
-  state.currentSpeakerSeat = villager.seat;
-  const dayPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, villager)!;
-  assert.match(dayPrompt.user, /【守卫的规则与自报怎么读】/);
-  assert.match(dayPrompt.user, /不能连续两晚守同一人/);
-  assert.match(dayPrompt.user, /前晚守了 X、X 昨晚死了」不是矛盾/);
-  // 反過來也要講：自報守了誰＝告訴全場那人今晚沒人守。
-  assert.match(dayPrompt.user, /等于告诉全场：X 今晚一定没人守/);
-  // 獵人區塊不再重複守衛細節，改成指向新區塊。
-  assert.match(dayPrompt.user, /守卫的自报（我守了谁）同属这一类，见【守卫的规则与自报怎么读】/);
 
-  // 夜間沒有推理需求（狼人出刀另有守衛博弈區塊），不拼入。
+  // 有帳目的角色：私有段仍在，但只剩帳目與紀錄（不得再夾帶指引）
+  const seerCtx = buildGameContext(state, state.players.find((p) => p.role === "Seer")!);
+  assert.match(seerCtx, /<your_seer_checks>/);
+  assert.match(seerCtx, /【你的查验记录】/);
+  assert.doesNotMatch(seerCtx, /查验公布指引/);
+  assert.doesNotMatch(seerCtx, /警上怎么讲/);
+  assert.doesNotMatch(seerCtx, /查验对象怎么选/);
+
+  const witchCtx = buildGameContext(state, state.players.find((p) => p.role === "Witch")!);
+  assert.match(witchCtx, /<your_potions>/);
+  assert.doesNotMatch(witchCtx, /用药记录的读法/);
+  assert.doesNotMatch(witchCtx, /解药什么时候该用/);
+  assert.doesNotMatch(witchCtx, /毒药什么时候该用/);
+  assert.doesNotMatch(witchCtx, /用药公布指引/);
+  assert.doesNotMatch(witchCtx, /药在你身上/);
+
+  const guardCtx = buildGameContext(state, state.players.find((p) => p.role === "Guard")!);
+  assert.match(guardCtx, /<your_guard_info>/);
+  assert.doesNotMatch(guardCtx, /守护公布指引/);
+  assert.doesNotMatch(guardCtx, /【守人的取舍】/);
+
+  const wolfCtx = buildGameContext(state, state.players.find((p) => p.role === "Werewolf")!);
+  assert.match(wolfCtx, /<your_wolf_team>/);
+  assert.match(wolfCtx, /【存活狼队】/);
+  assert.doesNotMatch(wolfCtx, /【悍跳的时机与收益/);
+  assert.doesNotMatch(wolfCtx, /【冲锋与倒勾/);
+  assert.doesNotMatch(wolfCtx, /【落后局的站位/);
+  assert.doesNotMatch(wolfCtx, /【狼人的遗言纪律/);
+  assert.doesNotMatch(wolfCtx, /【猎人在场时的刀口风险】/);
+  assert.doesNotMatch(wolfCtx, /【守卫在场时的刀口账】/);
+
+  // 沒有帳目的角色：私有段整段移除（策略已在共用攻略）
+  const villagerCtx = buildGameContext(state, state.players.find((p) => p.role === "Villager")!);
+  assert.doesNotMatch(villagerCtx, /<your_villager_notes>/);
+  const idiotCtx = buildGameContext(state, state.players.find((p) => p.role === "Idiot")!);
+  assert.doesNotMatch(idiotCtx, /<your_idiot_notes>/);
+  const hunterCtx = buildGameContext(state, state.players.find((p) => p.role === "Hunter")!);
+  assert.doesNotMatch(hunterCtx, /<your_gun>/);
+});
+
+test("動態 rules 區只留時序與刀口常識：讀盤策略已移出，且陣容不再重複拼接", async () => {
+  const { buildGameContext } = await import("@/lib/prompt-utils");
+  const state = fresh("DAY_VOTE");
+  const villager = state.players.find((p) => p.role === "Villager")!;
+  const ctx = buildGameContext(state, villager);
+
+  // 規則類保留（逐日狀態相依，無法進靜態攻略）
+  assert.match(ctx, /【刀口常识】/);
+  assert.match(ctx, /阶段顺序/);
+  // 讀盤策略移出
+  assert.doesNotMatch(ctx, /【票型怎么读】/);
+  assert.doesNotMatch(ctx, /【读刀口】/);
+  assert.doesNotMatch(ctx, /【线索独立性】/);
+  assert.doesNotMatch(ctx, /【警徽的作用与陷阱】/);
+  assert.doesNotMatch(ctx, /【金水的用法与陷阱】/);
+  assert.doesNotMatch(ctx, /【预言家线的读法】/);
+  assert.doesNotMatch(ctx, /【有人跳猎人时怎么读】/);
+  assert.doesNotMatch(ctx, /【守卫的规则与自报怎么读】/);
+  assert.doesNotMatch(ctx, /【你现在是警长】/);
+  // 陣容改由 system 共用前綴承載，user context 不再重複（重複會稀釋前綴快取）
+  assert.doesNotMatch(ctx, /<public_role_configuration>/);
+});
+
+test("階段 prompt 不再夾帶階段戰術：狼人夜刀與自爆只剩任務與格式", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+
   const nightState = fresh("NIGHT_WOLF_ACTION");
   const wolf = nightState.players.find((p) => p.role === "Werewolf")!;
   nightState.currentSpeakerSeat = wolf.seat;
   const nightPrompt = new PhaseManager().getPrompt("NIGHT_WOLF_ACTION", { state: nightState }, wolf)!;
-  assert.doesNotMatch(nightPrompt.user, /【守卫的规则与自报怎么读】/);
+  assert.doesNotMatch(nightPrompt.user, /【守卫博弈】/);
+  assert.doesNotMatch(nightPrompt.user, /【刀口优先级】/);
+  // 但同一段內容仍在全桌共用的 system 攻略裡（狼人照樣讀得到）
+  assert.match(nightPrompt.system, /守卫博弈/);
+  assert.match(nightPrompt.system, /刀口看收益，不只看好杀/);
+
+  const boomState = fresh("SELF_DESTRUCT");
+  const wwk = boomState.players.find((p) => p.role === "WhiteWolfKing")!;
+  boomState.currentSpeakerSeat = wwk.seat;
+  const boomPrompt = new PhaseManager().getPrompt("SELF_DESTRUCT", { state: boomState }, wwk)!;
+  assert.doesNotMatch(boomPrompt.system, /【自爆这笔账怎么算/);
+  assert.match(boomPrompt.system, /跳过今天的投票加直接进夜/);
+  assert.doesNotMatch(boomPrompt.system, /\{tactics\}/);
 });

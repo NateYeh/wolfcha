@@ -5,7 +5,8 @@ import { getDeathShotKind } from "@/lib/rules/death-skills";
 import {
   buildDecisionContext,
   getRoleText,
-  getRolePromptCore,
+  buildSharedSystemParts,
+  getRoleWinCondition,
   buildSystemTextFromParts,
 } from "@/lib/prompt-utils";
 import { getI18n } from "@/i18n/translator";
@@ -51,7 +52,7 @@ export class HunterPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      coreRules: getRolePromptCore(player.role),
+      coreRules: getRoleWinCondition(player.role),
     });
     const options = alivePlayers
       .map((p) => t("prompts.night.option", { seat: p.seat + 1, name: p.displayName }))
@@ -62,12 +63,11 @@ export class HunterPhase extends GamePhase {
       : "";
     // 開槍守則依角色不同：獵人是「好人最後一槍」，狼王是「狼隊的槍」（目標互換）。
     const isWolfShot = getDeathShotKind(player.role) === "wolf_gun";
-    const shootingRules = t(isWolfShot ? "prompts.wolfKingShot.shootingRules" : "prompts.hunter.shootingRules");
     const dynamicContent =
       t(isWolfShot ? "prompts.wolfKingShot.task" : "prompts.hunter.task", { options }) +
-      lastWordsSection +
-      shootingRules;
+      lastWordsSection;
     const systemParts: SystemPromptPart[] = [
+      ...buildSharedSystemParts(state),
       { text: cacheableContent, cacheable: true, ttl: "1h" },
       { text: dynamicContent },
     ];

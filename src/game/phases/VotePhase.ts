@@ -1,5 +1,5 @@
 import { recordVoteRound } from "@/lib/vote-rounds";
-import { isWolfRole, type GameState, type Player } from "@/types/game";
+import { type GameState, type Player } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "../core/types";
 import {
@@ -7,7 +7,7 @@ import {
   buildTodayTranscript,
   buildPlayerTodaySpeech,
   getRoleText,
-  getSharedPromptRules,
+  buildSharedSystemParts,
   getRoleWinCondition,
   buildSystemTextFromParts,
   buildDecisionGrounding,
@@ -196,7 +196,7 @@ export class VotePhase extends GamePhase {
     // 因此把票型紀律只拼給狼人（好人沒有這個問題，多給反而稀釋其他指引）。
     const dynamicContent = t("prompts.vote.task", {
       options: alivePlayers.map((p) => t("prompts.vote.option", { seat: p.seat + 1, name: p.displayName })).join(", "),
-    }) + (isWolfRole(player.role) ? `\n${t("prompts.vote.wolfVoteDiscipline")}` : "");
+    });
     // system 只放全桌逐字相同的內容：只要是逐人不同的字串出現在 system，
     // 後面的公共區（含本日逐字紀錄）就全部無法共用快取。逐人內容一律進 user 個人區。
     const identityContent = t("prompts.vote.base", {
@@ -206,7 +206,7 @@ export class VotePhase extends GamePhase {
       coreRules: "",
     }).trim();
     const systemParts: SystemPromptPart[] = [
-      { text: getSharedPromptRules(), cacheable: true, ttl: "1h" },
+      ...buildSharedSystemParts(state),
     ];
     const system = buildSystemTextFromParts(systemParts);
 

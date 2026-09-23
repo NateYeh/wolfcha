@@ -103,6 +103,55 @@ export const getSharedPromptRules = (): string => {
 };
 
 /**
+ * 全桌共用的狼人殺攻略（單一真相）：
+ * 不分陣營、逐字相同，所以排在 system 共用前綴（可快取）。
+ * 各角色的私有帳目與當輪任務不在這裡，見 buildRolePrivateInfo 與各階段 task。
+ */
+export const getStrategyGuide = (): string => {
+  const { t } = getI18n();
+  const keys = [
+    "basics",
+    "goodCamp",
+    "seer",
+    "witch",
+    "guard",
+    "hunter",
+    "idiot",
+    "villager",
+    "knight",
+    "mute",
+    "wolfTeam",
+    "wolfGun",
+    "wolfKnife",
+    "badge",
+  ] as const;
+  return [
+    t("promptUtils.strategyGuide.title"),
+    t("promptUtils.strategyGuide.notice"),
+    ...keys.map((key) => t(`promptUtils.strategyGuide.${key}` as Parameters<typeof t>[0])),
+  ].join("\n\n");
+};
+
+/**
+ * 全桌共用的 system 開場區塊（依主結構：本次陣容 → 規則與角色說明 → 狼人殺攻略 → 心態）。
+ * 逐字相同、跨座位與跨階段都能共用同一段前綴快取；個人身分與當輪任務由呼叫端接在後面。
+ */
+export const buildSharedSystemParts = (
+  state: Pick<GameState, "players" | "fixedRoles">
+): SystemPromptPart[] => {
+  const { t } = getI18n();
+  return [
+    { text: buildPublicRoleConfiguration(state), cacheable: true, ttl: "1h" },
+    { text: getGameFundamentals(), cacheable: true, ttl: "1h" },
+    {
+      text: `${getStrategyGuide()}\n\n${t("promptUtils.winMotivationNote")}\n\n${t("promptUtils.humannessNote")}`,
+      cacheable: true,
+      ttl: "1h",
+    },
+  ];
+};
+
+/**
  * {coreRules} 佔位符攜帶的整塊內容：遊戲基本盤＋勝負條件＋心態區塊。
  * 注意：勝負條件逐角色不同，這整塊不適合當共用前綴；
  * 需要前綴快取的呼叫端改用 getSharedPromptRules()＋getRoleWinCondition() 分開拼。
@@ -788,15 +837,6 @@ const buildRolePrivateInfo = (
     let seerInfo = `<your_seer_checks>
 【你的查验记录】
 ${checks.join("\n")}`;
-    // 白天（含警徽競選 DAY_BADGE_*）才需要公布決策指引：跳/不跳/何時跳；夜間查验行動有自己的提示。
-    if (state.phase.includes("DAY")) {
-      seerInfo += `\n${t("promptUtils.gameContext.seerClaimGuidance")}`;
-      // 警上三件事：報查驗、打警徽流、聊心路歷程（含沒拿到警徽/被對跳後怎麼打）。
-      seerInfo += `\n${t("promptUtils.gameContext.seerCampaignNote")}`;
-    } else {
-      // 夜間：首驗選人本身就是策略（別用名字氣場當依據）。
-      seerInfo += `\n${t("promptUtils.gameContext.seerCheckChoiceNote")}`;
-    }
     seerInfo += `\n</your_seer_checks>`;
     return seerInfo;
   }
@@ -857,19 +897,6 @@ ${checks.join("\n")}`;
     if (witchActions.length > 0) {
       witchInfo += `\n【用药记录】\n${witchActions.join("\n")}`;
     }
-    // 用藥記錄的讀法：救過的人＝狼當晚目標（偏好人），日夜都用得到，兩邊都拼。
-    witchInfo += `\n${t("promptUtils.gameContext.witchPotionReadingNote")}`;
-    // 解藥的時機：首夜救人的價值 vs 留著救關鍵好人（女巫全程不可自救）；日夜都拼（白天要盤算、被質疑時也要用得上）。
-    witchInfo += `\n${t("promptUtils.gameContext.witchHealTimingNote")}`;
-    // 毒藥的時機：修正「等確認的狼人才用」導致毒藥留到死的傾向，日夜都拼（白天也要盤算）。
-    witchInfo += `\n${t("promptUtils.gameContext.witchPoisonTimingNote")}`;
-    // 白天才需要報帳與保命指引（何時公開、報什麼、票壓上來怎麼處理）；
-    // 夜間用藥決策有自己的提示。
-    if (state.phase.includes("DAY")) {
-      witchInfo += `\n${t("promptUtils.gameContext.witchAccountGuidance")}`;
-      // 藥在人活：被票出去＝兩瓶藥一起廢，白天發言要先保住自己這張牌。
-      witchInfo += `\n${t("promptUtils.gameContext.witchSelfPreservationNote")}`;
-    }
     witchInfo += `\n</your_potions>`;
     return witchInfo;
   }
@@ -895,43 +922,10 @@ ${checks.join("\n")}`;
 【守护记录】${records.length ? `\n${records.join("\n")}` : "暂无已记录的守护行动"}
 【记录含义】守护目标未出局不代表全场平安夜，也不能证明守护生效或目标被狼人袭击。以每夜全场公开结果为准，不得为维护先前发言而改写死亡日期。
 ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.displayName || ""}\n【今晚限制】不能连续守护 ${lastSeat + 1}号` : "【今晚限制】无，可以守护任何存活玩家"}`;
-    // 白天要的是報帳指引（報什麼、怎麼報）；夜間是選人決策——狼隊會反制
-    // （繞開明牌預言家、利用連守限制、收網階段刀守衛），這些是選人時要擺進去的帳。
-    if (state.phase.includes("DAY")) {
-      guardInfo += `\n${t("promptUtils.gameContext.guardAccountGuidance")}`;
-    } else {
-      guardInfo += `\n${t("promptUtils.gameContext.guardProtectChoiceNote")}`;
-    }
     guardInfo += `\n</your_guard_info>`;
     return guardInfo;
   }
   
-  if (player.role === "Villager") {
-    // 村民沒有夜間行動，只有白天發言與投票——知識集中拼在白天；
-    // 票的理由已由投票 JSON 的 reason 記錄，這裡教的是「敢表態＋表水」。
-    if (state.phase.includes("DAY")) {
-      return `<your_villager_notes>\n${t("promptUtils.gameContext.villagerPlayNote")}\n</your_villager_notes>`;
-    }
-    return null;
-  }
-
-  if (player.role === "Idiot") {
-    // 白痴没有夜间行动，知识集中在白天；免死翻牌由游戏自动触发，这里教的是定位、表水与报明时机的取舍。
-    if (state.phase.includes("DAY")) {
-      return `<your_idiot_notes>\n${t("promptUtils.gameContext.idiotPlayNote")}\n</your_idiot_notes>`;
-    }
-    return null;
-  }
-
-  if (player.role === "Hunter") {
-    // 獵人沒有可報的帳（無查驗、無用藥記錄），白天要的是打法與帶隊時機；
-    // 出局當下的一槍走 prompts.hunter.shootingRules，不在這裡重複。
-    if (state.phase.includes("DAY")) {
-      return `<your_gun>\n${t("promptUtils.gameContext.hunterPlayNote")}\n</your_gun>`;
-    }
-    return null;
-  }
-
   if (isWolfRole(player.role)) {
     const allWolves = state.players.filter((p) => isWolfRole(p.role));
     const aliveWolves = allWolves.filter((p) => p.alive);
@@ -970,29 +964,6 @@ ${lastSeat !== undefined ? `【上次守护】${lastSeat + 1}号${lastTarget?.di
     // 第一夜商定的分工：夜裡的事實，注入所有狼視角（報名、發言、投票都看得到）。
     if (state.wolfTeamPlan) {
       wolfInfo += `\n${buildWolfTeamPlanSection(state, state.wolfTeamPlan, player)}`;
-    }
-    // 獵人的槍口風險：夜間刀口、白狼王自爆、白天要不要碰自稱獵人的人都要算這筆帳，
-    // 日夜都拼入（處理獵人的三種方式代價不同）。本局沒有獵人時不拼（避免戰術提示提到不存在的角色）。
-    if (gameHasRole(state, "Hunter")) {
-      wolfInfo += `\n${t("promptUtils.gameContext.hunterGunThreatNote")}`;
-    }
-    // 白天才有保人与切割的取舍：队友劣势时无脑硬保会把狼队绑成一条线一起暴露。
-    // 夜间出刀与本原则无关，因此只在白天阶段拼入。
-    if (state.phase.includes("DAY")) {
-      // 守衛刀口帳：夜間出刀已有 prompts.night.wolf.guardMindGame，這裡補白天
-      // （評估今晚刀誰、自稱守衛的人怎麼處理、算刀數時怎麼算被守住的機率）。
-      // 本局沒有守衛時不拼（AI 不該被提示去猜一個不存在的守衛）。
-      if (gameHasRole(state, "Guard")) {
-        wolfInfo += `\n${t("promptUtils.gameContext.wolfGuardAwarenessNote")}`;
-      }
-      wolfInfo += `\n${t("promptUtils.gameContext.wolfTeamPrinciples")}`;
-      // 落後局（人数落后、悍跳队友被翻牌）跟領先局的打法不同：硬撑只会整队暴露。
-      wolfInfo += `\n${t("promptUtils.gameContext.wolfLosingPositionNote")}`;
-      // 衝鋒／倒勾分工與白天讀神民：都是發言與站邊層面的知識，夜間無關。
-      wolfInfo += `\n${t("promptUtils.gameContext.wolfChargeHookNote")}`;
-      wolfInfo += `\n${t("promptUtils.gameContext.wolfGodVillagerReadingNote")}`;
-      // 悍跳守則：白天想跳預言家的狼需要一套不容易被證偽的假查验打法；夜間無關。
-      wolfInfo += `\n${t("promptUtils.gameContext.wolfFakeSeerGuidance")}`;
     }
     wolfInfo += `\n</your_wolf_team>`;
     return wolfInfo;
@@ -1143,10 +1114,6 @@ sheriff: ${sheriffInfo}
 alive_count: ${alivePlayers.length}${mutedLine}
 </game_state>`;
 
-  // Public setup information only: aggregate role counts and public rules.
-  // Never derive this section from seat assignments in state.players.
-  context += `\n\n${buildPublicRoleConfiguration(state)}`;
-
   const publicRoleReveals = buildPublicRoleReveals(state);
   if (publicRoleReveals) {
     context += `\n\n${publicRoleReveals}`;
@@ -1177,31 +1144,6 @@ alive_count: ${alivePlayers.length}${mutedLine}
     state.phase.includes("DAY")
       ? t("promptUtils.gameContext.noSameDayCausalityNote")
       : "";
-  const isDayPhase = state.phase.includes("DAY");
-  // 票型不能当铁证：狼人也可以投队友做局，因此白天凡是涉及投票的环节都要提示。
-  // 夜间没有投票，不拼入以免干扰出刀判断。
-  // 讀票型／讀刀口／預言家線／線索獨立／警徽／金水：白天推理用的知識區塊，夜間不拼入。
-  const voteReadingNote = isDayPhase ? t("promptUtils.gameContext.voteReadingNote") : "";
-  const nightKillReadingNote = isDayPhase ? t("promptUtils.gameContext.nightKillReadingNote") : "";
-  const seerLineReadingNote = isDayPhase ? t("promptUtils.gameContext.seerLineReadingNote") : "";
-  const evidenceIndependenceNote = isDayPhase ? t("promptUtils.gameContext.evidenceIndependenceNote") : "";
-  const badgeNote = isDayPhase ? t("promptUtils.gameContext.badgeNote") : "";
-  const goldWaterNote = isDayPhase ? t("promptUtils.gameContext.goldWaterNote") : "";
-  // 有人跳獵人怎麼讀：獵人報身份沒有可核對的帳目（不像查驗、用藥），白天推理用；夜間不拼入。
-  // 本局沒有獵人時不拼（配置已明說該角色不存在，提示反而製造噪音）。
-  const hunterClaimReadingNote = isDayPhase && gameHasRole(state, "Hunter")
-    ? t("promptUtils.gameContext.hunterClaimReadingNote")
-    : "";
-  // 守衛規則與自報怎麼讀：連守限制是全場規則（不只守衛自己知道），否則好人會拿「前晚守過、昨晚卻死」
-  // 當矛盾去砸真守衛；只在白天拼入。本局沒有守衛時不拼。
-  const guardClaimReadingNote = isDayPhase && gameHasRole(state, "Guard")
-    ? t("promptUtils.gameContext.guardClaimReadingNote")
-    : "";
-  // 警長職責：只有拿徽者收到，避免狼警長免費收割「跟警徽走」的權威；僅白天拼入。
-  const sheriffDutyNote = isDayPhase && state.badge?.holderSeat === player.seat
-    ? t("promptUtils.gameContext.sheriffDutyNote")
-    : "";
-  
   // Check if guard exists in this game（單一真相：跟著本局實際組成走）
   const hasGuard = gameHasRole(state, "Guard");
   
@@ -1226,36 +1168,6 @@ alive_count: ${alivePlayers.length}${mutedLine}
   if (noSameDayCausalityNote) {
     rulesText += `\n${noSameDayCausalityNote}`;
   }
-  if (voteReadingNote) {
-    rulesText += `\n${voteReadingNote}`;
-  }
-  if (nightKillReadingNote) {
-    rulesText += `\n${nightKillReadingNote}`;
-  }
-  if (seerLineReadingNote) {
-    rulesText += `\n${seerLineReadingNote}`;
-  }
-  if (evidenceIndependenceNote) {
-    rulesText += `\n${evidenceIndependenceNote}`;
-  }
-  if (badgeNote) {
-    rulesText += `\n${badgeNote}`;
-  }
-  if (goldWaterNote) {
-    rulesText += `\n${goldWaterNote}`;
-  }
-  if (hunterClaimReadingNote) {
-    rulesText += `\n${hunterClaimReadingNote}`;
-  }
-  if (guardClaimReadingNote) {
-    rulesText += `\n${guardClaimReadingNote}`;
-  }
-  // 警長職責放最個人區最後：對拿徽者是最直接的行動指令（歸票），
-  // 而且只有拿徽者收到，留在公共規則區會讓規則區逐人不同。
-  if (sheriffDutyNote) {
-    privateParts.push(sheriffDutyNote);
-  }
-  
   if (rulesText) {
     context += `\n\n<rules>\n${rulesText}\n</rules>`;
   }

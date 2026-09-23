@@ -1,4 +1,4 @@
-import { isWolfRole, type GameState, type Player } from "@/types/game";
+import { type GameState, type Player } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "../core/types";
 import {
@@ -7,7 +7,7 @@ import {
   buildPlayerTodaySpeech,
   buildTodayTranscript,
   getRoleText,
-  getSharedPromptRules,
+  buildSharedSystemParts,
   getRoleWinCondition,
   buildSystemTextFromParts,
   buildPublicFactsForPlayer,
@@ -174,14 +174,9 @@ export class DaySpeechPhase extends GamePhase {
     const guidelinesSection = isGenshinMode
       ? t("prompts.daySpeech.guidelines.genshin")
       : t("prompts.daySpeech.guidelines.default");
-    // 狼的遺言常是狼隊最後一次被連坐的地方：點名隊友、硬翻案都會把隊友拖下去，
-    // 這一塊只在遺言階段、且只給狼人。
-    const wolfLastWordsSection = isLastWords && isWolfRole(player.role)
-      ? t("prompts.daySpeech.wolfLastWordsNote")
-      : "";
     const systemParts: SystemPromptPart[] = [
+      ...buildSharedSystemParts(state),
       { text: guidelinesSection, cacheable: true, ttl: "1h" },
-      { text: getSharedPromptRules(), cacheable: true, ttl: "1h" },
     ];
     const system = buildSystemTextFromParts(systemParts);
 
@@ -216,7 +211,6 @@ export class DaySpeechPhase extends GamePhase {
         getRoleWinCondition(player.role),
         taskSection,
         publicFactsForPlayer,
-        wolfLastWordsSection,
         skillContract,
       ].filter(Boolean).join("\n\n"),
       todayTranscript: todayTranscript || t("prompts.daySpeech.userNoTranscript", { speakOrder }),
