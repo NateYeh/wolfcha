@@ -109,3 +109,27 @@ test("玩家模型池：抓過 gateway 清單後，抽模型改以該清單為�
     await restore();
   }
 });
+
+test("未設定 gateway 位址時回預設（Ollama Cloud），設定了就以使用者填的為準", async () => {
+  // 這個函式讀 window.localStorage，node 測試環境要先鋪一層假的。
+  const store = new Map<string, string>();
+  const storage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  };
+  const originalWindow = (globalThis as { window?: unknown }).window;
+  (globalThis as { window?: unknown }).window = { localStorage: storage };
+
+  try {
+    const { getTokendanceBaseUrl, setTokendanceBaseUrl } = await import("@/lib/api-keys");
+    const { DEFAULT_GATEWAY_BASE_URL } = await import("@/lib/gateway-url");
+    setTokendanceBaseUrl("");
+    assert.equal(getTokendanceBaseUrl(), DEFAULT_GATEWAY_BASE_URL);
+    setTokendanceBaseUrl("https://gpt-load.example.idv.tw:8443/v1");
+    assert.equal(getTokendanceBaseUrl(), "https://gpt-load.example.idv.tw:8443/v1");
+  } finally {
+    if (originalWindow === undefined) Reflect.deleteProperty(globalThis, "window");
+    else (globalThis as { window?: unknown }).window = originalWindow;
+  }
+});

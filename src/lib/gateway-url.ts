@@ -10,7 +10,10 @@
  * 讓伺服器變成任意位址的代理。
  */
 
-export const DEFAULT_GATEWAY_BASE_URL = "https://tokendance.space/gateway/v1";
+// 出廠預設走 Ollama Cloud 的 OpenAI 相容端點（https://ollama.com/v1）：
+// 使用者只要填自己的 Ollama API Key 就能開局；要改用自架閘道器或本機 Ollama
+// （http://127.0.0.1:11434/v1）再自行覆寫即可。
+export const DEFAULT_GATEWAY_BASE_URL = "https://ollama.com/v1";
 
 export type GatewayUrlCheck =
   | { ok: true; url: string }

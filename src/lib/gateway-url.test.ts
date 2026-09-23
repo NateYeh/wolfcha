@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeGatewayBaseUrl, toChatCompletionsUrl } from "@/lib/gateway-url";
+import { DEFAULT_GATEWAY_BASE_URL, normalizeGatewayBaseUrl, toChatCompletionsUrl } from "@/lib/gateway-url";
 
 test("gateway 位址：https 可用，尾斜線會被去掉、路徑保留", () => {
   const check = normalizeGatewayBaseUrl("https://gpt-load.nate.idv.tw:8443/v1/");
@@ -20,4 +20,10 @@ test("gateway 位址：非 http(s)、亂填、空字串都要被擋下", () => {
   assert.deepEqual(normalizeGatewayBaseUrl("not a url"), { ok: false, reason: "invalid" });
   assert.deepEqual(normalizeGatewayBaseUrl("   "), { ok: false, reason: "empty" });
   assert.equal(toChatCompletionsUrl("http://example.com/v1"), "");
+});
+
+test("預設 gateway 位址是 Ollama Cloud（https://ollama.com/v1）且可直接組成 chat/completions", () => {
+  assert.equal(DEFAULT_GATEWAY_BASE_URL, "https://ollama.com/v1");
+  assert.equal(toChatCompletionsUrl(DEFAULT_GATEWAY_BASE_URL), "https://ollama.com/v1/chat/completions");
+  assert.equal(normalizeGatewayBaseUrl(DEFAULT_GATEWAY_BASE_URL).ok, true);
 });

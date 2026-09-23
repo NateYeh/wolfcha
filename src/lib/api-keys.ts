@@ -6,7 +6,7 @@ import {
   REVIEW_MODEL,
   PROJECT_MODELS,
 } from "@/types/game";
-import { normalizeGatewayBaseUrl } from "@/lib/gateway-url";
+import { DEFAULT_GATEWAY_BASE_URL, normalizeGatewayBaseUrl } from "@/lib/gateway-url";
 
 const ZENMUX_API_KEY_STORAGE = "wolfcha_zenmux_api_key";
 const DASHSCOPE_API_KEY_STORAGE = "wolfcha_dashscope_api_key";
@@ -78,10 +78,11 @@ export function getTokendanceApiKey(): string {
   return readStorage(TOKENDANCE_API_KEY_STORAGE);
 }
 
-// gateway 位址沒有出廠預設值：伺服器不提供，一律由使用者自行填寫；
-// 沒填就是沒填（送出請求時不會帶位址標頭，伺服器會回明確的未設定錯誤）。
+// gateway 位址有出廠預設（Ollama Cloud：https://ollama.com/v1）。伺服器仍然不提供位址，
+// 一律由使用者帶上；沒填就回預設位址。有預設位址也擋不了開局檢查——isAiServiceReady
+// 要求同時有 Key，所以不會出現「沒設定也能打」的情況。
 export function getTokendanceBaseUrl(): string {
-  return readStorage(TOKENDANCE_BASE_URL_STORAGE);
+  return readStorage(TOKENDANCE_BASE_URL_STORAGE) || DEFAULT_GATEWAY_BASE_URL;
 }
 
 export function setMinimaxApiKey(key: string) {
