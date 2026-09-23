@@ -9,6 +9,7 @@ import {
   buildGameContext,
   buildPastDaysTranscript,
   buildPublicRoleConfiguration,
+  buildSharedSystemParts,
   buildTodayTranscript,
 } from "./prompt-utils";
 
@@ -577,11 +578,15 @@ test("熟人局：注入其他玩家的印象与交手记录；关闭或无素�
   const dayState = makeState();
   dayState.phase = "DAY_SPEECH";
   const actor = dayState.players[2];
+  /** 熟人局素材已移到 system 共用開場（攻略之後）：取 system 全文來斷言。 */
+  const acquaintanceText = (state: GameState, who = actor) =>
+    buildSharedSystemParts(state, who).map((part) => part.text).join("\n");
 
   // 关闭开关：缺席
+  assert.doesNotMatch(acquaintanceText({ ...dayState, isAcquaintanceGame: false }), /<acquaintance_notes>/);
   assert.doesNotMatch(buildGameContext({ ...dayState, isAcquaintanceGame: false }, actor), /<acquaintance_notes>/);
   // 开启但无素材：只有真人标记（真人恒有标记；AI 无印象无记录则不列）
-  const emptyCtx = buildGameContext({ ...dayState, isAcquaintanceGame: true }, actor);
+  const emptyCtx = acquaintanceText({ ...dayState, isAcquaintanceGame: true });
   assert.match(emptyCtx, /- 1号玩家1：真人玩家（不是 AI，行为没有固定套路）/);
   assert.doesNotMatch(emptyCtx, /- 2号玩家2：/);
   assert.doesNotMatch(emptyCtx, /- 1号玩家1：.*交手记录/);
@@ -617,19 +622,26 @@ test("熟人局：注入其他玩家的印象与交手记录；关闭或无素�
   const ctx = buildGameContext(state, actor);
   // 存活玩家列表的真人标记（一般性信息，不受熟人局开关影响）
   assert.match(ctx, /1号 玩家1（真人）/);
-  assert.match(ctx, /<acquaintance_notes>/);
-  assert.match(ctx, /【熟人局】/);
+  // 熟人局素材在 system：user 的個人區不該再出現
+  assert.doesNotMatch(ctx, /<acquaintance_notes>/);
+  const ctxAcq = acquaintanceText(state);
+  assert.match(ctxAcq, /<acquaintance_notes>/);
+  assert.match(ctxAcq, /【熟人局】/);
   // 真人行：真人标记＋交手记录（用户自己的历史战绩）
-  assert.match(ctx, /- 1号玩家1：真人玩家（不是 AI，行为没有固定套路）、交手记录：12 场、胜率 58%、MVP 2 次/);
+  assert.match(ctxAcq, /- 1号玩家1：真人玩家（不是 AI，行为没有固定套路）、交手记录：12 场、胜率 58%、MVP 2 次/);
   // AI 行：底层模型＋行为印象
-  assert.match(ctx, /- 2号玩家2：底层模型：glm-5.3-flash:cloud、/);
-  assert.match(ctx, /拿狼伪装：拿狼时话变多/);
-  assert.match(ctx, /胆量：偏怂/);
-  assert.match(ctx, /自保倾向：优先自保/);
-  assert.match(ctx, /场上存在感：存在感强/);
+  assert.match(ctxAcq, /- 2号玩家2：底层模型：glm-5.3-flash:cloud、/);
+  assert.match(ctxAcq, /拿狼伪装：拿狼时话变多/);
+  assert.match(ctxAcq, /胆量：偏怂/);
+  assert.match(ctxAcq, /自保倾向：优先自保/);
+  assert.match(ctxAcq, /场上存在感：存在感强/);
   // 本人（3号）不列入名单
-  assert.doesNotMatch(ctx, /- 3号玩家3：/);
+  assert.doesNotMatch(ctxAcq, /- 3号玩家3：/);
 });
+
+/** 熟人局素材在 system 共用開場裡（攻略之後）。 */
+const acquaintanceTextOf = (state: GameState, who: Player): string =>
+  buildSharedSystemParts(state, who).map((part) => part.text).join("\n");
 
 test("開局建構點：LOBBY 與 NIGHT_START 都要帶上熟人局旗標（漏一個就會靜默掉）", async () => {
   const { buildGameStartState } = await import("./game-master");
@@ -667,5 +679,5 @@ test("開局建構點：LOBBY 與 NIGHT_START 都要帶上熟人局旗標（漏�
 
   // 端到端：這份開局狀態進到 prompt 後，熟人局區塊真的存在
   const actor = nightState.players[2];
-  assert.match(buildGameContext(nightState, actor), /<acquaintance_notes>/);
+  assert.match(acquaintanceTextOf(nightState, actor), /<acquaintance_notes>/);
 });

@@ -174,7 +174,7 @@ export class DaySpeechPhase extends GamePhase {
       ? t("prompts.daySpeech.guidelines.genshin")
       : t("prompts.daySpeech.guidelines.default");
     // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；說話要求是本輪任務，放 user。
-    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state, player)];
     const system = buildSystemTextFromParts(systemParts);
 
     const phaseHint = isBadgeSpeech

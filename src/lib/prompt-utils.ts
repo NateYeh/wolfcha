@@ -118,10 +118,11 @@ export const getStrategyGuide = (
  * 逐字相同、跨座位與跨階段都能共用同一段前綴快取；個人身分與當輪任務由呼叫端接在後面。
  */
 export const buildSharedSystemParts = (
-  state: Pick<GameState, "players" | "fixedRoles">
+  state: Pick<GameState, "players" | "fixedRoles" | "isAcquaintanceGame" | "characterStats">,
+  player?: Player
 ): SystemPromptPart[] => {
   const { t } = getI18n();
-  return [
+  const parts: SystemPromptPart[] = [
     { text: buildPublicRoleConfiguration(state), cacheable: true, ttl: "1h" },
     { text: getGameFundamentals(), cacheable: true, ttl: "1h" },
     {
@@ -130,6 +131,14 @@ export const buildSharedSystemParts = (
       ttl: "1h",
     },
   ];
+
+  // 熟人局素材（對其他人的平時印象與交手記錄）整局固定不變，且不是回合狀態，
+  // 因此放 system 攻略之後；非熟人局或無素材時整段不拼。
+  const acquaintanceNotes = player ? buildAcquaintanceNotes(state, player) : "";
+  if (acquaintanceNotes) {
+    parts.push({ text: acquaintanceNotes, cacheable: true, ttl: "1h" });
+  }
+  return parts;
 };
 
 /**
@@ -430,7 +439,10 @@ export const buildPersonaSection = (player: Player, isGenshinMode: boolean = fal
  * 熟人局素材：对其他玩家拼入「平时积累的印象」（persona 行为栏位）与「交手记录」（历史胜率/MVP）。
  * 这些内容互相之间平时不可见，但熟人局设定下视为彼此认识多年所知；印象仅供参考，不是事实。
  */
-const buildAcquaintanceNotes = (state: GameState, player: Player): string => {
+const buildAcquaintanceNotes = (
+  state: Pick<GameState, "players" | "isAcquaintanceGame" | "characterStats">,
+  player: Player
+): string => {
   if (!state.isAcquaintanceGame) return "";
   const { t } = getI18n();
   const lines: string[] = [];
@@ -1104,11 +1116,6 @@ alive_count: ${alivePlayers.length}${mutedLine}
     .map((p) => `  - ${t("promptUtils.gameContext.seatLabel", { seat: p.seat + 1 })} ${p.displayName}${p.isHuman ? t("promptUtils.gameContext.humanSuffix") : ""}`)
     .join("\n");
   context += `\n\n<alive_players>\n${playerList}\n</alive_players>`;
-
-  // 熟人局：其他玩家的行為印象與交手記錄。名單逐人不同（略過自己那一行），
-  // 屬於個人區；日夜都拼——讀人不是白天專利。
-  const acquaintanceNotes = buildAcquaintanceNotes(state, player);
-  if (acquaintanceNotes) privateParts.push(acquaintanceNotes);
 
   const wolfFriendlyFireNote = t("promptUtils.gameContext.wolfFriendlyFireNote");
   const phaseOrderNote =

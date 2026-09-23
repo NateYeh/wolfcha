@@ -63,7 +63,7 @@ export class BadgePhase extends GamePhase {
         jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "一句话说明你为什么把警徽票投给他" }),
       });
     const systemParts: SystemPromptPart[] = [
-      ...buildSharedSystemParts(state),
+      ...buildSharedSystemParts(state, player),
     ];
     const system = buildSystemTextFromParts(systemParts);
 
@@ -107,7 +107,7 @@ export class BadgePhase extends GamePhase {
     }).trim();
     const dynamicContent = t("prompts.badge.signup.task");
     const systemParts: SystemPromptPart[] = [
-      ...buildSharedSystemParts(state),
+      ...buildSharedSystemParts(state, player),
     ];
     const system = buildSystemTextFromParts(systemParts);
 
@@ -148,7 +148,7 @@ export class BadgePhase extends GamePhase {
       tearJsonFormat: JSON.stringify({ action: "tear", reason: "一句话说明你为什么撕徽" }),
     });
     const systemParts: SystemPromptPart[] = [
-      ...buildSharedSystemParts(state),
+      ...buildSharedSystemParts(state, player),
     ];
     const system = buildSystemTextFromParts(systemParts);
 

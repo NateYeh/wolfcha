@@ -2094,7 +2094,7 @@ export async function generateWolfTeamPlan(
   // 與其他 prompt 一致的開場：本次陣容 → 規則 → 攻略（全桌同文，可快取）。
   // 狼隊商議要決定悍跳／上警分工，攻略（狼隊協作、夜間出刀、警徽）必須看得到。
   // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與商議任務逐人不同，進 user。
-  const systemParts = [...buildSharedSystemParts(state)];
+  const systemParts = [...buildSharedSystemParts(state, captain)];
   const system = buildSystemTextFromParts(systemParts);
   const user = t("prompts.night.wolfTeamPlan.user", {
     context: [buildGameContext(state, captain), base, knowledge, task].filter(Boolean).join("\n\n"),

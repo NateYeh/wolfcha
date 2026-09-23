@@ -205,7 +205,7 @@ export class VotePhase extends GamePhase {
       coreRules: "",
     }).trim();
     const systemParts: SystemPromptPart[] = [
-      ...buildSharedSystemParts(state),
+      ...buildSharedSystemParts(state, player),
     ];
     const system = buildSystemTextFromParts(systemParts);
 
