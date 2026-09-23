@@ -668,6 +668,15 @@ test("統一攻略：神職篇（預言家／女巫／守衛／獵人／白痴�
   const mute = g.t("promptUtils.strategyGuide.mute");
   assert.match(mute, /禁言不是杀人/);
   assert.match(mute, /明天说话最有用的人/);
+  // 回歸：禁言長老永遠是好人陣營，攻略必須先教她掂量陣營。
+  // 舊版只教「壓影響力最大的人（強勢好人…）」，實測 AI 長老就照字面把警長＋預言家禁掉，
+  // 理由寫「權力太大，得壓一壓看看」——好人陣營自己封住自己的嘴。
+  assert.match(mute, /挑人之前先掂量阵营/);
+  assert.match(mute, /等于替狼队封住好人自己的嘴/);
+  // 也不能再留狼隊視角的禁言理由（好人陣營沒有隊友要保）
+  assert.doesNotMatch(mute, /禁言自己人/);
+  assert.doesNotMatch(mute, /让队友少说少错/);
+  assert.match(mute, /好人阵营没有队友要保/);
 });
 
 test("統一攻略：狼隊篇（配合／悍跳／衝鋒倒勾／讀神民／落後局／票型紀律／自爆／遺言／狼王槍／夜刀）齊備", async () => {
