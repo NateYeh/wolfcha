@@ -968,3 +968,21 @@ test("ICU 參數漏傳會讓整段退化成 key：所有階段都不得出現未
   assert.doesNotMatch(wolfText, keyLike, "wolfTeamPlan: prompt 出現 i18n key");
   assert.equal(checked.length, phases.length);
 });
+
+test("空表態不算發言：發言階段必須交出實質判斷（不能再「等X號」「且看警長定調」）", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_SPEECH");
+  const player = state.players.find((p) => p.role === "Villager")!;
+  state.currentSpeakerSeat = player.seat;
+  const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, player)!;
+
+  // 硬性底線（user 的發言底線）：每一輪至少交出一個實質結論
+  assert.match(prompt.user, /发言必须有自己的判断：每一轮至少交出一个实质结论/);
+  assert.match(prompt.user, /你此刻最怀疑谁、今天想把票给谁、或听到什么才会改/);
+  assert.match(prompt.user, /「等X号」「先听听X号怎么说」「且看警长定调」/);
+  // 攻略（system 共用前綴）也要有同一條
+  const systemParts = (prompt.systemParts ?? []).map((part) => part.text).join("\n");
+  assert.match(systemParts, /空表态不算发言/);
+  assert.match(systemParts, /这一轮等于什么都没说/);
+});
