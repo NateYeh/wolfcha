@@ -97,7 +97,7 @@
     },
     "localMode": {
       "badge": "本機模式（免登入）",
-      "hint": "不需要賬號：在「設定」裡配置伺服器地址、API Key 與模型池"
+      "hint": "不需要賬號：在「設定」裡配置 API Key 與模型池（API 網址預設 https://ollama.com/v1）"
     },
     "sponsor": {
       "title": "成為贊助商",
@@ -181,7 +181,7 @@
         "title": "驗證請求失敗",
         "description": "網路異常，請稍後重試。"
       },
-      "aiNotConfigured": "還沒設定 AI 服務連線：請先在「設定 → AI 服務連線」填入伺服器地址與 API Key，按「測試連線並讀取模型列表」通過後再開始遊戲。"
+      "aiNotConfigured": "還沒設定 AI 服務連線：請先在「設定 → AI 服務連線」填入 API Key（API 網址預設 https://ollama.com/v1），按「測試連線並讀取模型列表」通過後再開始遊戲。"
     },
     "dev": {
       "title": "開發者模式",
@@ -427,25 +427,25 @@
     "selectPlayerCount": "選擇人數",
     "connection": {
       "title": "AI 服務連線",
-      "description": "伺服器不提供閘道器：請填入你自己的伺服器地址與 API Key（只儲存在本機瀏覽器，不會上傳）",
-      "baseUrlLabel": "伺服器地址",
+      "description": "預設連 Ollama Cloud（https://ollama.com/v1）：填入你自己的 API Key 即可；要改用自架閘道器或本機 Ollama 就改上面的 API 網址（只儲存在本機瀏覽器，不會上傳）",
+      "baseUrlLabel": "API 網址",
       "keyLabel": "API Key",
       "keyPlaceholder": "sk-...",
       "test": "測試連線",
       "testing": "測試中…",
       "ok": "連線成功",
-      "fail": "連線失敗（檢查地址、Key 與閘道器是否允許本機呼叫）",
+      "fail": "連線失敗（檢查網址、Key 與閘道器是否允許本機呼叫）",
       "invalid": {
-        "empty": "請填寫伺服器地址",
-        "invalid": "地址格式不對，需要完整 URL（例如 https://host/v1）",
-        "protocol": "只支援 http/https 地址",
+        "empty": "請填寫 API 網址",
+        "invalid": "網址格式不對，需要完整 URL（例如 https://ollama.com/v1）",
+        "protocol": "只支援 http/https 網址",
         "insecure": "http 只允許 localhost 或內網地址；對外地址請用 https"
       },
       "testAndFetch": "測試連線並讀取模型列表",
       "okWithModels": "連線成功：閘道器提供 {count} 個模型",
       "listHint": "已讀取閘道器模型清單（{count} 個），模型池以下面清單為準",
       "gatewayOnly": "未內建引數的模型（使用預設 temperature／reasoning）：{models}",
-      "notConfigured": "還沒設定：AI 玩家會無法回應，請填入伺服器地址與 API Key（建議先按「測試連線並讀取模型列表」）"
+      "notConfigured": "還沒設定：AI 玩家會無法回應，請填入 API Key（網址預設 https://ollama.com/v1，建議先按「測試連線並讀取模型列表」）"
     },
     "modelConfig": {
       "title": "模型設定",
@@ -2570,16 +2570,16 @@
       "short": "百鍊"
     },
     "tokendance": {
-      "label": "TokenDance API Key",
-      "placeholder": "請輸入 TokenDance API Key",
-      "baseUrlPlaceholder": "請輸入 TokenDance Base URL",
-      "hide": "隱藏 TokenDance API Key",
-      "show": "顯示 TokenDance API Key",
-      "hideBaseUrl": "隱藏 TokenDance Base URL",
-      "showBaseUrl": "顯示 TokenDance Base URL",
+      "label": "API Key",
+      "placeholder": "請輸入 API Key",
+      "baseUrlPlaceholder": "請輸入 API 網址（預設 https://ollama.com/v1）",
+      "hide": "隱藏 API Key",
+      "show": "顯示 API Key",
+      "hideBaseUrl": "隱藏 API 網址",
+      "showBaseUrl": "顯示 API 網址",
       "get": "獲取 TokenDance Key",
       "note": "支援 MiniMax、DeepSeek、Qwen、GLM、Kimi 等",
-      "short": "TokenDance"
+      "short": "自帶 API"
     },
     "modelConfig": {
       "title": "模型配置",
@@ -2613,7 +2613,7 @@
       "notValidated": "未通過驗證，無法儲存",
       "notValidatedDesc": "請先點選「驗證配置」",
       "needLlmKey": "請至少配置一個 LLM Key",
-      "needLlmKeyDesc": "Zenmux、百鍊或 TokenDance 至少配置一個",
+      "needLlmKeyDesc": "Zenmux、百鍊或自帶 API Key 至少配置一個",
       "modelsAdjusted": "部分模型不可用，已自動調整",
       "modelsAdjustedDesc": "請檢查所選模型與已配置的 Key 是否匹配",
       "saved": "已儲存 API Key",

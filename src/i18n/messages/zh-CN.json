@@ -97,7 +97,7 @@
     },
     "localMode": {
       "badge": "本机模式（免登入）",
-      "hint": "不需要账号：在「设置」里配置服务器地址、API Key 与模型池"
+      "hint": "不需要账号：在「设置」里配置 API Key 与模型池（API 网址默认 https://ollama.com/v1）"
     },
     "sponsor": {
       "title": "成为赞助商",
@@ -181,7 +181,7 @@
         "title": "验证请求失败",
         "description": "网络异常，请稍后重试。"
       },
-      "aiNotConfigured": "还没设置 AI 服务连接：请先在「设置 → AI 服务连接」填入服务器地址与 API Key，按「测试连接并读取模型列表」通过后再开始游戏。"
+      "aiNotConfigured": "还没设置 AI 服务连接：请先在「设置 → AI 服务连接」填入 API Key（API 网址默认 https://ollama.com/v1），按「测试连接并读取模型列表」通过后再开始游戏。"
     },
     "dev": {
       "title": "开发者模式",
@@ -427,25 +427,25 @@
     "selectPlayerCount": "选择人数",
     "connection": {
       "title": "AI 服务连接",
-      "description": "服务器不提供网关：请填入你自己的服务器地址与 API Key（只保存在本机浏览器，不会上传）",
-      "baseUrlLabel": "服务器地址",
+      "description": "默认连 Ollama Cloud（https://ollama.com/v1）：填入你自己的 API Key 即可；要改用自架网关或本机 Ollama 就改上面的 API 网址（只保存在本机浏览器，不会上传）",
+      "baseUrlLabel": "API 网址",
       "keyLabel": "API Key",
       "keyPlaceholder": "sk-...",
       "test": "测试连接",
       "testing": "测试中…",
       "ok": "连接成功",
-      "fail": "连接失败（检查地址、Key 与网关是否允许本机调用）",
+      "fail": "连接失败（检查网址、Key 与网关是否允许本机调用）",
       "invalid": {
-        "empty": "请填写服务器地址",
-        "invalid": "地址格式不对，需要完整 URL（例如 https://host/v1）",
-        "protocol": "只支持 http/https 地址",
+        "empty": "请填写 API 网址",
+        "invalid": "网址格式不对，需要完整 URL（例如 https://ollama.com/v1）",
+        "protocol": "只支持 http/https 网址",
         "insecure": "http 只允许 localhost 或内网地址；对外地址请用 https"
       },
       "testAndFetch": "测试连接并读取模型列表",
       "okWithModels": "连接成功：网关提供 {count} 个模型",
       "listHint": "已读取网关模型清单（{count} 个），模型池以下面清单为准",
       "gatewayOnly": "未内建参数的模型（使用默认 temperature／reasoning）：{models}",
-      "notConfigured": "还没设置：AI 玩家会无法回应，请填入服务器地址与 API Key（建议先按「测试连接并读取模型列表」）"
+      "notConfigured": "还没设置：AI 玩家会无法回应，请填入 API Key（网址默认 https://ollama.com/v1，建议先按「测试连接并读取模型列表」）"
     },
     "modelConfig": {
       "title": "模型设置",
@@ -2570,16 +2570,16 @@
       "short": "百炼"
     },
     "tokendance": {
-      "label": "TokenDance API Key",
-      "placeholder": "请输入 TokenDance API Key",
-      "baseUrlPlaceholder": "请输入 TokenDance Base URL",
-      "hide": "隐藏 TokenDance API Key",
-      "show": "显示 TokenDance API Key",
-      "hideBaseUrl": "隐藏 TokenDance Base URL",
-      "showBaseUrl": "显示 TokenDance Base URL",
+      "label": "API Key",
+      "placeholder": "请输入 API Key",
+      "baseUrlPlaceholder": "请输入 API 网址（默认 https://ollama.com/v1）",
+      "hide": "隐藏 API Key",
+      "show": "显示 API Key",
+      "hideBaseUrl": "隐藏 API 网址",
+      "showBaseUrl": "显示 API 网址",
       "get": "获取 TokenDance Key",
       "note": "支持 MiniMax、DeepSeek、Qwen、GLM、Kimi 等",
-      "short": "TokenDance"
+      "short": "自带 API"
     },
     "modelConfig": {
       "title": "模型配置",
@@ -2613,7 +2613,7 @@
       "notValidated": "未通过验证，无法保存",
       "notValidatedDesc": "请先点击「验证配置」",
       "needLlmKey": "请至少配置一个 LLM Key",
-      "needLlmKeyDesc": "Zenmux、百炼或 TokenDance 至少配置一个",
+      "needLlmKeyDesc": "Zenmux、百炼或自带 API Key 至少配置一个",
       "modelsAdjusted": "部分模型不可用，已自动调整",
       "modelsAdjustedDesc": "请检查所选模型与已配置的 Key 是否匹配",
       "saved": "已保存 API Key",

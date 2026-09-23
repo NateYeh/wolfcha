@@ -97,7 +97,7 @@
     },
     "localMode": {
       "badge": "Local mode (no sign-in)",
-      "hint": "No account needed: set the server base URL, API key and model pool in Settings"
+      "hint": "No account needed: set your API key and model pool in Settings (the API URL defaults to https://ollama.com/v1)"
     },
     "sponsor": {
       "title": "Become a sponsor",
@@ -181,7 +181,7 @@
         "title": "Validation request failed",
         "description": "Network error, please try again later."
       },
-      "aiNotConfigured": "AI service is not configured yet: open Settings → AI service connection, enter the server address and API key, run «Test connection and load models», then start the game."
+      "aiNotConfigured": "AI connection is not set up: open Settings → AI service connection, enter your API key (the URL defaults to https://ollama.com/v1), then pass “Test & load models” before starting."
     },
     "dev": {
       "title": "Developer mode",
@@ -427,25 +427,25 @@
     "selectPlayerCount": "Select player count",
     "connection": {
       "title": "AI service connection",
-      "description": "No gateway is provided by the server: enter your own base URL and API key (kept in this browser only)",
-      "baseUrlLabel": "Server base URL",
+      "description": "Defaults to Ollama Cloud (https://ollama.com/v1): just enter your own API key. To use a self-hosted gateway or local Ollama, change the API base URL above (kept in this browser only).",
+      "baseUrlLabel": "API base URL",
       "keyLabel": "API Key",
       "keyPlaceholder": "sk-...",
       "test": "Test connection",
       "testing": "Testing…",
       "ok": "Connection OK",
-      "fail": "Connection failed (check URL, key, and whether the gateway allows local calls)",
+      "fail": "Connection failed (check the URL, the key, and whether the gateway allows local calls)",
       "invalid": {
-        "empty": "Enter a server base URL",
-        "invalid": "Invalid URL — a full URL is required (e.g. https://host/v1)",
+        "empty": "Enter the API base URL",
+        "invalid": "Invalid URL — a full URL is required (e.g. https://ollama.com/v1)",
         "protocol": "Only http/https URLs are supported",
         "insecure": "http is only allowed for localhost or private LAN addresses; use https otherwise"
       },
       "testAndFetch": "Test connection & fetch model list",
-      "okWithModels": "Connected: the gateway offers {count} models",
-      "listHint": "Loaded the gateway model list ({count} models); the pool below follows it",
+      "okWithModels": "Connected: the provider offers {count} models",
+      "listHint": "Loaded the provider model list ({count} models); the pool below follows it",
       "gatewayOnly": "Models without built-in params (default temperature/reasoning): {models}",
-      "notConfigured": "Not configured yet: AI players will not respond. Enter the base URL and key (use “Test & load models”)."
+      "notConfigured": "Not configured yet: AI players will not respond. Enter your API key (the URL defaults to https://ollama.com/v1; use “Test & load models” first)."
     },
     "modelConfig": {
       "title": "Model settings",
@@ -2570,16 +2570,16 @@
       "short": "Dashscope"
     },
     "tokendance": {
-      "label": "TokenDance API Key",
-      "placeholder": "Enter TokenDance API Key",
-      "baseUrlPlaceholder": "Enter TokenDance Base URL",
-      "hide": "Hide TokenDance API Key",
-      "show": "Show TokenDance API Key",
-      "hideBaseUrl": "Hide TokenDance Base URL",
-      "showBaseUrl": "Show TokenDance Base URL",
+      "label": "API Key",
+      "placeholder": "Enter your API key",
+      "baseUrlPlaceholder": "Enter the API base URL (default https://ollama.com/v1)",
+      "hide": "Hide API key",
+      "show": "Show API key",
+      "hideBaseUrl": "Hide API base URL",
+      "showBaseUrl": "Show API base URL",
       "get": "Get TokenDance Key",
       "note": "Supports MiniMax, DeepSeek, Qwen, GLM, Kimi, etc.",
-      "short": "TokenDance"
+      "short": "Your own API"
     },
     "modelConfig": {
       "title": "Model Configuration",
@@ -2613,7 +2613,7 @@
       "notValidated": "Validation failed. Cannot save.",
       "notValidatedDesc": "Please click 'Validate' first.",
       "needLlmKey": "Please configure at least one LLM Key",
-      "needLlmKeyDesc": "Zenmux, Dashscope, or TokenDance is required",
+      "needLlmKeyDesc": "Zenmux, Bailian, or your own API key is required",
       "modelsAdjusted": "Some models unavailable. Auto-adjusted.",
       "modelsAdjustedDesc": "Check if selected models match your configured keys.",
       "saved": "API Key saved",
