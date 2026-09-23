@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useMemo, useState, useCallback } from "react"
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ChatCircleDots, PaperPlaneTilt, CheckCircle, MoonStars, Eye, Drop, Crosshair, Skull, Sword, X, ArrowClockwise, CaretRight, UserCircle, Prohibit, ClipboardText } from "@phosphor-icons/react";
+import { ChatCircleDots, PaperPlaneTilt, CheckCircle, MoonStars, Eye, Drop, Crosshair, Skull, Sword, X, ArrowClockwise, CaretRight, UserCircle, Prohibit, ClipboardText, Shield } from "@phosphor-icons/react";
 import { WerewolfIcon, VillagerIcon, VoteIcon } from "@/components/icons/FlatIcons";
 import { VoteResultCard } from "./VoteResultCard";
 import { VotingProgress } from "./VotingProgress";
@@ -28,6 +28,7 @@ import { useTranslations } from "next-intl";
 type WitchActionType = "save" | "poison" | "pass";
 import type { DialogueState } from "@/store/game-machine";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
+import { ABSTAIN_SEAT } from "@/lib/rules/actions";
 import { canDuel, hasAlreadyDueled } from "@/lib/rules/knight-duel";
 import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { getRoleCapabilities } from "@/lib/rules/roles";
@@ -1087,6 +1088,13 @@ export function DialogArea({
   const showHunterPassOption = phase === "HUNTER_SHOOT"
     && getDeathShotKind(humanPlayer?.role ?? "Villager") !== "none"
     && selectedSeat === null;
+  // 守衛空守（不保護任何人）：規則允許 guardCanAbstain，但這顆按鈕過去只存在於
+  // 早已沒被掛載的 BottomActionPanel，導致人類守衛只能守人、無法空守。
+  const showGuardAbstainOption = phase === "NIGHT_GUARD_ACTION"
+    && humanPlayer?.role === "Guard"
+    && humanPlayer.alive
+    && selectedSeat === null
+    && getBoardRuleFlags(gameState.players.length).guardCanAbstain;
   const showActionConfirm = (() => {
     const badgeCandidates = gameState.badge.candidates || [];
     const humanIsCandidate = humanPlayer && badgeCandidates.includes(humanPlayer.seat);
@@ -1130,6 +1138,7 @@ export function DialogArea({
     || showBadgeSignupWaiting
     || showBadgeTransferOption
     || showHunterPassOption
+    || showGuardAbstainOption
     || showActionConfirm
     || showWitchPanel
     || showHumanInput
@@ -1621,6 +1630,27 @@ export function DialogArea({
                   </motion.div>
                 );
               })()}
+
+              {/* 守衛空守按鈕 - 文字形式 */}
+              {showGuardAbstainOption && (
+                <motion.div
+                  key="guard-abstain"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                  <div className={`flex items-center justify-end mt-4 pt-3 border-t ${isNight ? "border-white/10" : "border-black/5"}`}>
+                    <button
+                      onClick={() => onNightAction?.(ABSTAIN_SEAT, "pass")}
+                      className="wc-action-btn text-sm h-9 px-4"
+                      type="button"
+                    >
+                      <Shield size={14} weight="bold" />
+                      {t("bottomAction.guardAbstain")}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
 
               {/* 女巫行动面板 - 文字形式 */}
               {showWitchPanel && (
