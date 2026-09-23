@@ -700,9 +700,34 @@ export function formatDailySummaryTranscriptMessage(
   }
 }
 
+/**
+ * 把記錄員回報的消極座位正規化：接受 1 基（顯示座位，如 2 表示 2 號）、去重、範圍檢查，
+ * 並排除「當天被禁言」與「已經出局」的座位——那些人沒有發言機會，不該被記成消極。
+ */
+export const normalizePassiveSeats = (raw: unknown, state: GameState): number[] => {
+  if (!Array.isArray(raw)) return [];
+  const mutedSeat = state.dayHistory?.[state.day]?.muted?.seat;
+  const seats = new Set<number>();
+  for (const value of raw) {
+    const display = typeof value === "number"
+      ? value
+      : typeof value === "string" && /^\d+$/.test(value.trim())
+        ? Number.parseInt(value.trim(), 10)
+        : NaN;
+    if (!Number.isFinite(display)) continue;
+    const seat = display - 1;
+    const player = state.players.find((p) => p.seat === seat);
+    if (!player) continue;
+    if (!player.alive) continue;
+    if (typeof mutedSeat === "number" && mutedSeat === seat) continue;
+    seats.add(seat);
+  }
+  return [...seats].sort((a, b) => a - b);
+};
+
 export async function generateDailySummary(
   state: GameState
-): Promise<{ bullets: string[]; voteData?: DailySummaryVoteData }> {
+): Promise<{ bullets: string[]; voteData?: DailySummaryVoteData; passiveSeats: number[] }> {
   const { t } = getI18n();
   const startTime = Date.now();
   const summaryModel = getSummaryModel();
@@ -748,25 +773,31 @@ export async function generateDailySummary(
             type: "array",
             items: { type: "string" },
           },
+          // 發言品質評估：記錄員回報當天發言消極的座位（1 基），下一輪會提醒那些玩家。
+          passiveSeats: {
+            type: "array",
+            items: { type: "integer" },
+          },
         },
         required: ["bullets"],
         additionalProperties: false,
       }),
     },
     (cleaned) => {
-      const obj = parseLLMJson<{ bullets?: unknown; summary?: unknown }>(cleaned);
+      const obj = parseLLMJson<{ bullets?: unknown; summary?: unknown; passiveSeats?: unknown }>(cleaned);
       if (!obj || typeof obj !== "object" || Array.isArray(obj)) return parseFail();
+      const passiveSeats = normalizePassiveSeats(obj.passiveSeats, state);
       if (Array.isArray(obj.bullets)) {
         const bullets = obj.bullets
           .filter((bullet): bullet is string => typeof bullet === "string")
           .map((bullet) => bullet.trim())
           .filter(Boolean);
         if (bullets.length > 0) {
-          return parseOk({ bullets, voteData });
+          return parseOk({ bullets, voteData, passiveSeats });
         }
       }
       if (typeof obj.summary === "string" && obj.summary.trim()) {
-        return parseOk({ bullets: [obj.summary.trim()], voteData });
+        return parseOk({ bullets: [obj.summary.trim()], voteData, passiveSeats });
       }
       return parseFail();
     }
@@ -789,7 +820,7 @@ export async function generateDailySummary(
   });
 
   if (completion.parsed) return completion.parsed;
-  return { bullets: [], voteData };
+  return { bullets: [], voteData, passiveSeats: [] };
 }
 
 export async function* generateAISpeechStream(

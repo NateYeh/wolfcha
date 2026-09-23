@@ -344,6 +344,16 @@ export interface GameState {
   dailySummaries: Record<number, string[]>; // day -> summary bullet list
   dailySummaryFacts: Record<number, DailySummaryFact[]>; // day -> structured facts
   dailySummaryVoteData?: Record<number, DailySummaryVoteData>;
+  /**
+   * 主持人對「當天發言品質」的評估（每日摘要時產生，只留最近一次）。
+   * 下一輪（次日）該座位發言時，prompt 會提醒他發言消極、要積極參與。
+   */
+  speechAssessment?: {
+    /** 被評估的那一天 */
+    day: number;
+    /** 0 基座位：當天發言被判定為消極（沒有實質判斷、只在等別人或跟票） */
+    passiveSeats: number[];
+  };
   nightActions: {
     guardTarget?: number;        // 守卫保护的目标
     /** 禁言長老指定的目標（次日白天不能發言；警徽投票／放逐投票／遺言不受限） */

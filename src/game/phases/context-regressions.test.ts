@@ -986,3 +986,41 @@ test("空表態不算發言：發言階段必須交出實質判斷（不能再�
   assert.match(systemParts, /空表态不算发言/);
   assert.match(systemParts, /这一轮等于什么都没说/);
 });
+
+test("發言消極評估：每日摘要回報的消極座位，次日發言會被提醒積極參與", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_SPEECH");
+  state.day = 2;
+  const passive = state.players.find((p) => p.role === "Villager")!;
+  const active = state.players.find((p) => p.role === "Werewolf")!;
+  state.speechAssessment = { day: 1, passiveSeats: [passive.seat] };
+
+  const passivePrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, passive)!;
+  assert.match(passivePrompt.user, /【主持人評估】你上一輪的發言被判定為消極/);
+  assert.match(passivePrompt.user, /這一輪請積極參與遊戲/);
+  // 沒被評到的座位不受影響
+  const activePrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, active)!;
+  assert.doesNotMatch(activePrompt.user, /你上一輪的發言被判定為消極/);
+  // 只管「次日」：第 3 天不再提醒
+  const dayThree = { ...state, day: 3 };
+  const laterPrompt = new PhaseManager().getPrompt("DAY_SPEECH", { state: dayThree }, passive)!;
+  assert.doesNotMatch(laterPrompt.user, /你上一輪的發言被判定為消極/);
+  // 提醒是逐人資訊，不得進 system 共用前綴
+  assert.doesNotMatch(passivePrompt.system, /發言被判定為消極/);
+});
+
+test("發言消極名單正規化：1 基轉 0 基、去重，並排除出局與當日被禁言者", async () => {
+  const { normalizePassiveSeats } = await import("@/lib/game-master");
+  const state = fresh("DAY_SPEECH");
+  state.day = 1;
+  state.players = state.players.map((p, i) => (i === 3 ? { ...p, alive: false } : p));
+  state.dayHistory = { 1: { muted: { seat: state.players[5].seat } } };
+
+  const seats = normalizePassiveSeats([1, 1, "2", 4, 6, 99, "x", null], state);
+  // 1 基 1、2 → 0 基 0、1；4 號已出局被排除；6 號當日被禁言被排除；99 越界、其餘非數字
+  assert.deepEqual(seats, [0, 1]);
+  // 非陣列一律視為空
+  assert.deepEqual(normalizePassiveSeats(undefined, state), []);
+  assert.deepEqual(normalizePassiveSeats("1,2", state), []);
+});

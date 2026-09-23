@@ -511,6 +511,8 @@ export function useGameLogic() {
             ...(state.dailySummaryVoteData ?? {}),
             ...(summary.voteData ? { [state.day]: summary.voteData } : {}),
           },
+          // 發言品質評估：次日發言時會提醒被記為消極的座位（見 DaySpeechPhase）
+          speechAssessment: { day: state.day, passiveSeats: summary.passiveSeats ?? [] },
         };
       } catch {
         return state;
@@ -2622,6 +2624,7 @@ export function useGameLogic() {
                 dailySummaries: summarized.dailySummaries,
                 dailySummaryFacts: summarized.dailySummaryFacts,
                 dailySummaryVoteData: summarized.dailySummaryVoteData ?? prev.dailySummaryVoteData,
+                speechAssessment: summarized.speechAssessment ?? prev.speechAssessment,
               };
             });
           })

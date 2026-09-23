@@ -87,6 +87,13 @@ export class DaySpeechPhase extends GamePhase {
     // coreRules 佔位符仍在模板裡（歷史遺留）：務必傳空字串，否則 ICU 會拋
     // FORMATTING_ERROR 並讓整段退回成 key（prompt 直接壞掉）。
     const sceneSection = t("prompts.daySpeech.scene", { coreRules: "" });
+    // 主持人發言品質評估：昨天被記為消極的座位，今天發言時要提醒他積極參與。
+    // 只在「次日」提醒（評估只在當天摘要時產生，隔天沒再消極就不會再被記）。
+    const assessment = state.speechAssessment;
+    const participationNote =
+      assessment && assessment.day + 1 === state.day && assessment.passiveSeats.includes(player.seat)
+        ? t("promptUtils.gameContext.passiveSpeechNote")
+        : "";
     const todayTranscript = buildTodayTranscript(state);
     const selfSpeech = buildPlayerTodaySpeech(state, player);
     const selfSpeechContext = selfSpeech
@@ -207,6 +214,7 @@ export class DaySpeechPhase extends GamePhase {
         gameContextParts.private,
         identityContent,
         sceneSection,
+        participationNote,
         taskSection,
         guidelinesSection,
         publicFactsForPlayer,
