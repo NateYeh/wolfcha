@@ -1379,15 +1379,8 @@ alive_count: ${alivePlayers.length}${mutedLine}
     .join("\n");
   context += `\n\n<alive_players>\n${playerList}\n</alive_players>`;
 
-  const wolfFriendlyFireNote = t("promptUtils.gameContext.wolfFriendlyFireNote");
-  const phaseOrderNote =
-    state.day === 1
-      ? t("promptUtils.gameContext.phaseOrderNoteDay1BadgeBeforeDeath")
-      : t("promptUtils.gameContext.phaseOrderNote");
-  const noSameDayCausalityNote =
-    state.phase.includes("DAY")
-      ? t("promptUtils.gameContext.noSameDayCausalityNote")
-      : "";
+  // 時序與刀口常識已經搬進共用攻略（system 前綴，全桌同文、可快取）；這裡只留
+  // 逐日狀態相依的平安夜說明——那是唯一每天都在變的規則提示。
   // Check if guard exists in this game（單一真相：跟著本局實際組成走）
   const hasGuard = gameHasRole(state, "Guard");
   
@@ -1399,20 +1392,15 @@ alive_count: ${alivePlayers.length}${mutedLine}
     Array.isArray(nightHistory.deaths) &&
     getRecordedNightDeaths(nightHistory).length === 0;
   
-  // Build rules text with phase order note always included
-  let rulesText = wolfFriendlyFireNote;
+  // 逐日規則提示：目前只有平安夜（有無守衛用不同說法），其餘（時序／刀口常識）在共用攻略裡。
+  let rulesText = "";
   if (isPeacefulNight) {
-    // Use different peaceful night note based on whether guard exists
-    const peacefulNightNote = hasGuard 
+    const peacefulNightNote = hasGuard
       ? t("promptUtils.gameContext.peacefulNightNote")
       : t("promptUtils.gameContext.peacefulNightNoteNoGuard");
-    rulesText += `\n${peacefulNightNote}`;
+    rulesText += peacefulNightNote;
   }
-  rulesText += `\n${phaseOrderNote}`;
-  if (noSameDayCausalityNote) {
-    rulesText += `\n${noSameDayCausalityNote}`;
-  }
-  if (rulesText) {
+  if (rulesText.trim()) {
     context += `\n\n<rules>\n${rulesText}\n</rules>`;
   }
 

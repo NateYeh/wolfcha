@@ -272,12 +272,17 @@ test("票型／刀口读法已從 rules 移出：白天所有阵营都從共用�
   const villager = dayState.players.find((p) => p.role === "Villager")!;
   const wolf = dayState.players.find((p) => p.role === "Werewolf")!;
   for (const actor of [villager, wolf]) {
-    const rules = buildGameContext(dayState, actor).match(/<rules>[\s\S]*?<\/rules>/)?.[0];
-    assert.ok(rules);
-    // 動態規則區只留時序與刀口常識
-    assert.match(rules, /【刀口常识】/);
+    const ctx = buildGameContext(dayState, actor);
+    // 動態規則區不再放時序與刀口常識（搬進共用攻略），只留逐日狀態相依的提示；
+    // 非平安夜時整個 <rules> 區塊都可以不存在。
+    const rules = ctx.match(/<rules>[\s\S]*?<\/rules>/)?.[0] ?? "";
+    assert.doesNotMatch(rules, /【刀口常识】/);
+    assert.doesNotMatch(rules, /阶段顺序/);
     assert.doesNotMatch(rules, /【票型怎么读】/);
     assert.doesNotMatch(rules, /【读刀口】/);
+    // user context 也不再重貼同一段
+    assert.doesNotMatch(ctx, /【刀口常识】/);
+    assert.doesNotMatch(ctx, /阶段顺序/);
   }
 
   // 全桌同一份攻略：票型／刀口讀法（含反例）都在裡面，人人看得到
@@ -290,6 +295,11 @@ test("票型／刀口读法已從 rules 移出：白天所有阵营都從共用�
   assert.match(guideText, /故意刀掉质疑某人最凶的好人/);
   assert.match(guideText, /「自刀洗白」基本不成立/);
   assert.match(guideText, /白狼王白天能自爆带人/);
+  // 時序（含第一天例外）與刀口常識也在這份攻略裡
+  assert.match(guideText, /【刀口常识】狼可以刀队友，也可以自刀/);
+  assert.match(guideText, /阶段顺序：夜晚（狼人刀人）→ 天亮公布死亡 → 自由发言 → 投票/);
+  assert.match(guideText, /第一天例外：警徽竞选先进行/);
+  assert.match(guideText, /不要把今天的上警、跳身份或发言，当作昨夜被刀的直接原因/);
 });
 
 
@@ -390,16 +400,23 @@ test("历史弃票不会被格式化成不存在的 0 号玩家", () => {
   assert.match(votes, /5号玩家5: \{票数: 1, 投票者: \[2\]\}/);
 });
 
-test("第二天起的阶段顺序不再错误包含警徽竞选", () => {
+test("阶段顺序改放静的共用攻略：一般顺序为主、警徽竞选只写成第一天例外", async () => {
+  const { buildSharedSystemParts } = await import("./prompt-utils");
   const state = makeState();
   state.day = 2;
   state.phase = "DAY_SPEECH";
 
-  const context = buildGameContext(state, state.players[2]);
+  // 攻略是整局固定的靜態前綴，不能再隨「今天第幾天」變動：
+  // 一般顺序照寫，第一天例外用括號條件描述，而不是把警徽竞选塞進常规顺序。
+  const guideText = buildSharedSystemParts(state)[2].text;
+  assert.match(guideText, /阶段顺序：夜晚（狼人刀人）→ 天亮公布死亡 → 自由发言 → 投票/);
+  assert.match(guideText, /第一天例外：警徽竞选先进行/);
+  assert.doesNotMatch(guideText, /夜晚（狼人刀人）→ 警徽竞选 → 天亮公布死亡/);
 
-  assert.match(context, /阶段顺序：夜晚（狼人刀人）→ 天亮公布死亡 → 自由发言 → 投票/);
+  // user context 不再重複同一段（重複會稀釋前綴快取）
+  const context = buildGameContext(state, state.players[2]);
   assert.match(context, /game_status: ongoing/);
-  assert.doesNotMatch(context, /夜晚（狼人刀人）→ 警徽竞选 → 天亮公布死亡/);
+  assert.doesNotMatch(context, /阶段顺序/);
 });
 
 test("当天玩家死亡后仍保留其已发生的发言，并保持遗言的真实顺序", () => {

@@ -389,10 +389,14 @@ test("第 2 天起也要知道「第 1 天警徽競選先於死訊公布」（�
   state.currentSpeakerSeat = 0;
   const speaker = state.players[0];
   const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
-  // 泛用階段順序注也要講第 1 天的例外：競選在前、死訊在警長選出後才公布。
-  assert.match(prompt.user, /第一天的警徽竞选先进行/);
-  assert.match(prompt.user, /死讯在警长选出后才公布/);
-  assert.match(prompt.user, /都发生在死讯公布之前/);
+  // 時序知識（含第 1 天例外：競選在前、死訊在警長選出後才公布）已搬進共用攻略 →
+  // 內容型斷言看 system＋user 全文（攻略在 system、逐人資訊在 user）。
+  const full = `${prompt.system}\n\n${prompt.user}`;
+  assert.match(full, /第一天例外：警徽竞选先进行/);
+  assert.match(full, /死讯在警长选出后才公布/);
+  assert.match(full, /都发生在死讯公布之前/);
+  // 攻略是全桌同文的前綴，不能在逐人的 user 裡重貼一次
+  assert.doesNotMatch(prompt.user, /第一天的警徽竞选先进行/);
 });
 
 test("已死未公布的玩家：警徽報名／發言／投票名單要剔除（夜死者在公布前不參與）", async () => {
@@ -765,15 +769,18 @@ test("角色私有區只留帳目與本輪資訊：策略已移出，村民/白�
   assert.doesNotMatch(hunterCtx, /<your_gun>/);
 });
 
-test("動態 rules 區只留時序與刀口常識：讀盤策略已移出，且陣容不再重複拼接", async () => {
-  const { buildGameContext } = await import("@/lib/prompt-utils");
+test("動態 rules 區只留逐日狀態相依的提示：時序與刀口常識已搬進共用攻略", async () => {
+  const { buildGameContext, buildSharedSystemParts } = await import("@/lib/prompt-utils");
   const state = fresh("DAY_VOTE");
   const villager = state.players.find((p) => p.role === "Villager")!;
   const ctx = buildGameContext(state, villager);
 
-  // 規則類保留（逐日狀態相依，無法進靜態攻略）
-  assert.match(ctx, /【刀口常识】/);
-  assert.match(ctx, /阶段顺序/);
+  // 時序與刀口常識是整局固定的常識 → 進共用攻略（system 前綴），不再逐日重貼
+  assert.doesNotMatch(ctx, /【刀口常识】/);
+  assert.doesNotMatch(ctx, /阶段顺序/);
+  const guideText = buildSharedSystemParts(state)[2].text;
+  assert.match(guideText, /【刀口常识】狼可以刀队友，也可以自刀/);
+  assert.match(guideText, /阶段顺序：夜晚（狼人刀人）→ 天亮公布死亡 → 自由发言 → 投票/);
   // 讀盤策略移出
   assert.doesNotMatch(ctx, /【票型怎么读】/);
   assert.doesNotMatch(ctx, /【读刀口】/);
