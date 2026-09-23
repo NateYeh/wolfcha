@@ -66,7 +66,7 @@ export class HunterPhase extends GamePhase {
       t(isWolfShot ? "prompts.wolfKingShot.task" : "prompts.hunter.task", { options }) +
       lastWordsSection;
     // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
-    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state, player)];
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.hunter.user", {

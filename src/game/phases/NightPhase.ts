@@ -256,7 +256,7 @@ export class NightPhase extends GamePhase {
       jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "<一句话：为什么禁言他>" }),
     });
     // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
-    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state, player)];
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.mute.user", {
@@ -660,7 +660,7 @@ export class NightPhase extends GamePhase {
     });
 
     // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
-    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state, player)];
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.night.seer.user", {
@@ -719,7 +719,7 @@ export class NightPhase extends GamePhase {
     });
 
     // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分（含狼隊友）與本輪任務逐人不同，一律進 user。
-    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state, player)];
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.night.wolf.user", {
@@ -764,7 +764,7 @@ export class NightPhase extends GamePhase {
       abstainLine,
     });
     // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
-    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state, player)];
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.night.guard.user", {
@@ -847,7 +847,7 @@ export class NightPhase extends GamePhase {
       passJsonFormat: JSON.stringify({ action: "pass", reason: "一句话说明你的判断" }),
     });
     // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
-    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state, player)];
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
     const system = buildSystemTextFromParts(systemParts);
 
     const user = t("prompts.night.witch.user", {

@@ -118,8 +118,7 @@ export const getStrategyGuide = (
  * 逐字相同、跨座位與跨階段都能共用同一段前綴快取；個人身分與當輪任務由呼叫端接在後面。
  */
 export const buildSharedSystemParts = (
-  state: Pick<GameState, "players" | "fixedRoles" | "isAcquaintanceGame" | "characterStats">,
-  player?: Player
+  state: Pick<GameState, "players" | "fixedRoles" | "isAcquaintanceGame" | "characterStats">
 ): SystemPromptPart[] => {
   const { t } = getI18n();
   const parts: SystemPromptPart[] = [
@@ -132,9 +131,9 @@ export const buildSharedSystemParts = (
     },
   ];
 
-  // 熟人局素材（對其他人的平時印象與交手記錄）整局固定不變，且不是回合狀態，
+  // 熟人局素材（全桌每個人的平時印象與交手記錄）整局固定不變、逐字不隨座位改變，
   // 因此放 system 攻略之後；非熟人局或無素材時整段不拼。
-  const acquaintanceNotes = player ? buildAcquaintanceNotes(state, player) : "";
+  const acquaintanceNotes = buildAcquaintanceNotes(state);
   if (acquaintanceNotes) {
     parts.push({ text: acquaintanceNotes, cacheable: true, ttl: "1h" });
   }
@@ -436,18 +435,17 @@ export const buildPersonaSection = (player: Player, isGenshinMode: boolean = fal
 };
 
 /**
- * 熟人局素材：对其他玩家拼入「平时积累的印象」（persona 行为栏位）与「交手记录」（历史胜率/MVP）。
+ * 熟人局素材：拼入全桌每個人的「平时积累的印象」（persona 行为栏位）与「交手记录」（历史胜率/MVP）。
+ * **含自己那一行**：內容逐字不隨座位改變，才能整段進 system 共用前綴（全桌同一份）。
  * 这些内容互相之间平时不可见，但熟人局设定下视为彼此认识多年所知；印象仅供参考，不是事实。
  */
 const buildAcquaintanceNotes = (
-  state: Pick<GameState, "players" | "isAcquaintanceGame" | "characterStats">,
-  player: Player
+  state: Pick<GameState, "players" | "isAcquaintanceGame" | "characterStats">
 ): string => {
   if (!state.isAcquaintanceGame) return "";
   const { t } = getI18n();
   const lines: string[] = [];
   for (const other of state.players) {
-    if (other.playerId === player.playerId) continue;
     const traits: string[] = [];
     if (other.isHuman) {
       traits.push(t("promptUtils.acquaintance.humanTag"));

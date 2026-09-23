@@ -574,13 +574,13 @@ test("白痴打法已整併進統一攻略：不再有私有筆記段（免死�
 });
 
 
-test("熟人局：注入其他玩家的印象与交手记录；关闭或无素材不拼入，本人不列", () => {
+test("熟人局：注入全桌每个人的印象与交手记录（含自己，全桌同一份）；关闭或无素材不拼入", () => {
   const dayState = makeState();
   dayState.phase = "DAY_SPEECH";
   const actor = dayState.players[2];
   /** 熟人局素材已移到 system 共用開場（攻略之後）：取 system 全文來斷言。 */
-  const acquaintanceText = (state: GameState, who = actor) =>
-    buildSharedSystemParts(state, who).map((part) => part.text).join("\n");
+  const acquaintanceText = (state: GameState) =>
+    buildSharedSystemParts(state).map((part) => part.text).join("\n");
 
   // 关闭开关：缺席
   assert.doesNotMatch(acquaintanceText({ ...dayState, isAcquaintanceGame: false }), /<acquaintance_notes>/);
@@ -619,6 +619,12 @@ test("熟人局：注入其他玩家的印象与交手记录；关闭或无素�
     },
   };
 
+  // 本人（players[2]）也給一份交手記錄：證明自己那一行同樣會列
+  state.characterStats = {
+    ...state.characterStats,
+    [state.players[2].displayName]: { games: 4, wins: 1, mvps: 0, svps: 1 },
+  };
+
   const ctx = buildGameContext(state, actor);
   // 存活玩家列表的真人标记（一般性信息，不受熟人局开关影响）
   assert.match(ctx, /1号 玩家1（真人）/);
@@ -635,13 +641,18 @@ test("熟人局：注入其他玩家的印象与交手记录；关闭或无素�
   assert.match(ctxAcq, /胆量：偏怂/);
   assert.match(ctxAcq, /自保倾向：优先自保/);
   assert.match(ctxAcq, /场上存在感：存在感强/);
-  // 本人（3号）不列入名单
-  assert.doesNotMatch(ctxAcq, /- 3号玩家3：/);
+  // 自己那一行也在名單內（含自己 → 內容逐字不隨座位改變，整段可共用）
+  assert.match(ctxAcq, /- 3号玩家3：交手记录：4 场、胜率 25%、MVP 0 次/);
+  // 每個有素材的座位都在同一份裡（1／2／3 號），且不含沒素材的座位
+  for (const seat of [1, 2, 3]) {
+    assert.match(ctxAcq, new RegExp(`- ${seat}号玩家${seat}：`));
+  }
+  assert.doesNotMatch(ctxAcq, /- 4号玩家4：/);
 });
 
 /** 熟人局素材在 system 共用開場裡（攻略之後）。 */
-const acquaintanceTextOf = (state: GameState, who: Player): string =>
-  buildSharedSystemParts(state, who).map((part) => part.text).join("\n");
+const acquaintanceTextOf = (state: GameState): string =>
+  buildSharedSystemParts(state).map((part) => part.text).join("\n");
 
 test("開局建構點：LOBBY 與 NIGHT_START 都要帶上熟人局旗標（漏一個就會靜默掉）", async () => {
   const { buildGameStartState } = await import("./game-master");
@@ -679,5 +690,5 @@ test("開局建構點：LOBBY 與 NIGHT_START 都要帶上熟人局旗標（漏�
 
   // 端到端：這份開局狀態進到 prompt 後，熟人局區塊真的存在
   const actor = nightState.players[2];
-  assert.match(acquaintanceTextOf(nightState, actor), /<acquaintance_notes>/);
+  assert.match(acquaintanceTextOf(nightState), /<acquaintance_notes>/);
 });
