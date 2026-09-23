@@ -51,6 +51,7 @@ import {
   generateWolfTeamPlan,
   buildHumanWolfTeamPlan,
   type HumanWolfTeamPlanChoice,
+  carryDailySummary,
 } from "@/lib/game-master";
 import { buildGenshinModelRefs, generateGenshinModeCharacters, sampleModelRefs, type GeneratedCharacter } from "@/lib/character-generator";
 import { sampleRosterCharacters } from "@/lib/character-roster";
@@ -1151,12 +1152,7 @@ export function useGameLogic() {
     const summarized = await maybeGenerateDailySummary(state, { force: true });
     if (!isTokenValid(token)) return;
 
-    const mergedState = {
-      ...nextState,
-      dailySummaries: summarized.dailySummaries,
-      dailySummaryFacts: summarized.dailySummaryFacts,
-      dailySummaryVoteData: summarized.dailySummaryVoteData ?? nextState.dailySummaryVoteData,
-    };
+    const mergedState = carryDailySummary(nextState, summarized);
 
     await runNightPhaseAction(mergedState, token, "START_NIGHT");
   }, [isTokenValid, maybeGenerateDailySummary, runNightPhaseAction, setGameState, setDialogue, speakerHost, transitionPhase]);
@@ -2619,13 +2615,7 @@ export function useGameLogic() {
           .then((summarized) => {
             setGameState((prev) => {
               if (prev.gameId !== summarized.gameId || prev.day !== summarized.day) return prev;
-              return {
-                ...prev,
-                dailySummaries: summarized.dailySummaries,
-                dailySummaryFacts: summarized.dailySummaryFacts,
-                dailySummaryVoteData: summarized.dailySummaryVoteData ?? prev.dailySummaryVoteData,
-                speechAssessment: summarized.speechAssessment ?? prev.speechAssessment,
-              };
+              return carryDailySummary(prev, summarized);
             });
           })
           .catch(() => {});

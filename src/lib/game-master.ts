@@ -19,6 +19,7 @@ import {
   type ModelRef,
 } from "@/types/game";
 import { GAME_TEMPERATURE } from "./ai-config";
+import { getMutedSeat } from "./rules/mute";
 import { sampleModelRefs, type GeneratedCharacter } from "./character-generator";
 import { withCriticalRetry } from "@/lib/critical-retry";
 import { isUpstreamTimeoutError } from "@/lib/upstream-timeout";
@@ -706,7 +707,9 @@ export function formatDailySummaryTranscriptMessage(
  */
 export const normalizePassiveSeats = (raw: unknown, state: GameState): number[] => {
   if (!Array.isArray(raw)) return [];
-  const mutedSeat = state.dayHistory?.[state.day]?.muted?.seat;
+  // 用禁言規則的單一真相：日報也可能在「天亮公告之前」就提早生成（DAY_SPEECH 中途），
+  // 那時禁言還只存在 nightActions.mutedTarget，只讀 dayHistory 會漏掉。
+  const mutedSeat = getMutedSeat(state);
   const seats = new Set<number>();
   for (const value of raw) {
     const display = typeof value === "number"
@@ -719,7 +722,7 @@ export const normalizePassiveSeats = (raw: unknown, state: GameState): number[] 
     const player = state.players.find((p) => p.seat === seat);
     if (!player) continue;
     if (!player.alive) continue;
-    if (typeof mutedSeat === "number" && mutedSeat === seat) continue;
+    if (mutedSeat === seat) continue;
     seats.add(seat);
   }
   return [...seats].sort((a, b) => a - b);
@@ -821,6 +824,24 @@ export async function generateDailySummary(
 
   if (completion.parsed) return completion.parsed;
   return { bullets: [], voteData, passiveSeats: [] };
+}
+
+/**
+ * 把一份日報結果搬進目標狀態。
+ *
+ * 日報會產生四個欄位（dailySummaries／dailySummaryFacts／dailySummaryVoteData／
+ * speechAssessment），而且有三個搬運點：提前總結、換日、最終狀態。先前換日那條只搬了
+ * 前三項，漏掉 speechAssessment，於是「昨天誰在空發言」隔天就查不到（實測第 1 天日報
+ * 已回報 passiveSeats，但次日 state 裡沒有這個欄位）。欄位清單以這裡為準。
+ */
+export function carryDailySummary<T extends GameState>(target: T, source: GameState): T {
+  return {
+    ...target,
+    dailySummaries: source.dailySummaries,
+    dailySummaryFacts: source.dailySummaryFacts,
+    dailySummaryVoteData: source.dailySummaryVoteData ?? target.dailySummaryVoteData,
+    speechAssessment: source.speechAssessment ?? target.speechAssessment,
+  };
 }
 
 export async function* generateAISpeechStream(
