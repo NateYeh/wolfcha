@@ -2413,11 +2413,11 @@ export function useGameLogic() {
         if (target) {
           currentState = addSystemMessage(
             currentState,
-            systemMessages.hunterShoot(humanPlayer.seat + 1, humanPlayer.displayName, targetSeat + 1, target.displayName)
+            systemMessages.hunterShoot(humanPlayer.seat + 1, humanPlayer.displayName, targetSeat + 1, target.displayName, getRoleName(humanPlayer.role))
           );
           setDialogue(
             speakerHost,
-            systemMessages.hunterShoot(humanPlayer.seat + 1, humanPlayer.displayName, targetSeat + 1, target.displayName),
+            systemMessages.hunterShoot(humanPlayer.seat + 1, humanPlayer.displayName, targetSeat + 1, target.displayName, getRoleName(humanPlayer.role)),
             false
           );
         }

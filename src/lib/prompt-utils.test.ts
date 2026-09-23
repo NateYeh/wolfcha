@@ -841,3 +841,35 @@ test("攻略：被查殺時不得認同查殺自己的人（好人自證／狼�
   assert.match(systemText, /被查杀不要认同对方/);
   assert.match(systemText, /被查杀时别替对方背书/);
 });
+
+test("公開技能翻牌分清獵人槍與狼王槍：狼王不能被寫成獵人", async () => {
+  const { buildPublicRecordForRemark } = await import("./public-record");
+  const state = makeState();
+  const wolfKing = { ...state.players[0], role: "WolfKing" as Role, alive: false };
+  const hunter = { ...state.players[1], role: "Hunter" as Role, alive: false };
+  const wolfShotTarget = { ...state.players[2], alive: false };
+  const hunterShotTarget = { ...state.players[3], alive: false };
+  state.players = state.players.map((p, i) =>
+    i === 0 ? wolfKing : i === 1 ? hunter : i === 2 ? wolfShotTarget : i === 3 ? hunterShotTarget : p
+  );
+  state.day = 2;
+  state.nightHistory = {};
+  state.dayHistory = {
+    1: { hunterShot: { hunterSeat: wolfKing.seat, targetSeat: wolfShotTarget.seat } },
+    2: { hunterShot: { hunterSeat: hunter.seat, targetSeat: hunterShotTarget.seat } },
+  };
+
+  const context = buildGameContext(state, state.players[4]);
+  // 狼王槍：講狼王，不可以講獵人
+  assert.match(context, new RegExp(`第1天：\\d+号.*已由主持人公开确认为狼王`));
+  assert.doesNotMatch(context, /第1天：.*确认为猎人/);
+  // 獵人槍照舊
+  assert.match(context, new RegExp(`第2天：\\d+号.*已由主持人公开确认为猎人`));
+  // 死因文案也要分開
+  assert.match(context, /狼王公开开枪/);
+  assert.match(context, /猎人公开开枪/);
+  // 賽後公開記錄同樣分清
+  const record = buildPublicRecordForRemark(state).join("\n");
+  assert.match(record, /狼王开枪带走/);
+  assert.match(record, /猎人开枪带走/);
+});

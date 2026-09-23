@@ -1061,7 +1061,7 @@
     "witchSave": "你使用瞭解藥",
     "witchPoison": "你對 {seat}號 {name} 使用了毒藥",
     "guardProtect": "你守護了 {seat}號 {name}",
-    "hunterShoot": "{shooterSeat}號 {shooterName} 開槍帶走了 {targetSeat}號 {targetName}",
+    "hunterShoot": "{shooterSeat}號 {shooterName} {shooterRole}開槍帶走了 {targetSeat}號 {targetName}",
     "idiotRevealed": "{seat}號 {name} 翻牌 —— 白痴，免疫放逐！此後失去投票權。",
     "badgeTransferStart": "{seat}號 {name} 是警長，請選擇移交警徽的對象或撕毀警徽",
     "badgeTransferred": "警徽移交給 {toSeat}號 {toName}",
@@ -1805,7 +1805,8 @@
     "remarkPrivateWitchPoison": "第{day}夜你用毒藥毒了{target}號——你自己寫的理由：{reason}",
     "remarkPrivateSeer": "第{day}夜你查驗的是{target}號——你自己寫的理由：{reason}",
     "publicRecordBoomNoTarget": "第{day}天：{seat}號自爆出局",
-    "wolfKingPrompt": "你被放逐出局，可以開槍帶走一名玩家。要打誰？"
+    "wolfKingPrompt": "你被放逐出局，可以開槍帶走一名玩家。要打誰？",
+    "publicRecordWolfKingShot": "第{day}天：{seat}號狼王開槍帶走{target}號"
   },
   "gameLogic": {
     "errors": {
@@ -2102,7 +2103,9 @@
       "speechRecoveryFailedNoNew": "公開發言格式恢復失敗：沒有新增公開段落",
       "gameEndRemarkDaySummary": "第{day}天：{bullets}",
       "pastDayHeading": "【第{day}天 白天記錄】",
-      "voteDetailLine": "{target}：{count}票，投票者為 {voters}"
+      "voteDetailLine": "{target}：{count}票，投票者為 {voters}",
+      "wolfKingRoleReveal": "- 第{day}天：{player} 已由主持人公開確認為狼王，並開槍帶走 {target}；開槍不產生查驗結果，也不公開 {target} 的身份。",
+      "deathCauseWolfKingShot": "狼王公開開槍"
     },
     "acquaintance": {
       "header": "【熟人局】這桌人你都認識，下面是平時積累的印象、各自跑的底層模型和交手記錄。印象只是印象——本局他們未必照老習慣打，拿狼的人更可能一反常態；怎麼利用這些瞭解，你自己決定。",

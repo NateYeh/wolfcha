@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { getRoleName } from "@/lib/game-constants";
 import { useAtom } from "jotai";
 import type { GameState, Player, Alignment } from "@/types/game";
 import { gameStateAtom } from "@/store/game-machine";
@@ -178,11 +179,11 @@ export function useSpecialEvents(
       if (target) {
         currentState = addSystemMessage(
           currentState,
-          texts.systemMessages.hunterShoot(hunter.seat + 1, hunter.displayName, targetSeat + 1, target.displayName)
+          texts.systemMessages.hunterShoot(hunter.seat + 1, hunter.displayName, targetSeat + 1, target.displayName, getRoleName(hunter.role))
         );
         setDialogue(
           texts.speakerHost,
-          texts.systemMessages.hunterShoot(hunter.seat + 1, hunter.displayName, targetSeat + 1, target.displayName),
+          texts.systemMessages.hunterShoot(hunter.seat + 1, hunter.displayName, targetSeat + 1, target.displayName, getRoleName(hunter.role)),
           false
         );
       }

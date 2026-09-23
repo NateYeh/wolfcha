@@ -9,6 +9,7 @@ import { getRoleName } from "./game-constants";
 import { getMutedSeat, isMutePublic } from "./rules/mute";
 import { getRoleConfiguration } from "./role-configuration";
 import { ALL_ROLE_KEYS } from "./rules/boards";
+import { getDeathShotKind } from "./rules/death-skills";
 import {
   resolveBadgeElectionWinner,
   resolveSheriffSeatAtVote,
@@ -190,6 +191,39 @@ ${t("promptUtils.gameContext.publicIdentityRule")}
 </public_role_configuration>`;
 };
 
+/**
+ * 公開技能翻牌的文案：獵人槍與狼王槍都會記在同一欄 `hunterShot`，
+ * 必須用槍的種類（死亡技能單一真相）決定講「獵人」還是「狼王」，不能一律當獵人。
+ */
+const shotRevealLine = (
+  state: GameState,
+  day: number,
+  shot: { hunterSeat: number; targetSeat: number }
+): string => {
+  const { t } = getI18n();
+  const shooter = state.players.find((p) => p.seat === shot.hunterSeat);
+  const isWolfGun = getDeathShotKind(shooter?.role ?? "") === "wolf_gun";
+  return t(isWolfGun
+    ? "promptUtils.gameContext.wolfKingRoleReveal"
+    : "promptUtils.gameContext.hunterRoleReveal", {
+    day,
+    [isWolfGun ? "player" : "hunter"]: formatSeatName(state, shot.hunterSeat),
+    target: formatSeatName(state, shot.targetSeat),
+  });
+};
+
+/** 被槍打死者的公開死因文案：同樣要分清獵人槍與狼王槍。 */
+const shotDeathCauseLabel = (
+  state: GameState,
+  shot: { hunterSeat: number }
+): string => {
+  const { t } = getI18n();
+  const shooter = state.players.find((p) => p.seat === shot.hunterSeat);
+  return getDeathShotKind(shooter?.role ?? "") === "wolf_gun"
+    ? t("promptUtils.gameContext.deathCauseWolfKingShot")
+    : t("promptUtils.gameContext.deathCauseHunterShot");
+};
+
 const buildPublicRoleReveals = (state: GameState): string => {
   const { t } = getI18n();
   const facts: string[] = [];
@@ -198,22 +232,14 @@ const buildPublicRoleReveals = (state: GameState): string => {
     .sort(([a], [b]) => Number(a) - Number(b))
     .forEach(([day, history]) => {
       if (!history.hunterShot) return;
-      facts.push(t("promptUtils.gameContext.hunterRoleReveal", {
-        day: Number(day),
-        hunter: formatSeatName(state, history.hunterShot.hunterSeat),
-        target: formatSeatName(state, history.hunterShot.targetSeat),
-      }));
+      facts.push(shotRevealLine(state, Number(day), history.hunterShot));
     });
 
   Object.entries(state.dayHistory || {})
     .sort(([a], [b]) => Number(a) - Number(b))
     .forEach(([day, history]) => {
       if (history.hunterShot) {
-        facts.push(t("promptUtils.gameContext.hunterRoleReveal", {
-          day: Number(day),
-          hunter: formatSeatName(state, history.hunterShot.hunterSeat),
-          target: formatSeatName(state, history.hunterShot.targetSeat),
-        }));
+        facts.push(shotRevealLine(state, Number(day), history.hunterShot));
       }
       if (history.selfDestruct) {
         const boomPlayer = formatSeatName(state, history.selfDestruct.boomSeat);
@@ -1258,7 +1284,7 @@ export const buildGameContextParts = (
   const totalSeats = state.players.length;
   const publicGenericDeathCause = t("promptUtils.gameContext.deathCauseDeath");
   const publicExecutionCause = t("promptUtils.gameContext.deathCauseVote");
-  const publicHunterShotCause = t("promptUtils.gameContext.deathCauseHunterShot");
+  // 槍的死因文案不預先取：獵人槍與狼王槍要分開（見 shotDeathCauseLabel）。
   const publicWhiteWolfKingCause = t("promptUtils.gameContext.deathCauseWhiteWolfKing");
 
   // === 個人專屬區塊集中在最後（前綴快取友善） ===
@@ -1281,11 +1307,17 @@ export const buildGameContextParts = (
         cause = publicGenericDeathCause;
         deathDay = Number(day);
       }
-      if (history.hunterShot?.targetSeat === p.seat) { cause = publicHunterShotCause; deathDay = Number(day); }
+      if (history.hunterShot?.targetSeat === p.seat) {
+        cause = shotDeathCauseLabel(state, history.hunterShot);
+        deathDay = Number(day);
+      }
     }
     for (const [day, history] of Object.entries(state.dayHistory || {})) {
       if (history.executed?.seat === p.seat) { cause = publicExecutionCause; deathDay = Number(day); }
-      if (history.hunterShot?.targetSeat === p.seat) { cause = publicHunterShotCause; deathDay = Number(day); }
+      if (history.hunterShot?.targetSeat === p.seat) {
+        cause = shotDeathCauseLabel(state, history.hunterShot);
+        deathDay = Number(day);
+      }
       if (history.selfDestruct?.boomSeat === p.seat || history.selfDestruct?.targetSeat === p.seat) {
         cause = publicWhiteWolfKingCause;
         deathDay = Number(day);
@@ -1411,13 +1443,13 @@ alive_count: ${alivePlayers.length}${mutedLine}
       if (dayHistory?.hunterShot && typeof dayHistory.hunterShot.targetSeat === "number") {
         const p = state.players.find(p => p.seat === dayHistory.hunterShot?.targetSeat);
         if (p && !p.alive) {
-          currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${publicHunterShotCause}}`);
+          currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${shotDeathCauseLabel(state, dayHistory.hunterShot)}}`);
         }
       }
       if (nightHistory?.hunterShot && typeof nightHistory.hunterShot.targetSeat === "number") {
         const p = state.players.find(p => p.seat === nightHistory.hunterShot?.targetSeat);
         if (p && !p.alive) {
-          currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${publicHunterShotCause}}`);
+          currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${shotDeathCauseLabel(state, nightHistory.hunterShot)}}`);
         }
       }
       if (dayHistory?.selfDestruct) {

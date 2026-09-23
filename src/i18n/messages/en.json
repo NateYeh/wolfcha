@@ -1061,7 +1061,7 @@
     "witchSave": "You used the antidote.",
     "witchPoison": "You poisoned Seat {seat} {name}.",
     "guardProtect": "You protected Seat {seat} {name}.",
-    "hunterShoot": "{shooterSeat} {shooterName} shoots {targetSeat} {targetName}",
+    "hunterShoot": "{shooterSeat} {shooterName} ({shooterRole}) shoots {targetSeat} {targetName}",
     "idiotRevealed": "Seat {seat} {name} revealed as Idiot — immune to exile! Loses voting rights.",
     "badgeTransferStart": "Seat {seat} {name} is the sheriff. Transfer the badge or tear it up.",
     "badgeTransferred": "Badge transferred to Seat {toSeat} {toName}.",
@@ -1805,7 +1805,8 @@
     "remarkPrivateWitchPoison": "Night {day} you used the poison on No.{target} — the reason you wrote at the time: {reason}",
     "remarkPrivateSeer": "Night {day} you checked No.{target} — the reason you wrote at the time: {reason}",
     "publicRecordBoomNoTarget": "Day {day}: Seat {seat} self-destructed",
-    "wolfKingPrompt": "You were exiled - you may shoot one player. Who?"
+    "wolfKingPrompt": "You were exiled - you may shoot one player. Who?",
+    "publicRecordWolfKingShot": "Day {day}: Seat {seat} (Wolf King) shot Seat {target}"
   },
   "gameLogic": {
     "errors": {
@@ -2102,7 +2103,9 @@
       "speechRecoveryFailedNoNew": "Failed to recover a valid public speech: no new public segments",
       "gameEndRemarkDaySummary": "Day {day}: {bullets}",
       "pastDayHeading": "【Day {day}: daytime record】",
-      "voteDetailLine": "{target}: {count} vote(s), voters: {voters}"
+      "voteDetailLine": "{target}: {count} vote(s), voters: {voters}",
+      "wolfKingRoleReveal": "- Day {day}: {player} was publicly confirmed by the host as the Wolf King and shot {target}; a shot produces no check result and does not reveal {target}'s role.",
+      "deathCauseWolfKingShot": "Wolf King shot in public"
     },
     "acquaintance": {
       "header": "【Friends' table】You know everyone at this table. Below are impressions built up over past games, the underlying model each AI runs on, and each player's record. Impressions are only impressions — this game they may not follow old habits, and the wolves especially may act out of character. How you use this knowledge is up to you.",
