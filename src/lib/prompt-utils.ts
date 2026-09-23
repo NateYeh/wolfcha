@@ -598,6 +598,67 @@ const buildVoteGroupsFromSeatTargets = (
   return voteGroups;
 };
 
+/**
+ * 把 `[VOTE_RESULT]{...}` 改寫成「投票詳情」與逐票型的人話版（1-based 座位、含警長 1.5 票權重）。
+ * JSON 壞掉時只記錄並跳過該段，不讓整份紀錄消失。
+ */
+const voteRoundKindLabel = (kind: "badge" | "execution"): string =>
+  getI18n().t(kind === "badge"
+    ? "promptUtils.gameContext.voteRoundKindBadge"
+    : "promptUtils.gameContext.voteRoundKindExile");
+
+const voteRoundOutcomeLabel = (outcome: string): string => {
+  const { t } = getI18n();
+  switch (outcome) {
+    case "elected":
+      return t("promptUtils.gameContext.voteRoundOutcomeElected");
+    case "executed":
+      return t("promptUtils.gameContext.voteRoundOutcomeExecuted");
+    case "idiot-revealed":
+      return t("promptUtils.gameContext.voteRoundOutcomeIdiotRevealed");
+    case "tie":
+      return t("promptUtils.gameContext.voteRoundOutcomeTie");
+    default:
+      return t("promptUtils.gameContext.voteRoundOutcomeNoVotes");
+  }
+};
+
+const formatVoteResultLines = (state: GameState, content: string): string[] => {
+  const { t } = getI18n();
+  try {
+    const parsed = JSON.parse(content.slice("[VOTE_RESULT]".length)) as {
+      title?: string;
+      results?: Array<{ targetSeat?: number; voterSeats?: number[]; voteCount?: number }>;
+    };
+    const results = (parsed.results ?? []).filter(
+      (r): r is { targetSeat: number; voterSeats?: number[]; voteCount?: number } =>
+        typeof r.targetSeat === "number"
+    );
+    if (results.length === 0) return [];
+    const separator = t("promptUtils.gameContext.listSeparator");
+    const lines = [
+      `${t("promptUtils.gameContext.transcriptSystemPrefix")}${parsed.title || t("badgePhase.voteDetailTitle")}`,
+    ];
+    for (const result of results) {
+      const voters = (result.voterSeats ?? [])
+        .map((seat) => formatSeatName(state, seat))
+        .join(separator);
+      const count = typeof result.voteCount === "number"
+        ? (Number.isInteger(result.voteCount) ? `${result.voteCount}` : result.voteCount.toFixed(1))
+        : `${(result.voterSeats ?? []).length}`;
+      lines.push(t("promptUtils.gameContext.voteDetailLine", {
+        target: formatSeatName(state, result.targetSeat),
+        count,
+        voters,
+      }));
+    }
+    return lines;
+  } catch (error) {
+    console.warn("[wolfcha] 解析 VOTE_RESULT 失敗，該段票型不寫入白天記錄:", error);
+    return [];
+  }
+};
+
 const shouldIncludeHistoricalSystemLine = (content: string): boolean => {
   const systemMessages = getSystemMessages();
   const systemPatterns = getSystemPatterns();
@@ -605,10 +666,8 @@ const shouldIncludeHistoricalSystemLine = (content: string): boolean => {
     "天亮了",
     "Dawn breaks, please open your eyes",
     "进入投票环节",
-    "发言结束，开始投票。",
     "Discussion ends, voting begins.",
     systemMessages.dayBreak,
-    systemMessages.voteStart,
     systemMessages.badgeSpeechStart,
     systemMessages.badgeElectionStart,
     systemMessages.badgeRevote,
@@ -696,11 +755,44 @@ const formatTranscriptMessages = (
   let previousPhase: Phase | undefined;
   let previousRound: number | undefined;
   const roundsByPhase = new Map<Phase, number>();
+  // 逐日計算「這是今天第幾個 VOTE_RESULT」，用來對上當天的第幾輪投票。
+  const voteResultSeen = new Map<number, number>();
 
   messages.forEach((m) => {
     if (m.isSystem) {
-      if (shouldIncludeHistoricalSystemLine(m.content.trim())) {
-        lines.push(`${t("promptUtils.gameContext.transcriptSystemPrefix")}${m.content.trim()}`);
+      const systemContent = m.content.trim();
+      // 原始 [VOTE_RESULT] 是 0-based 的 JSON，直接餵模型只會混淆；
+      // 改寫成人話版「投票詳情」＋逐票型，並且保留它在時間軸上的位置（就在投票之後、遺言之前）。
+      if (systemContent.startsWith("[VOTE_RESULT]")) {
+        // 當天的第 N 個 VOTE_RESULT 對應當天第 N 輪投票（輪次資料來自 state.voteRounds）。
+        const messageDay = m.day ?? state.day;
+        const seen = voteResultSeen.get(messageDay) ?? 0;
+        voteResultSeen.set(messageDay, seen + 1);
+        const round = (state.voteRounds ?? [])
+          .filter((r) => r.day === messageDay)
+          .sort((a, b) => a.round - b.round)[seen];
+        if (round) {
+          lines.push(t("promptUtils.gameContext.voteRoundHeader", {
+            day: round.day,
+            kind: voteRoundKindLabel(round.kind),
+            round: round.round,
+          }));
+          lines.push(`  ${t("promptUtils.gameContext.voteRoundCandidates", {
+            list: round.candidates
+              .map((seat) => formatSeatName(state, seat))
+              .join(t("promptUtils.gameContext.listSeparator")),
+          })}`);
+        }
+        lines.push(...formatVoteResultLines(state, systemContent));
+        if (round) {
+          lines.push(`  ${t("promptUtils.gameContext.voteRoundResult", {
+            text: voteRoundOutcomeLabel(round.outcome),
+          })}`);
+        }
+        return;
+      }
+      if (shouldIncludeHistoricalSystemLine(systemContent)) {
+        lines.push(`${t("promptUtils.gameContext.transcriptSystemPrefix")}${systemContent}`);
       }
       return;
     }
@@ -724,6 +816,50 @@ const formatTranscriptMessages = (
     const lastWordsLabel = m.isLastWords ? t("promptUtils.gameContext.lastWordsLabel") : "";
     const statusLabel = m.day === state.day && player && !player.alive ? t("promptUtils.gameContext.transcriptCurrentlyEliminated") : "";
     lines.push(`${lastWordsLabel}${speaker}${statusLabel}: ${m.content}`);
+  });
+
+  // 沒有 VOTE_RESULT 訊息可當錨點的輪次（例如舊存檔、回滾後的狀態）補在當天最後，
+  // 保證票型不會因為缺少訊息而從 prompt 消失。
+  const transcriptDay = messages[0]?.day ?? state.day;
+  const roundsOfDay = (state.voteRounds ?? [])
+    .filter((r) => r.day === transcriptDay)
+    .sort((a, b) => a.round - b.round);
+  roundsOfDay.slice(voteResultSeen.get(transcriptDay) ?? 0).forEach((round) => {
+    lines.push(t("promptUtils.gameContext.voteRoundHeader", {
+      day: round.day,
+      kind: voteRoundKindLabel(round.kind),
+      round: round.round,
+    }));
+    lines.push(`  ${t("promptUtils.gameContext.voteRoundCandidates", {
+      list: round.candidates
+        .map((seat) => formatSeatName(state, seat))
+        .join(t("promptUtils.gameContext.listSeparator")),
+    })}`);
+    const sheriffPlayerId = typeof round.sheriffSeat === "number"
+      ? state.players.find((p) => p.seat === round.sheriffSeat)?.playerId
+      : undefined;
+    lines.push(`${t("promptUtils.gameContext.transcriptSystemPrefix")}${t("badgePhase.voteDetailTitle")}`);
+    Object.entries(buildVoteGroupsFromPlayerTargets(state, round.votes))
+      .map(([target, voters]) => {
+        const weighted = voters.reduce((sum, seat) => {
+          const voter = state.players.find((p) => p.seat === seat);
+          return sum + (voter && voter.playerId === sheriffPlayerId ? 1.5 : 1);
+        }, 0);
+        return { target: Number(target), voters, weighted };
+      })
+      .sort((a, b) => b.weighted - a.weighted)
+      .forEach(({ target, voters, weighted }) => {
+        lines.push(t("promptUtils.gameContext.voteDetailLine", {
+          target: formatSeatName(state, target),
+          count: Number.isInteger(weighted) ? `${weighted}` : weighted.toFixed(1),
+          voters: voters
+            .map((seat) => formatSeatName(state, seat))
+            .join(t("promptUtils.gameContext.listSeparator")),
+        }));
+      });
+    lines.push(`  ${t("promptUtils.gameContext.voteRoundResult", {
+      text: voteRoundOutcomeLabel(round.outcome),
+    })}`);
   });
 
   return lines.join("\n");
@@ -1129,10 +1265,9 @@ export const buildGameContextParts = (
   const privateParts: string[] = [];
   const privateInfo = buildRolePrivateInfo(state, player, options);
   if (privateInfo) privateParts.push(privateInfo);
-  // 過往白天記錄排在最前面（user 第一個區塊）：模型先看到「前面幾天發生過什麼」，
-  // 再看到當前局面。這段是公開資訊，仍屬共用前綴。
-  const pastDaysSection = buildPastDaysTranscript(state);
-  let context = pastDaysSection ? `${pastDaysSection}\n\n` : "";
+  // 過往白天記錄不在這裡：呼叫端把它當成獨立的 user content 排在最前面
+  // （見 game-master 的 buildMessagesForPrompt 與 PromptResult.historyUser）。
+  let context = "";
 
   // Build YAML-formatted game state
   const aliveSeats = alivePlayers.map((p) => p.seat + 1);
@@ -1305,40 +1440,8 @@ alive_count: ${alivePlayers.length}${mutedLine}
     context += `\n\n<focus_reminder>${t("promptUtils.gameContext.focusReminder")}</focus_reminder>`;
   }
 
-  const voteRounds = state.voteRounds || [];
-  if (voteRounds.length) {
-    const outcomes = {
-      elected: t("promptUtils.gameContext.voteRoundOutcomeElected"),
-      executed: t("promptUtils.gameContext.voteRoundOutcomeExecuted"),
-      "idiot-revealed": t("promptUtils.gameContext.voteRoundOutcomeIdiotRevealed"),
-      tie: t("promptUtils.gameContext.voteRoundOutcomeTie"),
-      "no-votes": t("promptUtils.gameContext.voteRoundOutcomeNoVotes"),
-    };
-    const rounds = [...voteRounds].sort((a, b) => a.day - b.day || (a.kind === b.kind ? a.round - b.round : a.kind === "badge" ? -1 : 1));
-    context += `\n\n<vote_rounds>`;
-    for (const round of rounds) {
-      const sheriffId = round.sheriffSeat === null ? undefined : state.players.find((p) => p.seat === round.sheriffSeat)?.playerId;
-      const lines = buildVoteGroupLines(state, buildVoteGroupsFromPlayerTargets(state, round.votes), sheriffId, true);
-      context += `\n${t("promptUtils.gameContext.voteRoundHeader", {
-        day: round.day,
-        kind: t(round.kind === "badge"
-          ? "promptUtils.gameContext.voteRoundKindBadge"
-          : "promptUtils.gameContext.voteRoundKindExile"),
-        round: round.round,
-      })}`;
-      context += `\n  ${t("promptUtils.gameContext.voteRoundCandidates", {
-        list: round.candidates
-          .map((seat) => formatSeatName(state, seat))
-          .join(t("promptUtils.gameContext.listSeparator")),
-      })}`;
-      context += `\n${lines.join("\n")}`;
-      context += `\n  ${t("promptUtils.gameContext.voteRoundResult", {
-        text: `${round.winnerSeat === null ? "" : formatSeatName(state, round.winnerSeat) + " "}${outcomes[round.outcome]}`,
-      })}`;
-    }
-    context += `\n</vote_rounds>`;
-  }
-
+  // 票型不再另立 <vote_rounds> 區塊：投票詳情與逐票型已寫進【第N天 白天記錄】的時間軸，
+  // 與發言、遺言排在同一段裡（見 formatVoteResultLines）。
   const hasExecutionVotes = state.voteHistory && Object.keys(state.voteHistory).length > 0;
   const hasBadgeVotes = Object.keys(state.badge.history || {}).length > 0 ||
     Object.keys(state.badge.electionWinners || {}).length > 0 ||
@@ -1346,6 +1449,9 @@ alive_count: ${alivePlayers.length}${mutedLine}
 
   if (hasExecutionVotes || hasBadgeVotes) {
     context += `\n\n<votes>`;
+    // 已經有結構化輪次資料的日子由 <vote_rounds> 負責（該區塊已併入白天記錄），
+    // 這裡只補「沒有輪次資料」的歷史票型，避免同一份票型寫兩次。
+    const voteRounds = state.voteRounds || [];
 
     const badgeVoteDays = new Set<number>();
     Object.keys(state.badge.history || {}).forEach((day) => badgeVoteDays.add(Number(day)));

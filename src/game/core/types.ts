@@ -10,6 +10,11 @@ export interface PromptResult {
   system: string;
   user: string;
   systemParts?: SystemPromptPart[];
+  /**
+   * 過往各日紀錄（【第N天 白天記錄】）：呼叫端要把它當成**獨立的 user content**、
+   * 排在主要 user 訊息之前送出（見 game-master 的 buildMessagesForPrompt）。
+   */
+  historyUser?: string;
 }
 
 export type GameAction =

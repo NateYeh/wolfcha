@@ -2101,7 +2101,8 @@
       "speechRecoveryFailedInvalid": "Failed to recover a valid public speech: segments still contain invalid structure",
       "speechRecoveryFailedNoNew": "Failed to recover a valid public speech: no new public segments",
       "gameEndRemarkDaySummary": "Day {day}: {bullets}",
-      "pastDayHeading": "【Day {day}: daytime record】"
+      "pastDayHeading": "【Day {day}: daytime record】",
+      "voteDetailLine": "{target}: {count} vote(s), voters: {voters}"
     },
     "acquaintance": {
       "header": "【Friends' table】You know everyone at this table. Below are impressions built up over past games, the underlying model each AI runs on, and each player's record. Impressions are only impressions — this game they may not follow old habits, and the wolves especially may act out of character. How you use this knowledge is up to you.",

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createSinglePlayerContextAuditState } from "../../../scripts/single-player-context-audit";
 import { setLocale } from "@/i18n/locale-store";
-import { buildGameContext, buildPastDaysTranscript } from "@/lib/prompt-utils";
+import { buildGameContext, buildPastDaysTranscript, buildTodayTranscript } from "@/lib/prompt-utils";
 import { recordVoteRound } from "@/lib/vote-rounds";
 import type { GameState, Phase, Role } from "@/types/game";
 
@@ -179,7 +179,11 @@ test("结算免死白痴：中间态与最终态都不记录处决，公开票�
   assert.equal(end.players[idiot.seat].alive, true);
   assert.equal(end.roleAbilities.idiotRevealed, true);
   assert.equal(end.voteRounds?.[0].outcome, "idiot-revealed");
-  assert.match(buildGameContext(end, end.players[0]), /白痴翻牌免死/);
+  // 票型與輪次結果現在寫進白天記錄（逐字稿），不再另立 <vote_rounds> 區塊；
+  // 這裡驗「模型實際收到的輸入」裡仍看得到免死結果。
+  const modelText = (s2: GameState): string =>
+    `${buildGameContext(s2, s2.players[0])}\n${buildTodayTranscript(s2)}\n${buildPastDaysTranscript(s2)}`;
+  assert.match(modelText(end), /白痴翻牌免死/);
   const legacy = { ...end, voteRounds: undefined, dayHistory: { 1: { executed: { seat: idiot.seat, votes: 9 }, idiotRevealed: { seat: idiot.seat } } } };
   assert.match(buildGameContext(legacy, legacy.players[0]), /白痴翻牌免死/);
   assert.doesNotMatch(buildGameContext(legacy, legacy.players[0]), /<today_deaths>/);
@@ -198,7 +202,11 @@ test("投票快照独立保留警徽与放逐各轮、候选人和当时警长�
   assert.equal(state.voteRounds![0].votes[state.players[0].playerId], 1);
   const duplicate = recordVoteRound(state, { ...state.voteRounds![0], votes: {} });
   assert.equal(duplicate.voteRounds!.length, 4);
-  const context = buildGameContext(state, state.players[0]);
+  // 輪次資訊（含候選、當時警長票權、輪次編號）現在由白天記錄輸出：
+  // 這裡的 state 沒有訊息可當錨點，驗的是「缺錨點也要補寫」這條路。
+  const context = `${
+    buildTodayTranscript(state)
+  }`;
   assert.match(context, /警徽选举 第1轮/); assert.match(context, /警徽选举 第2轮/);
   assert.match(context, /放逐投票 第1轮/); assert.match(context, /放逐投票 第2轮/);
   assert.match(context, /1.5/); assert.doesNotMatch(context, /(?<!\d)0号/);
@@ -855,33 +863,59 @@ test("狼隊夜間商議也帶角色設定（狼隊操作不是例外）", async
   assert.match(text, new RegExp(`只按${wolf.seat + 1}号自己的视角表达`));
 });
 
-test("過往白天記錄：用【第N天 白天记录】標題取代 <history>，且排在 user 最前面", async () => {
-  await import("@/lib/game-master");
-  const { PhaseManager } = await import("../core/PhaseManager");
+test("【第N天 白天记录】是獨立的 user content、排在第一個，且票型寫在同一段裡", async () => {
+  const { buildMessagesForPrompt } = await import("@/lib/game-master");
   const state = fresh("DAY_SPEECH");
   state.day = 3;
   state.messages = [
     message(state, "第一天的發言", "DAY_SPEECH", 0, 0),
+    {
+      ...message(state, "发言结束，开始投票。", "DAY_VOTE", 0),
+      playerId: "",
+      isSystem: true,
+      day: 1,
+    },
+    {
+      ...message(state, "[VOTE_RESULT]{\"title\":\"投票详情\",\"results\":[{\"targetSeat\":5,\"voterSeats\":[0,1,2],\"voteCount\":3.5},{\"targetSeat\":0,\"voterSeats\":[5],\"voteCount\":1}]}", "DAY_VOTE", 0),
+      playerId: "",
+      isSystem: true,
+      day: 1,
+    },
+    { ...message(state, "6号 玩家6 出局", "DAY_VOTE", 0), playerId: "", isSystem: true, day: 1 },
     { ...message(state, "第二天的發言", "DAY_SPEECH", 1, 0), day: 2 },
   ];
-  state.players[0].alive = false;
 
+  const { PhaseManager } = await import("../core/PhaseManager");
   const player = state.players.find((p) => p.role === "Villager") ?? state.players[0];
   const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, player)!;
+  const history = buildPastDaysTranscript(state);
+  const { messages } = buildMessagesForPrompt({
+    system: prompt.system,
+    user: prompt.user,
+    systemParts: prompt.systemParts,
+    historyUser: history,
+  });
 
-  // 標題取代舊外框
-  assert.match(prompt.user, /【第1天 白天记录】/);
-  assert.match(prompt.user, /【第2天 白天记录】/);
+  // 1) 獨立的 user content，排在第一個 user 位置（system 之後）
+  assert.equal(messages[0].role, "system");
+  assert.equal(messages[1].role, "user");
+  assert.equal(messages[2].role, "user");
+  assert.equal(messages[1].content, history);
+  assert.ok(String(messages[1].content).startsWith("【第1天 白天记录】"), "第一個 user 必須是過往紀錄");
+
+  // 2) 主要 user 訊息不得再重複這份紀錄，也不再自己塞 <vote_rounds>
+  assert.doesNotMatch(String(messages[2].content), /【第1天 白天记录】/);
+  assert.doesNotMatch(String(messages[2].content), /<vote_rounds>/);
   assert.doesNotMatch(prompt.user, /<history>/);
-  assert.doesNotMatch(prompt.user, /【第1天】/);
-  // 排在 user 最前面：整份 prompt 從第一個標題開始，且在 <game_state> 之前
-  assert.ok(prompt.user.trimStart().startsWith("【第1天 白天记录】"), "過往白天記錄必須是 user 第一個區塊");
-  assert.ok(
-    prompt.user.indexOf("【第2天 白天记录】") < prompt.user.indexOf("<game_state>"),
-    "過往白天記錄必須排在 <game_state> 之前",
-  );
-  // system 不受影響（公開事實仍在 user）
-  assert.doesNotMatch(prompt.system, /白天記錄/);
+
+  // 3) 票型寫在同一段紀錄裡：投票詳情＋逐票型（1 基座位、帶名字、警長 1.5 票）
+  const historyText = String(messages[1].content);
+  assert.match(historyText, /系统: 发言结束，开始投票。/);
+  assert.match(historyText, /系统: 投票详情/);
+  assert.match(historyText, /6号审计玩家6：3.5票，投票者为 1号审计玩家1、2号审计玩家2、3号审计玩家3/);
+  assert.match(historyText, /1号审计玩家1：1票，投票者为 6号审计玩家6/);
+  // 舊的原始 JSON 不得漏進 prompt
+  assert.doesNotMatch(historyText, /\[VOTE_RESULT\]/);
 });
 
 test("出局玩家是合法線索：有人出局時附上的提醒要允許引用死者原話/遺言/票型/刀口", () => {

@@ -26,7 +26,7 @@ import { aiLogger } from "./ai-logger";
 import { getGeneratorModel, getSummaryModel } from "@/lib/api-keys";
 import { PhaseManager } from "@/game/core/PhaseManager";
 import type { PromptResult } from "@/game/core/types";
-import { bindIdentityAndRoleSetting, buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildSharedSystemParts, buildGameContext, buildFullGameTranscript, getRoleText, getGameFundamentals } from "./prompt-utils";
+import { bindIdentityAndRoleSetting, buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildSharedSystemParts, buildGameContext, buildFullGameTranscript, buildPastDaysTranscript, getRoleText, getGameFundamentals } from "./prompt-utils";
 import { parseLLMJson } from "./llm-json";
 import { getI18n } from "@/i18n/translator";
 import { buildPublicRecordForRemark } from "@/lib/public-record";
@@ -170,10 +170,12 @@ function resolvePhasePrompt(
   if (!prompt) {
     throw new Error(`[wolfcha] Missing phase prompt for ${phase}`);
   }
-  return prompt;
+  // 過往各日紀錄（含投票詳情）當獨立的 user content 送，排在主要 user 訊息之前。
+  return { ...prompt, historyUser: buildPastDaysTranscript(overriddenState) };
 }
 
-function buildMessagesForPrompt(
+/** 組出送給模型的 messages：system ＋（過往紀錄，若有）＋主要 user。供測試直接驗結構。 */
+export function buildMessagesForPrompt(
   prompt: PromptResult,
   useCache: boolean = true
 ): { messages: LLMMessage[]; systemMessage: LLMMessage } {
@@ -183,10 +185,13 @@ function buildMessagesForPrompt(
     useCache
   );
 
+  const historyUser = prompt.historyUser?.trim();
   return {
     systemMessage,
     messages: [
       systemMessage,
+      // 過往各日紀錄（【第N天 白天記錄】）單獨成一個 user content，排在主要 user 訊息之前。
+      ...(historyUser ? [{ role: "user" as const, content: historyUser }] : []),
       { role: "user", content: prompt.user },
     ],
   };
@@ -2110,7 +2115,7 @@ export function buildWolfTeamPlanPrompt(state: GameState, captain: Player): Prom
     humanNote,
     jsonFormat,
   });
-  return { system, user, systemParts };
+  return { system, user, systemParts, historyUser: buildPastDaysTranscript(state) };
 }
 
 export async function generateWolfTeamPlan(

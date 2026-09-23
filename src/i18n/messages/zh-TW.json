@@ -2101,7 +2101,8 @@
       "speechRecoveryFailedInvalid": "公開發言格式恢復失敗：公開段落仍包含無效結構",
       "speechRecoveryFailedNoNew": "公開發言格式恢復失敗：沒有新增公開段落",
       "gameEndRemarkDaySummary": "第{day}天：{bullets}",
-      "pastDayHeading": "【第{day}天 白天記錄】"
+      "pastDayHeading": "【第{day}天 白天記錄】",
+      "voteDetailLine": "{target}：{count}票，投票者為 {voters}"
     },
     "acquaintance": {
       "header": "【熟人局】這桌人你都認識，下面是平時積累的印象、各自跑的底層模型和交手記錄。印象只是印象——本局他們未必照老習慣打，拿狼的人更可能一反常態；怎麼利用這些瞭解，你自己決定。",
