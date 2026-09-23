@@ -118,16 +118,16 @@ test("發言 prompt：技能角色附帶技能契約與物件格式，非技能�
 
   const werewolf = stateWith("Werewolf");
   const wolfPrompt = manager.getPrompt("DAY_SPEECH", { state: werewolf.state }, werewolf.player)!;
-  assert.match(wolfPrompt.user, /本回合含自爆決定/);
+  assert.match(wolfPrompt.user, /本回合含自爆决定/);
   assert.match(wolfPrompt.user, /"speech": \["第一段。", "第二段。"\]/);
   assert.match(wolfPrompt.user, /"action": "boom"/);
   assert.match(wolfPrompt.user, /skill/);
   // 格式提醒改成物件版
-  assert.match(wolfPrompt.user, /本回合你同時要決定技能/);
+  assert.match(wolfPrompt.user, /本回合你同时要决定技能/);
 
   const knight = stateWith("Knight");
   const knightPrompt = manager.getPrompt("DAY_SPEECH", { state: knight.state }, knight.player)!;
-  assert.match(knightPrompt.user, /本回合含翻牌決鬥決定/);
+  assert.match(knightPrompt.user, /本回合含翻牌决斗决定/);
   assert.match(knightPrompt.user, /"action": "duel"/);
 
   const villager = stateWith("Villager");

@@ -61,39 +61,6 @@ export const getGameFundamentals = (): string => {
 };
 
 /**
- * {coreRules} 佔位符攜帶的整塊內容：遊戲基本盤＋勝負條件＋心態區塊。
- * 每個玩家階段的 base 模板都插這個佔位符，所以基本盤會跟著到每一隻玩家手上。
- */
-/** 與角色綁定的勝負條件（逐角色不同，因此必須放個人區，不能進共用前綴）。 */
-export const getRoleWinCondition = (role: string): string => {
-  const { t } = getI18n();
-  switch (role) {
-    case "Werewolf":
-      return t("promptUtils.winCondition.werewolf");
-    case "WhiteWolfKing":
-      return t("promptUtils.winCondition.whiteWolfKing");
-    case "Seer":
-      return t("promptUtils.winCondition.seer");
-    case "Witch":
-      return t("promptUtils.winCondition.witch");
-    case "Hunter":
-      return t("promptUtils.winCondition.hunter");
-    case "Guard":
-      return t("promptUtils.winCondition.guard");
-    case "Idiot":
-      return t("promptUtils.winCondition.idiot");
-    case "Knight":
-      return t("promptUtils.winCondition.knight");
-    case "MuteElder":
-      return t("promptUtils.winCondition.muteElder");
-    case "WolfKing":
-      return t("promptUtils.winCondition.wolfKing");
-    default:
-      return t("promptUtils.winCondition.villager");
-  }
-};
-
-/**
  * 全桌共用的規則區塊：遊戲基本盤＋「想贏的動機」＋「允許不完美」。
  * 與角色、座位無關，字串逐字相同，因此排在任何 prompt 的最前面當作快取前綴。
  */
@@ -166,15 +133,6 @@ export const buildSharedSystemParts = (
 };
 
 /**
- * {coreRules} 佔位符攜帶的整塊內容：遊戲基本盤＋勝負條件＋心態區塊。
- * 注意：勝負條件逐角色不同，這整塊不適合當共用前綴；
- * 需要前綴快取的呼叫端改用 getSharedPromptRules()＋getRoleWinCondition() 分開拼。
- */
-export const getRolePromptCore = (role: string) => {
-  return `${getSharedPromptRules()}\n\n${getRoleWinCondition(role)}`;
-};
-
-/**
  * 本局實際角色組成（單一真相，只回角色不回座位）：
  * 1. 開局後玩家身上已發牌 → 直接數 players（自選角色／版型都不會漂移）；
  * 2. 尚未發牌（單元測試／預覽）→ 退回 fixedRoles（版型組成）；
@@ -214,6 +172,9 @@ export const buildPublicRoleConfiguration = (state: Pick<GameState, "players" | 
   return `<public_role_configuration>
 ${t("promptUtils.gameContext.publicRoleConfigurationTitle")}
 ${items.join("\n")}
+${t("promptUtils.gameContext.publicWinConditionTitle")}
+${t("promptUtils.gameContext.publicWinConditionGood")}
+${t("promptUtils.gameContext.publicWinConditionWolf")}
 ${t("promptUtils.gameContext.publicRoleConfigurationScope")}
 ${t("promptUtils.gameContext.publicRoleConfigurationCheckRule")}
 ${t("promptUtils.gameContext.publicWinRule")}

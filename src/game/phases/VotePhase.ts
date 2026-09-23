@@ -8,7 +8,6 @@ import {
   buildPlayerTodaySpeech,
   getRoleText,
   buildSharedSystemParts,
-  getRoleWinCondition,
   buildSystemTextFromParts,
   buildDecisionGrounding,
 } from "@/lib/prompt-utils";
@@ -214,7 +213,6 @@ export class VotePhase extends GamePhase {
     const privateZone = [
       gameContextParts.private,
       identityContent,
-      getRoleWinCondition(player.role),
       dynamicContent,
     ].filter(Boolean).join("\n\n");
     const user = t("prompts.vote.user", {

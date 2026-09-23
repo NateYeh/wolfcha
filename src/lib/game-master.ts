@@ -26,7 +26,7 @@ import { aiLogger } from "./ai-logger";
 import { getGeneratorModel, getSummaryModel } from "@/lib/api-keys";
 import { PhaseManager } from "@/game/core/PhaseManager";
 import type { PromptResult } from "@/game/core/types";
-import { buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildGameContext, buildFullGameTranscript, getRoleText, getRolePromptCore, getGameFundamentals } from "./prompt-utils";
+import { buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildGameContext, buildFullGameTranscript, getRoleText, getGameFundamentals } from "./prompt-utils";
 import { parseLLMJson } from "./llm-json";
 import { getI18n } from "@/i18n/translator";
 import { buildPublicRecordForRemark } from "@/lib/public-record";
@@ -2086,7 +2086,7 @@ export async function generateWolfTeamPlan(
     seat: captain.seat + 1,
     name: captain.displayName,
     role: getRoleText(captain.role),
-    coreRules: getRolePromptCore(captain.role),
+    coreRules: "",
     teammates,
   });
   const knowledge = t("prompts.night.wolfTeamPlan.knowledge");

@@ -7,7 +7,6 @@ import {
   buildTodayTranscript,
   getRoleText,
   buildSharedSystemParts,
-  getRoleWinCondition,
   buildSystemTextFromParts,
 } from "@/lib/prompt-utils";
 import { getI18n } from "@/i18n/translator";
@@ -75,7 +74,6 @@ export class BadgePhase extends GamePhase {
     const privateZone = [
       contextParts.private,
       identityContent,
-      getRoleWinCondition(player.role),
       dynamicContent,
     ].filter(Boolean).join("\n\n");
     const user = t("prompts.badge.election.user", {
@@ -116,7 +114,6 @@ export class BadgePhase extends GamePhase {
     const privateZone = [
       contextParts.private,
       identityContent,
-      getRoleWinCondition(player.role),
       dynamicContent,
     ].filter(Boolean).join("\n\n");
     const user = t("prompts.badge.signup.user", {
@@ -160,7 +157,6 @@ export class BadgePhase extends GamePhase {
     const privateZone = [
       contextParts.private,
       identityContent,
-      getRoleWinCondition(player.role),
       dynamicContent,
     ].filter(Boolean).join("\n\n");
     const user = t("prompts.badge.transfer.user", {

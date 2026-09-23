@@ -2,7 +2,7 @@ import type { GameState, Player, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "../core/types";
-import { buildDecisionContext, buildGameContext, buildTodayTranscript, buildPlayerTodaySpeech, getRoleText, getRoleWinCondition, buildSharedSystemParts, buildSystemTextFromParts } from "@/lib/prompt-utils";
+import { buildDecisionContext, buildGameContext, buildTodayTranscript, buildPlayerTodaySpeech, getRoleText, buildSharedSystemParts, buildSystemTextFromParts } from "@/lib/prompt-utils";
 import {
   addSystemMessage,
   generateGuardAction,
@@ -249,7 +249,7 @@ export class NightPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      coreRules: getRoleWinCondition(player.role),
+      coreRules: "",
     });
     const dynamicContent = t("prompts.mute.task", {
       options,
@@ -653,7 +653,7 @@ export class NightPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText("Seer"),
-      coreRules: getRoleWinCondition("Seer"),
+      coreRules: "",
     });
 
     const dynamicContent = t("prompts.night.seer.task", {
@@ -711,7 +711,7 @@ export class NightPhase extends GamePhase {
       role: getRoleText(player.role),
     });
     const cacheableRules = t("prompts.night.wolf.rules", {
-      coreRules: getRoleWinCondition(player.role),
+      coreRules: "",
     });
     const teammateVotesSection = teammateVotesStr
       ? t("prompts.night.wolf.teammateVotes", { lines: teammateVotesStr })
@@ -751,7 +751,7 @@ export class NightPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText("Guard"),
-      coreRules: getRoleWinCondition("Guard"),
+      coreRules: "",
     });
     const eligibleSeats = getGuardEligibleSeats({
       aliveSeats: alivePlayers.map((p) => p.seat),
@@ -820,7 +820,7 @@ export class NightPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText("Witch"),
-      coreRules: getRoleWinCondition("Witch"),
+      coreRules: "",
     });
     const statusHeal = state.roleAbilities.witchHealUsed
       ? t("promptUtils.gameContext.used")

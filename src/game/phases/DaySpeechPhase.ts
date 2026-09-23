@@ -8,7 +8,6 @@ import {
   buildTodayTranscript,
   getRoleText,
   buildSharedSystemParts,
-  getRoleWinCondition,
   buildSystemTextFromParts,
   buildPublicFactsForPlayer,
   buildDecisionGrounding,
@@ -208,7 +207,6 @@ export class DaySpeechPhase extends GamePhase {
       privateContext: [
         gameContextParts.private,
         identityContent,
-        getRoleWinCondition(player.role),
         taskSection,
         publicFactsForPlayer,
         skillContract,

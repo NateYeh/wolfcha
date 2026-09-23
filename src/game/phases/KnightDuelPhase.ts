@@ -5,7 +5,6 @@ import {
   buildDecisionContext,
   getRoleText,
   buildSharedSystemParts,
-  getRoleWinCondition,
   buildSystemTextFromParts,
 } from "@/lib/prompt-utils";
 import { excludePendingDeathPlayers } from "@/lib/rules/night-deaths";
@@ -37,7 +36,7 @@ export class KnightDuelPhase extends GamePhase {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-      coreRules: getRoleWinCondition(player.role),
+      coreRules: "",
     });
     const options = alivePlayers
       .map((p) => t("prompts.night.option", { seat: p.seat + 1, name: p.displayName }))

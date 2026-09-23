@@ -146,13 +146,15 @@ test("開槍窗口 prompt：狼王看到的是狼槍任務與狼隊思路，獵�
 });
 
 test("公開規則：狼王的技能寫進 roleSkills 與 roleText（AI 才不會照舊規則打）", async () => {
-  const { getSharedPromptRules, getRoleText, getRolePromptCore } = await import("@/lib/prompt-utils");
+  const { getSharedPromptRules, getRoleText } = await import("@/lib/prompt-utils");
   const shared = getSharedPromptRules();
   assert.match(shared, /狼王/);
   assert.match(shared, /狼枪|开枪带走一名存活玩家/);
   assert.match(getRoleText("WolfKing"), /狼王/);
-  assert.match(getRolePromptCore("WolfKing"), /狼王/);
-  // 狼王的勝負條件是狼陣營
-  const { getRoleWinCondition } = await import("@/lib/prompt-utils");
-  assert.match(getRoleWinCondition("WolfKing"), /狼人胜利/);
+  // 勝負條件是公開資訊，統一放在 <public_role_configuration>（不再逐角色塞進個人區）
+  const { buildPublicRoleConfiguration } = await import("@/lib/prompt-utils");
+  const publicConfig = buildPublicRoleConfiguration(stateWith([[0, "WolfKing"]]));
+  assert.match(publicConfig, /【获胜条件】/);
+  assert.match(publicConfig, /狼人数量 >= 好人数量 时获胜/);
+  assert.match(publicConfig, /放逐所有狼人时获胜/);
 });

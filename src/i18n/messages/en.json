@@ -1868,19 +1868,6 @@
       "roleSkills": "【Roles and abilities (public rules you may use to reason about others)】\n- Werewolf: at night you and your teammates decide together whom to kill, and you know who your teammates are; the Seer checks you as a werewolf. During the day you may self-destruct on your own speech turn (see 【Self-destruct】).\n- White Wolf King: werewolf side; on your own speech turn you may self-destruct and take one alive player with you (they get no last words); self-destructing during a badge-election speech also makes the badge lost immediately.\n- Seer: each night check one player as good or werewolf; only you know the result, and in this game only the Seer can check.\n- Witch: one antidote and one poison, each once per game, at most one per night. The antidote saves the player the werewolves attacked that night, but **cannot save yourself** (the witch can never self-save); the poison kills one player; a Hunter poisoned to death cannot shoot.\n- Hunter: when voted out or killed by werewolves you may shoot one alive player; you cannot shoot if the Witch poisoned you; a Hunter taken by a self-destruct can still shoot.\n- Guard: each night you may protect one player from the werewolves' kill (you may protect yourself), or **abstain** (protect nobody); you cannot protect the same player two nights in a row (an abstention is not a protection, so you may abstain several nights in a row); if the Guard and the Witch's antidote both save the same player (milk poison), that player still dies.\n- Idiot: when voted out you reveal and survive (once only); afterwards you lose your vote but may keep speaking.\n- Villager: no night ability; you play through speech and votes.\n- Knight: only during the day speech phase (never during the badge election or last words), once per game, reveal and duel a player: if that player is a wolf, the wolf dies and night falls immediately; if that player is good, the knight dies and the day continues. Duel deaths get no last words, and a wolf killed by the duel cannot trigger death skills.\n- Mute Elder: each night names one alive player to silence (never themselves, no usage limit). The silenced player cannot speak the next day (campaign speech included) but keeps badge votes, exile votes and last words.\n- Wolf King: wolf side, hunts with the pack at night. When exiled by the day vote he may shoot one living player (wolf gun); night death, poison, self-destruct and duel deaths all void it.",
       "scopeNote": "Note: the list above is the full role table; which roles are actually in this game, and how many of each, is given by 【Public role configuration】. Roles absent from that configuration do not exist in this game — do not assume they are present."
     },
-    "winCondition": {
-      "werewolf": "【Win condition】Werewolves win when their count >= good players.",
-      "seer": "【Win condition】Good wins when all werewolves are eliminated.",
-      "witch": "【Win condition】Good wins when all werewolves are eliminated.",
-      "hunter": "【Win condition】Good wins when all werewolves are eliminated.",
-      "guard": "【Win condition】Good wins when all werewolves are eliminated.",
-      "villager": "【Win condition】Good wins when all werewolves are eliminated.",
-      "idiot": "【Win condition】Good wins when all werewolves are eliminated.",
-      "whiteWolfKing": "【Win condition】Werewolves win when their count >= good players.",
-      "knight": "【Win condition】The village wins when all wolves are exiled.",
-      "muteElder": "【Win condition】The village wins when all wolves are exiled.",
-      "wolfKing": "【Win condition】The wolves win when their number reaches the village's."
-    },
     "persona": {
       "section": "【Persona】\nSpeaking habits: {voiceRules}\nStyle: {riskLabel}",
       "basicInfo": "Background: {basicInfo}",
@@ -2006,7 +1993,10 @@
       "wolfTeamPlanSignupYes": "run for sheriff",
       "wolfTeamPlanSignupNo": "not running",
       "selfDestructReveal": "- Day {day}: the host publicly confirmed that {player} self-destructed.",
-      "selfDestructRevealWithTarget": "- Day {day}: the host publicly confirmed that {player} self-destructed and took {target}."
+      "selfDestructRevealWithTarget": "- Day {day}: the host publicly confirmed that {player} self-destructed and took {target}.",
+      "publicWinConditionTitle": "【Win conditions】",
+      "publicWinConditionGood": "- Good camp: wins when all wolves are exiled.",
+      "publicWinConditionWolf": "- Wolf camp: wins when the living wolf count reaches the living good count."
     },
     "acquaintance": {
       "header": "【Friends' table】You know everyone at this table. Below are impressions built up over past games, the underlying model each AI runs on, and each player's record. Impressions are only impressions — this game they may not follow old habits, and the wolves especially may act out of character. How you use this knowledge is up to you.",
