@@ -115,7 +115,8 @@ export const getStrategyGuide = (
 };
 
 /**
- * 全桌共用的 system 開場區塊（依主結構：本次陣容 → 規則與角色說明 → 狼人殺攻略 → 心態）。
+ * 全桌共用的 system 開場區塊（依主結構：公開知識〔這是什麼遊戲＋規則＋角色技能＋本局配置〕
+ * → 狼人殺攻略與心態 → 熟人局名單）。
  * 逐字相同、跨座位與跨階段都能共用同一段前綴快取；個人身分與當輪任務由呼叫端接在後面。
  */
 export const buildSharedSystemParts = (
@@ -123,8 +124,9 @@ export const buildSharedSystemParts = (
 ): SystemPromptPart[] => {
   const { t } = getI18n();
   const parts: SystemPromptPart[] = [
+    // ① 公開知識（這是什麼遊戲／通用規則／角色與技能／本局配置／勝負／口徑）
     { text: buildPublicRoleConfiguration(state), cacheable: true, ttl: "1h" },
-    { text: getGameFundamentals(), cacheable: true, ttl: "1h" },
+    // ② 攻略＋心態
     {
       text: `${getStrategyGuide(state)}\n\n${t("promptUtils.winMotivationNote")}\n\n${t("promptUtils.humannessNote")}`,
       cacheable: true,
@@ -159,6 +161,15 @@ export const getGameRoleComposition = (state: Pick<GameState, "players" | "fixed
 export const gameHasRole = (state: Pick<GameState, "players" | "fixedRoles">, role: Role): boolean =>
   getGameRoleComposition(state).includes(role);
 
+/**
+ * 全桌共用的「公開知識」區塊（system 前綴第一段）：這是什麼遊戲 → 通用規則 → 角色與技能
+ * → 本局公開配置 → 獲勝條件 → 範圍與口徑。
+ *
+ * 這幾段原本散成三塊（<public_role_configuration>、getGameFundamentals、逐階段的【場景】），
+ * 彼此重複又互相打斷；現在合成一段公開知識，順序照「越通用的越前面」排（跨局可共用前綴），
+ * 逐局才會變的配置與勝負條件擺在後面。每條規則只寫一次（勝負條件、預言家查驗、身分口徑
+ * 原本各有重複的副本，已移除）。
+ */
 export const buildPublicRoleConfiguration = (state: Pick<GameState, "players" | "fixedRoles">): string => {
   const { t } = getI18n();
   const counts = new Map<Role, number>();
@@ -179,14 +190,18 @@ export const buildPublicRoleConfiguration = (state: Pick<GameState, "players" | 
     );
 
   return `<public_role_configuration>
+${t("promptUtils.gameFundamentals.title")}
+${t("promptUtils.gameFundamentals.overview")}
+${t("promptUtils.gameFundamentals.basicRules")}
+${t("promptUtils.gameFundamentals.roleSkills")}
 ${t("promptUtils.gameContext.publicRoleConfigurationTitle")}
 ${items.join("\n")}
 ${t("promptUtils.gameContext.publicWinConditionTitle")}
 ${t("promptUtils.gameContext.publicWinConditionGood")}
 ${t("promptUtils.gameContext.publicWinConditionWolf")}
+${t("promptUtils.gameContext.publicScopeTitle")}
+${t("promptUtils.gameFundamentals.scopeNote")}
 ${t("promptUtils.gameContext.publicRoleConfigurationScope")}
-${t("promptUtils.gameContext.publicRoleConfigurationCheckRule")}
-${t("promptUtils.gameContext.publicWinRule")}
 ${t("promptUtils.gameContext.publicIdentityRule")}
 </public_role_configuration>`;
 };

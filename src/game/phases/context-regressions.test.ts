@@ -525,14 +525,24 @@ test("統一攻略：進 system 共用前綴，且跨座位、跨階段逐字相
     return buildSharedSystemParts(state).map((part) => part.text);
   };
 
-  // 1) 四個開場區塊依序：本次陣容 → 規則與角色說明 → 狼人殺攻略（含心態）
+  // 1) 開場區塊依序：公開知識（這是什麼遊戲＋通用規則＋角色技能＋本局配置＋勝負＋口徑）→ 攻略（含心態）
   const parts = sharedTexts("Villager", "DAY_SPEECH");
-  assert.equal(parts.length, 3);
+  assert.equal(parts.length, 2);
+  // 公開知識全部收在同一段 <public_role_configuration>，順序：越通用的越前面
   assert.match(parts[0], /<public_role_configuration>/);
-  assert.match(parts[1], /【这是一局什么游戏】/);
-  assert.match(parts[1], /【角色与技能/);
-  assert.match(parts[2], /【狼人杀攻略】/);
-  assert.match(parts[2], /【你在玩什么】/);
+  const publicBlock = parts[0];
+  const order = [
+    "【这是一局什么游戏】",
+    "【通用规则",
+    "【角色与技能",
+    "【本局公开角色配置】",
+    "【获胜条件】",
+    "【范围与口径】",
+  ].map((heading) => publicBlock.indexOf(heading));
+  assert.ok(order.every((i) => i >= 0), `公開知識缺少段落：${JSON.stringify(order)}`);
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "公開知識段落順序不對");
+  assert.match(parts[1], /【狼人杀攻略】/);
+  assert.match(parts[1], /【你在玩什么】/);
 
   // 2) 全桌逐字相同：不同角色、不同階段拿到的共用前綴必須一致（前綴快取的前提）
   const baseline = sharedTexts("Villager", "DAY_SPEECH");
@@ -778,9 +788,11 @@ test("動態 rules 區只留逐日狀態相依的提示：時序與刀口常識�
   // 時序與刀口常識是整局固定的常識 → 進共用攻略（system 前綴），不再逐日重貼
   assert.doesNotMatch(ctx, /【刀口常识】/);
   assert.doesNotMatch(ctx, /阶段顺序/);
-  const guideText = buildSharedSystemParts(state)[2].text;
+  const parts = buildSharedSystemParts(state);
+  const guideText = parts.find((part) => part.text.includes("【狼人杀攻略】"))!.text;
   assert.match(guideText, /【刀口常识】狼可以刀队友，也可以自刀/);
-  assert.match(guideText, /阶段顺序：夜晚（狼人刀人）→ 天亮公布死亡 → 自由发言 → 投票/);
+  // 階段順序屬規則 → 在公開知識區塊（【通用规则】）裡，攻略只留時間線讀法
+  assert.match(parts[0].text, /每天流程：夜晚（狼人刀人）→ 第一天先进行警徽竞选 → 天亮公布死亡/);
   // 讀盤策略移出
   assert.doesNotMatch(ctx, /【票型怎么读】/);
   assert.doesNotMatch(ctx, /【读刀口】/);

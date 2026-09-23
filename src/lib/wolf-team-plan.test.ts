@@ -244,9 +244,9 @@ test("狼隊夜間商議（wolf_chat）的 system 必須跟其他階段一樣帶
     assert.match(joined, /【狼人杀攻略】/);
     assert.match(joined, /【狼队】/);
     assert.match(joined, /【夜间出刀】/);
-    // 共用開場三段必須帶 cache_control（1h 前綴快取）
+    // 共用開場兩段必須帶 cache_control（1h 前綴快取）：公開知識（含配置與規則）＋攻略
     const cached = parts.filter((part) => part.cache_control);
-    assert.ok(cached.length >= 3, `共用開場應可快取，實際只有 ${cached.length} 段`);
+    assert.ok(cached.length >= 2, `共用開場應可快取，實際只有 ${cached.length} 段`);
     // system 只剩共用開場（逐人內容不得混進來，否則前綴無法共用）
     assert.doesNotMatch(joined, /【身份】/);
     assert.doesNotMatch(joined, /商定狼隊白天的分工/);

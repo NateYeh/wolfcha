@@ -93,17 +93,27 @@ const message = (
   isLastWords,
 });
 
+/** 共用前綴裡的那一份攻略：合併公開知識區塊後位置會變，用內容找比用索引穩。 */
+const guidePart = (parts: { text: string }[]): string =>
+  parts.find((part) => part.text.includes("【狼人杀攻略】"))?.text ?? "";
+
 test("公开角色配置只包含人数板子，不包含座位身份", () => {
   const config = buildPublicRoleConfiguration({ players: Array.from({ length: 9 }, () => ({}) as never), fixedRoles: undefined });
 
-  assert.match(config, /狼人 × 3/);
-  assert.match(config, /预言家 × 1/);
-  assert.match(config, /女巫 × 1/);
-  assert.match(config, /猎人 × 1/);
-  assert.doesNotMatch(config, /白狼王/);
+  // 板子段落＝【本局公开角色配置】到【获胜条件】之前
+  const board = config.slice(
+    config.indexOf("【本局公开角色配置】"),
+    config.indexOf("【获胜条件】"),
+  );
+  assert.match(board, /狼人 × 3/);
+  assert.match(board, /预言家 × 1/);
+  assert.match(board, /女巫 × 1/);
+  assert.match(board, /猎人 × 1/);
+  // 這局沒有的角色不得出現在板子裡（完整角色表另在【角色与技能】，且附了口径說明）
+  assert.doesNotMatch(board, /白狼王/);
   assert.doesNotMatch(config, /\d+号/);
   assert.doesNotMatch(config, /玩家\d+/);
-  assert.match(config, /狼人存活数达到好人存活数时狼人胜利/);
+  assert.match(config, /狼人阵营：狼人数量 >= 好人数量 时获胜/);
   assert.match(config, /未被主持人公开确认的出局身份，不能用于断言当前剩余某角色的确切数量/);
 });
 
@@ -119,13 +129,14 @@ test("公开角色配置必须包含本局每一个角色（禁言长老等新�
     alignment: role === "Werewolf" ? "wolf" : "village", isHuman: false,
   }));
   const config = buildPublicRoleConfiguration({ players, fixedRoles: undefined });
-  assert.match(config, /狼人 × 4/);
-  assert.match(config, /预言家 × 1/);
-  assert.match(config, /女巫 × 1/);
-  assert.match(config, /猎人 × 1/);
-  assert.match(config, /禁言长老 × 1/, "配置漏角色 → AI 看到的总数对不上座位数");
-  assert.match(config, /村民 × 4/);
-  assert.doesNotMatch(config, /白狼王|守卫|白痴|骑士|狼王/);
+  const board = config.slice(config.indexOf("【本局公开角色配置】"), config.indexOf("【获胜条件】"));
+  assert.match(board, /狼人 × 4/);
+  assert.match(board, /预言家 × 1/);
+  assert.match(board, /女巫 × 1/);
+  assert.match(board, /猎人 × 1/);
+  assert.match(board, /禁言长老 × 1/, "配置漏角色 → AI 看到的总数对不上座位数");
+  assert.match(board, /村民 × 4/);
+  assert.doesNotMatch(board, /白狼王|守卫|白痴|骑士|狼王/);
 });
 
 test("每个实作角色都必须能出现在公开角色配置里（新角色加入 ALL_ROLE_KEYS 即生效）", () => {
@@ -158,7 +169,7 @@ test("攻略按本場陣容動態組合：缺席角色（守衛／獵人／白�
   const state: GameState = { ...makeState(), players, badge: { ...makeState().badge, candidates: [] } };
   const wolf = players[0];
 
-  const guideText = buildSharedSystemParts(state)[2].text;
+  const guideText = guidePart(buildSharedSystemParts(state));
   // 本局有的角色：章節要在
   assert.match(guideText, /【预言家】/);
   assert.match(guideText, /【女巫】/);
@@ -206,7 +217,7 @@ test("攻略按本場陣容動態組合：守衛／獵人／白痴／騎士／�
     isHuman: false,
   }));
   const state: GameState = { ...makeState(), players, badge: { ...makeState().badge, candidates: [] } };
-  const guideText = buildSharedSystemParts(state)[2].text;
+  const guideText = guidePart(buildSharedSystemParts(state));
   assert.match(guideText, /【守卫】/);
   assert.match(guideText, /【猎人】/);
   assert.match(guideText, /【白痴】/);
@@ -259,7 +270,7 @@ test("狼人协作原则已整併進統一攻略：私有段不再重複，日�
   assert.ok(dayTeam);
   assert.doesNotMatch(dayTeam, /【狼队怎么配合】/);
 
-  const guideText = buildSharedSystemParts(dayState)[2].text;
+  const guideText = guidePart(buildSharedSystemParts(dayState));
   assert.match(guideText, /狼队是一个整体/);
   assert.match(guideText, /必要时把票投给他（弃车保帅）/);
   assert.match(guideText, /他还有救/);
@@ -286,7 +297,7 @@ test("票型／刀口读法已從 rules 移出：白天所有阵营都從共用�
   }
 
   // 全桌同一份攻略：票型／刀口讀法（含反例）都在裡面，人人看得到
-  const guideText = buildSharedSystemParts(dayState)[2].text;
+  const guideText = guidePart(buildSharedSystemParts(dayState));
   assert.match(guideText, /票型是最容易被骗的证据/);
   assert.match(guideText, /狼投队友的时候比谁都真/);
   assert.match(guideText, /同一批人反复把票集中到同一个人身上/);
@@ -297,7 +308,6 @@ test("票型／刀口读法已從 rules 移出：白天所有阵营都從共用�
   assert.match(guideText, /白狼王白天能自爆带人/);
   // 時序（含第一天例外）與刀口常識也在這份攻略裡
   assert.match(guideText, /【刀口常识】狼可以刀队友，也可以自刀/);
-  assert.match(guideText, /阶段顺序：夜晚（狼人刀人）→ 天亮公布死亡 → 自由发言 → 投票/);
   assert.match(guideText, /第一天例外：警徽竞选先进行/);
   assert.match(guideText, /不要把今天的上警、跳身份或发言，当作昨夜被刀的直接原因/);
 });
@@ -400,18 +410,20 @@ test("历史弃票不会被格式化成不存在的 0 号玩家", () => {
   assert.match(votes, /5号玩家5: \{票数: 1, 投票者: \[2\]\}/);
 });
 
-test("阶段顺序改放静的共用攻略：一般顺序为主、警徽竞选只写成第一天例外", async () => {
+test("阶段顺序只写成静的公開知識：一般顺序为主、警徽竞选只写成第一天例外", async () => {
   const { buildSharedSystemParts } = await import("./prompt-utils");
   const state = makeState();
   state.day = 2;
   state.phase = "DAY_SPEECH";
 
-  // 攻略是整局固定的靜態前綴，不能再隨「今天第幾天」變動：
-  // 一般顺序照寫，第一天例外用括號條件描述，而不是把警徽竞选塞進常规顺序。
-  const guideText = buildSharedSystemParts(state)[2].text;
-  assert.match(guideText, /阶段顺序：夜晚（狼人刀人）→ 天亮公布死亡 → 自由发言 → 投票/);
+  // 靜態前綴不能再隨「今天第幾天」變動：一般流程照寫（第一天先競選，見【通用规则】），
+  // 攻略只留「第一天例外」與時間線讀法，不能把警徽竞选塞進常规顺序。
+  const parts = buildSharedSystemParts(state);
+  const publicBlock = parts[0].text;
+  const guideText = guidePart(parts);
+  assert.match(publicBlock, /每天流程：夜晚（狼人刀人）→ 第一天先进行警徽竞选 → 天亮公布死亡 → 自由发言 → 放逐投票/);
   assert.match(guideText, /第一天例外：警徽竞选先进行/);
-  assert.doesNotMatch(guideText, /夜晚（狼人刀人）→ 警徽竞选 → 天亮公布死亡/);
+  assert.doesNotMatch(publicBlock + guideText, /夜晚（狼人刀人）→ 警徽竞选 → 天亮公布死亡/);
 
   // user context 不再重複同一段（重複會稀釋前綴快取）
   const context = buildGameContext(state, state.players[2]);
@@ -587,7 +599,7 @@ test("白痴打法已整併進統一攻略：不再有私有筆記段（免死�
   assert.doesNotMatch(dayCtx, /<your_idiot_notes>/);
   assert.doesNotMatch(dayCtx, /【白痴怎么打/);
 
-  const guideText = buildSharedSystemParts(dayState)[2].text;
+  const guideText = guidePart(buildSharedSystemParts(dayState));
   assert.match(guideText, /白痴是弱神/);
   assert.match(guideText, /你会自动翻牌免死|自动翻牌免死/);
 });
