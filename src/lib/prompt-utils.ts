@@ -642,13 +642,14 @@ export const buildPastDaysTranscript = (state: GameState): string => {
 
   if (dayGroups.length === 0) return "";
 
+  // 標題自成一行（取代舊的 <history> 外框＋【第N天】標籤）：過往白天記錄直接排在 user 最前面。
   const sections = dayGroups.map(({ day, transcript }) => {
-    const dayLabel = t("promptUtils.gameContext.dayLabel", { day });
-    return transcript ? `${dayLabel}\n${transcript}` : dayLabel;
+    const heading = t("promptUtils.gameContext.pastDayHeading", { day });
+    return transcript ? `${heading}\n${transcript}` : heading;
   });
 
   if (sections.length === 0) return "";
-  return `<history>\n${sections.join("\n\n")}\n</history>`;
+  return sections.join("\n\n");
 };
 
 export const getDayStartIndex = (state: GameState): number => {
@@ -1128,7 +1129,10 @@ export const buildGameContextParts = (
   const privateParts: string[] = [];
   const privateInfo = buildRolePrivateInfo(state, player, options);
   if (privateInfo) privateParts.push(privateInfo);
-  let context = "";
+  // 過往白天記錄排在最前面（user 第一個區塊）：模型先看到「前面幾天發生過什麼」，
+  // 再看到當前局面。這段是公開資訊，仍屬共用前綴。
+  const pastDaysSection = buildPastDaysTranscript(state);
+  let context = pastDaysSection ? `${pastDaysSection}\n\n` : "";
 
   // Build YAML-formatted game state
   const aliveSeats = alivePlayers.map((p) => p.seat + 1);
@@ -1243,11 +1247,6 @@ alive_count: ${alivePlayers.length}${mutedLine}
   }
   if (rulesText) {
     context += `\n\n<rules>\n${rulesText}\n</rules>`;
-  }
-
-  const pastDaysSection = buildPastDaysTranscript(state);
-  if (pastDaysSection) {
-    context += `\n\n${pastDaysSection}`;
   }
 
   const systemAnnouncements = buildSystemAnnouncementsSinceDawn(state);

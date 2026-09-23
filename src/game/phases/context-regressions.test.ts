@@ -854,3 +854,32 @@ test("狼隊夜間商議也帶角色設定（狼隊操作不是例外）", async
   assert.ok(!text.slice(identityIdx + 4, settingIdx).includes("【"), "身份與角色設定之間插入了其他區塊");
   assert.match(text, new RegExp(`只按${wolf.seat + 1}号自己的视角表达`));
 });
+
+test("過往白天記錄：用【第N天 白天记录】標題取代 <history>，且排在 user 最前面", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const state = fresh("DAY_SPEECH");
+  state.day = 3;
+  state.messages = [
+    message(state, "第一天的發言", "DAY_SPEECH", 0, 0),
+    { ...message(state, "第二天的發言", "DAY_SPEECH", 1, 0), day: 2 },
+  ];
+  state.players[0].alive = false;
+
+  const player = state.players.find((p) => p.role === "Villager") ?? state.players[0];
+  const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, player)!;
+
+  // 標題取代舊外框
+  assert.match(prompt.user, /【第1天 白天记录】/);
+  assert.match(prompt.user, /【第2天 白天记录】/);
+  assert.doesNotMatch(prompt.user, /<history>/);
+  assert.doesNotMatch(prompt.user, /【第1天】/);
+  // 排在 user 最前面：整份 prompt 從第一個標題開始，且在 <game_state> 之前
+  assert.ok(prompt.user.trimStart().startsWith("【第1天 白天记录】"), "過往白天記錄必須是 user 第一個區塊");
+  assert.ok(
+    prompt.user.indexOf("【第2天 白天记录】") < prompt.user.indexOf("<game_state>"),
+    "過往白天記錄必須排在 <game_state> 之前",
+  );
+  // system 不受影響（公開事實仍在 user）
+  assert.doesNotMatch(prompt.system, /白天記錄/);
+});

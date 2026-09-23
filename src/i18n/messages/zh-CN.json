@@ -2100,7 +2100,8 @@
       "speechRecoveryFailed": "公开发言格式恢复失败，请重试本次发言",
       "speechRecoveryFailedInvalid": "公开发言格式恢复失败：公开段落仍包含无效结构",
       "speechRecoveryFailedNoNew": "公开发言格式恢复失败：没有新增公开段落",
-      "gameEndRemarkDaySummary": "第{day}天：{bullets}"
+      "gameEndRemarkDaySummary": "第{day}天：{bullets}",
+      "pastDayHeading": "【第{day}天 白天记录】"
     },
     "acquaintance": {
       "header": "【熟人局】这桌人你都认识，下面是平时积累的印象、各自跑的底层模型和交手记录。印象只是印象——本局他们未必照老习惯打，拿狼的人更可能一反常态；怎么利用这些了解，你自己决定。",
