@@ -84,7 +84,9 @@ export class DaySpeechPhase extends GamePhase {
     );
     // 場景說明（線上打字交流）原本黏在身份模板裡；現在身份只與角色設定綁定，
     // 場景改為獨立小節、排在「身份＋角色設定」之後。
-    const sceneSection = t("prompts.daySpeech.scene");
+    // coreRules 佔位符仍在模板裡（歷史遺留）：務必傳空字串，否則 ICU 會拋
+    // FORMATTING_ERROR 並讓整段退回成 key（prompt 直接壞掉）。
+    const sceneSection = t("prompts.daySpeech.scene", { coreRules: "" });
     const todayTranscript = buildTodayTranscript(state);
     const selfSpeech = buildPlayerTodaySpeech(state, player);
     const selfSpeechContext = selfSpeech

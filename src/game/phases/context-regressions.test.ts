@@ -934,3 +934,37 @@ test("出局玩家是合法線索：有人出局時附上的提醒要允許引�
   // 舊的抑制措辭不得殘留
   assert.doesNotMatch(ctx, /不要过度复盘已出局玩家/);
 });
+
+test("ICU 參數漏傳會讓整段退化成 key：所有階段都不得出現未填佔位符或 i18n key", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const { buildWolfTeamPlanPrompt } = await import("@/lib/game-master");
+  const phases: Phase[] = [
+    "NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_WOLF_ACTION", "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION",
+    "DAY_BADGE_SIGNUP", "DAY_BADGE_ELECTION", "BADGE_TRANSFER", "DAY_SPEECH", "DAY_VOTE",
+    "HUNTER_SHOOT", "SELF_DESTRUCT", "KNIGHT_DUEL",
+  ];
+  // 沒填的 ICU 佔位符會讓 t() 拋 FORMATTING_ERROR 並回傳 key，prompt 就整段壞掉
+  const broken = /\{(coreRules|seat|name|role|day|round|kind|vote|format|jsonFormat|v|who|seats|target|list|text|count|voters|alive|total|bullets|confirmed|phase|taskLine|campaignRequirements|guidelines|persona|options|example|knifeLine|speakOrder|phaseHintSection|phaseHint|todayTranscript|selfSpeech|sharedContext|privateContext|noTranscript|lastWords|lastTarget|abstainLine|saveJsonFormat|poisonJsonFormat|passJsonFormat|tearJsonFormat|optionsLine)\}/;
+  const keyLike = /\b(prompts|promptUtils|specialEvents|uiText|badgePhase)\.[a-zA-Z.]+/;
+  const checked: string[] = [];
+  for (const phase of phases) {
+    const state = fresh(phase);
+    const player = state.players.find((p) => p.agentProfile?.persona) ?? state.players[0];
+    state.currentSpeakerSeat = player.seat;
+    const prompt = new PhaseManager().getPrompt(phase, { state }, player);
+    if (!prompt) continue;
+    const text = `${prompt.system}\n${prompt.user}\n${prompt.historyUser ?? ""}`;
+    assert.doesNotMatch(text, broken, `${phase}: 有未填的 ICU 佔位符`);
+    assert.doesNotMatch(text, keyLike, `${phase}: prompt 出現 i18n key（t() 失敗回退）`);
+    checked.push(phase);
+  }
+  // 狼隊商議（自組 prompt，不經 PhaseManager）
+  const wolfState = fresh("NIGHT_WOLF_ACTION");
+  const wolf = wolfState.players.find((p) => p.role === "Werewolf")!;
+  const wolfPrompt = buildWolfTeamPlanPrompt(wolfState, wolf);
+  const wolfText = `${wolfPrompt.system}\n${wolfPrompt.user}`;
+  assert.doesNotMatch(wolfText, broken, "wolfTeamPlan: 有未填的 ICU 佔位符");
+  assert.doesNotMatch(wolfText, keyLike, "wolfTeamPlan: prompt 出現 i18n key");
+  assert.equal(checked.length, phases.length);
+});
