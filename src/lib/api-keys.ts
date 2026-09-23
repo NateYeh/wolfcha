@@ -6,6 +6,7 @@ import {
   REVIEW_MODEL,
   PROJECT_MODELS,
 } from "@/types/game";
+import { normalizeGatewayBaseUrl } from "@/lib/gateway-url";
 
 const ZENMUX_API_KEY_STORAGE = "wolfcha_zenmux_api_key";
 const DASHSCOPE_API_KEY_STORAGE = "wolfcha_dashscope_api_key";
@@ -174,6 +175,21 @@ export function hasMinimaxKey(): boolean {
 
 function hasLocalLlmKey(): boolean {
   return hasZenmuxKey() || hasDashscopeKey() || hasTokendanceKey();
+}
+
+/**
+ * 這台瀏覽器是否已具備可開局的 AI 連線。
+ *
+ * 本機／自架模式（伺服器不提供閘道器）必須自己填「伺服器位址＋Key」，
+ * 否則每個 AI 呼叫都只會拿到 401「尚未設置 AI 服務連接」，AI 玩家整場擺爛。
+ * TokenPay 模式看連線狀態；custom 模式看 zenmux／dashscope 或自帶的 gateway。
+ */
+export function isAiServiceReady(): boolean {
+  const source = getModelSource();
+  const selfHosted = hasTokendanceKey() && normalizeGatewayBaseUrl(getTokendanceBaseUrl()).ok;
+  if (source === "tokenpay") return isTokenPayConnected() || selfHosted;
+  if (source === "custom") return Boolean(getZenmuxApiKey() || getDashscopeApiKey()) || selfHosted;
+  return selfHosted || Boolean(getZenmuxApiKey() || getDashscopeApiKey());
 }
 
 export function resolveModelSource(options: {

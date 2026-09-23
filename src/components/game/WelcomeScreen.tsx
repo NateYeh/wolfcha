@@ -35,6 +35,7 @@ import {
   hasDashscopeKey,
   hasTokendanceKey,
   hasZenmuxKey,
+  isAiServiceReady,
   isTokenPayConnected,
   MODEL_SOURCE_CHANGE_EVENT,
   setModelSource,
@@ -715,6 +716,15 @@ export function WelcomeScreen({
 
   const startGameWithCreditGuard = async (skipCredit: boolean) => {
     if (isStartingRef.current) {
+      return;
+    }
+
+    // 本機／自架模式：伺服器不提供閘道器，沒填「設定 → AI 服務連線」的位址與 Key，
+    // 每一個 AI 呼叫都只會拿到「尚未設置 AI 服務連接」，整場 AI 玩家默默擺爛。
+    // 因此在開局前就擋下來，直接打開設定並要求先設定才能玩。
+    if (LOCAL_NO_AUTH && !isAiServiceReady()) {
+      setIsSetupOpen(true);
+      toast(t("welcome.toast.aiNotConfigured"), { duration: 6000 });
       return;
     }
 

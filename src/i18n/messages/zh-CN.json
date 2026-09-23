@@ -180,7 +180,8 @@
       "keyValidationFailed": {
         "title": "验证请求失败",
         "description": "网络异常，请稍后重试。"
-      }
+      },
+      "aiNotConfigured": "还没设置 AI 服务连接：请先在「设置 → AI 服务连接」填入服务器地址与 API Key，按「测试连接并读取模型列表」通过后再开始游戏。"
     },
     "dev": {
       "title": "开发者模式",

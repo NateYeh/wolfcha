@@ -180,7 +180,8 @@
       "keyValidationFailed": {
         "title": "Validation request failed",
         "description": "Network error, please try again later."
-      }
+      },
+      "aiNotConfigured": "AI service is not configured yet: open Settings → AI service connection, enter the server address and API key, run «Test connection and load models», then start the game."
     },
     "dev": {
       "title": "Developer mode",
