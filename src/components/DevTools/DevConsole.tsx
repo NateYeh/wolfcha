@@ -1110,9 +1110,10 @@ function GlobalTab({
     return p ? formatPlayerLabel(p) : t("devConsole.seatOnly", { seat: seat + 1 });
   };
 
-  const getDeathReasonLabel = (reason: "wolf" | "poison" | "milk") => {
+  const getDeathReasonLabel = (reason: "wolf" | "poison" | "milk" | "dream" | "dream") => {
     if (reason === "wolf") return t("devConsole.deathReason.wolf");
     if (reason === "poison") return t("devConsole.deathReason.poison");
+    if (reason === "dream") return t("devConsole.deathReason.dream");
     return t("devConsole.deathReason.milk");
   };
 

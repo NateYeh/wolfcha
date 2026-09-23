@@ -11,6 +11,7 @@
  *    - npx tsx scripts/generate-narrator-audio.ts        # Generate all languages
  *    - npx tsx scripts/generate-narrator-audio.ts zh     # Generate Chinese only
  *    - npx tsx scripts/generate-narrator-audio.ts en     # Generate English only
+ *    - npx tsx scripts/generate-narrator-audio.ts zh dreamWake dreamClose  # 只補特定鍵
  */
 
 import * as fs from "node:fs";
@@ -57,6 +58,8 @@ const NARRATOR_TEXTS_ZH: Record<string, string> = {
   guardClose: "守卫请闭眼",
   muteWake: "禁言长老请睁眼",
   muteClose: "禁言长老请闭眼",
+  dreamWake: "摄梦人请睁眼",
+  dreamClose: "摄梦人请闭眼",
   wolfWake: "狼人请睁眼",
   wolfClose: "狼人请闭眼",
   witchWake: "女巫请睁眼",
@@ -90,6 +93,8 @@ const NARRATOR_TEXTS_EN: Record<string, string> = {
   guardClose: "Guard, please close your eyes",
   muteWake: "Mute Elder, please open your eyes",
   muteClose: "Mute Elder, please close your eyes",
+  dreamWake: "Dreamweaver, please open your eyes",
+  dreamClose: "Dreamweaver, please close your eyes",
   wolfWake: "Werewolves, please open your eyes",
   wolfClose: "Werewolves, please close your eyes",
   witchWake: "Witch, please open your eyes",
@@ -231,8 +236,11 @@ async function requestMiniMaxTTS(text: string, voiceId: string): Promise<Buffer>
   });
 }
 
-async function generateNarratorAudioForLocale(locale: string) {
-  const texts = NARRATOR_TEXTS_BY_LOCALE[locale];
+async function generateNarratorAudioForLocale(locale: string, onlyKeys?: string[]) {
+  const allTexts = NARRATOR_TEXTS_BY_LOCALE[locale];
+  const texts = onlyKeys && onlyKeys.length > 0
+    ? Object.fromEntries(Object.entries(allTexts).filter(([key]) => onlyKeys.includes(key)))
+    : allTexts;
   const voiceId = NARRATOR_VOICE_IDS[locale];
   
   if (!texts || !voiceId) {
@@ -283,7 +291,7 @@ async function generateNarratorAudioForLocale(locale: string) {
   return { success: successCount, fail: failCount };
 }
 
-async function generateAllNarratorAudio(targetLocale?: string) {
+async function generateAllNarratorAudio(targetLocale?: string, onlyKeys?: string[]) {
   const localesToGenerate = targetLocale 
     ? [targetLocale] 
     : Object.keys(NARRATOR_TEXTS_BY_LOCALE);
@@ -297,7 +305,7 @@ async function generateAllNarratorAudio(targetLocale?: string) {
   let totalFail = 0;
   
   for (const locale of localesToGenerate) {
-    const result = await generateNarratorAudioForLocale(locale);
+    const result = await generateNarratorAudioForLocale(locale, onlyKeys);
     totalSuccess += result.success;
     totalFail += result.fail;
   }
@@ -312,6 +320,8 @@ async function generateAllNarratorAudio(targetLocale?: string) {
 // Parse command line arguments
 const args = process.argv.slice(2);
 const targetLocale = args[0]; // Optional: "zh" or "en"
+// 選填：只生成指定的鍵（例：`zh dreamWake dreamClose`），不給就整批重生。
+const onlyKeys = args.slice(1).length > 0 ? args.slice(1) : undefined;
 
 if (targetLocale && !NARRATOR_TEXTS_BY_LOCALE[targetLocale]) {
   console.error(`[ERROR] Invalid locale: ${targetLocale}`);
@@ -320,4 +330,4 @@ if (targetLocale && !NARRATOR_TEXTS_BY_LOCALE[targetLocale]) {
 }
 
 // 运行脚本
-generateAllNarratorAudio(targetLocale).catch(console.error);
+generateAllNarratorAudio(targetLocale, onlyKeys).catch(console.error);

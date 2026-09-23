@@ -1,10 +1,11 @@
 import type { GameState } from "@/types/game";
+import type { NightDeathReason } from "./night-resolution";
 import { getPendingLastWordsSeats } from "./last-words";
 
 /**
- * 夜晚死亡原因（與 `nightHistory[day].deaths` 一致）
+ * 夜晚死亡原因（與 `nightHistory[day].deaths` 一致）；單一真相在 rules/night-resolution。
  */
-export type NightDeathReason = "wolf" | "poison" | "milk";
+export type { NightDeathReason };
 
 /** 這次補公布的夜間死亡 */
 export interface NewlyAnnouncedDeath {

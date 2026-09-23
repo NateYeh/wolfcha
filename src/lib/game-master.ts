@@ -41,6 +41,7 @@ import {
   type SpeechSkillDecision,
 } from "@/lib/speech-skill";
 import { getMuteEligibleSeats } from "@/lib/rules/mute";
+import { getDreamEligibleSeats } from "@/lib/rules/dream";
 import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
@@ -1447,7 +1448,15 @@ function seatSelectionResponseFormat(
   options?: { allowAbstain?: boolean }
 ): NonNullable<GenerateOptions["response_format"]> {
   // 夜間行動（查验/出刀/守護）與白天放逐投票一樣帶 reason：留一句思路供日誌除錯與賽後復盤。
-  const withReason = ["day_vote", "seer_action", "wolf_action", "guard_action", "badge_vote"].includes(name);
+  const withReason = [
+    "day_vote",
+    "seer_action",
+    "wolf_action",
+    "guard_action",
+    "badge_vote",
+    "dream_action",
+    "mute_action",
+  ].includes(name);
   // 空守（守衛可選擇不守護任何人）以「0」表示：顯示坐位從 1 起算，0 不會與真實坐位衝突，
   // 且留在 enum 內可讓 strict json_schema 繼續通過驗證。
   const seatEnum = options?.allowAbstain
@@ -2629,6 +2638,87 @@ export async function generateMuteAction(
     console.warn("[wolfcha] generateMuteAction failed, skipping silence:", error);
     await aiLogger.log({
       type: "mute_action",
+      request: {
+        model: player.agentProfile!.modelRef.model,
+        messages,
+        player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+      },
+      response: {
+        content: "",
+        parsed: { targetSeat: undefined },
+        attempts,
+        duration: Date.now() - startTime,
+        failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
+      },
+      error: String(error),
+    });
+    return undefined;
+  }
+}
+
+/**
+ * 攝夢人的夜間行動：指定今晚的夢游者。
+ *
+ * 每晚必須指定一名存活玩家（不能選自己、不能空攝，見 lib/rules/dream.ts）；
+ * AI 沒給出合法目標時由呼叫端（NightPhase）隨機指定，這裡只負責問一次。
+ */
+export async function generateDreamAction(
+  state: GameState,
+  player: Player
+): Promise<NightActionOutcome | undefined> {
+  const prompt = resolvePhasePrompt("NIGHT_DREAM_ACTION", state, player);
+  const eligibleSeats = getDreamEligibleSeats(state, player.seat);
+  const eligiblePlayers = state.players.filter((p) => eligibleSeats.includes(p.seat));
+  const startTime = Date.now();
+  let attempts = 0;
+  const { messages } = buildMessagesForPrompt(prompt);
+  const validSeats = eligiblePlayers.map((p) => p.seat);
+
+  if (validSeats.length === 0) return undefined;
+
+  try {
+    const completion = await withCriticalRetry(
+      "dream_action",
+      async () => {
+        attempts += 1;
+        return await generateCompletionAndParse<number>(
+          mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+            model: player.agentProfile!.modelRef.model,
+            messages,
+            promptScope: "gameplay",
+            temperature: GAME_TEMPERATURE.ACTION,
+            response_format: seatSelectionResponseFormat(player.agentProfile!.modelRef, "dream_action", validSeats),
+          }),
+          (cleaned) => {
+            const parsedSeat = parseLLMDisplaySeat(cleaned, validSeats, ["seat", "targetSeat", "target", "dream", "dreamTarget"]);
+            return parsedSeat === null ? parseFail() : parseOk(parsedSeat);
+          }
+        );
+      },
+    );
+    const parsedSeat = completion.parsed ?? undefined;
+    await aiLogger.log({
+      type: "dream_action",
+      request: {
+        model: player.agentProfile!.modelRef.model,
+        messages,
+        player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+      },
+      response: {
+        content: completion.cleaned,
+        raw: completion.result.content,
+        rawResponse: JSON.stringify(completion.result.raw, null, 2),
+        finishReason: completion.result.raw.choices?.[0]?.finish_reason,
+        parsed: { targetSeat: parsedSeat, attempts: completion.attempts },
+        attempts,
+        duration: Date.now() - startTime,
+      },
+    });
+    return parsedSeat === undefined ? undefined : { targetSeat: parsedSeat, reason: extractActionReason(completion.cleaned) };
+  } catch (error) {
+    console.warn("[wolfcha] generateDreamAction failed, falling back to a random dreamer:", error);
+    await aiLogger.log({
+      type: "dream_action",
       request: {
         model: player.agentProfile!.modelRef.model,
         messages,

@@ -145,6 +145,7 @@ const DEATH_CAUSE_LABELS: Record<string, string> = {
   poisoned: "被毒",
   shot: "被枪",
   milk: "毒奶",
+  dreamed: "被摄梦",
 };
 
 const RADAR_LABELS_VILLAGE = ["逻辑严密", "发言清晰", "存活评分", "技能价值", "投票准确"];

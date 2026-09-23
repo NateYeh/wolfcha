@@ -124,6 +124,7 @@ export function PlayerCardCompact({
     WhiteWolfKing: t("roles.whiteWolfKing"),
     Knight: t("roles.knight"),
     MuteElder: t("roles.muteElder"),
+    Dreamweaver: t("roles.dreamweaver"),
     WolfKing: t("roles.wolfKing"),
     Villager: t("roles.villager"),
   }), [t]);

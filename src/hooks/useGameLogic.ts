@@ -33,6 +33,7 @@ import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { canDuel, hasAlreadyDueled } from "@/lib/rules/knight-duel";
 import { canUseDeathShot, getDeathShotKind } from "@/lib/rules/death-skills";
 import { isValidMuteTarget } from "@/lib/rules/mute";
+import { isValidDreamTarget } from "@/lib/rules/dream";
 import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
 import { applyKnightDuelToState } from "@/lib/rules/knight-duel-apply";
 import {
@@ -446,7 +447,7 @@ export function useGameLogic() {
   );
 
   const runNightPhaseAction = useCallback(
-    async (state: GameState, token: ReturnType<typeof getToken>, action: "START_NIGHT" | "CONTINUE_NIGHT_AFTER_GUARD" | "CONTINUE_NIGHT_AFTER_MUTE" | "CONTINUE_NIGHT_AFTER_WOLF" | "CONTINUE_NIGHT_AFTER_WITCH") => {
+    async (state: GameState, token: ReturnType<typeof getToken>, action: "START_NIGHT" | "CONTINUE_NIGHT_AFTER_GUARD" | "CONTINUE_NIGHT_AFTER_MUTE" | "CONTINUE_NIGHT_AFTER_DREAM" | "CONTINUE_NIGHT_AFTER_WOLF" | "CONTINUE_NIGHT_AFTER_WITCH") => {
       const phaseImpl = phaseManagerRef.current.getPhase("NIGHT_START");
       if (!phaseImpl) return;
       await phaseImpl.handleAction(
@@ -1124,6 +1125,8 @@ export function useGameLogic() {
     // 只帶入「剛結束那一晚」的守護目標；守衛空守時為 undefined，代表限制一併清除
     // （空守不算守護，因此之後仍可守任何人）。
     const lastGuardTarget = state.nightActions.guardTarget;
+    // 同理：只帶入剛結束那一晚的夢游者（連攝判定用），其餘夜間行動一律清空。
+    const lastDreamTarget = state.nightActions.dreamTarget;
     // Preserve seerHistory across nights
     const seerHistory = state.nightActions.seerHistory;
     let nextState = {
@@ -1131,6 +1134,7 @@ export function useGameLogic() {
       day: state.day + 1,
       nightActions: {
         ...(lastGuardTarget !== undefined ? { lastGuardTarget } : {}),
+        ...(lastDreamTarget !== undefined ? { lastDreamTarget } : {}),
         ...(seerHistory ? { seerHistory } : {}),
       },
     };
@@ -1234,6 +1238,21 @@ export function useGameLogic() {
           void runNightPhaseAction(s, token, "START_NIGHT");
         }
         // 真人禁言長老等待輸入
+        break;
+      }
+
+      case "NIGHT_DREAM_ACTION": {
+        // 攝夢人階段：已完成（或沒有攝夢人）就往下走
+        hasContinuedAfterRevealRef.current = true;
+        isAwaitingRoleRevealRef.current = false;
+        const dreamer = s.players.find((p) => p.role === "Dreamweaver" && p.alive);
+        if (!dreamer || s.nightActions.dreamTarget !== undefined) {
+          void runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_DREAM");
+        } else if (!dreamer.isHuman) {
+          // AI 攝夢人需要重新選擇
+          void runNightPhaseAction(s, token, "START_NIGHT");
+        }
+        // 真人攝夢人等待輸入
         break;
       }
 
@@ -1652,6 +1671,14 @@ export function useGameLogic() {
             const guard = s.players.find((p) => p.role === "Guard" && p.alive);
             if (!guard || s.nightActions.guardTarget !== undefined) {
               await runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_GUARD");
+            }
+            return;
+          }
+
+          if (s.phase === "NIGHT_DREAM_ACTION") {
+            const dreamer = s.players.find((p) => p.role === "Dreamweaver" && p.alive);
+            if (!dreamer || s.nightActions.dreamTarget !== undefined) {
+              await runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_DREAM");
             }
             return;
           }
@@ -2315,6 +2342,25 @@ export function useGameLogic() {
       await delay(1000);
       await waitForUnpause();
       await runNightPhaseAction(currentState, token, "CONTINUE_NIGHT_AFTER_MUTE");
+    }
+    // 攝夢人（真人）：今晚的夢游者（必須指定，不能選自己）
+    else if (gameState.phase === "NIGHT_DREAM_ACTION" && humanPlayer.role === "Dreamweaver") {
+      if (!isValidDreamTarget(currentState, humanPlayer.seat, targetSeat)) return;
+      const targetPlayer = currentState.players.find((p) => p.seat === targetSeat);
+      currentState = {
+        ...currentState,
+        nightActions: { ...currentState.nightActions, dreamTarget: targetSeat },
+      };
+      setDialogue(
+        speakerHost,
+        t("gameLogicMessages.youDreamed", { seat: targetSeat + 1, name: targetPlayer?.displayName || "" }),
+        false
+      );
+      setGameState(currentState);
+
+      await delay(1000);
+      await waitForUnpause();
+      await runNightPhaseAction(currentState, token, "CONTINUE_NIGHT_AFTER_DREAM");
     }
     // 狼人击杀
     else if (gameState.phase === "NIGHT_WOLF_ACTION" && isWolfRole(humanPlayer.role)) {

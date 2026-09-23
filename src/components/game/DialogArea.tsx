@@ -1032,21 +1032,6 @@ export function DialogArea({
   }
 
   // 获取角色中文名
-  const getRoleName = (role?: string) => {
-    switch (role) {
-      case "Werewolf": return t("roles.werewolf");
-      case "WhiteWolfKing": return t("roles.whiteWolfKing");
-      case "Seer": return t("roles.seer");
-      case "Witch": return t("roles.witch");
-      case "Hunter": return t("roles.hunter");
-      case "Guard": return t("roles.guard");
-      case "Idiot": return t("roles.idiot");
-      case "Knight": return t("roles.knight");
-      case "MuteElder": return t("roles.muteElder");
-      case "WolfKing": return t("roles.wolfKing");
-      default: return t("roles.villager");
-    }
-  };
 
   const baseDialogueText = currentDialogue?.isStreaming
     ? displayedText
@@ -1106,6 +1091,7 @@ export function DialogArea({
       (phase === "NIGHT_WOLF_ACTION" && humanPlayer && isWolfRole(humanPlayer.role) && humanPlayer.alive) ||
       (phase === "NIGHT_GUARD_ACTION" && humanPlayer?.role === "Guard" && humanPlayer?.alive) ||
       (phase === "NIGHT_MUTE_ACTION" && humanPlayer?.role === "MuteElder" && humanPlayer?.alive && gameState.nightActions.mutedTarget === undefined) ||
+      (phase === "NIGHT_DREAM_ACTION" && humanPlayer?.role === "Dreamweaver" && humanPlayer?.alive && gameState.nightActions.dreamTarget === undefined) ||
       (phase === "HUNTER_SHOOT" && getDeathShotKind(humanPlayer?.role ?? "Villager") !== "none") ||
       (phase === "BADGE_TRANSFER" && humanPlayer && gameState.badge.holderSeat === humanPlayer.seat) ||
       (phase === "SELF_DESTRUCT" && !!humanPlayer?.alive && getRoleCapabilities(humanPlayer?.role ?? "Villager").boomTakesPlayer && !hasAlreadyBoomed(gameState.roleAbilities.boomedSeats, humanPlayer?.seat ?? -1)) ||
@@ -1577,6 +1563,7 @@ export function DialogArea({
                   NIGHT_WOLF_ACTION: t("dialog.action.wolfKill"),
                   NIGHT_GUARD_ACTION: t("dialog.action.guardProtect"),
                   NIGHT_MUTE_ACTION: t("dialog.action.mute"),
+                  NIGHT_DREAM_ACTION: t("dialog.action.dream"),
                   HUNTER_SHOOT: t("dialog.action.hunterShoot"),
                   BADGE_TRANSFER: t("dialog.action.badgeTransfer"),
                   SELF_DESTRUCT: t("dialog.action.selfDestruct"),
@@ -1590,6 +1577,7 @@ export function DialogArea({
                   NIGHT_WOLF_ACTION: "text-[var(--color-danger)]",
                   NIGHT_GUARD_ACTION: "text-[var(--color-success)]",
                   NIGHT_MUTE_ACTION: "text-[var(--color-seer)]",
+                  NIGHT_DREAM_ACTION: "text-[var(--color-seer)]",
                   HUNTER_SHOOT: "text-[var(--color-warning)]",
                   BADGE_TRANSFER: "text-[var(--color-warning)]",
                   SELF_DESTRUCT: "text-[var(--color-danger)]",

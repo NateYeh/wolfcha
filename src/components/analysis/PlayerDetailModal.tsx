@@ -20,6 +20,7 @@ const DEATH_CAUSE_LABELS: Record<string, string> = {
   exiled: "被投票放逐",
   poisoned: "被女巫毒杀",
   shot: "被猎人击杀",
+  dreamed: "被摄梦带走",
   boom: "被狼人自爆带走",
 };
 

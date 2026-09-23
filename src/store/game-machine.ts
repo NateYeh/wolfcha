@@ -15,6 +15,7 @@ import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { hasAlreadyDueled } from "@/lib/rules/knight-duel";
 import { isValidMuteTarget } from "@/lib/rules/mute";
+import { isValidDreamTarget } from "@/lib/rules/dream";
 import { isPendingDeath } from "@/lib/rules/night-deaths";
 import { hasAlreadyBoomed } from "@/lib/rules/self-destruct";
 
@@ -220,7 +221,7 @@ export function getRestorePhase(state: GameState): Phase {
 // All valid Phase values for validation
 const VALID_PHASES: readonly string[] = [
   "LOBBY", "SETUP",
-  "NIGHT_START", "NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_WOLF_ACTION",
+  "NIGHT_START", "NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "NIGHT_WOLF_ACTION",
   "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION", "NIGHT_RESOLVE",
   "DAY_START", "DAY_BADGE_SIGNUP", "DAY_BADGE_SPEECH", "DAY_BADGE_ELECTION",
   "DAY_PK_SPEECH", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_VOTE", "DAY_RESOLVE",
@@ -653,6 +654,21 @@ export const PHASE_CONFIGS: Record<Phase, PhaseConfig> = {
     },
     actionType: "night_action",
   },
+  NIGHT_DREAM_ACTION: {
+    phase: "NIGHT_DREAM_ACTION",
+    description: "phase.nightDream.description",
+    humanDescription: () => {
+      const { t } = getI18n();
+      return t("phase.nightDream.human");
+    },
+    // 真人攝夢人：選一名存活玩家當夢游者（不能選自己、不能選死訊未公布的死者）
+    requiresHumanInput: (hp) => hp?.alive && hp?.role === "Dreamweaver" || false,
+    canSelectPlayer: (hp, target, gs) => {
+      if (!hp || hp.role !== "Dreamweaver") return false;
+      return isValidDreamTarget(gs, hp.seat, target.seat);
+    },
+    actionType: "night_action",
+  },
   NIGHT_WOLF_ACTION: {
     phase: "NIGHT_WOLF_ACTION",
     description: "phase.nightWolf.description",
@@ -1073,10 +1089,11 @@ export const VALID_TRANSITIONS: Record<Phase, Phase[]> = {
   LOBBY: ["SETUP"],
   SETUP: ["NIGHT_START"],
   
-  // 夜晚流程: 守卫 -> 狼人 -> 女巫 -> 预言家 -> 结算
-  NIGHT_START: ["NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_WOLF_ACTION"],
-  NIGHT_GUARD_ACTION: ["NIGHT_MUTE_ACTION", "NIGHT_WOLF_ACTION"],
-  NIGHT_MUTE_ACTION: ["NIGHT_WOLF_ACTION"],
+  // 夜晚流程: 守卫 -> 禁言长老 -> 摄梦人 -> 狼人 -> 女巫 -> 预言家 -> 结算
+  NIGHT_START: ["NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "NIGHT_WOLF_ACTION"],
+  NIGHT_GUARD_ACTION: ["NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "NIGHT_WOLF_ACTION"],
+  NIGHT_MUTE_ACTION: ["NIGHT_DREAM_ACTION", "NIGHT_WOLF_ACTION"],
+  NIGHT_DREAM_ACTION: ["NIGHT_WOLF_ACTION"],
   NIGHT_WOLF_ACTION: ["NIGHT_WITCH_ACTION"],
   NIGHT_WITCH_ACTION: ["NIGHT_SEER_ACTION"],
   NIGHT_SEER_ACTION: ["NIGHT_RESOLVE"],

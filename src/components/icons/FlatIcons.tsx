@@ -433,3 +433,22 @@ export const MuteElderIcon = forwardRef<SVGSVGElement, IconProps>(
   )
 );
 MuteElderIcon.displayName = "MuteElderIcon";
+
+// 摄梦人图标（月牙＋星：把别人带进梦里）
+export const DreamweaverIcon = forwardRef<SVGSVGElement, IconProps>(
+  ({ size = 24, className, ...props }, ref) => (
+    <svg
+      ref={ref}
+      viewBox="0 0 24 24"
+      fill="none"
+      width={size}
+      height={size}
+      className={className}
+      {...props}
+    >
+      <path d="M15.5 2.5C10.5 3.5 7 7.5 7 12.2C7 17.1 10.9 21 15.8 21C18 21 20 20.2 21.5 18.8C15.4 18.4 10.5 13.4 10.5 7.4C10.5 5.4 11 3.8 12 2.6C13.1 2.4 14.3 2.4 15.5 2.5Z" fill="currentColor"/>
+      <path d="M17.5 4.5L18.4 6.6L20.5 7.5L18.4 8.4L17.5 10.5L16.6 8.4L14.5 7.5L16.6 6.6L17.5 4.5Z" fill="currentColor"/>
+    </svg>
+  )
+);
+DreamweaverIcon.displayName = "DreamweaverIcon";

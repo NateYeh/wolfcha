@@ -4,7 +4,14 @@ import type { Role } from "@/types/game";
 export type RoleCamp = "wolf" | "god" | "villager";
 
 /** 夜間行動型別（none＝夜間無行動） */
-export type NightActionKind = "none" | "kill" | "protect" | "inspect" | "potion" | "silence";
+export type NightActionKind =
+  | "none"
+  | "kill"
+  | "protect"
+  | "inspect"
+  | "potion"
+  | "silence"
+  | "dream";
 
 /** 死亡技能（死亡時可帶走一人的槍）種類；規則見 lib/rules/death-skills.ts */
 export type DeathShotKind = "none" | "hunter_gun" | "wolf_gun";
@@ -142,6 +149,19 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     camp: "god",
     nightAction: "silence",
     // 每晚都要指定一個目標（不能空過），也不能禁言自己
+    canAbstain: false,
+    canSelfTarget: false,
+    canBoom: false,
+    boomTakesPlayer: false,
+    boomSwallowsBadgeOnElection: false,
+    canDuel: false,
+    deathShot: "none",
+  },
+  Dreamweaver: {
+    role: "Dreamweaver",
+    camp: "god",
+    nightAction: "dream",
+    // 每晚一定要指定夢游者（不能空攝）；不能選自己（官方規則）
     canAbstain: false,
     canSelfTarget: false,
     canBoom: false,

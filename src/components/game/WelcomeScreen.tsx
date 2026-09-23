@@ -428,6 +428,7 @@ export function WelcomeScreen({
       WhiteWolfKing: t("roles.whiteWolfKing"),
       Knight: t("roles.knight"),
       MuteElder: t("roles.muteElder"),
+      Dreamweaver: t("roles.dreamweaver"),
       WolfKing: t("roles.wolfKing"),
       Seer: t("roles.seer"),
       Witch: t("roles.witch"),
@@ -484,6 +485,7 @@ export function WelcomeScreen({
       WhiteWolfKing: 0,
       Knight: 0,
       MuteElder: 0,
+      Dreamweaver: 0,
       WolfKing: 0,
     };
     for (const r of fixedRoles) {

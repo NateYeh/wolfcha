@@ -57,6 +57,7 @@ const ROLE_ALIGNMENT: Record<Role, Alignment> = {
   WhiteWolfKing: "wolf",
   Knight: "village",
   MuteElder: "village",
+  Dreamweaver: "village",
   WolfKing: "wolf",
   Villager: "village",
 };
@@ -505,6 +506,7 @@ function parseDeathCause(reason: string): DeathCause {
     case "wolf": return "killed";
     case "poison": return "poisoned";
     case "milk": return "milk";
+    case "dream": return "dreamed";
     default: return "killed";
   }
 }
@@ -699,6 +701,7 @@ function formatDeathCauseText(cause?: DeathCause): string {
     case "poisoned": return "被女巫毒杀";
     case "shot": return "被猎人带走";
     case "milk": return "同守同救出局";
+    case "dreamed": return "被摄梦带走（梦死）";
     case "boom": return "白狼王自爆相关出局";
     default: return "出局原因未记录";
   }

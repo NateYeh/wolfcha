@@ -5,7 +5,8 @@ import { getRoleCapabilities, isWolfRole, type DeathShotKind } from "./roles";
  * 死亡技能（「槍」）規則（單一真相）。
  *
  * 目前有兩把槍：
- * - 獵人槍（`hunter_gun`）：被投票放逐、被狼人夜刀、被自爆帶走都可以開；**被毒死不能開**。
+ * - 獵人槍（`hunter_gun`）：被投票放逐、被狼人夜刀、被自爆帶走都可以開；**被毒死不能開**，
+ *   被攝夢帶走（夢死）同樣不能開。
  * - 狼王槍（`wolf_gun`）：**只有白天被投票放逐**能開；非最後一狼、非被毒、非夜間死亡、
  *   非自爆（自爆沒技能）、被騎士決鬥出局也不能開（見 knight-duel 的決鬥死亡封鎖）。
  *
@@ -73,13 +74,16 @@ export function canUseDeathShot(input: {
   if (cause === "poison" && !rules.onPoison) return false;
   if (cause === "carried" && !rules.onCarried) return false;
   if (cause === "duel" && !rules.onDuel) return false;
-  // 被毒／毒奶死亡的座位：死亡技能一律封鎖（查夜史死亡紀錄，取代舊的全域 hunterCanShoot=false hack）
-  const diedByToxin = Object.values(state.nightHistory ?? {}).some((record) =>
+  // 被毒／毒奶／被夢帶走的座位：死亡技能一律封鎖（查夜史死亡紀錄，取代舊的全域 hunterCanShoot=false hack）。
+  // 被夢帶走（連續兩晚被攝、或被夜死的攝夢人連帶）依官方規則同樣不能發動技能。
+  const diedByBlockedCause = Object.values(state.nightHistory ?? {}).some((record) =>
     (record?.deaths ?? []).some(
-      (death) => death.seat === seat && (death.reason === "poison" || death.reason === "milk"),
+      (death) =>
+        death.seat === seat &&
+        (death.reason === "poison" || death.reason === "milk" || death.reason === "dream"),
     ),
   );
-  if (diedByToxin) return false;
+  if (diedByBlockedCause) return false;
   // 非最後一狼：只剩他這隻狼時，死了就終局，沒有開槍窗口
   if (rules.forbiddenWhenLastWolf) {
     const otherAliveWolves = state.players.filter(

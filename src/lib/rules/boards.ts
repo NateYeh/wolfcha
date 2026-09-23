@@ -38,6 +38,7 @@ export const ALL_ROLE_KEYS: Role[] = [
   "Idiot",
   "Knight",
   "MuteElder",
+  "Dreamweaver",
   "Villager",
 ];
 
@@ -50,6 +51,7 @@ const GOD_ROLES: Role[] = [
   "Idiot",
   "Knight",
   "MuteElder",
+  "Dreamweaver",
   "WhiteWolfKing",
 ];
 
@@ -58,7 +60,9 @@ const FALLBACK_PLAYER_COUNT = 10;
 
 /**
  * 官方版型。8–11 人為既有經典版型（行為與改造前逐字相同）；
- * 12 人局目前收錄經典、預女獵白、預女守白、預女獵禁、白狼騎士與狼王守衛，其餘官方版型與自定義版型待功能完成後再添加。
+ * 12 人局目前收錄經典、預女獵白、預女守白、預女獵禁、白狼騎士、狼王守衛與狼王攝夢，
+ * 其餘官方版型與自定義版型待功能完成後再添加。
+ * `進階` 標籤＝需要讀完整技能說明的角色（目前是攝夢人）。
  */
 export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
   {
@@ -221,6 +225,26 @@ export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
     ],
     official: true,
     tags: ["預女守白", "12人"],
+  },
+  {
+    id: "official-12-wolf-king-dreamweaver",
+    playerCount: 12,
+    roles: [
+      "Werewolf",
+      "Werewolf",
+      "Werewolf",
+      "WolfKing",
+      "Seer",
+      "Witch",
+      "Dreamweaver",
+      "Hunter",
+      "Villager",
+      "Villager",
+      "Villager",
+      "Villager",
+    ],
+    official: true,
+    tags: ["進階", "狼王攝夢", "12人"],
   },
   {
     id: "official-12-white-wolf-knight",

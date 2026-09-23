@@ -71,9 +71,10 @@ export function canSpeakInPhase(state: GameState, seat: number, phase: Phase = s
 /** 禁言長老可以指定的目標：存活、不能是自己、不能是死訊未公布的死者 */
 export function getMuteEligibleSeats(state: GameState, elderSeat: number): number[] {
   const pending = new Set<number>();
-  const { pendingWolfVictim, pendingPoisonVictim } = state.nightActions ?? {};
-  if (typeof pendingWolfVictim === "number") pending.add(pendingWolfVictim);
-  if (typeof pendingPoisonVictim === "number") pending.add(pendingPoisonVictim);
+  const { pendingWolfVictim, pendingPoisonVictim, pendingDreamVictim } = state.nightActions ?? {};
+  for (const seat of [pendingWolfVictim, pendingPoisonVictim, pendingDreamVictim]) {
+    if (typeof seat === "number") pending.add(seat);
+  }
   return state.players
     .filter((player) => player.alive && player.seat !== elderSeat && !pending.has(player.seat))
     .map((player) => player.seat);

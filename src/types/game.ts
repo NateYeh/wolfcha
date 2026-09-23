@@ -8,6 +8,7 @@ export type Role =
   | "Idiot"
   | "Knight"
   | "MuteElder"
+  | "Dreamweaver"
   | "WolfKing"
   | "WhiteWolfKing";
 
@@ -49,6 +50,7 @@ export type Phase =
   | "NIGHT_START"
   | "NIGHT_GUARD_ACTION"   // 守卫保护
   | "NIGHT_MUTE_ACTION"    // 禁言长老指定明天要禁言的人
+  | "NIGHT_DREAM_ACTION"   // 摄梦人指定今晚的梦游者
   | "NIGHT_WOLF_ACTION"    // 狼人出刀
   | "NIGHT_WITCH_ACTION"   // 女巫用药
   | "NIGHT_SEER_ACTION"    // 预言家查验
@@ -295,7 +297,9 @@ export interface GameState {
       witchPoison?: number;
       seerTarget?: number;
       seerResult?: { targetSeat: number; isWolf: boolean };
-      deaths?: Array<{ seat: number; reason: "wolf" | "poison" | "milk" }>;
+      /** 攝夢人當晚的夢游者（免疫夜間傷害；連續兩晚被攝或攝夢人夜死連帶出局） */
+      dreamTarget?: number;
+      deaths?: Array<{ seat: number; reason: "wolf" | "poison" | "milk" | "dream" }>;
       hunterShot?: { hunterSeat: number; targetSeat: number; reason?: string };
       /** 夜間行動者本人寫下的決策理由；賽中從不公開，只供本人賽後感言引用。 */
       guardReason?: string;
@@ -303,6 +307,7 @@ export interface GameState {
       witchSaveReason?: string;
       witchPoisonReason?: string;
       seerReason?: string;
+      dreamReason?: string;
     }
   >;
   dayHistory?: Record<
@@ -359,6 +364,11 @@ export interface GameState {
     /** 禁言長老指定的目標（次日白天不能發言；警徽投票／放逐投票／遺言不受限） */
     mutedTarget?: number;
     muteReason?: string;
+    /** 攝夢人當晚的夢游者（免疫夜間傷害；連續兩晚被攝或攝夢人夜死則一并出局） */
+    dreamTarget?: number;
+    dreamReason?: string;
+    /** 前晚的夢游者（連攝判定的依據，進黑夜時沿用） */
+    lastDreamTarget?: number;
     lastGuardTarget?: number;    // 上一晚守卫保护的目标（不能连续保护同一人）
     wolfVotes?: Record<string, number>;
     wolfTarget?: number;         // 狼人出刀目标
@@ -375,6 +385,7 @@ export interface GameState {
     seerHistory?: Array<{ targetSeat: number; isWolf: boolean; day: number }>; // 查验历史
     pendingWolfVictim?: number;  // 待公布的狼人击杀目标（警长竞选后公布）
     pendingPoisonVictim?: number; // 待公布的女巫毒杀目标（警长竞选后公布）
+    pendingDreamVictim?: number;  // 待公布的摄梦连帶死者（警长竞选后公布）
   };
   /** 第一夜狼隊商定的分工（主導狼計畫）；生成失敗或無 AI 狼時為 undefined，全場照舊無協調。 */
   wolfTeamPlan?: WolfTeamPlan;

@@ -9,6 +9,8 @@ import type { GameState, Phase, Player, Role } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { getI18n } from "@/i18n/translator";
 import { addSystemMessage, checkWinCondition } from "@/lib/game-master";
+import { resolveNightDeaths } from "@/lib/rules/night-resolution";
+import { getDreamEligibleSeats } from "@/lib/rules/dream";
 
 // ============ 阶段顺序定义 ============
 
@@ -18,6 +20,8 @@ export const PHASE_ORDER: Phase[] = [
   "SETUP",
   "NIGHT_START",
   "NIGHT_GUARD_ACTION",
+  "NIGHT_MUTE_ACTION",
+  "NIGHT_DREAM_ACTION",
   "NIGHT_WOLF_ACTION",
   "NIGHT_WITCH_ACTION",
   "NIGHT_SEER_ACTION",
@@ -32,12 +36,15 @@ export const PHASE_ORDER: Phase[] = [
   "DAY_LAST_WORDS",
   "BADGE_TRANSFER",
   "HUNTER_SHOOT",
+  "SELF_DESTRUCT",
+  "KNIGHT_DUEL",
   "GAME_END",
 ];
 
 /** 需要关键决策的阶段（跳过时需要补全） */
 export const ACTION_PHASES: Phase[] = [
   "NIGHT_GUARD_ACTION",
+  "NIGHT_DREAM_ACTION",
   "NIGHT_WOLF_ACTION",
   "NIGHT_WITCH_ACTION",
   "NIGHT_SEER_ACTION",
@@ -273,6 +280,22 @@ function analyzeForwardJump(
         });
       }
 
+      const dreamer = state.players.find((p) => p.role === "Dreamweaver" && p.alive);
+      const dreamTargetExisting =
+        d === state.day ? (state.nightActions.dreamTarget ?? nightRecord.dreamTarget) : nightRecord.dreamTarget;
+      if (dreamer && dreamTargetExisting === undefined && !hasPassed("NIGHT_DREAM_ACTION")) {
+        const { t } = getI18n();
+        result.missingTasks.push({
+          phase: "NIGHT_DREAM_ACTION",
+          description: t("smartJump.dreamAction", { day: d }),
+          field: `day${d}DreamTarget`,
+          options: getDreamEligibleSeats(state, dreamer.seat).map((seat) => {
+            const p = state.players.find((player) => player.seat === seat);
+            return { value: seat, label: t("devConsole.playerLabel", { seat: seat + 1, name: p?.displayName ?? "" }) };
+          }),
+        });
+      }
+
       const wolves = state.players.filter((p) => isWolfRole(p.role) && p.alive);
       const wolfTargetExisting =
         d === state.day
@@ -447,6 +470,23 @@ function createMissingTask(state: GameState, phase: Phase): MissingTask | null {
         options: alivePlayers
           .filter((p) => p.seat !== state.nightActions.lastGuardTarget)
           .map((p) => ({ value: p.seat, label: t("devConsole.playerLabel", { seat: p.seat + 1, name: p.displayName }) })),
+      };
+    }
+    case "NIGHT_DREAM_ACTION": {
+      const dreamer = state.players.find((p) => p.role === "Dreamweaver" && p.alive);
+      if (!dreamer) return null;
+      // 已经选择过目标则不需要补全（規則不允許空摄，所以只要沒指定就要補）
+      if (state.nightActions.dreamTarget !== undefined) return null;
+      const { t } = getI18n();
+      const eligible = getDreamEligibleSeats(state, dreamer.seat);
+      return {
+        phase,
+        description: t("smartJump.dreamAction"),
+        field: "dreamTarget",
+        options: eligible.map((seat) => {
+          const p = state.players.find((player) => player.seat === seat);
+          return { value: seat, label: t("devConsole.playerLabel", { seat: seat + 1, name: p?.displayName ?? "" }) };
+        }),
       };
     }
     case "NIGHT_WOLF_ACTION": {
@@ -670,6 +710,7 @@ export function applyBackwardJump(
   newState.votes = {};
   newState.nightActions = {
     lastGuardTarget: newState.nightActions.lastGuardTarget,
+    lastDreamTarget: newState.nightActions.lastDreamTarget,
     seerHistory: newState.nightActions.seerHistory?.filter(
       (h) =>
         h.day < target.day ||
@@ -805,6 +846,14 @@ export function applyForwardJumpAuto(
         nightActions: { ...newState.nightActions, lastGuardTarget },
       };
     }
+    // 跨日跳轉後同樣要回填「那一晚的夢游者」，否則連攝判定會漏掉。
+    const lastDreamTarget = newState.nightHistory?.[lastNightDay]?.dreamTarget;
+    if (lastDreamTarget !== undefined) {
+      newState = {
+        ...newState,
+        nightActions: { ...newState.nightActions, lastDreamTarget },
+      };
+    }
   }
 
   // 夜晚 -> 白天：需要先确保“夜晚结算”带来的长效状态已落盘
@@ -867,6 +916,22 @@ function autoFillTask(state: GameState, task: MissingTask): GameState {
       newState.nightHistory = {
         ...(newState.nightHistory || {}),
         [day]: { ...prev, guardTarget: target.seat },
+      };
+    }
+    return newState;
+  }
+
+  const dreamMatch = task.field.match(/day(\d+)DreamTarget/);
+  if (dreamMatch) {
+    const day = Number(dreamMatch[1]);
+    const dreamer = state.players.find((p) => p.role === "Dreamweaver" && p.alive);
+    const seats = dreamer ? getDreamEligibleSeats(state, dreamer.seat) : [];
+    if (seats.length > 0) {
+      const seat = seats[Math.floor(Math.random() * seats.length)];
+      const prev = (newState.nightHistory || {})[day] || {};
+      newState.nightHistory = {
+        ...(newState.nightHistory || {}),
+        [day]: { ...prev, dreamTarget: seat },
       };
     }
     return newState;
@@ -1365,14 +1430,16 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
   const hasAliveSeer = seer ? aliveAtNightStart.has(seer.seat) : false;
   const hasAliveWolves = wolves.some((p) => aliveAtNightStart.has(p.seat));
 
+  const dreamer = state.players.find((p) => p.role === "Dreamweaver");
+  const dreamTarget = nightActions.dreamTarget;
+  const hasAliveDreamweaver = dreamer ? aliveAtNightStart.has(dreamer.seat) : false;
+
   const guardTargetEffective = hasAliveGuard ? guardTarget : undefined;
   const wolfTargetEffective = hasAliveWolves ? wolfTarget : undefined;
   const witchSaveEffective = hasAliveWitch ? witchSave : undefined;
   const witchPoisonEffective = hasAliveWitch ? witchPoison : undefined;
   const seerTargetEffective = hasAliveSeer ? nightActions.seerTarget : undefined;
   const seerResultEffective = hasAliveSeer ? nightActions.seerResult : undefined;
-
-  const deaths: Array<{ seat: number; reason: "wolf" | "poison" | "milk" }> = [];
 
   const poisonUsedOnOtherDay = (() => {
     for (const [dayStr, record] of Object.entries(state.nightHistory || {})) {
@@ -1381,22 +1448,24 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
     return false;
   })();
 
-  // 狼刀结算（包含毒奶规则）
-  if (wolfTargetEffective !== undefined) {
-    const isProtected = guardTargetEffective === wolfTargetEffective;
-    const isSaved = witchSaveEffective === true;
-
-    if (isProtected && isSaved) {
-      deaths.push({ seat: wolfTargetEffective, reason: "milk" });
-    } else if (!isProtected && !isSaved) {
-      deaths.push({ seat: wolfTargetEffective, reason: "wolf" });
-    }
-  }
-
-  // 女巫毒杀
-  if (witchPoisonEffective !== undefined && !poisonUsedOnOtherDay) {
-    deaths.push({ seat: witchPoisonEffective, reason: "poison" });
-  }
+  // 夜間結算走單一真相（rules/night-resolution）：狼刀／守護／解藥／毒藥／攝夢
+  const { deaths } = resolveNightDeaths({
+    wolfTarget: wolfTargetEffective,
+    guardTarget: guardTargetEffective,
+    witchSave: witchSaveEffective,
+    witchPoison: poisonUsedOnOtherDay ? undefined : witchPoisonEffective,
+    dreamTarget: hasAliveDreamweaver ? dreamTarget : undefined,
+    dreamerSeat: dreamer?.seat,
+    previousDreamTarget: state.nightHistory?.[day - 1]?.dreamTarget,
+    isActorAlive: (actor) =>
+      actor === "guard"
+        ? hasAliveGuard
+        : actor === "witch"
+          ? hasAliveWitch
+          : actor === "dreamweaver"
+            ? hasAliveDreamweaver
+            : hasAliveWolves,
+  });
 
   // 应用死亡到玩家存活状态
   if (deaths.length > 0) {
@@ -1416,6 +1485,8 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
       ...state.nightActions,
       // 空守（guardTargetEffective undefined）時一併清除限制：空守不算守護，之後仍可守任何人
       lastGuardTarget: guardTargetEffective,
+      // 連攝判定用：這一晚的夢游者（沒有攝夢人時清空）
+      lastDreamTarget: hasAliveDreamweaver ? dreamTarget : undefined,
     },
   };
 
@@ -1433,6 +1504,7 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
         witchPoison: poisonUsedOnOtherDay ? undefined : witchPoisonEffective,
         seerTarget: seerTargetEffective,
         seerResult: seerResultEffective,
+        dreamTarget: hasAliveDreamweaver ? dreamTarget : undefined,
         deaths,
       },
     },
@@ -1500,7 +1572,6 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
   if (!record) return state;
 
   const { wolfTarget, guardTarget, witchSave, witchPoison } = record;
-  const deaths: Array<{ seat: number; reason: "wolf" | "poison" | "milk" }> = [];
 
   const aliveAtNightStart = getAliveSeatsAtNightStart(state, day);
 
@@ -1520,6 +1591,8 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
   const witchPoisonEffective = hasAliveWitch ? witchPoison : undefined;
   const seerTargetEffective = hasAliveSeer ? record.seerTarget : undefined;
   const seerResultEffective = hasAliveSeer ? record.seerResult : undefined;
+  const dreamer = state.players.find((p) => p.role === "Dreamweaver");
+  const hasAliveDreamweaver = dreamer ? aliveAtNightStart.has(dreamer.seat) : false;
 
   const poisonUsedOnOtherDay = (() => {
     for (const [dayStr, r] of Object.entries(state.nightHistory || {})) {
@@ -1528,19 +1601,24 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
     return false;
   })();
 
-  if (wolfTargetEffective !== undefined) {
-    const isProtected = guardTargetEffective === wolfTargetEffective;
-    const isSaved = witchSaveEffective === true;
-    if (isProtected && isSaved) {
-      deaths.push({ seat: wolfTargetEffective, reason: "milk" });
-    } else if (!isProtected && !isSaved) {
-      deaths.push({ seat: wolfTargetEffective, reason: "wolf" });
-    }
-  }
-
-  if (witchPoisonEffective !== undefined && !poisonUsedOnOtherDay) {
-    deaths.push({ seat: witchPoisonEffective, reason: "poison" });
-  }
+  // 夜間結算走單一真相（rules/night-resolution）
+  const { deaths } = resolveNightDeaths({
+    wolfTarget: wolfTargetEffective,
+    guardTarget: guardTargetEffective,
+    witchSave: witchSaveEffective,
+    witchPoison: poisonUsedOnOtherDay ? undefined : witchPoisonEffective,
+    dreamTarget: hasAliveDreamweaver ? record.dreamTarget : undefined,
+    dreamerSeat: dreamer?.seat,
+    previousDreamTarget: state.nightHistory?.[day - 1]?.dreamTarget,
+    isActorAlive: (actor) =>
+      actor === "guard"
+        ? hasAliveGuard
+        : actor === "witch"
+          ? hasAliveWitch
+          : actor === "dreamweaver"
+            ? hasAliveDreamweaver
+            : hasAliveWolves,
+  });
 
   if (deaths.length > 0) {
     const deathSeats = new Set(deaths.map((d) => d.seat));
@@ -1565,6 +1643,7 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
         witchPoison: poisonUsedOnOtherDay ? undefined : witchPoisonEffective,
         seerTarget: seerTargetEffective,
         seerResult: seerResultEffective,
+        dreamTarget: hasAliveDreamweaver ? record.dreamTarget : undefined,
         deaths,
       },
     },

@@ -17,6 +17,7 @@ import {
   IdiotIcon,
   KnightIcon,
   MuteElderIcon,
+  DreamweaverIcon,
   WhiteWolfKingIcon as WolfKingIcon,
 } from "@/components/icons/FlatIcons";
 
@@ -55,6 +56,7 @@ const ROLE_META: Record<Role, { Icon: ComponentType<{ size?: number; className?:
   Idiot: { Icon: IdiotIcon, color: "var(--color-villager)", bg: "var(--color-villager-bg)" },
   Knight: { Icon: KnightIcon, color: "var(--color-guard)", bg: "var(--color-guard-bg)" },
   MuteElder: { Icon: MuteElderIcon, color: "var(--color-seer)", bg: "var(--color-seer-bg)" },
+  Dreamweaver: { Icon: DreamweaverIcon, color: "var(--color-seer)", bg: "var(--color-seer-bg)" },
   WolfKing: { Icon: WolfKingIcon, color: "var(--color-wolf)", bg: "var(--color-wolf-bg)" },
   Villager: { Icon: VillagerIcon, color: "var(--color-villager)", bg: "var(--color-villager-bg)" },
 };
@@ -77,6 +79,7 @@ export function RoleRevealHistoryCard({
     Idiot: t("roles.idiot"),
     Knight: t("roles.knight"),
     MuteElder: t("roles.muteElder"),
+    Dreamweaver: t("roles.dreamweaver"),
     WolfKing: t("roles.wolfKing"),
     Villager: t("roles.villager"),
   };

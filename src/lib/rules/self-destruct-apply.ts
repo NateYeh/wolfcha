@@ -137,6 +137,7 @@ export function applySelfDestructToState(input: SelfDestructApplyInput): SelfDes
       ...currentState.nightActions,
       pendingWolfVictim: undefined,
       pendingPoisonVictim: undefined,
+      pendingDreamVictim: undefined,
     },
     dayHistory: {
       ...(currentState.dayHistory || {}),

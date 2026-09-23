@@ -19,6 +19,7 @@ const DEATH_CAUSE_LABELS: Record<string, string> = {
   poisoned: "被毒",
   shot: "被枪",
   milk: "毒奶",
+  dreamed: "被摄梦",
   boom: "自爆",
 };
 

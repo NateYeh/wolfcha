@@ -15,6 +15,7 @@ import {
   IdiotIcon,
   KnightIcon,
   MuteElderIcon,
+  DreamweaverIcon,
   WhiteWolfKingIcon as WolfKingIcon,
 } from "@/components/icons/FlatIcons";
 import type { Phase, Role } from "@/types/game";
@@ -47,6 +48,7 @@ const ROLE_META: Record<Role, { accent: string; bg: string; Icon: React.Componen
   Idiot: { accent: "var(--color-villager)", bg: "var(--color-villager-bg)", Icon: IdiotIcon },
   Knight: { accent: "var(--color-guard)", bg: "var(--color-guard-bg)", Icon: KnightIcon },
   MuteElder: { accent: "var(--color-seer)", bg: "var(--color-seer-bg)", Icon: MuteElderIcon },
+  Dreamweaver: { accent: "var(--color-seer)", bg: "var(--color-seer-bg)", Icon: DreamweaverIcon },
   WolfKing: { accent: "var(--color-wolf)", bg: "var(--color-wolf-bg)", Icon: WolfKingIcon },
   Villager: { accent: "var(--color-villager)", bg: "var(--color-villager-bg)", Icon: VillagerIcon },
 };
@@ -122,6 +124,7 @@ export function TutorialOverlay({
       WhiteWolfKing: t("roles.whiteWolfKing"),
       Knight: t("roles.knight"),
       MuteElder: t("roles.muteElder"),
+      Dreamweaver: t("roles.dreamweaver"),
       WolfKing: t("roles.wolfKing"),
       Villager: t("roles.villager"),
     };

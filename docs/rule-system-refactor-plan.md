@@ -343,6 +343,43 @@ WelcomeScreen 開發者面板的「角色」分頁可用「套用官方版型」
   `getRoleWinCondition`／`getRoleName`／教學卡（`tutorialOverlay.roles`）補齊 Knight／MuteElder／WolfKing
   （先前缺這幾個 case 會讓新角色的 prompt 說自己是「村民」、教學卡讀到 undefined）。
 
+## 攝夢人（Dreamweaver）與狼王攝夢人版型（進階）
+
+**版型**：`official-12-wolf-king-dreamweaver`＝3 小狼、狼王、預言家、女巫、攝夢人、獵人、4 平民（tags
+`進階`／`狼王攝夢`／`12人`）。夜晚順序：天黑 →（守衛）→（禁言長老）→ **攝夢人** → 狼人／狼王 → 女巫 → 預言家。
+
+**規則（`lib/rules/dream.ts` 為單一真相）**：
+
+| 規則 | 內容 |
+| --- | --- |
+| 必須指定 | 每晚一定要指定一名存活玩家當夢游者（不能空攝）；不能選自己（`ROLE_CAPABILITIES.canSelfTarget=false`） |
+| 未操作 | AI 沒給出合法目標 → 系統隨機指定（`pickRandomDreamTarget`），保證「每晚都有夢游者」 |
+| 免疫 | 夢游者當晚免疫夜間傷害（狼刀／女巫毒藥）：技能照樣消耗、只是落空 |
+| 連攝 | 同一座位**連續兩晚**成為夢游者 → 該玩家出局（夢死；女巫解藥救不活） |
+| 連帶 | 攝夢人**夜間出局**（被刀／被毒） → 當晚夢游者一并出局 |
+| 封槍 | 被夢帶走者不能發動死亡技能（獵人槍／狼王槍），比照被毒（`death-skills.canUseDeathShot` 查夜史 reason=dream） |
+| 可見性 | 夢游狀態不公開（被攝者自己也不知道）；天亮只公布「誰出局」，不公布死因 |
+
+> 官方規則是「**可以**連續兩晚攝同一人，但連攝必死」，不存在「禁止重複」的硬性限制——連攝就是這個角色
+> 唯一的主動殺人手段。`dream.ts` 的註解也寫明這點（若哪天要改成硬性禁止，改的是 `getDreamEligibleSeats`
+> 一處，但那樣「連續兩晚被攝出局」就永遠不會觸發）。
+
+**夜間結算收斂成單一真相**：`lib/rules/night-resolution.ts` 的 `resolveNightDeaths()`（純函式）負責
+「狼刀＋守護＋解藥＋毒藥＋攝夢 → 當晚死亡名單」。原本這段規則有 **三份抄本**
+（即時流程 `useSpecialEvents.resolveNight`、開發者跳轉回放 `SmartJumpManager` 的兩處），
+加一個角色要改三個地方且很容易漂移；現在三處都呼叫同一個函式，`isActorAlive` 讓回放端表達
+「這一晚他還在不在場上」。死因新增 `dream`（`NightDeathReason`）。
+
+**整合點（新角色都要走一遍）**：`types/game.ts`（`Role`／`Phase`／`nightActions`／`nightHistory`）、
+`rules/roles.ts`、`rules/boards.ts`、`store/game-machine.ts`（`PHASE_CONFIGS`＋`VALID_TRANSITIONS`）、
+`game/core/PhaseManager.ts`、`game/phases/NightPhase.ts`（`runDreamAction`＋續跑鏈，AI 與真人共用）、
+`game-master.generateDreamAction`（log type `dream_action`）、`game-texts.ts`／`narrator-voice.ts`
+（旁白鍵 `dreamWake`／`dreamClose`，音檔由 `scripts/generate-narrator-audio.ts zh dreamWake dreamClose` 補）、
+`DaySpeechPhase.announceNightResults`（第一夜死者延後公布：`pendingDreamVictim`）、
+`rules/night-deaths.ts`／`rules/mute.ts`（死訊未公布者不能被指定）、UI（`DialogArea` 確認面板、
+`page.tsx` 選取色調與階段圖示、`PlayerCardCompact`／`RoleRevealOverlay`／`TutorialOverlay`／
+`analysis/constants` 的角色地圖，`Record<Role, …>` 會被 tsc 逼著補齊）。
+
 ## 新增角色檢查清單（踩過的坑）
 
 新角色上線時最容易「安靜地錯」的不是規則，而是顯示層。已收斂成單一真相，照這個順序補：

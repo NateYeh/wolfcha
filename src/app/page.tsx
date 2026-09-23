@@ -60,6 +60,7 @@ import { buildSimpleAvatarUrl, getModelLogoUrl } from "@/lib/avatar-config";
 import { audioManager, makeAudioTaskId } from "@/lib/audio-manager";
 import { getNarratorPlayer } from "@/lib/narrator-audio-player";
 import { resolveVoiceId, type AppLocale } from "@/lib/voice-constants";
+import { getRoleName } from "@/lib/game-constants";
 import { getLocale } from "@/i18n/locale-store";
 import { useSettings } from "@/hooks/useSettings";
 import { useTutorial } from "@/hooks/useTutorial";
@@ -91,21 +92,8 @@ const getPlayerAvatarUrl = (player: Player, isGenshinMode: boolean) => {
 };
 
 const getRoleLabel = (role?: Role | null) => {
-  const { t } = getI18n();
-  switch (role) {
-    case "Werewolf": return t("roles.werewolf");
-    case "Seer": return t("roles.seer");
-    case "Witch": return t("roles.witch");
-    case "Hunter": return t("roles.hunter");
-    case "Guard": return t("roles.guard");
-    case "Idiot": return t("roles.idiot");
-    case "Knight": return t("roles.knight");
-    case "WolfKing": return t("roles.wolfKing");
-    case "MuteElder": return t("roles.muteElder");
-    case "WhiteWolfKing": return t("roles.whiteWolfKing");
-    case "Villager": return t("roles.villager");
-    default: return "?";
-  }
+  // 顯示名稱的單一真相在 game-constants.getRoleName：新角色忘了補 case 會顯示成村民。
+  return getRoleName(role ?? "Villager");
 };
 
 function getRitualCueFromSystemMessage(content: string): { title: string; subtitle?: string } | null {
@@ -594,6 +582,8 @@ export default function Home() {
         return humanPlayer.role === "Seer" ? "seer" : undefined;
       case "NIGHT_GUARD_ACTION":
         return humanPlayer.role === "Guard" ? "guard" : undefined;
+      case "NIGHT_DREAM_ACTION":
+        return humanPlayer.role === "Dreamweaver" ? "seer" : undefined;
       case "NIGHT_WITCH_ACTION":
         return humanPlayer.role === "Witch" ? "witch" : undefined;
       case "HUNTER_SHOOT":
@@ -929,6 +919,8 @@ export default function Home() {
         return "Witch";
       case "NIGHT_GUARD_ACTION":
         return "Guard";
+      case "NIGHT_DREAM_ACTION":
+        return "Dreamweaver";
       case "HUNTER_SHOOT":
         return getDeathShotKind(humanPlayer?.role ?? "Villager") !== "none" ? humanPlayer!.role : null;
       default:
@@ -1249,6 +1241,8 @@ export default function Home() {
         return <Shield size={14} />;
       case "NIGHT_WITCH_ACTION":
         return <Drop size={14} />;
+      case "NIGHT_DREAM_ACTION":
+        return <Eye size={14} />;
       case "HUNTER_SHOOT":
         return <Crosshair size={14} />;
       case "DAY_SPEECH":

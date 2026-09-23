@@ -5,6 +5,7 @@ import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "..
 import { bindIdentityAndRoleSetting, buildDecisionContext, buildGameContext, buildTodayTranscript, buildPlayerTodaySpeech, getRoleText, buildSharedSystemParts, buildSystemTextFromParts } from "@/lib/prompt-utils";
 import {
   addSystemMessage,
+  generateDreamAction,
   generateGuardAction,
   generateMuteAction,
   generateSeerAction,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/game-master";
 import { canWitchSave, getGuardEligibleSeats } from "@/lib/rules/actions";
 import { getMuteEligibleSeats, isValidMuteTarget } from "@/lib/rules/mute";
+import { getDreamEligibleSeats, isValidDreamTarget, pickRandomDreamTarget } from "@/lib/rules/dream";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { DELAY_CONFIG } from "@/lib/game-constants";
@@ -58,6 +60,8 @@ export class NightPhase extends GamePhase {
         return this.buildGuardPrompt(state, player);
       case "NIGHT_MUTE_ACTION":
         return this.buildMutePrompt(state, player);
+      case "NIGHT_DREAM_ACTION":
+        return this.buildDreamPrompt(state, player);
       case "NIGHT_WOLF_ACTION":
         return this.buildWolfPrompt(
           state,
@@ -91,6 +95,10 @@ export class NightPhase extends GamePhase {
     }
     if (_action.type === "CONTINUE_NIGHT_AFTER_MUTE") {
       await this.continueNightAfterMute(_context.state, runtime);
+      return;
+    }
+    if (_action.type === "CONTINUE_NIGHT_AFTER_DREAM") {
+      await this.continueNightAfterDream(_context.state, runtime);
       return;
     }
     if (_action.type === "CONTINUE_NIGHT_AFTER_WOLF") {
@@ -174,7 +182,7 @@ export class NightPhase extends GamePhase {
   /**
    * 禁言長老的夜間行動：指定明天不能發言的人。
    *
-   * 順序：天黑 →（守衛）→ **禁言長老** → 狼人 → 女巫 → 預言家。
+   * 順序：天黑 →（守衛）→ **禁言長老** →（攝夢人）→ 狼人 → 女巫 → 預言家。
    * 禁言只限制發言：警徽競選投票、放逐投票、遺言都不受限。
    */
   private async runMuteAction(state: GameState, runtime: NightPhaseRuntime): Promise<GameState> {
@@ -262,6 +270,114 @@ export class NightPhase extends GamePhase {
     const user = t("prompts.mute.user", {
       context: [gameContext, cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
       jsonFormat: JSON.stringify({ seat: exampleSeat, reason: t("promptUtils.gameContext.jsonReasonMute") }),
+    });
+
+    return { system, user, systemParts };
+  }
+
+  /**
+   * 攝夢人的夜間行動：指定今晚的夢游者。
+   *
+   * 順序：天黑 →（守衛）→（禁言長老）→ **攝夢人** → 狼人 → 女巫 → 預言家。
+   * 規則：每晚必須指定一名存活玩家（不能選自己、不能空攝）；夢游者當晚免疫夜間傷害，
+   * 但連續兩晚被攝、或攝夢人今夜出局時一并出局（見 lib/rules/dream.ts）。
+   * AI 沒給出合法目標時由系統隨機指定（規則不允許空攝）。
+   */
+  private async runDreamAction(state: GameState, runtime: NightPhaseRuntime): Promise<GameState> {
+    const { t } = getI18n();
+    const speakerSystem = t("speakers.system");
+    const systemMessages = getSystemMessages();
+    const uiText = getUiText();
+    const dreamer = state.players.find((p) => p.role === "Dreamweaver" && p.alive);
+
+    let currentState = this.transitionPhase(state, "NIGHT_DREAM_ACTION");
+    currentState = addSystemMessage(currentState, systemMessages.dreamActionStart);
+    runtime.setGameState(currentState);
+
+    runtime.setIsWaitingForAI(true);
+    runtime.setDialogue(speakerSystem, uiText.dreamActing, false);
+    await playNarrator("dreamWake");
+
+    if (!dreamer) {
+      await delay(randomFakeActionDelay());
+      await runtime.waitForUnpause();
+      if (!runtime.isTokenValid(runtime.token)) return currentState;
+      runtime.setIsWaitingForAI(false);
+      await playNarrator("dreamClose");
+      return currentState;
+    }
+
+    if (dreamer.isHuman) {
+      runtime.setIsWaitingForAI(false);
+      runtime.setDialogue(speakerSystem, uiText.waitingDream, false);
+      return currentState;
+    }
+
+    const dreamOutcome = await generateDreamAction(currentState, dreamer);
+    await runtime.waitForUnpause();
+
+    if (!runtime.isTokenValid(runtime.token)) return currentState;
+
+    // 不能空攝：AI 沒給出合法目標就由系統隨機指定（規則要求每晚必須有夢游者）。
+    const targetSeat =
+      dreamOutcome !== undefined && isValidDreamTarget(currentState, dreamer.seat, dreamOutcome.targetSeat)
+        ? dreamOutcome.targetSeat
+        : pickRandomDreamTarget(currentState, dreamer.seat);
+
+    if (targetSeat === undefined) {
+      if (dreamOutcome !== undefined) {
+        console.warn("[wolfcha] 攝夢目標不合法，且無其他合法目標，本晚無夢游者");
+      }
+    } else if (dreamOutcome === undefined || targetSeat !== dreamOutcome.targetSeat) {
+      console.warn("[wolfcha] 攝夢目標缺失或不合法，系統隨機指定夢游者");
+    }
+
+    currentState = {
+      ...currentState,
+      nightActions: {
+        ...currentState.nightActions,
+        ...(targetSeat !== undefined ? { dreamTarget: targetSeat } : {}),
+        ...(dreamOutcome?.reason && targetSeat === dreamOutcome.targetSeat
+          ? { dreamReason: dreamOutcome.reason }
+          : {}),
+      },
+    };
+    runtime.setGameState(currentState);
+    runtime.setIsWaitingForAI(false);
+
+    await playNarrator("dreamClose");
+
+    return currentState;
+  }
+
+  /** 攝夢人 AI 提示：必須選一名存活玩家、不能選自己 */
+  private buildDreamPrompt(state: GameState, player: Player): PromptResult {
+    const { t } = getI18n();
+    const gameContext = buildDecisionContext(state, player);
+    const eligible = getDreamEligibleSeats(state, player.seat);
+    const options = eligible
+      .map((seat) => {
+        const target = state.players.find((p) => p.seat === seat);
+        return t("prompts.night.option", { seat: seat + 1, name: target?.displayName ?? "" });
+      })
+      .join(t("promptUtils.gameContext.listSeparator"));
+    const exampleSeat = (eligible[0] ?? 0) + 1;
+    const jsonFormat = JSON.stringify({ seat: exampleSeat, reason: t("promptUtils.gameContext.jsonReasonDream") });
+
+    const cacheableContent = bindIdentityAndRoleSetting(t("prompts.dream.base", {
+      seat: player.seat + 1,
+      name: player.displayName,
+      role: getRoleText(player.role),
+      coreRules: "",
+    }), player, !!state.isGenshinMode);
+    const dynamicContent = t("prompts.dream.task", { options, jsonFormat });
+    // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
+    const system = buildSystemTextFromParts(systemParts);
+
+    const user = t("prompts.dream.user", {
+      context: [gameContext, cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
+      jsonFormat,
     });
 
     return { system, user, systemParts };
@@ -527,7 +643,7 @@ export class NightPhase extends GamePhase {
     await this.continueNightAfterMute(state, runtime);
   }
 
-  /** 禁言長老 → 狼人 → 女巫 → 預言家（AI 與真人共用同一條續跑鏈） */
+  /** 禁言長老 → 攝夢人 → 狼人 → 女巫 → 預言家（AI 與真人共用同一條續跑鏈） */
   private async continueNightAfterMute(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
     let currentState = state;
 
@@ -540,6 +656,29 @@ export class NightPhase extends GamePhase {
 
         const elder = currentState.players.find((p) => p.role === "MuteElder" && p.alive);
         if (elder?.isHuman && currentState.nightActions.mutedTarget === undefined) return;
+
+        await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
+        await runtime.waitForUnpause();
+        if (!runtime.isTokenValid(runtime.token)) return;
+      }
+    }
+
+    await this.continueNightAfterDream(currentState, runtime);
+  }
+
+  /** 攝夢人 → 狼人 → 女巫 → 預言家（AI 與真人共用同一條續跑鏈） */
+  private async continueNightAfterDream(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
+    let currentState = state;
+
+    // 真人攝夢人選完目標後，狀態已停在 NIGHT_DREAM_ACTION，不再重跑一次行動
+    if (currentState.phase !== "NIGHT_DREAM_ACTION") {
+      const hasDreamweaver = currentState.players.some((p) => p.role === "Dreamweaver");
+      if (hasDreamweaver) {
+        currentState = await this.runDreamAction(currentState, runtime);
+        if (!runtime.isTokenValid(runtime.token)) return;
+
+        const dreamer = currentState.players.find((p) => p.role === "Dreamweaver" && p.alive);
+        if (dreamer?.isHuman && currentState.nightActions.dreamTarget === undefined) return;
 
         await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
         await runtime.waitForUnpause();

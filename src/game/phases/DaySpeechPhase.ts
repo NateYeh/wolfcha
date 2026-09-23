@@ -302,7 +302,7 @@ ${formatReminder}`;
       return { state: currentState, hasDeaths: false };
     }
 
-    const { pendingWolfVictim, pendingPoisonVictim } = currentState.nightActions;
+    const { pendingWolfVictim, pendingPoisonVictim, pendingDreamVictim } = currentState.nightActions;
     let hasDeaths = false;
     let wolfVictim: Player | undefined;
     let poisonVictim: Player | undefined;
@@ -365,6 +365,36 @@ ${formatReminder}`;
         }
       }
 
+      // 被夢帶走（連續兩晚被攝、或被夜死的攝夢人連帶）也是夜間死亡：
+      // 與刀口／毒口同一個晚上公布，死因不公開（公告文案與其他夜死一致）。
+      if (
+        pendingDreamVictim !== undefined &&
+        pendingDreamVictim !== pendingWolfVictim &&
+        pendingDreamVictim !== pendingPoisonVictim
+      ) {
+        hasDeaths = true;
+        currentState = killPlayer(currentState, pendingDreamVictim);
+        const dreamVictim = currentState.players.find((p) => p.seat === pendingDreamVictim);
+        if (dreamVictim) {
+          currentState = addSystemMessage(
+            currentState,
+            systemMessages.playerKilled(dreamVictim.seat + 1, dreamVictim.displayName)
+          );
+          runtime.setDialogue(
+            speakerHost,
+            systemMessages.playerKilled(dreamVictim.seat + 1, dreamVictim.displayName),
+            false
+          );
+          runtime.setGameState(currentState);
+
+          const dreamDiedKey = getPlayerDiedKey(dreamVictim.seat);
+          if (dreamDiedKey) await playNarrator(dreamDiedKey);
+
+          await delay(DELAY_CONFIG.LONG);
+          await runtime.waitForUnpause();
+        }
+      }
+
       if (!hasDeaths) {
         currentState = addSystemMessage(currentState, systemMessages.peacefulNight);
         runtime.setDialogue(speakerHost, systemMessages.peacefulNight, false);
@@ -408,6 +438,7 @@ ${formatReminder}`;
         ...currentState.nightActions,
         pendingWolfVictim: undefined,
         pendingPoisonVictim: undefined,
+        pendingDreamVictim: undefined,
         // 禁言只作用於「次日白天」，公告後即消耗；下一晚由禁言長老重新指定
         mutedTarget: undefined,
       },

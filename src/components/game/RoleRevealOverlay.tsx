@@ -13,6 +13,7 @@ import {
   IdiotIcon,
   KnightIcon,
   MuteElderIcon,
+  DreamweaverIcon,
   NightIcon,
 } from "@/components/icons/FlatIcons";
 import type { Phase, Player } from "@/types/game";
@@ -97,6 +98,16 @@ function getRoleMeta(role: Player["role"], t: ReturnType<typeof useTranslations>
         abilities: t.raw("roleReveal.roles.muteElder.abilities"),
         tips: t.raw("roleReveal.roles.muteElder.tips"),
       };
+    case "Dreamweaver":
+      return {
+        title: t("roleReveal.roles.dreamweaver.title"),
+        subtitle: t("roleReveal.roles.dreamweaver.subtitle"),
+        color: "var(--color-seer)",
+        bg: "var(--color-seer-bg)",
+        Icon: DreamweaverIcon,
+        abilities: t.raw("roleReveal.roles.dreamweaver.abilities"),
+        tips: t.raw("roleReveal.roles.dreamweaver.tips"),
+      };
     case "WolfKing":
       return {
         title: t("roleReveal.roles.wolfKing.title"),
@@ -171,6 +182,8 @@ function getNextStepText(role: Player["role"], phase: Phase, t: ReturnType<typeo
         return t("roleReveal.nextStep.knight");
       case "MuteElder":
         return t("roleReveal.nextStep.muteElder");
+      case "Dreamweaver":
+        return t("roleReveal.nextStep.dreamweaver");
       case "WolfKing":
         return t("roleReveal.nextStep.wolfKing");
       default:

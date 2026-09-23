@@ -21,6 +21,7 @@ import { playNarrator } from "@/lib/narrator-audio-player";
 import { gameSessionTracker } from "@/lib/game-session-tracker";
 import { addPlayerMessage, generateGameEndRemark } from "@/lib/game-master";
 import { getPendingLastWordsSeats } from "@/lib/rules/last-words";
+import { resolveNightDeaths } from "@/lib/rules/night-resolution";
 
 export interface SpecialEventsCallbacks {
   setDialogue: (speaker: string, text: string, isStreaming?: boolean) => void;
@@ -235,40 +236,23 @@ export function useSpecialEvents(
     let currentState = transitionPhase(state, "NIGHT_RESOLVE");
     setGameState(currentState);
 
-    const { wolfTarget, guardTarget, witchSave, witchPoison } = currentState.nightActions;
-    let wolfKillSuccessful = false;
-    let wolfVictimSeat: number | undefined;
-    let poisonVictimSeat: number | undefined;
-    const nightDeaths: Array<{ seat: number; reason: "wolf" | "poison" | "milk" }> = [];
-    const addNightDeath = (seat: number, reason: "wolf" | "poison" | "milk") => {
-      const existing = nightDeaths.find((death) => death.seat === seat);
-      if (!existing) {
-        nightDeaths.push({ seat, reason });
-        return;
-      }
-      if (reason !== "wolf") {
-        existing.reason = reason;
-      }
-    };
+    // 攝夢人座位：「攝夢人夜間出局 → 夢游者一并出局」的判定依據。
+    const dreamerSeat = currentState.players.find((player) => player.role === "Dreamweaver" && player.alive)?.seat;
 
-    // 狼人击杀判定
-    if (wolfTarget !== undefined) {
-      const isProtected = guardTarget === wolfTarget;
-      const isSaved = witchSave === true;
-
-      // If both guard and witch save are applied, the victim still dies (milk/guard overlap).
-      if ((isProtected && isSaved) || (!isProtected && !isSaved)) {
-        wolfKillSuccessful = true;
-        wolfVictimSeat = wolfTarget;
-        addNightDeath(wolfTarget, isProtected && isSaved ? "milk" : "wolf");
-      }
-    }
-
-    // 女巫毒杀判定
-    if (witchPoison !== undefined) {
-      poisonVictimSeat = witchPoison;
-      addNightDeath(witchPoison, "poison");
-    }
+    // 夜間結算（狼刀／守護／解藥／毒藥／攝夢）走單一真相：rules/night-resolution。
+    const { wolfTarget, guardTarget, witchSave, witchPoison, dreamTarget } = currentState.nightActions;
+    // 「前一天晚上」的夢游者：同一座位連續兩晚被攝 → 隔夜出局。
+    const previousDreamTarget = currentState.nightHistory?.[currentState.day - 1]?.dreamTarget;
+    const { deaths: nightDeaths, wolfKillSuccessful, wolfVictimSeat, poisonVictimSeat, dreamVictimSeat } =
+      resolveNightDeaths({
+        wolfTarget,
+        guardTarget,
+        witchSave,
+        witchPoison,
+        dreamTarget,
+        dreamerSeat,
+        previousDreamTarget,
+      });
 
     // 遺言規則：只有第一夜死者有遺言（無論幾個、無論死因）。先入列，
     // 實際發表排在死亡公告之後（DaySpeechPhase.startDaySpeechAfterBadge）。
@@ -285,8 +269,10 @@ export function useSpecialEvents(
       nightActions: {
         ...currentState.nightActions,
         lastGuardTarget: guardTarget,
+        lastDreamTarget: dreamTarget,
         pendingWolfVictim: wolfKillSuccessful ? wolfVictimSeat : undefined,
         pendingPoisonVictim: poisonVictimSeat,
+        pendingDreamVictim: dreamVictimSeat,
       },
     };
 
@@ -302,6 +288,7 @@ export function useSpecialEvents(
           witchPoison: currentState.nightActions.witchPoison,
           seerTarget: currentState.nightActions.seerTarget,
           seerResult: currentState.nightActions.seerResult,
+          dreamTarget: currentState.nightActions.dreamTarget,
           deaths: nightDeaths,
           resultsAnnounced: false,
           // 本人的私有決策理由：賽中不公開，只備賽後感言引用。
@@ -310,6 +297,7 @@ export function useSpecialEvents(
           witchSaveReason: currentState.nightActions.witchSaveReason,
           witchPoisonReason: currentState.nightActions.witchPoisonReason,
           seerReason: currentState.nightActions.seerReason,
+          dreamReason: currentState.nightActions.dreamReason,
         },
       },
     };

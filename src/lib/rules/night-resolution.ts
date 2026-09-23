@@ -1,0 +1,132 @@
+import type { GameState } from "@/types/game";
+
+/** 夜晚死亡原因（與 `nightHistory[day].deaths` 一致） */
+export type NightDeathReason = "wolf" | "poison" | "milk" | "dream";
+
+/** 夜晚的一筆死亡紀錄 */
+export interface NightDeath {
+  seat: number;
+  reason: NightDeathReason;
+}
+
+/** 夜間行動者種類（回放「這一晚他還在不在場上」用） */
+export type NightActor = "guard" | "wolf" | "witch" | "dreamweaver";
+
+export interface NightResolutionInput {
+  /** 狼刀刀口 */
+  wolfTarget?: number;
+  /** 守衛守護目標 */
+  guardTarget?: number;
+  /** 女巫是否用解藥 */
+  witchSave?: boolean;
+  /** 女巫毒藥目標 */
+  witchPoison?: number;
+  /** 攝夢人當晚的夢游者 */
+  dreamTarget?: number;
+  /** 攝夢人的座位（判斷「攝夢人夜間出局」連帶） */
+  dreamerSeat?: number;
+  /** 前晚的夢游者（連續兩晚被攝 → 出局） */
+  previousDreamTarget?: number;
+  /**
+   * 這一晚該行動者是否還在場上。
+   * 只有 SmartJumpManager 的歷史回放需要（它會從「夜晚開始時存活名單」往前推）；
+   * 正常即時流程不傳，代表全部在場。
+   */
+  isActorAlive?: (actor: NightActor) => boolean;
+}
+
+export interface NightResolutionResult {
+  /** 當晚死亡名單（座位升冪） */
+  deaths: NightDeath[];
+  /** 狼刀有沒有真的殺死人（夢游者免疫 → false） */
+  wolfKillSuccessful: boolean;
+  /** 實際死於狼刀的座位（被免疫時 undefined） */
+  wolfVictimSeat?: number;
+  /** 實際死於毒藥的座位（被免疫時 undefined） */
+  poisonVictimSeat?: number;
+  /** 被夢帶走出局的座位（連續兩晚被攝／攝夢人夜死連帶） */
+  dreamVictimSeat?: number;
+  /** 這一晚生效的夢游者（沒有攝夢人／沒指定時 undefined） */
+  dreamedSeat?: number;
+}
+
+/**
+ * 夜間結算（單一真相）：狼刀＋守護＋解藥＋毒藥＋攝夢，算出當晚死亡名單。
+ *
+ * 為什麼抽成純函式：這段規則原本有兩份抄本（即時流程 `useSpecialEvents.resolveNight`、
+ * 開發者跳轉回放 `SmartJumpManager` 的兩處），加一個角色就要改三個地方、且很容易漂移。
+ *
+ * 結算順序（＝規則語意）：
+ * 1. 狼刀：被守又被救＝毒奶（同歸），只有其中一種保護則存活；**夢游者免疫**（技能落空）。
+ * 2. 毒藥：命中夢游者同樣落空（藥照樣消耗，由呼叫端記錄）。
+ * 3. 攝夢連帶：攝夢人當晚出局、或同一座位連續兩晚被攝 → 夢游者一并出局。
+ *    夢死**女巫救不活**，也不受夢游者自身的免疫影響。
+ *
+ * 死因優先序：同一座位同時被刀又被毒時記「毒」（封槍與公告都以毒為準），
+ * 夢死不覆蓋既有死因。
+ */
+export function resolveNightDeaths(input: NightResolutionInput): NightResolutionResult {
+  const isAlive = input.isActorAlive ?? (() => true);
+  const dreamedSeat = isAlive("dreamweaver") ? input.dreamTarget : undefined;
+  const dreamerSeat = isAlive("dreamweaver") ? input.dreamerSeat : undefined;
+
+  const deaths: NightDeath[] = [];
+  const pushDeath = (seat: number, reason: NightDeathReason) => {
+    const existing = deaths.find((death) => death.seat === seat);
+    if (!existing) {
+      deaths.push({ seat, reason });
+      return;
+    }
+    // 刀／夢不覆蓋既有死因；毒（含毒奶）是最終死因，決定封槍與公告。
+    if (reason === "wolf" || reason === "dream") return;
+    existing.reason = reason;
+  };
+
+  /** 夢游者免疫夜間傷害：技能照樣使用，只是落空 */
+  const immune = (seat: number | undefined): boolean =>
+    seat !== undefined && dreamedSeat !== undefined && seat === dreamedSeat;
+
+  // 1. 狼刀
+  let wolfKillSuccessful = false;
+  let wolfVictimSeat: number | undefined;
+  const wolfTarget = isAlive("wolf") ? input.wolfTarget : undefined;
+  if (wolfTarget !== undefined && !immune(wolfTarget)) {
+    const isProtected = isAlive("guard") && input.guardTarget === wolfTarget;
+    const isSaved = isAlive("witch") && input.witchSave === true;
+    if ((isProtected && isSaved) || (!isProtected && !isSaved)) {
+      wolfKillSuccessful = true;
+      wolfVictimSeat = wolfTarget;
+      pushDeath(wolfTarget, isProtected && isSaved ? "milk" : "wolf");
+    }
+  }
+
+  // 2. 女巫毒殺
+  let poisonVictimSeat: number | undefined;
+  const witchPoison = isAlive("witch") ? input.witchPoison : undefined;
+  if (witchPoison !== undefined && !immune(witchPoison)) {
+    poisonVictimSeat = witchPoison;
+    pushDeath(witchPoison, "poison");
+  }
+
+  // 3. 攝夢連帶
+  let dreamVictimSeat: number | undefined;
+  if (dreamedSeat !== undefined) {
+    const dreamerDied = dreamerSeat !== undefined && deaths.some((death) => death.seat === dreamerSeat);
+    const dreamedTwice =
+      input.previousDreamTarget !== undefined && input.previousDreamTarget === dreamedSeat;
+    if (dreamerDied || dreamedTwice) {
+      dreamVictimSeat = dreamedSeat;
+      pushDeath(dreamedSeat, "dream");
+    }
+  }
+
+  deaths.sort((a, b) => a.seat - b.seat);
+  return { deaths, wolfKillSuccessful, wolfVictimSeat, poisonVictimSeat, dreamVictimSeat, dreamedSeat };
+}
+
+/** 該座位是不是被夢帶走出局（封槍判斷用） */
+export function isDreamDeath(state: GameState, seat: number): boolean {
+  return Object.values(state.nightHistory ?? {}).some((record) =>
+    (record?.deaths ?? []).some((death) => death.seat === seat && death.reason === "dream"),
+  );
+}

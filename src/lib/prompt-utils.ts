@@ -40,6 +40,8 @@ export const getRoleText = (role: string) => {
       return t("promptUtils.roleText.knight");
     case "MuteElder":
       return t("promptUtils.roleText.muteElder");
+    case "Dreamweaver":
+      return t("promptUtils.roleText.dreamweaver");
     case "WolfKing":
       return t("promptUtils.roleText.wolfKing");
     default:
@@ -99,6 +101,7 @@ export const getStrategyGuide = (
     section("villager", has("Villager")),
     section("knight", has("Knight")),
     section("mute", has("MuteElder")),
+    section("dream", has("Dreamweaver")),
     // 狼隊：狼一定在場
     section("wolfTeam"),
     section("wolfBoomWhiteWolfKing", has("WhiteWolfKing")),

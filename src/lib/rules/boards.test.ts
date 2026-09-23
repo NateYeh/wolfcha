@@ -159,15 +159,16 @@ test("版型註冊表：預女守白＝預言家/女巫/守衛/白痴＋4 平民
   assert.deepEqual(warnings, []);
 });
 
-test("版型註冊表：六個 12 人版型的陣營統計與預設版型", () => {
+test("版型註冊表：七個 12 人版型的陣營統計與預設版型", () => {
   const twelve = getBoardsByPlayerCount(12).map((board) => board.id);
-  // 不鎖 UI 排列順序，只確認這五個版型都在（順序由選單自己決定）
+  // 不鎖 UI 排列順序，只確認這幾個版型都在（順序由選單自己決定）
   assert.deepEqual([...twelve].sort(), [
     "official-12-classic",
     "official-12-seer-witch-guard-idiot",
     "official-12-seer-witch-hunter-idiot",
     "official-12-seer-witch-hunter-mute",
     "official-12-white-wolf-knight",
+    "official-12-wolf-king-dreamweaver",
     "official-12-wolf-king-guard",
   ].sort());
   // 預設 12 人版型仍是經典（既有行為不變）

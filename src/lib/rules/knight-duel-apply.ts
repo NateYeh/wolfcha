@@ -130,6 +130,7 @@ export function applyKnightDuelToState(input: KnightDuelApplyInput): KnightDuelA
           ...currentState.nightActions,
           pendingWolfVictim: undefined,
           pendingPoisonVictim: undefined,
+          pendingDreamVictim: undefined,
         }
       : currentState.nightActions,
     dayHistory: {
