@@ -41,7 +41,7 @@ export function SoundSettingsSection({
   bgmVolume,
   isSoundEnabled,
   isAiVoiceEnabled,
-  isAutoAdvanceDialogueEnabled = false,
+  isAutoAdvanceDialogueEnabled = true,
   onBgmVolumeChange,
   onSoundEnabledChange,
   onAiVoiceEnabledChange,

@@ -19,7 +19,9 @@ const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   isSoundEnabled: true,
   isAiVoiceEnabled: true,
   isGenshinMode: false,
-  isAutoAdvanceDialogueEnabled: false,
+  // 預設自動推進對話：不自動推進時，全場對話都要人手點擊／按 Enter，
+  // 掛機或長回合（如警徽競選發言）會直接卡住不動，被誤認成當機。
+  isAutoAdvanceDialogueEnabled: true,
   isSpectatorMode: false,
   isAcquaintanceGame: false,
 };
