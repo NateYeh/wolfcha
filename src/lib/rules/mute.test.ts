@@ -109,6 +109,12 @@ test("禁言效果：只擋發言（含競選發言），不擋遺言與投票",
   // 遺言與投票（投票由 VotePhase 處理，這裡確認發言判斷不誤擋遺言）
   assert.equal(canSpeakInPhase(muted, mutedSeat, "DAY_LAST_WORDS"), true, "禁言不擋遺言");
   assert.equal(canSpeakInPhase(muted, elderSeat, "DAY_SPEECH"), true);
+
+  // 不傳階段時以狀態自帶的階段為準（挑發言者的呼叫端都這樣用）
+  const inSpeech: GameState = { ...muted, phase: "DAY_BADGE_SPEECH" };
+  assert.equal(canSpeakInPhase(inSpeech, mutedSeat), false);
+  const inLastWords: GameState = { ...muted, phase: "DAY_LAST_WORDS" };
+  assert.equal(canSpeakInPhase(inLastWords, mutedSeat), true);
 });
 
 test("發言順序：被禁言者不在當日輪次內，也不影響遺言輪", () => {

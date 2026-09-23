@@ -63,7 +63,7 @@ export function isMutedSeat(state: GameState, seat: number): boolean {
 }
 
 /** 這個座位在這個階段能不能發言（唯一判斷點，發言順序與 prompt 共用） */
-export function canSpeakInPhase(state: GameState, seat: number, phase: Phase): boolean {
+export function canSpeakInPhase(state: GameState, seat: number, phase: Phase = state.phase): boolean {
   if (!isMutedSeat(state, seat)) return true;
   return !MUTE_BLOCKED_SPEECH_PHASES.includes(phase);
 }

@@ -19,6 +19,7 @@ test("真实警徽结算：首轮票型公开进入 PK，复投保留各轮候�
     "@/lib/game-constants": await import("@/lib/game-constants"),
     "@/lib/game-flow-controller": { delay: async () => {} },
     "@/lib/reveal-pacer": { createRevealPacer: () => async (reveal: () => void) => { reveal(); } },
+    "@/lib/rules/mute": await import("@/lib/rules/mute"),
     "@/lib/narrator-audio-player": { playNarrator: async () => {} },
     "@/store/game-machine": { gameStateAtom: {} },
   };
@@ -76,6 +77,7 @@ test("人类玩家夜 1 被刀且死亡未公布时，警徽报名会自行推�
     "@/lib/game-constants": await import("@/lib/game-constants"),
     "@/lib/game-flow-controller": { delay: async () => {} },
     "@/lib/reveal-pacer": { createRevealPacer: () => async (reveal: () => void) => { reveal(); } },
+    "@/lib/rules/mute": await import("@/lib/rules/mute"),
     "@/lib/narrator-audio-player": { playNarrator: async () => {} },
     "@/store/game-machine": { gameStateAtom: {} },
   };
@@ -111,4 +113,61 @@ test("人类玩家夜 1 被刀且死亡未公布时，警徽报名会自行推�
   const signupValues = Object.values(flow.completed!.badge.signup);
   assert.ok(signupValues.length > 0);
   assert.ok(signupValues.every((v) => v === false));
+});
+
+// 回歸：禁言長老禁掉的候選人不能在警徽競選發言拿麥克風（規則：禁言含競選發言）。
+// 舊版 startBadgeSpeechPhase／resumeBadgeSpeechPhase 直接從 badge.candidates 挑發言者，
+// 繞過了 getSpeechPhaseOrder 的禁言過濾 → 被禁言的候選人照樣發言。
+test("被禁言的候选人不在警徽竞选发言拿到发言轮（仍保留竞选资格与投票权）", async () => {
+  const modules: Record<string, unknown> = {
+    "@/lib/game-master": await import("@/lib/game-master"),
+    "@/lib/vote-rounds": await import("@/lib/vote-rounds"),
+    "@/i18n/translator": await import("@/i18n/translator"),
+    "@/lib/game-texts": await import("@/lib/game-texts"),
+    "@/lib/game-constants": await import("@/lib/game-constants"),
+    "@/lib/game-flow-controller": { delay: async () => {} },
+    "@/lib/reveal-pacer": { createRevealPacer: () => async (reveal: () => void) => { reveal(); } },
+    "@/lib/rules/mute": await import("@/lib/rules/mute"),
+    "@/lib/narrator-audio-player": { playNarrator: async () => {} },
+    "@/store/game-machine": { gameStateAtom: {} },
+  };
+  let state = createSinglePlayerContextAuditState();
+  state.phase = "DAY_BADGE_SIGNUP";
+  state.day = 1;
+  state.messages = [];
+  // 1 號（座位 0）昨晚被禁言長老禁言，且他是候選人；另一位候選人是座位 2
+  state.nightActions = { ...state.nightActions, mutedTarget: 0 };
+  state.badge = { ...state.badge, holderSeat: null, candidates: [0, 2], signup: {}, votes: {}, allVotes: {}, history: {}, electionWinners: {}, revoteCount: 0 };
+
+  const spokenSeats: number[] = [];
+  modules.react = { useCallback: (fn: unknown) => fn, useRef: (current: unknown) => ({ current }) };
+  modules.jotai = { useAtom: () => [state, (next: GameState) => { state = next; }] };
+  const source = readFileSync("src/hooks/game-phases/useBadgePhase.ts", "utf8");
+  const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const loadedModule = { exports: {} as { useBadgePhase: (callbacks: unknown) => BadgePhaseActions } };
+  runInNewContext(`(function(require,module,exports){${code}\n})`, { console })((id: string) => {
+    assert.ok(id in modules, id); return modules[id];
+  }, loadedModule, loadedModule.exports);
+  const hook = loadedModule.exports.useBadgePhase({
+    setDialogue: () => {}, clearDialogue: () => {}, setIsWaitingForAI: () => {}, waitForUnpause: async () => {},
+    isTokenValid: () => true, runAISpeech: async (_s: GameState, player: Player) => { spokenSeats.push(player.seat); },
+    onBadgeElectionComplete: async () => {}, onBadgeTransferComplete: async () => {},
+  });
+
+  await hook.startBadgeSpeechPhase(state);
+  assert.equal(state.currentSpeakerSeat, 2, "第一位發言者不能是被禁言的 1 號");
+  assert.equal(state.daySpeechStartSeat, 2);
+  assert.deepEqual(spokenSeats, [2]);
+  assert.deepEqual(state.badge.candidates, [0, 2], "禁言不改競選資格：候選人名單仍然包含他");
+
+  // 恢復路徑（例如中途 reload）：已發言者之後也不能把麥克風遞給被禁言者
+  spokenSeats.length = 0;
+  const resumed: GameState = {
+    ...state,
+    phase: "DAY_BADGE_SPEECH",
+    badge: { ...state.badge, candidates: [0, 2, 4], electionSpokenSeats: [2] },
+  };
+  await hook.resumeBadgeSpeechPhase(resumed);
+  assert.equal(state.currentSpeakerSeat, 4, "應跳過被禁言的 1 號，把麥克風交給下一位候選人");
+  assert.deepEqual(spokenSeats, [4]);
 });

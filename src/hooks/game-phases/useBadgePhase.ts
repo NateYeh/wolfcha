@@ -21,6 +21,7 @@ import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { DELAY_CONFIG, GAME_CONFIG } from "@/lib/game-constants";
 import { delay, type FlowToken } from "@/lib/game-flow-controller";
 import { createRevealPacer } from "@/lib/reveal-pacer";
+import { canSpeakInPhase } from "@/lib/rules/mute";
 import { playNarrator } from "@/lib/narrator-audio-player";
 
 export interface BadgePhaseCallbacks {
@@ -137,7 +138,9 @@ export function useBadgePhase(
   const startBadgePkSpeech = useCallback(async (state: GameState, pkTargets: number[]) => {
     const texts = getTexts();
     let currentState = transitionPhase(state, "DAY_PK_SPEECH");
-    const firstSeat = pkTargets[0] ?? null;
+    // PK 名單本身是投票語意（誰跟誰平票），不能因為禁言就改；
+    // 但被禁言者今天不能發言，所以第一位發言者往後順延到沒被禁言的人。
+    const firstSeat = pkTargets.find((seat) => canSpeakInPhase(currentState, seat)) ?? null;
     currentState = {
       ...currentState,
       pkTargets,
@@ -475,9 +478,13 @@ export function useBadgePhase(
     setDialogue(texts.speakerHost, texts.systemMessages.badgeSpeechStart, false);
 
     const candidates = currentState.badge.candidates || [];
+    // 被禁言的候選人今天不能發言（含競選發言），但仍保留競選資格與投票權；
+    // 所以只在這裡排除他拿麥克風，不動 badge.candidates。
     const candidatePlayers = excludePendingDeathPlayers(
       currentState,
-      currentState.players.filter((p) => p.alive && candidates.includes(p.seat))
+      currentState.players.filter(
+        (p) => p.alive && candidates.includes(p.seat) && canSpeakInPhase(currentState, p.seat)
+      )
     );
     const startSeat = candidatePlayers.length > 0
       ? candidatePlayers[Math.floor(Math.random() * candidatePlayers.length)].seat
@@ -660,7 +667,10 @@ export function useBadgePhase(
     const alreadySpoken = new Set(state.badge.electionSpokenSeats ?? []);
     const remaining = excludePendingDeathPlayers(
       state,
-      state.players.filter((p) => p.alive && candidates.includes(p.seat) && !alreadySpoken.has(p.seat))
+      state.players.filter(
+        (p) => p.alive && candidates.includes(p.seat) && !alreadySpoken.has(p.seat) &&
+          canSpeakInPhase(state, p.seat)
+      )
     );
 
     let currentState = transitionPhase(state, "DAY_BADGE_SPEECH");

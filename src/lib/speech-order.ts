@@ -1,5 +1,5 @@
 import type { ChatMessage, GameState, SpeechDirection } from "@/types/game";
-import { MUTE_BLOCKED_SPEECH_PHASES, getMutedSeat } from "@/lib/rules/mute";
+import { canSpeakInPhase } from "@/lib/rules/mute";
 
 const SPEECH_PHASES = new Set([
   "DAY_BADGE_SPEECH",
@@ -68,9 +68,8 @@ export function getSpeakingOrder(
  */
 export function getSpeechPhaseOrder(state: GameState): number[] {
   const ordered = computeSpeechPhaseOrder(state);
-  const mutedSeat = getMutedSeat(state);
-  if (mutedSeat === null || !MUTE_BLOCKED_SPEECH_PHASES.includes(state.phase)) return ordered;
-  return ordered.filter((seat) => seat !== mutedSeat);
+  // 禁言過濾與警徽競選／PK 的挑發言者共用 canSpeakInPhase，避免兩份實作漂移。
+  return ordered.filter((seat) => canSpeakInPhase(state, seat, state.phase));
 }
 
 function computeSpeechPhaseOrder(state: GameState): number[] {
