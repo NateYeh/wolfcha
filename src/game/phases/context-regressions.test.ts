@@ -436,7 +436,8 @@ test("發言底線規則：公開翻牌推翻舊判斷時要認錯票（殷离�
   const prompt = new PhaseManager().getPrompt("DAY_SPEECH", { state }, speaker)!;
   const full = `${prompt.system}\n${prompt.user}`;
   assert.match(full, /这票就是投错了/);
-  assert.match(full, /仅供参考；采不采纳、怎么用，由你自己决定/);
+  // 「僅供參考、採不採納由你決定」的框架統一在【狼人殺攻略】的開頭說明
+  assert.match(full, /所有条目都只是经验参考：怎么权衡、采不采纳，由你自己决定/);
 });
 
 test("發言經驗參考：不含警徽 meta 知識（模型本身已知；判讀原則走 buildDecisionGrounding）", async () => {
