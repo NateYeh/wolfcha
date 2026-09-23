@@ -2,7 +2,7 @@ import type { GameState, Player, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "../core/types";
-import { buildDecisionContext, buildGameContext, buildTodayTranscript, buildPlayerTodaySpeech, getRoleText, buildSharedSystemParts, buildSystemTextFromParts } from "@/lib/prompt-utils";
+import { bindIdentityAndRoleSetting, buildDecisionContext, buildGameContext, buildTodayTranscript, buildPlayerTodaySpeech, getRoleText, buildSharedSystemParts, buildSystemTextFromParts } from "@/lib/prompt-utils";
 import {
   addSystemMessage,
   generateGuardAction,
@@ -245,12 +245,12 @@ export class NightPhase extends GamePhase {
       .join(t("promptUtils.gameContext.listSeparator"));
     const exampleSeat = (eligible[0] ?? 0) + 1;
 
-    const cacheableContent = t("prompts.mute.base", {
+    const cacheableContent = bindIdentityAndRoleSetting(t("prompts.mute.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
       coreRules: "",
-    });
+    }), player, !!state.isGenshinMode);
     const dynamicContent = t("prompts.mute.task", {
       options,
       jsonFormat: JSON.stringify({ seat: exampleSeat, reason: "<一句话：为什么禁言他>" }),
@@ -647,12 +647,12 @@ export class NightPhase extends GamePhase {
       .map((p) => t("prompts.night.option", { seat: p.seat + 1, name: p.displayName }))
       .join(t("promptUtils.gameContext.listSeparator"));
 
-    const cacheableContent = t("prompts.night.seer.base", {
+    const cacheableContent = bindIdentityAndRoleSetting(t("prompts.night.seer.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText("Seer"),
       coreRules: "",
-    });
+    }), player, !!state.isGenshinMode);
 
     const dynamicContent = t("prompts.night.seer.task", {
       checkedLine: alreadyChecked.length > 0 ? t("prompts.night.seer.checkedLine", { list: checkedList }) : "",
@@ -700,11 +700,11 @@ export class NightPhase extends GamePhase {
       .filter(Boolean)
       .join("\n");
 
-    const identitySection = t("prompts.night.wolf.base", {
+    const identitySection = bindIdentityAndRoleSetting(t("prompts.night.wolf.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
-    });
+    }), player, !!state.isGenshinMode);
     const cacheableRules = t("prompts.night.wolf.rules", {
       coreRules: "",
     });
@@ -738,12 +738,12 @@ export class NightPhase extends GamePhase {
     const alivePlayers = state.players.filter((p) => p.alive);
     const lastTarget = state.nightActions.lastGuardTarget;
 
-    const cacheableContent = t("prompts.night.guard.base", {
+    const cacheableContent = bindIdentityAndRoleSetting(t("prompts.night.guard.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText("Guard"),
       coreRules: "",
-    });
+    }), player, !!state.isGenshinMode);
     const eligibleSeats = getGuardEligibleSeats({
       aliveSeats: alivePlayers.map((p) => p.seat),
       lastGuardTarget: lastTarget,
@@ -804,12 +804,12 @@ export class NightPhase extends GamePhase {
     // 刀口是女巫自己、且規則禁止自救：講清楚「這瓶藥救不了你」，避免 AI 硬選 save 觸發重試。
     const selfVictim = wolfTarget !== undefined && wolfTarget === player.seat && !flags.witchCanSelfSave;
 
-    const cacheableContent = t("prompts.night.witch.base", {
+    const cacheableContent = bindIdentityAndRoleSetting(t("prompts.night.witch.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText("Witch"),
       coreRules: "",
-    });
+    }), player, !!state.isGenshinMode);
     const statusHeal = state.roleAbilities.witchHealUsed
       ? t("promptUtils.gameContext.used")
       : t("promptUtils.gameContext.available");

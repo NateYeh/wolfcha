@@ -2,8 +2,8 @@ import type { Player } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameContext, PromptResult, SystemPromptPart } from "../core/types";
 import {
+  bindIdentityAndRoleSetting,
   buildGameContextParts,
-  buildPersonaSection,
   buildTodayTranscript,
   getRoleText,
   buildSharedSystemParts,
@@ -49,12 +49,12 @@ export class BadgePhase extends GamePhase {
 
     // system 只放全桌通用的公開規則；逐人內容（身份、勝負條件、任務）全進 user 個人區，
     // 否則 system 第一個 token 就逐人不同，後面的公共區塊全部無法共用快取。
-    const identityContent = t("prompts.badge.election.base", {
+    const identityContent = bindIdentityAndRoleSetting(t("prompts.badge.election.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
       coreRules: "",
-    }).trim();
+    }).trim(), player, !!state.isGenshinMode);
     const dynamicContent =
       t("prompts.badge.election.task", {
         options: alivePlayers
@@ -91,20 +91,17 @@ export class BadgePhase extends GamePhase {
   private buildBadgeSignupPrompt(state: GameContext["state"], player: Player): PromptResult {
     // excludePendingDeaths: true - 警长竞选时夜间死亡还未公布，AI不应知道是否平安夜
     const contextParts = buildGameContextParts(state, player, { excludePendingDeaths: true });
-    const isGenshinMode = !!state.isGenshinMode;
-    const persona = buildPersonaSection(player, isGenshinMode);
     const todayTranscript = buildTodayTranscript(state);
 
     const { t } = getI18n();
     
     // system 只放全桌通用的公開規則；逐人內容（身份、勝負條件、任務）全進 user 個人區。
-    const identityContent = t("prompts.badge.signup.base", {
+    const identityContent = bindIdentityAndRoleSetting(t("prompts.badge.signup.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
       coreRules: "",
-      persona,
-    }).trim();
+    }).trim(), player, !!state.isGenshinMode);
     const dynamicContent = t("prompts.badge.signup.task");
     const systemParts: SystemPromptPart[] = [
       ...buildSharedSystemParts(state),
@@ -134,12 +131,12 @@ export class BadgePhase extends GamePhase {
     const exampleSeat = (alivePlayers[0]?.seat ?? player.seat) + 1;
 
     // system 只放全桌通用的公開規則；逐人內容（身份、勝負條件、任務）全進 user 個人區。
-    const identityContent = t("prompts.badge.transfer.base", {
+    const identityContent = bindIdentityAndRoleSetting(t("prompts.badge.transfer.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
       coreRules: "",
-    }).trim();
+    }).trim(), player, !!state.isGenshinMode);
     const dynamicContent = t("prompts.badge.transfer.task", {
       options: alivePlayers
         .map((p) => t("prompts.badge.option", { seat: p.seat + 1, name: p.displayName }))

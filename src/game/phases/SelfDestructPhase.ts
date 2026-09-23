@@ -2,6 +2,7 @@ import type { Player } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameContext, PromptResult, SystemPromptPart } from "../core/types";
 import {
+  bindIdentityAndRoleSetting,
   buildDecisionContext,
   getRoleText,
   buildSharedSystemParts,
@@ -38,12 +39,12 @@ export class SelfDestructPhase extends GamePhase {
     );
     const exampleSeat = (alivePlayers[0]?.seat ?? player.seat) + 1;
 
-    const cacheableContent = t("prompts.selfDestruct.base", {
+    const cacheableContent = bindIdentityAndRoleSetting(t("prompts.selfDestruct.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
       coreRules: "",
-    });
+    }), player, !!state.isGenshinMode);
     const options = alivePlayers
       .map((p) => t("prompts.night.option", { seat: p.seat + 1, name: p.displayName }))
       .join(t("promptUtils.gameContext.listSeparator"));

@@ -3,6 +3,7 @@ import { type GameState, type Player } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "../core/types";
 import {
+  bindIdentityAndRoleSetting,
   buildGameContextParts,
   buildTodayTranscript,
   buildPlayerTodaySpeech,
@@ -198,12 +199,12 @@ export class VotePhase extends GamePhase {
     });
     // system 只放全桌逐字相同的內容：只要是逐人不同的字串出現在 system，
     // 後面的公共區（含本日逐字紀錄）就全部無法共用快取。逐人內容一律進 user 個人區。
-    const identityContent = t("prompts.vote.base", {
+    const identityContent = bindIdentityAndRoleSetting(t("prompts.vote.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
       coreRules: "",
-    }).trim();
+    }).trim(), player, !!state.isGenshinMode);
     const systemParts: SystemPromptPart[] = [
       ...buildSharedSystemParts(state),
     ];

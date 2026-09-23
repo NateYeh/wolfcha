@@ -26,7 +26,7 @@ import { aiLogger } from "./ai-logger";
 import { getGeneratorModel, getSummaryModel } from "@/lib/api-keys";
 import { PhaseManager } from "@/game/core/PhaseManager";
 import type { PromptResult } from "@/game/core/types";
-import { buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildSharedSystemParts, buildGameContext, buildFullGameTranscript, getRoleText, getGameFundamentals } from "./prompt-utils";
+import { bindIdentityAndRoleSetting, buildCachedSystemMessageFromParts, buildSystemTextFromParts, buildSharedSystemParts, buildGameContext, buildFullGameTranscript, getRoleText, getGameFundamentals } from "./prompt-utils";
 import { parseLLMJson } from "./llm-json";
 import { getI18n } from "@/i18n/translator";
 import { buildPublicRecordForRemark } from "@/lib/public-record";
@@ -2039,15 +2039,13 @@ export function normalizeWolfTeamPlan(
  * 查殺對象與警徽流由悍跳者臨場自己定，與真人局一致。
  * 失敗或無 AI 狼時回傳 null：全場照舊無協調，不攝錯——協調是增強，不是必要步驟。
  */
-export async function generateWolfTeamPlan(
-  state: GameState
-): Promise<WolfTeamPlan | null> {
+/**
+ * 狼隊夜間商議的 prompt 組裝（純函式：可單獨驗證共用前綴與人設綁定）。
+ * 與其他階段一致：system 只放全桌同文的陣容／規則／攻略；身分＋角色設定＋商議任務進 user。
+ */
+export function buildWolfTeamPlanPrompt(state: GameState, captain: Player): PromptResult {
   const { t } = getI18n();
   const aliveWolves = state.players.filter((p) => isWolfRole(p.role) && p.alive);
-  const aiWolves = aliveWolves.filter((p) => !p.isHuman);
-  if (aiWolves.length === 0) return null;
-  const captain = aiWolves[Math.floor(Math.random() * aiWolves.length)];
-
   const teammates = aliveWolves
     .map((wolf) => `${wolf.seat + 1}号${wolf.displayName}`)
     .join("、");
@@ -2082,13 +2080,18 @@ export async function generateWolfTeamPlan(
     reason: "一句话讲给队友听的计划意图",
   });
 
-  const base = t("prompts.night.wolfTeamPlan.base", {
-    seat: captain.seat + 1,
-    name: captain.displayName,
-    role: getRoleText(captain.role),
-    coreRules: "",
-    teammates,
-  });
+  const base = bindIdentityAndRoleSetting(
+    t("prompts.night.wolfTeamPlan.base", {
+      seat: captain.seat + 1,
+      name: captain.displayName,
+      role: getRoleText(captain.role),
+      coreRules: "",
+      teammates,
+    }),
+    captain,
+    !!state.isGenshinMode
+  );
+  const intro = t("prompts.night.wolfTeamPlan.intro");
   const knowledge = t("prompts.night.wolfTeamPlan.knowledge");
   const task = t("prompts.night.wolfTeamPlan.task", { knifeLine, jsonFormat });
   // 與其他 prompt 一致的開場：本次陣容 → 規則 → 攻略（全桌同文，可快取）。
@@ -2097,11 +2100,23 @@ export async function generateWolfTeamPlan(
   const systemParts = [...buildSharedSystemParts(state)];
   const system = buildSystemTextFromParts(systemParts);
   const user = t("prompts.night.wolfTeamPlan.user", {
-    context: [buildGameContext(state, captain), base, knowledge, task].filter(Boolean).join("\n\n"),
+    context: [buildGameContext(state, captain), base, intro, knowledge, task].filter(Boolean).join("\n\n"),
     humanNote,
     jsonFormat,
   });
-  const { messages } = buildMessagesForPrompt({ system, user, systemParts });
+  return { system, user, systemParts };
+}
+
+export async function generateWolfTeamPlan(
+  state: GameState
+): Promise<WolfTeamPlan | null> {
+  const aliveWolves = state.players.filter((p) => isWolfRole(p.role) && p.alive);
+  const aiWolves = aliveWolves.filter((p) => !p.isHuman);
+  if (aiWolves.length === 0) return null;
+  const captain = aiWolves[Math.floor(Math.random() * aiWolves.length)];
+
+  const humanWolves = aliveWolves.filter((p) => p.isHuman);
+  const { messages } = buildMessagesForPrompt(buildWolfTeamPlanPrompt(state, captain));
 
   const validSeats = aliveWolves.map((wolf) => wolf.seat + 1);
   const startTime = Date.now();

@@ -2,8 +2,8 @@ import { type GameState, type Player } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "../core/types";
 import {
+  bindIdentityAndRoleSetting,
   buildGameContextParts,
-  buildPersonaSection,
   buildPlayerTodaySpeech,
   buildTodayTranscript,
   getRoleText,
@@ -82,9 +82,9 @@ export class DaySpeechPhase extends GamePhase {
       player,
       isPreAnnouncementCampaign ? { excludePendingDeaths: true } : undefined
     );
-    const isGenshinMode = !!state.isGenshinMode;
-    const persona = buildPersonaSection(player, isGenshinMode);
-
+    // 場景說明（線上打字交流）原本黏在身份模板裡；現在身份只與角色設定綁定，
+    // 場景改為獨立小節、排在「身份＋角色設定」之後。
+    const sceneSection = t("prompts.daySpeech.scene");
     const todayTranscript = buildTodayTranscript(state);
     const selfSpeech = buildPlayerTodaySpeech(state, player);
     const selfSpeechContext = selfSpeech
@@ -144,13 +144,12 @@ export class DaySpeechPhase extends GamePhase {
     // system 只放全桌通用的內容（說話/格式規則＋公共基本盤）；
     // 逐人內容（身份、人設、勝負條件、階段任務、個人公開事實）全進 user 個人區，
     // 否則 system 第一個 token 就逐人不同，後面的公共區塊全部無法共用快取。
-    const identityContent = t("prompts.daySpeech.base", {
+    const identityContent = bindIdentityAndRoleSetting(t("prompts.daySpeech.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
       coreRules: "",
-      persona,
-    }).trim();
+    }).trim(), player, !!state.isGenshinMode);
     const wasVotedOut = isLastWords && state.dayHistory?.[state.day]?.executed?.seat === player.seat;
     const taskLine = isLastWords
       ? t(
@@ -170,7 +169,7 @@ export class DaySpeechPhase extends GamePhase {
             : t("prompts.daySpeech.task.dayDiscussion");
 
     const taskSection = t("prompts.daySpeech.task.section", { taskLine, campaignRequirements: phaseRequirements ? "\n" + phaseRequirements : "" });
-    const guidelinesSection = isGenshinMode
+    const guidelinesSection = state.isGenshinMode
       ? t("prompts.daySpeech.guidelines.genshin")
       : t("prompts.daySpeech.guidelines.default");
     // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；說話要求是本輪任務，放 user。
@@ -205,6 +204,7 @@ export class DaySpeechPhase extends GamePhase {
       privateContext: [
         gameContextParts.private,
         identityContent,
+        sceneSection,
         taskSection,
         guidelinesSection,
         publicFactsForPlayer,

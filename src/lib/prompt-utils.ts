@@ -416,6 +416,19 @@ const buildHiddenPlayerMindSection = (player: Player, locale: string): string =>
   return `\n<hidden_player_mind>\nUse this as your stable player mind. It shapes how you judge, take sides, handle pressure, and speak. Do not state it to other players.\n${lines.map((line) => `- ${line}`).join("\n")}\n</hidden_player_mind>`;
 };
 
+/**
+ * 【身份】與【角色設定】綁成一塊：這兩個屬於同一個「誰在做這件事」的單位，不拆兩處。
+ * 所有角色操作（夜間技能、狼隊商議、警徽、發言、投票、開槍、自爆、決鬥）都套用這個包裝。
+ */
+export const bindIdentityAndRoleSetting = (
+  identityText: string,
+  player: Player,
+  isGenshinMode: boolean = false
+): string => {
+  const roleSetting = buildPersonaSection(player, isGenshinMode);
+  return roleSetting ? `${identityText}\n\n${roleSetting}` : identityText;
+};
+
 export const buildPersonaSection = (player: Player, isGenshinMode: boolean = false): string => {
   if (isGenshinMode || !player.agentProfile) return "";
   const { t, locale } = getI18n();

@@ -802,3 +802,55 @@ test("階段 prompt 不再夾帶階段戰術：狼人夜刀與自爆只剩任務
   assert.match(boomPrompt.system, /跳过今天的投票加直接进夜/);
   assert.doesNotMatch(boomPrompt.system, /\{tactics\}/);
 });
+
+test("【身份】與【角色設定】綁成一塊：每個角色操作都帶同一份人設，且緊接身份之後", async () => {
+  await import("@/lib/game-master");
+  const { PhaseManager } = await import("../core/PhaseManager");
+  const phases: Phase[] = [
+    "NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_WOLF_ACTION", "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION",
+    "DAY_BADGE_SIGNUP", "DAY_BADGE_ELECTION", "BADGE_TRANSFER", "DAY_SPEECH", "DAY_VOTE",
+    "HUNTER_SHOOT", "SELF_DESTRUCT", "KNIGHT_DUEL",
+  ];
+  const checked: string[] = [];
+  for (const phase of phases) {
+    const state = fresh(phase);
+    const player = state.players.find((p) => p.agentProfile?.persona) ?? state.players[0];
+    state.currentSpeakerSeat = player.seat;
+    const prompt = new PhaseManager().getPrompt(phase, { state }, player);
+    if (!prompt) continue;
+    const text = `${prompt.system}\n\n${prompt.user}`;
+    // 人設逐人不同、只在 user：system 一律不得出現
+    assert.doesNotMatch(prompt.system, /【角色设定】/, `${phase}: 角色設定不得進 system`);
+    assert.match(text, /【角色设定】/, `${phase}: 缺少角色設定`);
+    // 只有一份（不可重複注入）
+    assert.equal(text.match(/【角色设定】/g)?.length, 1, `${phase}: 角色設定重複`);
+    // 與【身份】綁成同一塊：緊接身份之後就是角色設定，中間不得插入其他小標題
+    const settingIdx = text.indexOf("【角色设定】");
+    assert.ok(settingIdx > 0, `${phase}: 角色設定未緊接身份`);
+    const identityIdx = text.lastIndexOf("【身份】", settingIdx);
+    assert.ok(identityIdx >= 0, `${phase}: 找不到身份區塊`);
+    const between = text.slice(identityIdx + "【身份】".length, settingIdx);
+    assert.ok(!between.includes("【"), `${phase}: 身份與角色設定之間插入了其他區塊`);
+    assert.match(between, /你是 \d+号/, `${phase}: 身份區塊內容不完整`);
+    // 人設必須是本座位那一份（不可串位）
+    assert.match(text, new RegExp(`只按${player.seat + 1}号自己的视角表达`), `${phase}: 帶到別人的人設`);
+    checked.push(phase);
+  }
+  // 13 個階段全數驗過，避免日後新增階段漏掉綁定
+  assert.equal(checked.length, phases.length);
+});
+
+test("狼隊夜間商議也帶角色設定（狼隊操作不是例外）", async () => {
+  const { buildWolfTeamPlanPrompt } = await import("@/lib/game-master");
+  const state = fresh("NIGHT_WOLF_ACTION");
+  const wolf = state.players.find((p) => p.role === "Werewolf" && p.agentProfile?.persona)!;
+  state.currentSpeakerSeat = wolf.seat;
+  const prompt = buildWolfTeamPlanPrompt(state, wolf);
+  const text = `${prompt.system}\n\n${prompt.user}`;
+  assert.doesNotMatch(prompt.system, /【角色设定】/);
+  const settingIdx = text.indexOf("【角色设定】");
+  const identityIdx = text.lastIndexOf("【身份】", settingIdx);
+  assert.ok(identityIdx >= 0 && settingIdx > identityIdx, "角色設定未緊接身份");
+  assert.ok(!text.slice(identityIdx + 4, settingIdx).includes("【"), "身份與角色設定之間插入了其他區塊");
+  assert.match(text, new RegExp(`只按${wolf.seat + 1}号自己的视角表达`));
+});

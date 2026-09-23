@@ -3,6 +3,7 @@ import { GamePhase } from "../core/GamePhase";
 import type { GameContext, PromptResult, SystemPromptPart } from "../core/types";
 import { getDeathShotKind } from "@/lib/rules/death-skills";
 import {
+  bindIdentityAndRoleSetting,
   buildDecisionContext,
   getRoleText,
   buildSharedSystemParts,
@@ -47,12 +48,12 @@ export class HunterPhase extends GamePhase {
     // 获取猎人的遗言
     const lastWords = this.getHunterLastWords(context, player);
 
-    const cacheableContent = t("prompts.hunter.base", {
+    const cacheableContent = bindIdentityAndRoleSetting(t("prompts.hunter.base", {
       seat: player.seat + 1,
       name: player.displayName,
       role: getRoleText(player.role),
       coreRules: "",
-    });
+    }), player, !!state.isGenshinMode);
     const options = alivePlayers
       .map((p) => t("prompts.night.option", { seat: p.seat + 1, name: p.displayName }))
       .join(t("promptUtils.gameContext.listSeparator"));

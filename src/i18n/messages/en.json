@@ -1136,7 +1136,7 @@
         "pkParticipantNote": "Note: Only the players in this PK speak. Other players ({list}) will not speak in this phase.",
         "emptyCandidateNote": "Note: Candidate list is empty (unusual). Only respond based on visible speech records; do not speculate about non-speakers."
       },
-      "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n【Scenario】\nThis is an online Werewolf game. Players communicate by text.\n\n{coreRules}\n\n{persona}",
+      "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}",
       "task": {
         "lastWords": "You've been eliminated. Only deliver your last words now; there is no further discussion, vote call, or vote in this phase.\n【Identity Check】You are Seat #{seat} ({name}). Do not confuse your seat number.",
         "lastWordsVotedOut": "You were voted out. Only deliver your last words now.\n【Current phase】Today's elimination vote is complete. There is no further discussion, vote call, or vote today.\n【Death cause】This death cause is vote execution, unrelated to witch poison.\n【Identity Check】You are Seat #{seat} ({name}). Do not confuse your seat number.",
@@ -1166,7 +1166,8 @@
       "skillContract": {
         "selfDestruct": "【Output format (this turn includes the self-destruct decision)】\nReturn a single JSON object like:\n'{'\"speech\": [\"First sentence.\", \"Second sentence.\"], \"skill\": '{'\"action\": \"none\"'}}'\nTo self-destruct set skill to '{'\"action\": \"boom\", \"reason\": \"one short sentence\"'}'; the White Wolf King adding a player also sets \"seat\": a seat number. \nTo hold, use '{'\"action\": \"none\"'}'. skill takes only these forms and appears exactly once.\nAll speech text stays inside the speech array - never put JSON or skill notes in the speech content.",
         "knightDuel": "【Output format (this turn includes the duel decision)】\nReturn a single JSON object like:\n'{'\"speech\": [\"First sentence.\", \"Second sentence.\"], \"skill\": '{'\"action\": \"none\"'}}'\nTo duel set skill to '{'\"action\": \"duel\", \"seat\": a seat number, \"reason\": \"one short sentence\"'}'.\nTo hold, use '{'\"action\": \"none\"'}'. skill takes only these forms and appears exactly once.\nAll speech text stays inside the speech array - never put JSON or skill notes in the speech content."
-      }
+      },
+      "scene": "【Scenario】\nThis is an online Werewolf game. Players communicate by text.\n\n{coreRules}"
     },
     "vote": {
       "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{coreRules}",
@@ -1199,13 +1200,14 @@
         "user": "{context}\n\nWhich seat do you want to kill?\n\n【Format】\nReturn a strict JSON object only. No code blocks, no explanations, no extra text:\n{jsonFormat}\nUse the reason field for one short sentence on why you kill him (under 30 words).\nseat must be the target you actually choose; if your reason names a player or a seat number it must match seat — the numbers in the examples are format only, don't copy them."
       },
       "wolfTeamPlan": {
-        "base": "【Identity】\nYou are Seat {seat} «{name}»\nRole: {role}\nWolf teammates: {teammates}\n\n{coreRules}\n\n【You chair the wolf meeting tonight】\nDaylight brings the sheriff election: the real Seer will very likely run for badge and report a check. The wolves must agree on tonight's division of roles for the daytime — otherwise you improvise alone: the one who should jump never does, two wolves jump and bite each other, or nobody steps up at all. Each of those hands the initiative to the good side for free.",
+        "base": "【Identity】\nYou are Seat {seat} «{name}»\nRole: {role}\nWolf teammates: {teammates}\n\n{coreRules}",
         "knowledge": "【Common sense about roles (experience only — weigh it yourself)】\n- Fake-seer jump: a wolf claims Seer to grab a line. While the real Seer is the only line on the table, everyone follows his checks and badge flow; a second (fake) line scatters the votes. If the jump fails, the jumper usually pays with his life — a team bet; you decide whether it's worth it.\n- Charge: side with the jumping wolf and drive badge votes and exile votes toward the real Seer's line. Too many chargers look like a gang; one or two is just right.\n- Hook: side with the real Seer by day and hide inside the good crowd. When the jumper falls, the hook is often the one who lives longest.\n- Deep: take no clear side; speak and vote with the flow but never lead, save yourself for the endgame.\n- Not jumping is also a plan: everyone deep or hook, play an ordinary villager by day, and let the night knife handle the real Seer — but the checks he reports by day have already steered the good side through a round of votes; count that cost.\n- A jump is not a full script: fake check targets and badge flow are decided on the spot by the jumper himself; teammates listen to what he says publicly and then follow.\n- A plan is a baseline, not a script: if the daytime situation changes, teammates will adapt; whatever you settle on must survive your teammates playing along for a whole day.",
         "task": "【Tonight's knife】\n{knifeLine}\n\n【Task】\nAgree on the wolves' daytime division of roles:\n1. jumpSeat: the seat number of the fake-seer jumper; fill 0 if the team decides not to jump this game\n2. signupSeats: the wolf seats that will run for sheriff (the jumper must sign up — no speech slot otherwise)\n3. postures: each living wolf's posture code — jump / charge / hook / deep\n4. reason: one sentence of plan intent for your teammates (30 chars max)\n\n【Format】\nReturn a strict JSON object, no code fences, no explanations, no extra text:\n{jsonFormat}",
         "user": "{context}\n\nThe wolves settle the division of roles tonight. {humanNote}\n\n【Format】\nReturn a strict JSON object, no code fences, no explanations, no extra text:\n{jsonFormat}\nseat must be the target you actually choose; if your reason names a player or a seat number it must match seat — the numbers in the examples are format only, don't copy them.",
         "knifeLine": "Knifed Seat {seat} {name} (the death is only announced at dawn; if the Guard protects him or the Witch saves him with the antidote, the knife lands on nothing and dawn is still a peaceful night)",
         "knifeLineNone": "No knife tonight (empty kill)",
-        "humanNote": "Note: Seat(s) {seats} is a human player — outside the plan's control and must not be assigned the jump; any role you give him is only the team's expectation."
+        "humanNote": "Note: Seat(s) {seats} is a human player — outside the plan's control and must not be assigned the jump; any role you give him is only the team's expectation.",
+        "intro": "【You chair the wolf meeting tonight】\nDaylight brings the sheriff election: the real Seer will very likely run for badge and report a check. The wolves must agree on tonight's division of roles for the daytime — otherwise you improvise alone: the one who should jump never does, two wolves jump and bite each other, or nobody steps up at all. Each of those hands the initiative to the good side for free."
       },
       "guard": {
         "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{coreRules}",
@@ -1234,7 +1236,7 @@
     "badge": {
       "option": "Seat {seat} ({name})",
       "signup": {
-        "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{coreRules}\n\n{persona}",
+        "base": "【Identity】\nYou are Seat {seat} \"{name}\"\nRole: {role}\n\n{coreRules}",
         "task": "【Sheriff Badge】\nThe sheriff has 1.5 votes and can transfer the badge upon death. The sheriff leads discussions and consolidates votes.\n\n【Task】\nThis is the sheriff signup phase. Decide whether to run for sheriff.\n\n【Output format】\nReturn exactly one JSON object with no markdown, explanation, or extra text:\nRun: '{\"signup\":true,\"reason\":\"one sentence on why you run (or why not)\"}'\nSkip: '{\"signup\":false,\"reason\":\"one sentence on why you skip\"}'",
         "user": "{sharedContext}\n\n【Today's discussion】\n{todayTranscript}\n\n{privateContext}\n\nDo you want to run for sheriff?",
         "noTranscript": "(None)"
