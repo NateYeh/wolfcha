@@ -2365,7 +2365,8 @@
     "voteAction": "投票處決目標",
     "voteTie": "平票（無人出局）",
     "nightDreamAction": "第 {day} 夜 攝夢人夢遊者",
-    "dreamAction": "攝夢人夢遊者"
+    "dreamAction": "攝夢人夢遊者",
+    "muteAction": "禁言長老禁言目標"
   },
   "nightActionOverlay": {
     "target": "目標"

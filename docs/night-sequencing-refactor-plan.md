@@ -77,8 +77,8 @@
 | **2** | ✅ **已完成**（見下方 §5.2）：純新增 `src/lib/rules/night-progress.ts`（順序 / 已完成 / 下一步），**尚未接任何消費端** | `night-progress.test.ts` 11 支全綠 | 零（不接線） |
 | **3** | ✅ **已完成**（結論見 §5.3）：續跑鏈的 5 處「等真人」判定收成 `humanActorPending()`；查證後確認鏈上沒有寫死的「下一步」階段，因此不需要（也移除了）`nextNightPhaseAfter` | 新增 `night-human-wait.test.ts`（原本真人等待分支零覆蓋）+ 既有夜晚流程測試全綠 | 中 |
 | **4** | ✅ **已完成**（見 §5.4）：新增 `src/game/phases/night-resume.ts`（續跑指令表），`useGameLogic` 的存檔恢復／軟編輯／Dev 跳轉全部改問它；存檔恢復的 5 個同型 case 合併成一個 | 計畫表 10 支 + 行為驗證 3 支（真實一夜，逐階段）+ 既有夜晚流程測試全綠 | 中高（涉及存檔相容） |
-| **5** | 真人夜間操作分支（`:2297-2449`）改為「把決定寫進狀態」再由新模組推進 | 真人對局的手動驗證 + 既有 hook 測試 | 中 |
-| **6** | `SmartJumpManager` 改成純消費者（目標選擇 UI + 呼叫新模組） | 跳階 smoke test；`analyzeJump` 回歸 | 低 |
+| **5** | ✅ **已完成**（見 §5.5）：真人五條夜間操作與狼隊分工改走同一份計畫表；女巫「不救」改為落盤 | 新增女巫不救落盤測試；真人對話框仍需手動驗證 | 中 |
+| **6** | ✅ **已完成**（見 §5.6）：`createMissingTask` 改用模組判定並補上禁言分支；套用端補上 `dreamTarget`／`mutedTarget` | `analyzeJump` smoke + 套用端回歸 6 支全綠 | 低 |
 
 > 每階段都要跑：`pnpm test` → `pnpm exec tsc --noEmit` → `pnpm build`（專案自訂驗證鏈）。
 > 每個階段結束時，`useGameLogic` 的 `useRef` 數量與 `CONTINUE_NIGHT_AFTER_` 出現次數
@@ -255,6 +255,41 @@ humanActorPending(state, phase)  // 決定者裡有真人，而且這一步還�
 
 ---
 
+### 5.5 Phase 5：真人夜間操作（已完成）
+
+新增 `continueNightAfterHumanAction(state, phase, token)`：真人剛把決定寫進狀態後，「該下哪個指令」
+問同一張計畫表。五條路徑（守衛／禁言／攝夢／狼人／女巫／預言家）與狼隊分工的放行都改用它；
+若計畫回 `wait`（＝呼叫端以為寫入了、狀態其實沒寫進去）會 `console.warn`，不讓夜晚靜默卡住。
+預言家的「按下確認後結算」抽成 `armNightResolve(token)`，由恢復鏈、Dev 軟編輯、真人查驗共用。
+
+**修掉一個語意缺口**：女巫「明確不救」過去**什麼都不寫**（真人與 AI 都一樣），於是
+`witchDecided` 對「不救」永遠是 false——刷新／恢復會再問一次女巫，存檔閘門也把女巫階段當成不穩定點。
+現在真人 pass 寫 `witchSave: false`，AI pass（`runWitchAction`）也一併寫入。所有讀取端都是
+`=== true`／truthy 判斷（逐處確認過），寫 `false` 不會被誤解成「用了解藥」。
+
+**兩處刻意保留的例外**（都附註解）：守衛的空守（`guardTarget: undefined` 在狀態裡就是「還沒決定」，
+計畫表無法表達「決定不守」）與女巫按到已經用完的那一瓶（UI 已 disable，正常不可達），這兩條仍然
+明確往下推，與舊行為一致。
+
+> 沒有自動化測試覆蓋的範圍：真人對話框那幾條路徑屬於 UI 互動，只能靠實際對局驗證。
+> 建議手動留意：女巫「不使用藥水」之後刷新、守衛「空守」之後刷新、真人狼第一夜分工。
+
+### 5.6 Phase 6：`SmartJumpManager` 當消費者（已完成）
+
+- `createMissingTask`：守衛／攝夢／狼人／預言家的「這一步決定了嗎」改問 `rules/night-progress`；
+  **補上禁言長老的補全項**（`ACTION_PHASES` 早就把它算進來，卻永遠不會產生補全項——
+  檔案自己的註解也承認這只是「宣告意圖」）。需要三語系的 `smartJump.muteAction` 鍵。
+- **修掉套用端的靜默失敗**：`applySmartJumpWithFilledData` 的 switch 沒有 `default`，
+  過去**漏了 `dreamTarget`**——開發者在補全清單填了攝夢目標會被靜默丟掉（禁言也沒有）。
+  現在兩格都補上。
+- 新增 3 支測試：同日前跳要把跳過的夜間步驟全部列出（含禁言，且不可選自己）、已決定就不再要求補全、
+  填好之後真的寫進狀態（攝夢／禁言回歸）。
+
+**尚未處理（已記錄）**：跨日前跳的補全迴圈（`analyzeForwardJump` 的 `d` 迴圈）仍是手寫，也還沒有禁言
+（那需要 DevConsole 的 `day<N>MutedTarget` 欄位讀取與套用一起改）。
+
+---
+
 ## 6. 風險與注意
 
 1. **存檔相容**：Phase 4 動到恢復路徑。舊 checkpoint 沒有新模組需要的「已完成事實」時，
@@ -274,3 +309,32 @@ humanActorPending(state, phase)  // 決定者裡有真人，而且這一步還�
 - 新增一個夜間角色（例如石像鬼）時，需要改的地方從「7 個檔案」降到「權威表 + 該角色的決策函式」。
 - `useGameLogic.ts` 的 `CONTINUE_NIGHT_AFTER_` 出現次數降到 5 以下（現況 22）。
 - 夜間流程可以在不依賴 React 的情況下測完一整晚（候選 8 的測試宿主因此可以收斂成一份）。
+
+### 完成後的實測（Phase 1–6 全部落地）
+
+| 指標 | 之前 | 之後 |
+|---|---|---|
+| `useGameLogic` 的 `CONTINUE_NIGHT_AFTER_` 出現次數 | 22 | **2**（守衛空守、女巫按到無藥那瓶；都附註解說明為何不能問計畫表） |
+| `useGameLogic.ts` 行數 | 2,804 | **2,697** |
+| 「這一步決定了嗎」的推導 | 散在 ≥8 處 | `rules/night-progress` 一處；`checkpoints`／`NightPhase`／`useGameLogic`／`SmartJumpManager` 都是消費者 |
+| 「接下來該下哪個指令」 | 散在 3 處、各自寫死（其中 2 處有漏／寫錯） | `game/phases/night-resume` 一張表 |
+| 測試 | 391（+97 server） | **477（+97 server）** |
+
+**現在新增一個夜間角色要改哪裡**（不再有「安靜地少一個分支」）：
+
+1. `rules/phases.ts` 的 `NIGHT_ACTION_ORDER`（權威順序）；
+2. `rules/night-progress.ts` 的 `NIGHT_STEP` 與該角色的 `*Decided`（**漏了 tsc 會紅**）；
+3. `game/phases/night-resume.ts` 的 `ADVANCE_PLAN`／`REPLAY_COMMAND`（**漏了 tsc 會紅**）；
+4. 階段層的 `run*Action` 與 UI／prompt（本來就要寫的部分）。
+
+`checkpoints`、存檔恢復、Dev 跳轉、Dev 軟編輯、跳階補全都會自動跟上，因為它們只問
+「這一步決定了嗎／下一個指令是什麼」。
+
+**仍記錄在案、尚未處理**：
+
+1. 夜間重跑會把前面的 AI 步驟重新問一次（要修得在階段層加「就從這一步續跑」的指令）。
+2. 跨日前跳的補全迴圈仍是手寫，也還沒有禁言（需要 DevConsole 的 `day<N>MutedTarget` 一起改）。
+3. 守衛的「空守」在狀態上無法表達（`guardTarget: undefined` ＝還沒決定），所以空守後刷新會重問。
+4. `DevConsole` 的 `ALL_PHASES`／`usePhaseNames` 仍是手寫且漏成員（缺 MUTE／DREAM／
+   `SELF_DESTRUCT`／`KNIGHT_DUEL`），用 `as Record<Phase, string>` 把 tsc 騙過去；需補三語系鍵。
+5. 真人對話框的夜間操作路徑沒有自動化測試（本階段只能靠實際對局驗證）。

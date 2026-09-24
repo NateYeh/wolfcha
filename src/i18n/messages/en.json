@@ -2365,7 +2365,8 @@
     "voteAction": "Vote execution target",
     "voteTie": "Tie (no one eliminated)",
     "nightDreamAction": "Night {day} Dreamweaver dream target",
-    "dreamAction": "Dreamweaver dream target"
+    "dreamAction": "Dreamweaver dream target",
+    "muteAction": "Mute Elder mute target"
   },
   "nightActionOverlay": {
     "target": "Target"

@@ -11,13 +11,21 @@ import { getI18n } from "@/i18n/translator";
 import { addSystemMessage, checkWinCondition } from "@/lib/game-master";
 import { resolveNightDeaths } from "@/lib/rules/night-resolution";
 import { getDreamEligibleSeats } from "@/lib/rules/dream";
+import { getMuteEligibleSeats } from "@/lib/rules/mute";
+import {
+  dreamDecided,
+  guardDecided,
+  muteDecided,
+  seerDecided,
+  wolfDecided,
+} from "@/lib/rules/night-progress";
 import { ACTION_PHASES, PHASE_SEQUENCE } from "@/lib/rules/phases";
 
 // 阶段顺序、跳阶补全名单与夜／昼判断一律取自权威表 `@/lib/rules/phases`：
 // 这个档案过去自带的 PHASE_ORDER 漏了 DAY_PK_SPEECH（indexOf 回 -1，先后比较与跳阶分析
 // 因而失准），ACTION_PHASES 漏了 NIGHT_MUTE_ACTION，PHASE_DEPENDENCIES 则是没有读取者的死资料。
-// 注：ACTION_PHASES 补上 MUTE 目前只是「宣告意图」—— createMissingTask 尚无禁言长老分支
-//（整个跳阶工具都还没整合这个角色），要等该分支补上才会实际产生补全项。
+// 「这个夜间步骤决定了吗」一律问 `@/lib/rules/night-progress`（守衛／禁言／攝夢／狼人／預言家），
+// 不在每个 case 里自己重写判定；禁言长老的补全项（`smartJump.muteAction`）也在 Phase 6 补上了。
 
 // ============ 跳转上下文与结果类型 ============
 
@@ -409,10 +417,8 @@ function createMissingTask(state: GameState, phase: Phase): MissingTask | null {
 
   switch (phase) {
     case "NIGHT_GUARD_ACTION": {
-      const guard = state.players.find((p) => p.role === "Guard" && p.alive);
-      if (!guard) return null;
-      // 已经选择过目标则不需要补全
-      if (state.nightActions.guardTarget !== undefined) return null;
+      // 没有守衛或已決定就不必補（判定集中在 rules/night-progress）
+      if (guardDecided(state)) return null;
       const { t } = getI18n();
       return {
         phase,
@@ -423,11 +429,27 @@ function createMissingTask(state: GameState, phase: Phase): MissingTask | null {
           .map((p) => ({ value: p.seat, label: t("devConsole.playerLabel", { seat: p.seat + 1, name: p.displayName }) })),
       };
     }
+    case "NIGHT_MUTE_ACTION": {
+      // 禁言長老：沒有長老或已決定就不必補
+      if (muteDecided(state)) return null;
+      const elder = state.players.find((p) => p.role === "MuteElder" && p.alive);
+      if (!elder) return null;
+      const { t } = getI18n();
+      return {
+        phase,
+        description: t("smartJump.muteAction"),
+        field: "mutedTarget",
+        options: getMuteEligibleSeats(state, elder.seat).map((seat) => {
+          const p = state.players.find((player) => player.seat === seat);
+          return { value: seat, label: t("devConsole.playerLabel", { seat: seat + 1, name: p?.displayName ?? "" }) };
+        }),
+      };
+    }
     case "NIGHT_DREAM_ACTION": {
       const dreamer = state.players.find((p) => p.role === "Dreamweaver" && p.alive);
+      // 沒有攝夢人或已決定（含「沒有合法目標」的退化情況）就不必補
+      if (dreamDecided(state)) return null;
       if (!dreamer) return null;
-      // 已经选择过目标则不需要补全（規則不允許空摄，所以只要沒指定就要補）
-      if (state.nightActions.dreamTarget !== undefined) return null;
       const { t } = getI18n();
       const eligible = getDreamEligibleSeats(state, dreamer.seat);
       return {
@@ -441,9 +463,8 @@ function createMissingTask(state: GameState, phase: Phase): MissingTask | null {
       };
     }
     case "NIGHT_WOLF_ACTION": {
-      const wolves = state.players.filter((p) => isWolfRole(p.role) && p.alive);
-      if (wolves.length === 0) return null;
-      if (state.nightActions.wolfTarget !== undefined) return null;
+      // 沒有存活狼人或已指定刀口就不必補
+      if (wolfDecided(state)) return null;
       const { t } = getI18n();
       return {
         phase,
@@ -460,9 +481,8 @@ function createMissingTask(state: GameState, phase: Phase): MissingTask | null {
       return null;
     }
     case "NIGHT_SEER_ACTION": {
-      const seer = state.players.find((p) => p.role === "Seer" && p.alive);
-      if (!seer) return null;
-      if (state.nightActions.seerTarget !== undefined) return null;
+      // 沒有預言家或已查驗就不必補
+      if (seerDecided(state)) return null;
       const { t } = getI18n();
       const checkedSeats = (state.nightActions.seerHistory || []).map((h) => h.targetSeat);
       return {
@@ -1277,6 +1297,15 @@ export function applySmartJumpWithFilledData(
           newState.nightActions = { ...newState.nightActions, witchPoison: seat };
           newState.roleAbilities = { ...newState.roleAbilities, witchPoisonUsed: true };
         }
+        break;
+      }
+      case "dreamTarget": {
+        // 这一格过去漏了：开发者在补全清单填了摄梦人目标，会被静默丢掉（switch 没有 default）
+        newState.nightActions = { ...newState.nightActions, dreamTarget: value as number };
+        break;
+      }
+      case "mutedTarget": {
+        newState.nightActions = { ...newState.nightActions, mutedTarget: value as number };
         break;
       }
       case "seerTarget": {

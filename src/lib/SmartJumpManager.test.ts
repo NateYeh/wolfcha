@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { GameState, Role } from "@/types/game";
 
 // SmartJumpManager 間接載入 supabase.ts（llm → game-session-tracker），
 // 缺環境變數會在 import 時直接丟錯；這裡沿用其他測試的作法先塞假值。
@@ -43,4 +44,89 @@ test("同一天的先後比較不得把 PK 發言判成比大廳更早", async (
     compareTimePoints(pk, { day: 1, phase: "LOBBY" }) > 0,
     "PK 發言不該比大廳更早（這是 indexOf 回 -1 的症狀）",
   );
+});
+
+// ============ 夜間補全清單（Phase 6） ============
+
+/**
+ * 跳階補全清單的守衛。
+ *
+ * 這張清單過去由 `createMissingTask` 自己重寫「這一步決定了嗎」，而且**沒有禁言長老分支**
+ * （`ACTION_PHASES` 把它算進來，卻永遠不會產生補全項）；填寫後的套用端
+ * （`applySmartJumpWithFilledData`）又是一個沒有 `default` 的 switch，**漏了 `dreamTarget`**——
+ * 開發者填了攝夢目標會被靜默丟掉。現在判定問 `rules/night-progress`，套用端也補齊了。
+ */
+
+const NIGHT_ROLE_BOARD: Role[] = [
+  "Guard", "MuteElder", "Dreamweaver", "Werewolf", "Werewolf", "Witch",
+  "Seer", "Villager", "Villager", "Villager", "Villager",
+];
+
+async function nightBoard(nightActions: GameState["nightActions"] = {}): Promise<GameState> {
+  const [{ createSinglePlayerContextAuditState }] = await Promise.all([
+    import("../../scripts/single-player-context-audit"),
+  ]);
+  const base = createSinglePlayerContextAuditState() as unknown as GameState;
+  return {
+    ...base,
+    phase: "NIGHT_GUARD_ACTION",
+    day: 1,
+    players: base.players.map((player, index) => ({
+      ...player,
+      role: NIGHT_ROLE_BOARD[index] ?? "Villager",
+      isHuman: false,
+      alive: true,
+    })),
+    messages: [],
+    nightHistory: {},
+    dayHistory: {},
+    nightActions: { ...nightActions },
+    roleAbilities: { ...base.roleAbilities, witchHealUsed: false, witchPoisonUsed: false },
+  } as GameState;
+}
+
+test("同日前跳：跳過的夜間步驟全部列進補全清單（含禁言長老）", async () => {
+  const { analyzeJump } = await import("@/lib/SmartJumpManager");
+  const state = await nightBoard();
+  const analysis = analyzeJump(state, { day: 1, phase: "NIGHT_SEER_ACTION" });
+  const fields = analysis.missingTasks.map((task) => task.field);
+  for (const expected of ["guardTarget", "mutedTarget", "dreamTarget", "wolfTarget"]) {
+    assert.ok(fields.includes(expected), `${expected} 應該要被補全，實際：${fields.join(", ")}`);
+  }
+  // 禁言長老的補全項要有合法目標（不能選自己）
+  const muteTask = analysis.missingTasks.find((task) => task.field === "mutedTarget")!;
+  assert.ok(muteTask.options && muteTask.options.length > 0, "禁言長老要有可選目標");
+  assert.equal(
+    muteTask.options.some((option) => option.value === 1),
+    false,
+    "長老自己（座位 1）不該出現在可選清單",
+  );
+});
+
+test("已決定的夜間步驟不會再要求補全（含退化情況）", async () => {
+  const { analyzeJump } = await import("@/lib/SmartJumpManager");
+  const decided = await nightBoard({ mutedTarget: 5, dreamTarget: 6, wolfTarget: 7 });
+  const fields = analyzeJump(decided, { day: 1, phase: "NIGHT_SEER_ACTION" }).missingTasks.map((t) => t.field);
+  for (const gone of ["mutedTarget", "dreamTarget", "wolfTarget"]) {
+    assert.equal(fields.includes(gone), false, `${gone} 已決定，不該再要求補全`);
+  }
+  assert.ok(fields.includes("guardTarget"), "守衛還沒決定，還是要補");
+});
+
+test("補全清單填好之後真的寫進狀態（攝夢與禁言過去會被靜默丟掉）", async () => {
+  const { applySmartJumpWithFilledData } = await import("@/lib/SmartJumpManager");
+  const state = await nightBoard();
+  const next = applySmartJumpWithFilledData(state, { day: 1, phase: "NIGHT_SEER_ACTION" }, {
+    guardTarget: 7,
+    mutedTarget: 8,
+    dreamTarget: 9,
+    wolfTarget: 10,
+    witchSave: "false",
+    witchPoison: "none",
+  });
+  assert.equal(next.nightActions.guardTarget, 7);
+  assert.equal(next.nightActions.mutedTarget, 8, "禁言目標必須寫入（套用端原本沒有這一格）");
+  assert.equal(next.nightActions.dreamTarget, 9, "攝夢目標必須寫入（套用端原本漏了 dreamTarget）");
+  assert.equal(next.nightActions.wolfTarget, 10);
+  assert.equal(next.nightActions.witchSave, false, "女巫明確不救");
 });
