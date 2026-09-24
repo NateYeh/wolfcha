@@ -80,7 +80,7 @@ export function compareTimePoints(
 }
 
 /** 判断跳转方向 */
-export function getJumpDirection(
+function getJumpDirection(
   current: { day: number; phase: Phase },
   target: { day: number; phase: Phase }
 ): JumpDirection {
@@ -773,7 +773,7 @@ function ensureRoleRevealForGameEnd(state: GameState): GameState {
 // ============ 状态修复 - 前跳（自动补全） ============
 
 /** 执行前跳修复（自动模式） */
-export function applyForwardJumpAuto(
+function applyForwardJumpAuto(
   state: GameState,
   target: JumpTarget,
   analysis: JumpAnalysis

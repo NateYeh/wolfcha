@@ -5,7 +5,7 @@
 
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-import type { GameState, Phase, Player, Role } from "@/types/game";
+import type { GameState, Phase, Player } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import type { GameAnalysisData } from "@/types/analysis";
 import { createInitialGameState } from "@/lib/game-master";
@@ -963,61 +963,9 @@ export const PHASE_CONFIGS: Record<Phase, PhaseConfig> = {
   },
 };
 
-// 当前阶段配置
-export const currentPhaseConfigAtom = atom((get) => {
-  const gameState = get(gameStateAtom);
-  return PHASE_CONFIGS[gameState.phase];
-});
+// 当前阶段配置// 当前阶段描述// 是否需要人类输入// 检查是否可以选择某个玩家// 当前操作类型// ============ UI 操作 Atoms ============
 
-// 当前阶段描述
-export const phaseDescriptionAtom = atom((get) => {
-  const { t } = getI18n();
-  const gameState = get(gameStateAtom);
-  const humanPlayer = get(humanPlayerAtom);
-  const config = PHASE_CONFIGS[gameState.phase];
-  
-  if (config.humanDescription) {
-    return config.humanDescription(humanPlayer, gameState);
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return t(config.description as any);
-});
-
-// 是否需要人类输入
-export const needsHumanInputAtom = atom((get) => {
-  const gameState = get(gameStateAtom);
-  const humanPlayer = get(humanPlayerAtom);
-  const config = PHASE_CONFIGS[gameState.phase];
-  
-  return config.requiresHumanInput(humanPlayer, gameState);
-});
-
-// 检查是否可以选择某个玩家
-export const canSelectPlayerAtom = atom((get) => {
-  const gameState = get(gameStateAtom);
-  const humanPlayer = get(humanPlayerAtom);
-  const config = PHASE_CONFIGS[gameState.phase];
-  
-  return (targetPlayer: Player) => config.canSelectPlayer(humanPlayer, targetPlayer, gameState);
-});
-
-// 当前操作类型
-export const currentActionTypeAtom = atom((get) => {
-  const config = get(currentPhaseConfigAtom);
-  return config.actionType;
-});
-
-// ============ UI 操作 Atoms ============
-
-// 设置选中的座位
-export const setSelectedSeatAtom = atom(
-  null,
-  (get, set, seat: number | null) => {
-    set(uiStateAtom, (prev) => ({ ...prev, selectedSeat: seat }));
-  }
-);
-
-// 设置加载状态
+// 设置选中的座位// 设置加载状态
 export const setLoadingAtom = atom(
   null,
   (get, set, isLoading: boolean) => {
@@ -1119,106 +1067,10 @@ export function isValidTransition(from: Phase, to: Phase): boolean {
 /**
  * 安全的阶段转换 atom
  * 如果转换无效，会抛出错误（开发环境）或记录警告（生产环境）
- */
-export const safeTransitionAtom = atom(
-  null,
-  (get, set, nextPhase: Phase) => {
-    const currentState = get(gameStateAtom);
-    const currentPhase = currentState.phase;
-    
-    if (!isValidTransition(currentPhase, nextPhase)) {
-      const error = `Invalid phase transition: ${currentPhase} -> ${nextPhase}`;
-      if (process.env.NODE_ENV === "development") {
-        console.error(error);
-        // 在开发环境下仍然允许转换，但会警告
-      }
-      console.warn(error);
-    }
-    
-    set(gameStateAtom, {
-      ...currentState,
-      phase: nextPhase,
-    });
-  }
-);
-
-// ============ 夜晚阶段处理 ============
+ */// ============ 夜晚阶段处理 ============
 
 /**
  * 检查某个角色是否需要在当前夜晚行动
- */
-export const roleNeedsActionAtom = atom((get) => {
-  const gameState = get(gameStateAtom);
-  
-  return (role: Role): boolean => {
-    const player = gameState.players.find(p => p.role === role && p.alive);
-    if (!player) return false;
-    
-    switch (role) {
-      case "Guard":
-        return true; // 守卫每晚都可以行动
-      case "Werewolf":
-      case "WhiteWolfKing":
-      case "WolfKing":
-        return true; // 狼人每晚都要行动
-      case "Witch":
-        return !gameState.roleAbilities.witchHealUsed || !gameState.roleAbilities.witchPoisonUsed;
-      case "Seer":
-        return true; // 预言家每晚都可以查验
-      case "Hunter":
-        return false; // 猎人不在夜晚行动
-      default:
-        return false;
-    }
-  };
-});
-
-/**
+ *//**
  * 获取下一个夜晚阶段
  */
-export function getNextNightPhase(currentPhase: Phase, gameState: GameState): Phase {
-  const phaseOrder: Phase[] = [
-    "NIGHT_START",
-    "NIGHT_GUARD_ACTION", 
-    "NIGHT_WOLF_ACTION",
-    "NIGHT_WITCH_ACTION",
-    "NIGHT_SEER_ACTION",
-    "NIGHT_RESOLVE",
-  ];
-  
-  const currentIndex = phaseOrder.indexOf(currentPhase);
-  if (currentIndex === -1 || currentIndex === phaseOrder.length - 1) {
-    return "NIGHT_RESOLVE";
-  }
-  
-  // 检查下一个阶段是否需要执行
-  const nextPhase = phaseOrder[currentIndex + 1];
-  
-  // 如果该阶段的角色不存在或已死亡，跳过
-  const roleForPhase: Record<string, Role> = {
-    NIGHT_GUARD_ACTION: "Guard",
-    NIGHT_WOLF_ACTION: "Werewolf",
-    NIGHT_WITCH_ACTION: "Witch",
-    NIGHT_SEER_ACTION: "Seer",
-  };
-  
-  const requiredRole = roleForPhase[nextPhase];
-  if (requiredRole) {
-    const hasAliveRole = requiredRole === "Werewolf"
-      ? gameState.players.some(p => isWolfRole(p.role) && p.alive)
-      : gameState.players.some(p => p.role === requiredRole && p.alive);
-    if (!hasAliveRole) {
-      // 递归跳到下一个阶段
-      return getNextNightPhase(nextPhase, gameState);
-    }
-    
-    // 女巫特殊检查：两瓶药都用完则跳过
-    if (requiredRole === "Witch") {
-      if (gameState.roleAbilities.witchHealUsed && gameState.roleAbilities.witchPoisonUsed) {
-        return getNextNightPhase(nextPhase, gameState);
-      }
-    }
-  }
-  
-  return nextPhase;
-}
