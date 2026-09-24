@@ -545,6 +545,13 @@ export class NightPhase extends GamePhase {
         },
         roleAbilities: { ...currentState.roleAbilities, witchPoisonUsed: true },
       };
+    } else {
+      // 「明確不救」也是決定，要落盤：否則 AI 女巫這一晚在狀態上永遠是「還沒決定」，
+      // 恢復存檔會再問一次女巫，存檔閘門也把女巫階段當成不穩定點（規則上它已經結束了）。
+      currentState = {
+        ...currentState,
+        nightActions: { ...currentState.nightActions, witchSave: false },
+      };
     }
     runtime.setGameState(currentState);
     runtime.setIsWaitingForAI(false);

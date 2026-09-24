@@ -2178,6 +2178,45 @@ export function useGameLogic() {
     }
   }, [humanPlayer, setGameState, badgePhase, getToken, resolveVotesSafely, isWaitingForAI]);
 
+  /** 夜晚收尾（預言家之後）：裝好「按下確認後結算」的續跑函式；顯示查驗結果由呼叫端負責。 */
+  const armNightResolve = useCallback(
+    (token: ReturnType<typeof getToken>) => {
+      nightContinueRef.current = async (state: GameState) => {
+        await resolveNight(state, token, async (resolvedState) => {
+          await startDayPhaseInternal(resolvedState, token);
+        });
+      };
+    },
+    [resolveNight, startDayPhaseInternal]
+  );
+
+  /**
+   * 真人剛把某個夜間決定寫進狀態之後，用它把夜晚推下去（真人夜間操作與狼隊分工共用）。
+   *
+   * 「該下哪個指令」不在這裡重寫：一律問 `night-resume` 的計畫表（與存檔恢復、Dev 跳轉同一份）。
+   * 真人決定剛寫入 ⇒ 應該得到 `advance`（或預言家的 `resolve`）；若得到 `wait`，代表呼叫端
+   * 以為寫入了、狀態其實沒寫進去——那是程式錯誤，要大聲記 log 而不是讓夜晚靜默卡住。
+   */
+  const continueNightAfterHumanAction = useCallback(
+    async (state: GameState, phase: Phase, token: ReturnType<typeof getToken>) => {
+      if (!isNightActionPhase(phase)) return;
+      const plan = nightResumePlan(state, phase);
+      if (plan.kind === "advance" || plan.kind === "replay") {
+        await runNightPhaseAction(state, token, plan.command);
+        return;
+      }
+      if (plan.kind === "resolve") {
+        armNightResolve(token);
+        return;
+      }
+      console.warn(
+        `[wolfcha] 真人夜間決定沒有寫進狀態，夜晚不會往前（phase=${phase}）`,
+        state.nightActions
+      );
+    },
+    [armNightResolve, runNightPhaseAction]
+  );
+
   /** 夜晚行动 */
   const handleNightAction = useCallback(async (targetSeat: number, witchAction?: "save" | "poison" | "pass") => {
     if (!humanPlayer) return;
@@ -2215,7 +2254,13 @@ export function useGameLogic() {
 
       await delay(1000);
       await waitForUnpause();
-      await runNightPhaseAction(currentState, token, "CONTINUE_NIGHT_AFTER_GUARD");
+      if (abstain) {
+        // 空守：狀態裡的 `guardTarget: undefined` 就是「還沒決定」，計畫表無法表達「決定不守」，
+        // 所以這條仍然明確往下推（與舊行為一致）。
+        await runNightPhaseAction(currentState, token, "CONTINUE_NIGHT_AFTER_GUARD");
+      } else {
+        await continueNightAfterHumanAction(currentState, "NIGHT_GUARD_ACTION", token);
+      }
     }
     // 禁言長老（真人）：指定明天不能發言的人
     else if (gameState.phase === "NIGHT_MUTE_ACTION" && humanPlayer.role === "MuteElder") {
@@ -2234,7 +2279,7 @@ export function useGameLogic() {
 
       await delay(1000);
       await waitForUnpause();
-      await runNightPhaseAction(currentState, token, "CONTINUE_NIGHT_AFTER_MUTE");
+      await continueNightAfterHumanAction(currentState, "NIGHT_MUTE_ACTION", token);
     }
     // 攝夢人（真人）：今晚的夢游者（必須指定，不能選自己）
     else if (gameState.phase === "NIGHT_DREAM_ACTION" && humanPlayer.role === "Dreamweaver") {
@@ -2253,7 +2298,7 @@ export function useGameLogic() {
 
       await delay(1000);
       await waitForUnpause();
-      await runNightPhaseAction(currentState, token, "CONTINUE_NIGHT_AFTER_DREAM");
+      await continueNightAfterHumanAction(currentState, "NIGHT_DREAM_ACTION", token);
     }
     // 狼人击杀
     else if (gameState.phase === "NIGHT_WOLF_ACTION" && isWolfRole(humanPlayer.role)) {
@@ -2277,7 +2322,7 @@ export function useGameLogic() {
 
       await delay(800);
       await waitForUnpause();
-      await runNightPhaseAction(currentState, token, "CONTINUE_NIGHT_AFTER_WOLF");
+      await continueNightAfterHumanAction(currentState, "NIGHT_WOLF_ACTION", token);
     }
     // 女巫用药
     else if (gameState.phase === "NIGHT_WITCH_ACTION" && humanPlayer.role === "Witch") {
@@ -2303,14 +2348,28 @@ export function useGameLogic() {
           roleAbilities: { ...currentState.roleAbilities, witchPoisonUsed: true },
         };
         setDialogue(t("speakers.system"), t("gameLogicMessages.usedPoison", { seat: targetSeat + 1, name: targetPlayer?.displayName || "" }), false);
-      } else {
+      } else if (witchAction === "pass") {
+        // 明確不救也是「已決定」：過去這裡什麼都不寫，於是刷新／恢復會再問一次女巫，
+        // 存檔也把這一刻當成「未決定」而拒絕落盤。
+        currentState = {
+          ...currentState,
+          nightActions: { ...currentState.nightActions, witchSave: false },
+        };
         setDialogue(t("speakers.system"), t("gameLogicMessages.noPotion"), false);
+      } else {
+        // 按了已經用完的那一瓶（UI 已 disable，正常不可達）：不寫決定，但夜晚照舊往下走
+        setDialogue(t("speakers.system"), t("gameLogicMessages.noPotion"), false);
+        setGameState(currentState);
+        await delay(800);
+        await waitForUnpause();
+        await runNightPhaseAction(currentState, token, "CONTINUE_NIGHT_AFTER_WITCH");
+        return;
       }
       setGameState(currentState);
 
       await delay(800);
       await waitForUnpause();
-      await runNightPhaseAction(currentState, token, "CONTINUE_NIGHT_AFTER_WITCH");
+      await continueNightAfterHumanAction(currentState, "NIGHT_WITCH_ACTION", token);
     }
     // 预言家查验
     else if (gameState.phase === "NIGHT_SEER_ACTION" && humanPlayer.role === "Seer") {
@@ -2334,11 +2393,8 @@ export function useGameLogic() {
       setDialogue(t("speakers.seerResult"), t("gameLogicMessages.seerResultText", { seat: targetSeat + 1, name: targetPlayer?.displayName || "", result: isWolf ? t("gameLogicMessages.werewolfResult") : t("gameLogicMessages.goodResult") }), false);
       setGameState(currentState);
 
-      nightContinueRef.current = async (s) => {
-        await resolveNight(s, token, async (resolvedState) => {
-          await startDayPhaseInternal(resolvedState, token);
-        });
-      };
+      // 預言家是最後一個夜間動作：計畫表會回 `resolve`，由它裝好「按下確認後結算」的續跑
+      await continueNightAfterHumanAction(currentState, "NIGHT_SEER_ACTION", token);
       return;
     }
     // 猎人开枪
@@ -2617,9 +2673,10 @@ export function useGameLogic() {
     (next: GameState) => {
       if (next.phase !== "NIGHT_WOLF_ACTION") return;
       if (next.nightActions.wolfTarget === undefined) return;
-      void runNightPhaseAction(next, getToken(), "CONTINUE_NIGHT_AFTER_WOLF");
+      // 刀口＋（交還 AI 或寫入計畫）都齊了 ⇒ 問計畫表往下推
+      void continueNightAfterHumanAction(next, "NIGHT_WOLF_ACTION", getToken());
     },
-    [getToken, runNightPhaseAction]
+    [continueNightAfterHumanAction, getToken]
   );
 
   /** 真人狼指派第一夜分工：清洗失敗（座位不合法等）就整筆忽略，讓玩家重填。 */

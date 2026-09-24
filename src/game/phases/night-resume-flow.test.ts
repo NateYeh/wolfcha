@@ -57,7 +57,10 @@ type NightRunResult = {
 };
 
 /** 跑一條重跑指令，回傳夜晚是否走完（onNightComplete 被呼叫）與被問過的次數。 */
-async function runReplayCommand(phase: NightActionPhase): Promise<NightRunResult> {
+async function runReplayCommand(
+  phase: NightActionPhase,
+  witchAnswer: Record<string, unknown> = { action: "poison", seat: 11, reason: "測試" },
+): Promise<NightRunResult> {
   await import("@/lib/game-master");
   const [{ NightPhase }, { createSinglePlayerContextAuditState }] = await Promise.all([
     import("@/game/phases/NightPhase"),
@@ -93,7 +96,7 @@ async function runReplayCommand(phase: NightActionPhase): Promise<NightRunResult
     // 女巫要的是 action 形狀（而且「不動作」不會落盤，所以這裡要給真的會寫入的毒殺）；
     // 其他角色給 11 號（索引 10，存活村民）：避開「座位 0＝空守」與「不能選自己」。
     const content = text.includes("【女巫技能】")
-      ? { action: "poison", seat: ANSWER_DISPLAY_SEAT, reason: "測試" }
+      ? witchAnswer
       : { seat: ANSWER_DISPLAY_SEAT, reason: "測試" };
     return Response.json({
       id: "test",
@@ -151,6 +154,13 @@ test("重跑指令會真的執行那一步的行動，並把夜晚走完", async
     assert.notEqual(decision, undefined, `${phase}：那一步的決定必須被寫入（否則就是整步被跳過）`);
     assert.equal(decision, ANSWER_SEAT, `${phase}：應該使用 AI 給的 ${ANSWER_DISPLAY_SEAT} 號座位`);
   }
+});
+
+test("女巫說「不救」也是決定：要落盤（否則恢復存檔會再問一次）", async () => {
+  const { completed } = await runReplayCommand("NIGHT_WITCH_ACTION", { action: "pass", reason: "測試：不救" });
+  const state = completed as GameState;
+  assert.equal(state.nightActions.witchSave, false, "明確不救必須寫入 witchSave: false");
+  assert.equal(state.nightActions.witchPoison, undefined, "沒有毒殺");
 });
 
 test("重跑指令不會把「目標步驟之後」的決定一起做掉（鏈只往前走）", async () => {
