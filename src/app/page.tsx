@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback, useRef, type CSSProperties } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef, type CSSProperties, type ReactElement } from "react";
 import { AnimatePresence, motion, type TargetAndTransition } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -12,6 +12,7 @@ import {
   Shield,
   Drop,
   Crosshair,
+  Ear,
   GearSix,
 } from "@phosphor-icons/react";
 import {
@@ -28,7 +29,7 @@ import {
 } from "@/components/icons/FlatIcons";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import { useGameLogic } from "@/hooks/useGameLogic";
-import type { Player, Role } from "@/types/game";
+import type { Phase, Player, Role } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { PHASE_CONFIGS, isGameInProgress } from "@/store/game-machine";
 import { getI18n } from "@/i18n/translator";
@@ -1231,32 +1232,40 @@ export default function Home() {
     return false;
   }, [gameState, gameState.phase, hasSelectableTargets, humanPlayer]);
 
-  const renderPhaseIcon = () => {
-    switch (gameState.phase) {
-      case "NIGHT_SEER_ACTION":
-        return <Eye size={14} />;
-      case "NIGHT_WOLF_ACTION":
-        return <Skull size={14} />;
-      case "NIGHT_GUARD_ACTION":
-        return <Shield size={14} />;
-      case "NIGHT_WITCH_ACTION":
-        return <Drop size={14} />;
-      case "NIGHT_DREAM_ACTION":
-        return <Eye size={14} />;
-      case "HUNTER_SHOOT":
-        return <Crosshair size={14} />;
-      case "DAY_SPEECH":
-        return <SpeechIcon size={14} />;
-      case "DAY_BADGE_SIGNUP":
-        return <Users size={14} />;
-      case "DAY_BADGE_ELECTION":
-        return <Users size={14} />;
-      case "DAY_VOTE":
-        return <Users size={14} />;
-      default:
-        return visualIsNight ? <NightIcon size={14} /> : <DayIcon size={14} />;
-    }
+  /**
+   * 階段 → 狀態列圖示。用 `Record<Phase, …>` 強制補齊：新增階段時 tsc 會逼你決定顯示什麼，
+   * 不再靜默掉進 default（NIGHT_MUTE_ACTION 過去就是這樣只拿到通用夜間圖示）。
+   */
+  const genericPhaseIcon = () => (visualIsNight ? <NightIcon size={14} /> : <DayIcon size={14} />);
+  const PHASE_ICON: Record<Phase, () => ReactElement> = {
+    NIGHT_SEER_ACTION: () => <Eye size={14} />,
+    NIGHT_WOLF_ACTION: () => <Skull size={14} />,
+    NIGHT_GUARD_ACTION: () => <Shield size={14} />,
+    NIGHT_MUTE_ACTION: () => <Ear size={14} />,
+    NIGHT_WITCH_ACTION: () => <Drop size={14} />,
+    NIGHT_DREAM_ACTION: () => <Eye size={14} />,
+    HUNTER_SHOOT: () => <Crosshair size={14} />,
+    DAY_SPEECH: () => <SpeechIcon size={14} />,
+    DAY_BADGE_SIGNUP: () => <Users size={14} />,
+    DAY_BADGE_ELECTION: () => <Users size={14} />,
+    DAY_VOTE: () => <Users size={14} />,
+    // 其餘階段沿用原本 default 的行為：依 visualIsNight 顯示通用夜／晝圖示
+    LOBBY: genericPhaseIcon,
+    SETUP: genericPhaseIcon,
+    NIGHT_START: genericPhaseIcon,
+    NIGHT_RESOLVE: genericPhaseIcon,
+    DAY_START: genericPhaseIcon,
+    DAY_BADGE_SPEECH: genericPhaseIcon,
+    DAY_PK_SPEECH: genericPhaseIcon,
+    DAY_LAST_WORDS: genericPhaseIcon,
+    DAY_RESOLVE: genericPhaseIcon,
+    BADGE_TRANSFER: genericPhaseIcon,
+    SELF_DESTRUCT: genericPhaseIcon,
+    KNIGHT_DUEL: genericPhaseIcon,
+    GAME_END: genericPhaseIcon,
   };
+
+  const renderPhaseIcon = () => PHASE_ICON[gameState.phase]();
 
   // ============ 渲染 ==========
 

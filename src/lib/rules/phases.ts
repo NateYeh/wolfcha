@@ -113,7 +113,47 @@ export const ACTION_PHASES: readonly Phase[] = [
 ];
 
 export const isNightPhase = (phase: Phase): boolean => PHASE_KIND[phase] === "night";
-
 export const isDayPhase = (phase: Phase): boolean => PHASE_KIND[phase] === "day";
 
 export const isSpeechPhase = (phase: Phase): boolean => SPEECH_PHASES.includes(phase);
+
+/**
+ * 這個階段的行動者 prompt 是否必須帶「當天已公開的證據」（發言、票型、已公開死訊）。
+ *
+ * 這是證據矩陣（`context-regressions.test.ts`）的來源。矩陣過去是手寫清單，
+ * `KNIGHT_DUEL` 上線時漏補，而違反 AGENTS.md「新增階段必須加入證據矩陣」的規定卻沒有守衛
+ * 把得到。改成 `Record<Phase, …>` 後，新增階段時 tsc 會逼你決定要不要進矩陣。
+ *
+ * 註：夜晚階段由 `factual-context.test.ts`／`night-dream-flow.test.ts` 另外覆蓋，
+ * 這裡標 false 代表「不由這份矩陣斷言」，不代表夜晚 prompt 不需要公開事實。
+ */
+export const PROMPT_NEEDS_PUBLIC_EVIDENCE: Record<Phase, boolean> = {
+  LOBBY: false,
+  SETUP: false,
+
+  NIGHT_START: false,
+  NIGHT_GUARD_ACTION: false,
+  NIGHT_MUTE_ACTION: false,
+  NIGHT_DREAM_ACTION: false,
+  NIGHT_WOLF_ACTION: false,
+  NIGHT_WITCH_ACTION: false,
+  NIGHT_SEER_ACTION: false,
+  NIGHT_RESOLVE: false,
+
+  DAY_START: false,
+  DAY_BADGE_SIGNUP: true,
+  DAY_BADGE_SPEECH: false,
+  DAY_BADGE_ELECTION: true,
+  DAY_PK_SPEECH: true,
+  DAY_SPEECH: true,
+  DAY_LAST_WORDS: true,
+  DAY_VOTE: true,
+  DAY_RESOLVE: false,
+
+  BADGE_TRANSFER: true,
+  HUNTER_SHOOT: true,
+  SELF_DESTRUCT: true,
+  KNIGHT_DUEL: true,
+
+  GAME_END: false,
+};

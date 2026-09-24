@@ -5,6 +5,7 @@ import {
   NIGHT_ACTION_ORDER,
   PHASE_KIND,
   PHASE_SEQUENCE,
+  PROMPT_NEEDS_PUBLIC_EVIDENCE,
   SPEECH_PHASES,
   isDayPhase,
   isNightPhase,
@@ -77,4 +78,20 @@ test("isNightPhase／isDayPhase／isSpeechPhase 與 PHASE_KIND 一致", () => {
     assert.equal(isDayPhase(phase), PHASE_KIND[phase] === "day", `${phase} 白天判斷不一致`);
     assert.equal(isSpeechPhase(phase), SPEECH_PHASES.includes(phase), `${phase} 發言判斷不一致`);
   }
+});
+
+test("證據矩陣名單由權威表衍生，且等於已確認的十個決策階段", () => {
+  const matrix = PHASE_SEQUENCE.filter((phase) => PROMPT_NEEDS_PUBLIC_EVIDENCE[phase]);
+  assert.deepEqual([...matrix].sort(), [
+    "BADGE_TRANSFER",
+    "DAY_BADGE_ELECTION",
+    "DAY_BADGE_SIGNUP",
+    "DAY_LAST_WORDS",
+    "DAY_PK_SPEECH",
+    "DAY_SPEECH",
+    "DAY_VOTE",
+    "HUNTER_SHOOT",
+    "KNIGHT_DUEL",
+    "SELF_DESTRUCT",
+  ]);
 });

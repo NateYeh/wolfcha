@@ -4,6 +4,7 @@ import { createSinglePlayerContextAuditState } from "../../../scripts/single-pla
 import { setLocale } from "@/i18n/locale-store";
 import { buildGameContext, buildPastDaysTranscript, buildTodayTranscript } from "@/lib/prompt-utils";
 import { recordVoteRound } from "@/lib/vote-rounds";
+import { PHASE_SEQUENCE, PROMPT_NEEDS_PUBLIC_EVIDENCE } from "@/lib/rules/phases";
 import type { GameState, Phase, Role } from "@/types/game";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
@@ -68,7 +69,7 @@ test("夜間行動帶 reason：四職業 prompt 要求一句話理由，jsonForm
   assert.match(witchPrompt.user, antiCopyRule);
 });
 
-const decisions: Phase[] = ["DAY_BADGE_SIGNUP", "DAY_BADGE_ELECTION", "BADGE_TRANSFER", "DAY_VOTE", "HUNTER_SHOOT", "SELF_DESTRUCT", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"];
+const decisions: Phase[] = PHASE_SEQUENCE.filter((phase) => PROMPT_NEEDS_PUBLIC_EVIDENCE[phase]);
 for (const phase of decisions) {
   test(`阶段矩阵：${phase} 必须包含已公开的当天证据`, async () => {
     await import("@/lib/game-master");

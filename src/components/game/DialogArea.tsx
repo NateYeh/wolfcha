@@ -107,7 +107,9 @@ const PHASE_ROLE: Record<Phase, (humanRole?: string) => string | null> = {
   DAY_RESOLVE: () => null,
   BADGE_TRANSFER: () => null,
   HUNTER_SHOOT: () => 'Hunter',
-  SELF_DESTRUCT: () => 'WhiteWolfKing',
+  // 自爆只有狼陣營能做，因此依行動者角色決定立繪（一般狼過去看不到自己的狼人立繪，
+  // 一律顯示白狼王）
+  SELF_DESTRUCT: (humanRole) => (humanRole === 'WhiteWolfKing' ? 'WhiteWolfKing' : 'Werewolf'),
   KNIGHT_DUEL: () => null,
   GAME_END: () => null,
 };
