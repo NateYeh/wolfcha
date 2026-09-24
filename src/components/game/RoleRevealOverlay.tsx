@@ -138,6 +138,16 @@ function getRoleMeta(role: Player["role"], t: ReturnType<typeof useTranslations>
         abilities: t.raw("roleReveal.roles.idiot.abilities"),
         tips: t.raw("roleReveal.roles.idiot.tips"),
       };
+    case "WolfBeauty":
+      return {
+        title: t("roleReveal.roles.wolfBeauty.title"),
+        subtitle: t("roleReveal.roles.wolfBeauty.subtitle"),
+        color: "var(--color-wolf)",
+        bg: "var(--color-wolf-bg)",
+        Icon: WhiteWolfKingIcon,
+        abilities: t.raw("roleReveal.roles.wolfBeauty.abilities"),
+        tips: t.raw("roleReveal.roles.wolfBeauty.tips"),
+      };
     case "WhiteWolfKing":
       return {
         title: t("roleReveal.roles.whiteWolfKing.title"),
@@ -184,6 +194,8 @@ function getNextStepText(role: Player["role"], phase: Phase, t: ReturnType<typeo
         return t("roleReveal.nextStep.muteElder");
       case "Dreamweaver":
         return t("roleReveal.nextStep.dreamweaver");
+      case "WolfBeauty":
+        return t("roleReveal.nextStep.wolfBeauty");
       case "WolfKing":
         return t("roleReveal.nextStep.wolfKing");
       default:

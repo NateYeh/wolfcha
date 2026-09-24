@@ -85,6 +85,7 @@ const PHASE_ROLE: Record<Phase, (humanRole?: string) => string | null> = {
   NIGHT_GUARD_ACTION: () => 'Guard',
   NIGHT_MUTE_ACTION: () => null,
   NIGHT_DREAM_ACTION: () => null,
+  NIGHT_WOLF_BEAUTY_ACTION: () => 'WolfBeauty',
   NIGHT_WOLF_ACTION: (humanRole) => (humanRole === 'WhiteWolfKing' ? 'WhiteWolfKing' : 'Werewolf'),
   NIGHT_WITCH_ACTION: () => 'Witch',
   NIGHT_SEER_ACTION: () => 'Seer',

@@ -3,6 +3,7 @@ import { isWolfRole } from "@/types/game";
 import { NIGHT_ACTION_ORDER, type NightActionPhase } from "./phases";
 import { getMuteEligibleSeats } from "./mute";
 import { getDreamEligibleSeats } from "./dream";
+import { getWolfBeautyEligibleSeats } from "./charm";
 
 /**
  * 一夜的推進（單一真相）。
@@ -38,6 +39,20 @@ export type NightStep = {
 export const guardDecided = (state: GameState): boolean => {
   const guard = state.players.find((p) => p.role === "Guard" && p.alive);
   return !guard || state.nightActions.guardTarget !== undefined;
+};
+
+/**
+ * 狼美人的決定是否已完成。
+ *
+ * 除了已指定魅惑對象，也要涵蓋「沒有合法目標可選」的退化情況（例如只剩她自己存活）。
+ */
+export const wolfBeautyDecided = (state: GameState): boolean => {
+  const beauty = state.players.find((p) => p.role === "WolfBeauty" && p.alive);
+  if (!beauty) return true;
+  return (
+    state.nightActions.wolfBeautyTarget !== undefined ||
+    getWolfBeautyEligibleSeats(state, beauty.seat).length === 0
+  );
 };
 
 /**
@@ -112,6 +127,11 @@ export const NIGHT_STEP: Record<NightActionPhase, NightStep> = {
     phase: "NIGHT_WOLF_ACTION",
     actor: { kind: "wolfTeam" },
     decided: wolfDecided,
+  },
+  NIGHT_WOLF_BEAUTY_ACTION: {
+    phase: "NIGHT_WOLF_BEAUTY_ACTION",
+    actor: { kind: "role", role: "WolfBeauty" },
+    decided: wolfBeautyDecided,
   },
   NIGHT_WITCH_ACTION: {
     phase: "NIGHT_WITCH_ACTION",

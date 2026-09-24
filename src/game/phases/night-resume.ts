@@ -31,6 +31,7 @@ export type NightResumeCommand =
   | "CONTINUE_NIGHT_AFTER_MUTE"
   | "CONTINUE_NIGHT_AFTER_DREAM"
   | "CONTINUE_NIGHT_AFTER_WOLF"
+  | "CONTINUE_NIGHT_AFTER_WOLF_BEAUTY"
   | "CONTINUE_NIGHT_AFTER_WITCH";
 
 /** 停在一個夜間階段時該做的事。 */
@@ -50,6 +51,7 @@ const ADVANCE_PLAN: Record<NightActionPhase, NightResumePlan> = {
   NIGHT_MUTE_ACTION: { kind: "advance", command: "CONTINUE_NIGHT_AFTER_MUTE" },
   NIGHT_DREAM_ACTION: { kind: "advance", command: "CONTINUE_NIGHT_AFTER_DREAM" },
   NIGHT_WOLF_ACTION: { kind: "advance", command: "CONTINUE_NIGHT_AFTER_WOLF" },
+  NIGHT_WOLF_BEAUTY_ACTION: { kind: "advance", command: "CONTINUE_NIGHT_AFTER_WOLF_BEAUTY" },
   NIGHT_WITCH_ACTION: { kind: "advance", command: "CONTINUE_NIGHT_AFTER_WITCH" },
   NIGHT_SEER_ACTION: { kind: "resolve" },
 };
@@ -77,6 +79,8 @@ const REPLAY_COMMAND: Record<NightActionPhase, NightResumeCommand> = {
   NIGHT_MUTE_ACTION: "START_NIGHT",
   NIGHT_DREAM_ACTION: "START_NIGHT",
   NIGHT_WOLF_ACTION: "CONTINUE_NIGHT_AFTER_GUARD",
+  // 重播魅惑這一步：前面每一步都可能還沒做完，所以從最前面的 START_NIGHT 重跑
+  NIGHT_WOLF_BEAUTY_ACTION: "START_NIGHT",
   NIGHT_WITCH_ACTION: "CONTINUE_NIGHT_AFTER_WOLF",
   NIGHT_SEER_ACTION: "CONTINUE_NIGHT_AFTER_WITCH",
 };

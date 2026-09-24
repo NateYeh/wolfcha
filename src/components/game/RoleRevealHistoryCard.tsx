@@ -58,6 +58,7 @@ const ROLE_META: Record<Role, { Icon: ComponentType<{ size?: number; className?:
   MuteElder: { Icon: MuteElderIcon, color: "var(--color-seer)", bg: "var(--color-seer-bg)" },
   Dreamweaver: { Icon: DreamweaverIcon, color: "var(--color-seer)", bg: "var(--color-seer-bg)" },
   WolfKing: { Icon: WolfKingIcon, color: "var(--color-wolf)", bg: "var(--color-wolf-bg)" },
+  WolfBeauty: { Icon: WerewolfIcon, color: "var(--color-wolf)", bg: "var(--color-wolf-bg)" },
   Villager: { Icon: VillagerIcon, color: "var(--color-villager)", bg: "var(--color-villager-bg)" },
 };
 
@@ -80,6 +81,7 @@ export function RoleRevealHistoryCard({
     Knight: t("roles.knight"),
     MuteElder: t("roles.muteElder"),
     Dreamweaver: t("roles.dreamweaver"),
+    WolfBeauty: t("roles.wolfBeauty"),
     WolfKing: t("roles.wolfKing"),
     Villager: t("roles.villager"),
   };

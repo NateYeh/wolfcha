@@ -1080,10 +1080,12 @@ function GlobalTab({
     return p ? formatPlayerLabel(p) : t("devConsole.seatOnly", { seat: seat + 1 });
   };
 
-  const getDeathReasonLabel = (reason: "wolf" | "poison" | "milk" | "dream" | "dream") => {
+  // 死因標籤；`charm`＝狼美人出局的殉情，與狼刀／毒／夢死分開顯示。
+  const getDeathReasonLabel = (reason: "wolf" | "poison" | "milk" | "dream" | "charm") => {
     if (reason === "wolf") return t("devConsole.deathReason.wolf");
     if (reason === "poison") return t("devConsole.deathReason.poison");
     if (reason === "dream") return t("devConsole.deathReason.dream");
+    if (reason === "charm") return t("devConsole.deathReason.charm");
     return t("devConsole.deathReason.milk");
   };
 

@@ -59,6 +59,7 @@ const ROLE_ALIGNMENT: Record<Role, Alignment> = {
   MuteElder: "village",
   Dreamweaver: "village",
   WolfKing: "wolf",
+  WolfBeauty: "wolf",
   Villager: "village",
 };
 

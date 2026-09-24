@@ -16,6 +16,7 @@ import { getRoleCapabilities } from "@/lib/rules/roles";
 import { hasAlreadyDueled } from "@/lib/rules/knight-duel";
 import { isValidMuteTarget } from "@/lib/rules/mute";
 import { isValidDreamTarget } from "@/lib/rules/dream";
+import { getWolfKnifeEligibleSeats, isValidWolfBeautyTarget } from "@/lib/rules/charm";
 import { isPendingDeath } from "@/lib/rules/night-deaths";
 import { hasAlreadyBoomed } from "@/lib/rules/self-destruct";
 import { PHASE_SEQUENCE } from "@/lib/rules/phases";
@@ -497,6 +498,21 @@ export const PHASE_CONFIGS: Record<Phase, PhaseConfig> = {
     },
     actionType: "night_action",
   },
+  NIGHT_WOLF_BEAUTY_ACTION: {
+    phase: "NIGHT_WOLF_BEAUTY_ACTION",
+    description: "phase.nightWolfBeauty.description",
+    humanDescription: () => {
+      const { t } = getI18n();
+      return t("phase.nightWolfBeauty.human");
+    },
+    // 真人狼美人：選一名存活玩家魅惑（不能選自己、不能選死訊未公布的死者）
+    requiresHumanInput: (hp) => (hp?.alive && hp?.role === "WolfBeauty") || false,
+    canSelectPlayer: (hp, target, gs) => {
+      if (!hp || hp.role !== "WolfBeauty") return false;
+      return isValidWolfBeautyTarget(gs, hp.seat, target.seat);
+    },
+    actionType: "night_action",
+  },
   NIGHT_DREAM_ACTION: {
     phase: "NIGHT_DREAM_ACTION",
     description: "phase.nightDream.description",
@@ -520,10 +536,10 @@ export const PHASE_CONFIGS: Record<Phase, PhaseConfig> = {
       return hp ? isWolfRole(hp.role) ? t("phase.nightWolf.human") : t("phase.nightWolf.description") : t("phase.nightWolf.description");
     },
     requiresHumanInput: (hp) => hp?.alive && isWolfRole(hp?.role ?? "Villager") || false,
-    canSelectPlayer: (hp, target) => {
+    canSelectPlayer: (hp, target, state) => {
       if (!hp || !isWolfRole(hp.role) || !target.alive) return false;
-      // 狼人可以刀任何存活玩家（包括队友和自己）
-      return true;
+      // 狼人可以刀任何存活玩家（包括队友和自己），但不能刀狼美人（官方規則：不能自刀）
+      return getWolfKnifeEligibleSeats(state).includes(target.seat);
     },
     actionType: "night_action",
   },
@@ -885,7 +901,9 @@ export const VALID_TRANSITIONS: Record<Phase, Phase[]> = {
   NIGHT_GUARD_ACTION: ["NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "NIGHT_WOLF_ACTION"],
   NIGHT_MUTE_ACTION: ["NIGHT_DREAM_ACTION", "NIGHT_WOLF_ACTION"],
   NIGHT_DREAM_ACTION: ["NIGHT_WOLF_ACTION"],
-  NIGHT_WOLF_ACTION: ["NIGHT_WITCH_ACTION"],
+  // 沒有狼美人的盤：狼刀之後直接進女巫（與禁言長老／攝夢人同樣會整步略過）
+  NIGHT_WOLF_ACTION: ["NIGHT_WOLF_BEAUTY_ACTION", "NIGHT_WITCH_ACTION"],
+  NIGHT_WOLF_BEAUTY_ACTION: ["NIGHT_WITCH_ACTION"],
   NIGHT_WITCH_ACTION: ["NIGHT_SEER_ACTION"],
   NIGHT_SEER_ACTION: ["NIGHT_RESOLVE"],
   NIGHT_RESOLVE: ["DAY_START", "HUNTER_SHOOT", "BADGE_TRANSFER", "GAME_END"],

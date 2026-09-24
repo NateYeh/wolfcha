@@ -83,11 +83,16 @@ export function getRoleName(role: string): string {
       return t("roles.knight");
     case "MuteElder":
       return t("roles.muteElder");
+    case "WolfBeauty":
+      return getI18n().t("roles.wolfBeauty");
     case "Dreamweaver":
       return t("roles.dreamweaver");
     case "WolfKing":
       return t("roles.wolfKing");
+    case "Villager":
+      return t("roles.villager");
     default:
+      // 未知角色（理論上到不了）：退回村民名稱，但這條現在只兜「真的不認識的角色」
       return t("roles.villager");
   }
 }

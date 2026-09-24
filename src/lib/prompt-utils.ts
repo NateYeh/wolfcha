@@ -43,6 +43,8 @@ export const getRoleText = (role: string) => {
       return t("promptUtils.roleText.muteElder");
     case "Dreamweaver":
       return t("promptUtils.roleText.dreamweaver");
+    case "WolfBeauty":
+      return t("promptUtils.roleText.wolfBeauty");
     case "WolfKing":
       return t("promptUtils.roleText.wolfKing");
     default:
@@ -103,6 +105,8 @@ export const getStrategyGuide = (
     section("knight", has("Knight")),
     section("mute", has("MuteElder")),
     section("dream", has("Dreamweaver")),
+    // 狼美人的魅惑：只有她在場時才進 prompt
+    section("wolfBeauty", has("WolfBeauty")),
     // 狼隊：狼一定在場
     section("wolfTeam"),
     section("wolfBoomWhiteWolfKing", has("WhiteWolfKing")),

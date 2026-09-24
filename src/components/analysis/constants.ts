@@ -11,6 +11,7 @@ export const ROLE_ICONS: Record<Role, string> = {
   Knight: "/roles/guard.png",
   MuteElder: "/roles/guard.png",
   Dreamweaver: "/roles/guard.png",
+  WolfBeauty: "/roles/white-wolf-king.png",
   WolfKing: "/roles/white-wolf-king.png",
   Villager: "/roles/guard.png",
 };
@@ -26,6 +27,7 @@ export const ROLE_NAMES: Record<Role, string> = {
   Knight: "骑士",
   MuteElder: "禁言长老",
   Dreamweaver: "摄梦人",
+  WolfBeauty: "狼美人",
   WolfKing: "狼王",
   Villager: "平民",
 };
@@ -42,6 +44,7 @@ export const ROLE_SHORT: Record<Role, string> = {
   MuteElder: "禁",
   Dreamweaver: "摄",
   WolfKing: "狼王",
+  WolfBeauty: "美",
   Villager: "民",
 };
 

@@ -30,6 +30,7 @@ export interface BoardPreset {
 export const ALL_ROLE_KEYS: Role[] = [
   "Werewolf",
   "WhiteWolfKing",
+  "WolfBeauty",
   "WolfKing",
   "Seer",
   "Witch",
@@ -268,6 +269,26 @@ export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
   {
     // 來源：werewolves.games 的「四狼八獵」（特殊機制 · 全員槍口）。
     // 八個獵人＝八把槍，槍打槍會互相觸發（見 death-skills 的 getChainedShooter）。
+    id: "official-12-wolf-beauty-knight",
+    playerCount: 12,
+    roles: [
+      "Werewolf",
+      "Werewolf",
+      "Werewolf",
+      "WolfBeauty",
+      "Seer",
+      "Witch",
+      "Guard",
+      "Knight",
+      "Villager",
+      "Villager",
+      "Villager",
+      "Villager",
+    ],
+    official: true,
+    tags: ["狼美騎士", "12人"],
+  },
+  {
     id: "official-12-eight-hunters",
     playerCount: 12,
     roles: [

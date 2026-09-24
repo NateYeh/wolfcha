@@ -26,7 +26,7 @@ const ROLES: Role[] = [
   "MuteElder",
   "Dreamweaver",
   "Werewolf",
-  "Werewolf",
+  "WolfBeauty",
   "Witch",
   "Seer",
   "Villager",
@@ -45,8 +45,21 @@ const BEFORE: Record<NightActionPhase, GameState["nightActions"]> = {
   NIGHT_MUTE_ACTION: { guardTarget: 5 },
   NIGHT_DREAM_ACTION: { guardTarget: 5, mutedTarget: 6 },
   NIGHT_WOLF_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7 },
-  NIGHT_WITCH_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7, wolfTarget: 0 },
-  NIGHT_SEER_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7, wolfTarget: 0 },
+  NIGHT_WOLF_BEAUTY_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7, wolfTarget: 0 },
+  NIGHT_WITCH_ACTION: {
+    guardTarget: 5,
+    mutedTarget: 6,
+    dreamTarget: 7,
+    wolfTarget: 0,
+    wolfBeautyTarget: 0,
+  },
+  NIGHT_SEER_ACTION: {
+    guardTarget: 5,
+    mutedTarget: 6,
+    dreamTarget: 7,
+    wolfTarget: 0,
+    wolfBeautyTarget: 0,
+  },
 };
 
 type FetchBody = { messages: Array<{ role: string; content: unknown }> };
@@ -140,6 +153,7 @@ const DECISION: Record<NightActionPhase, (state: GameState) => unknown> = {
   NIGHT_MUTE_ACTION: (s) => s.nightActions.mutedTarget,
   NIGHT_DREAM_ACTION: (s) => s.nightActions.dreamTarget,
   NIGHT_WOLF_ACTION: (s) => s.nightActions.wolfTarget,
+  NIGHT_WOLF_BEAUTY_ACTION: (s) => s.nightActions.wolfBeautyTarget,
   // 女巫的答案刻意選「毒殺」（真的會落盤的決定）；「不動作」不會寫任何欄位
   NIGHT_WITCH_ACTION: (s) => s.nightActions.witchPoison,
   NIGHT_SEER_ACTION: (s) => s.nightActions.seerTarget,

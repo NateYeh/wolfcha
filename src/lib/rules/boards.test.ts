@@ -152,6 +152,31 @@ test("版型註冊表：八獵四狼＝獵人×8＋狼人×4（來源站特殊�
   });
 });
 
+test("版型註冊表：狼美騎士＝狼人×3＋狼美人＋預女守騎＋4 平民（B 級首個新版型）", () => {
+  const board = getBoardById("official-12-wolf-beauty-knight");
+  assert.ok(board, "應收錄狼美騎士版型");
+  assert.equal(board.official, true);
+  assert.equal(board.playerCount, 12);
+  assert.deepEqual(countBoardRolesOf(board), {
+    byCamp: { wolf: 4, god: 4, villager: 4 },
+    byRole: {
+      Werewolf: 3,
+      WolfBeauty: 1,
+      Seer: 1,
+      Witch: 1,
+      Guard: 1,
+      Knight: 1,
+      Villager: 4,
+    },
+    total: 12,
+  });
+  // 狼美人算狼隊（屠邊與查驗都看 isWolfRole）
+  assert.equal(isWolfRole("WolfBeauty"), true);
+  const { errors, warnings } = validateBoardPreset(board);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(warnings, []);
+});
+
 test("版型註冊表：預女守白＝預言家/女巫/守衛/白痴＋4 平民＋4 小狼（首個沒有獵人的 12 人版）", () => {
   const board = getBoardById("official-12-seer-witch-guard-idiot");
   assert.ok(board, "應收錄預女守白版型");
@@ -171,12 +196,13 @@ test("版型註冊表：預女守白＝預言家/女巫/守衛/白痴＋4 平民
   assert.deepEqual(warnings, []);
 });
 
-test("版型註冊表：八個 12 人版型的陣營統計與預設版型", () => {
+test("版型註冊表：九個 12 人版型的陣營統計與預設版型", () => {
   const twelve = getBoardsByPlayerCount(12).map((board) => board.id);
   // 不鎖 UI 排列順序，只確認這幾個版型都在（順序由選單自己決定）
   assert.deepEqual([...twelve].sort(), [
     "official-12-classic",
     "official-12-eight-hunters",
+    "official-12-wolf-beauty-knight",
     "official-12-seer-witch-guard-idiot",
     "official-12-seer-witch-hunter-idiot",
     "official-12-seer-witch-hunter-mute",
@@ -402,7 +428,8 @@ test("角色能力表：守衛可空守、女巫不可自救（目標規則）",
 });
 
 test("角色能力表：未知角色退回平民能力，不拋錯", () => {
-  const fallback = getRoleCapabilities("WolfBeauty");
+  // 這裡刻意用**還沒實作**的角色（狼美人已實作，改用它會測不到 fallback）
+  const fallback = getRoleCapabilities("Magician");
   assert.equal(fallback.role, "Villager");
   assert.equal(fallback.camp, "villager");
   assert.equal(fallback.canBoom, false);

@@ -22,7 +22,7 @@ const BOARD_12_WITH_ALL_NIGHT_ROLES: Role[] = [
   "Werewolf",
   "Witch",
   "Seer",
-  "Villager",
+  "WolfBeauty",
   "Villager",
   "Villager",
   "Villager",
@@ -59,6 +59,7 @@ const DECIDED_ACTIONS: Record<NightActionPhase, GameState["nightActions"]> = {
   NIGHT_MUTE_ACTION: { mutedTarget: 5 },
   NIGHT_DREAM_ACTION: { dreamTarget: 5 },
   NIGHT_WOLF_ACTION: { wolfTarget: 5 },
+  NIGHT_WOLF_BEAUTY_ACTION: { wolfBeautyTarget: 5 },
   NIGHT_WITCH_ACTION: { witchSave: false },
   NIGHT_SEER_ACTION: { seerTarget: 5 },
 };
@@ -69,6 +70,7 @@ const ADVANCE_COMMANDS: Record<NightActionPhase, NightResumeCommand> = {
   NIGHT_MUTE_ACTION: "CONTINUE_NIGHT_AFTER_MUTE",
   NIGHT_DREAM_ACTION: "CONTINUE_NIGHT_AFTER_DREAM",
   NIGHT_WOLF_ACTION: "CONTINUE_NIGHT_AFTER_WOLF",
+  NIGHT_WOLF_BEAUTY_ACTION: "CONTINUE_NIGHT_AFTER_WOLF_BEAUTY",
   NIGHT_WITCH_ACTION: "CONTINUE_NIGHT_AFTER_WITCH",
   NIGHT_SEER_ACTION: "CONTINUE_NIGHT_AFTER_WITCH",
 };
@@ -103,6 +105,8 @@ test("AI 未決定：從這一步重跑（指令見 REPLAY_COMMAND 的逐項理�
     NIGHT_MUTE_ACTION: "START_NIGHT",
     NIGHT_DREAM_ACTION: "START_NIGHT",
     NIGHT_WOLF_ACTION: "CONTINUE_NIGHT_AFTER_GUARD",
+    // 魅惑這一步前面每一步都可能還沒做完（狼刀在前、守／禁／夢更前），所以從最前面重跑
+    NIGHT_WOLF_BEAUTY_ACTION: "START_NIGHT",
     NIGHT_WITCH_ACTION: "CONTINUE_NIGHT_AFTER_WOLF",
     NIGHT_SEER_ACTION: "CONTINUE_NIGHT_AFTER_WITCH",
   };
@@ -123,6 +127,7 @@ const ACTOR_SEAT: Record<NightActionPhase, number> = {
   NIGHT_MUTE_ACTION: 1,
   NIGHT_DREAM_ACTION: 2,
   NIGHT_WOLF_ACTION: 3,
+  NIGHT_WOLF_BEAUTY_ACTION: 6,
   NIGHT_WITCH_ACTION: 4,
   NIGHT_SEER_ACTION: 5,
 };

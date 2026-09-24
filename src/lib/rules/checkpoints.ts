@@ -1,5 +1,6 @@
 import type { GameState, Phase } from "@/types/game";
 import {
+  wolfBeautyDecided,
   dreamDecided,
   guardDecided,
   muteDecided,
@@ -48,6 +49,8 @@ export const CHECKPOINT_SAFE: Record<Phase, (state: GameState) => boolean> = {
   NIGHT_MUTE_ACTION: muteDecided,
   NIGHT_DREAM_ACTION: dreamDecided,
   NIGHT_WOLF_ACTION: wolfDecided,
+  // 狼美人與前面幾步同一條規則：決定了就能存檔
+  NIGHT_WOLF_BEAUTY_ACTION: wolfBeautyDecided,
   NIGHT_WITCH_ACTION: witchDecided,
   NIGHT_SEER_ACTION: seerDecided,
   // 夜晚結算階段很快會進 DAY_START，為安全起見不在這裡保存
@@ -99,6 +102,12 @@ export const RESTORE_FALLBACK: Record<Phase, (state: GameState) => Phase> = {
     return guardDecided(state) ? "NIGHT_GUARD_ACTION" : "NIGHT_START";
   },
   NIGHT_WOLF_ACTION: (state) => (guardDecided(state) ? "NIGHT_GUARD_ACTION" : "NIGHT_START"),
+  // 魅惑沒決定時，退回上一個「決定了就穩定」的夜間階段
+  NIGHT_WOLF_BEAUTY_ACTION: (state) => {
+    if (wolfDecided(state)) return "NIGHT_WOLF_ACTION";
+    if (dreamDecided(state)) return "NIGHT_DREAM_ACTION";
+    return guardDecided(state) ? "NIGHT_GUARD_ACTION" : "NIGHT_START";
+  },
   NIGHT_WITCH_ACTION: (state) =>
     // 這裡刻意直接看欄位（不用 wolfDecided）：沒有存活狼人時 wolfTarget 仍是 undefined，
     // 回退到 NIGHT_START 與原本行為一致，而該階段的續跑會自行判斷狼人是否存在。

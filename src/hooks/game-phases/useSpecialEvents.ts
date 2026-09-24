@@ -22,6 +22,7 @@ import { gameSessionTracker } from "@/lib/game-session-tracker";
 import { addPlayerMessage, generateGameEndRemark } from "@/lib/game-master";
 import { getPendingLastWordsSeats } from "@/lib/rules/last-words";
 import { resolveNightDeaths } from "@/lib/rules/night-resolution";
+import { applyCharmRevenge } from "@/lib/rules/charm";
 
 export interface SpecialEventsCallbacks {
   setDialogue: (speaker: string, text: string, isStreaming?: boolean) => void;
@@ -176,6 +177,18 @@ export function useSpecialEvents(
 
     if (targetSeat !== null) {
       currentState = killPlayer(currentState, targetSeat);
+      // 槍口打到狼美人時，被魅惑者一并殉情（騎士決鬥以外的出局都要發動）。
+      const revenge = applyCharmRevenge(currentState, targetSeat, "carried");
+      if (revenge.victimSeat !== null) {
+        currentState = revenge.state;
+        currentState = addSystemMessage(
+          currentState,
+          texts.systemMessages.charmRevenge(
+            revenge.victimSeat + 1,
+            currentState.players.find((p) => p.seat === revenge.victimSeat)?.displayName ?? ""
+          )
+        );
+      }
       const target = currentState.players.find((p) => p.seat === targetSeat);
       if (target) {
         currentState = addSystemMessage(
@@ -259,7 +272,12 @@ export function useSpecialEvents(
     const dreamerSeat = currentState.players.find((player) => player.role === "Dreamweaver" && player.alive)?.seat;
 
     // 夜間結算（狼刀／守護／解藥／毒藥／攝夢）走單一真相：rules/night-resolution。
-    const { wolfTarget, guardTarget, witchSave, witchPoison, dreamTarget } = currentState.nightActions;
+    const { wolfTarget, guardTarget, witchSave, witchPoison, dreamTarget, wolfBeautyTarget } =
+      currentState.nightActions;
+    // 狼美人座位：「狼美人夜間出局 → 被魅惑者殉情」的判定依據。
+    const wolfBeautySeat = currentState.players.find(
+      (player) => player.role === "WolfBeauty" && player.alive
+    )?.seat;
     // 「前一天晚上」的夢游者：同一座位連續兩晚被攝 → 隔夜出局。
     const previousDreamTarget = currentState.nightHistory?.[currentState.day - 1]?.dreamTarget;
     const { deaths: nightDeaths, wolfKillSuccessful, wolfVictimSeat, poisonVictimSeat, dreamVictimSeat } =
@@ -271,6 +289,8 @@ export function useSpecialEvents(
         dreamTarget,
         dreamerSeat,
         previousDreamTarget,
+        wolfBeautyTarget,
+        wolfBeautySeat,
       });
 
     // 遺言規則：只有第一夜死者有遺言（無論幾個、無論死因）。先入列，
@@ -308,6 +328,7 @@ export function useSpecialEvents(
           seerTarget: currentState.nightActions.seerTarget,
           seerResult: currentState.nightActions.seerResult,
           dreamTarget: currentState.nightActions.dreamTarget,
+          wolfBeautyTarget: currentState.nightActions.wolfBeautyTarget,
           deaths: nightDeaths,
           resultsAnnounced: false,
           // 本人的私有決策理由：賽中不公開，只備賽後感言引用。
@@ -317,6 +338,7 @@ export function useSpecialEvents(
           witchPoisonReason: currentState.nightActions.witchPoisonReason,
           seerReason: currentState.nightActions.seerReason,
           dreamReason: currentState.nightActions.dreamReason,
+          wolfBeautyReason: currentState.nightActions.wolfBeautyReason,
         },
       },
     };

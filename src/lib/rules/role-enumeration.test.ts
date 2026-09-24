@@ -66,8 +66,10 @@ test("原始碼中的角色列舉必須涵蓋所有角色", () => {
 
   for (const file of walk(root)) {
     const source = fs.readFileSync(file, "utf8");
-    // 只檢查「角色鍵」出現的檔案（對照表／switch），避免誤判一般字串
-    if (!/Idiot:/.test(source)) continue;
+    // 只檢查「角色鍵」出現的檔案（對照表／switch），避免誤判一般字串。
+    // 兩種寫法都要涵蓋：物件鍵 `Idiot: …` 與 switch 分支 `case "Idiot":`——
+    // 後者常配 `default:` 兜底，漏接一個角色就會安靜顯示成村民（RoleRevealOverlay 曾漏掉狼美人）。
+    if (!/Idiot:|case "Idiot"/.test(source)) continue;
     const missing = ALL_ROLE_KEYS.filter((role) => !source.includes(role));
     if (missing.length > 0) {
       offenders.push(`${path.relative(process.cwd(), file)} 缺 ${missing.join(", ")}`);

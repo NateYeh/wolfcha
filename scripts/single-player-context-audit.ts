@@ -4,6 +4,7 @@ import path from "node:path";
 import type { AILogEntry } from "@/lib/ai-logger";
 import type { LLMMessage } from "@/lib/llm";
 import { getRoleConfiguration } from "@/lib/role-configuration";
+import { isWolfRole } from "@/types/game";
 import type { ChatMessage, GameState, Phase, Player, Role } from "@/types/game";
 
 const AUDIT_MODEL = "deepseek-v4-flash-0731";
@@ -91,7 +92,7 @@ const makePlayers = (): Player[] =>
     displayName: `审计玩家${seat + 1}`,
     alive: true,
     role,
-    alignment: role === "Werewolf" || role === "WhiteWolfKing" ? "wolf" : "village",
+    alignment: isWolfRole(role) ? "wolf" : "village",
     isHuman: false,
     agentProfile: {
       modelRef: { provider: "tokendance", model: AUDIT_MODEL },
@@ -315,7 +316,8 @@ const getExpectedPrivateTags = (role: Role): string[] => {
   if (role === "Seer") return ["<your_seer_checks>"];
   if (role === "Witch") return ["<your_potions>"];
   if (role === "Guard") return ["<your_guard_info>"];
-  if (role === "Werewolf" || role === "WhiteWolfKing") return ["<your_wolf_team>"];
+  // 狼陣營一律看 isWolfRole（狼王、狼美人過去會被漏掉，私有資訊就少了狼隊名單）
+  if (isWolfRole(role)) return ["<your_wolf_team>"];
   return [];
 };
 

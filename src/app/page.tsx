@@ -8,6 +8,7 @@ import {
   NotePencil,
   X,
   Eye,
+  Heart,
   Skull,
   Shield,
   Drop,
@@ -593,6 +594,8 @@ export default function Home() {
         return humanPlayer.role === "Guard" ? "guard" : undefined;
       case "NIGHT_DREAM_ACTION":
         return humanPlayer.role === "Dreamweaver" ? "seer" : undefined;
+      case "NIGHT_WOLF_BEAUTY_ACTION":
+        return humanPlayer.role === "WolfBeauty" ? "wolf" : undefined;
       case "NIGHT_WITCH_ACTION":
         return humanPlayer.role === "Witch" ? "witch" : undefined;
       case "HUNTER_SHOOT":
@@ -930,6 +933,8 @@ export default function Home() {
         return "Guard";
       case "NIGHT_DREAM_ACTION":
         return "Dreamweaver";
+      case "NIGHT_WOLF_BEAUTY_ACTION":
+        return "WolfBeauty";
       case "HUNTER_SHOOT":
         return getDeathShotKind(humanPlayer?.role ?? "Villager") !== "none" ? humanPlayer!.role : null;
       default:
@@ -1252,6 +1257,7 @@ export default function Home() {
     NIGHT_MUTE_ACTION: () => <Ear size={14} />,
     NIGHT_WITCH_ACTION: () => <Drop size={14} />,
     NIGHT_DREAM_ACTION: () => <Eye size={14} />,
+    NIGHT_WOLF_BEAUTY_ACTION: () => <Heart size={14} />,
     HUNTER_SHOOT: () => <Crosshair size={14} />,
     DAY_SPEECH: () => <SpeechIcon size={14} />,
     DAY_BADGE_SIGNUP: () => <Users size={14} />,

@@ -10,11 +10,14 @@ export type Role =
   | "MuteElder"
   | "Dreamweaver"
   | "WolfKing"
-  | "WhiteWolfKing";
+  | "WhiteWolfKing"
+  | "WolfBeauty";
 
 /** Check if a role belongs to the wolf team (used for seer checks, wolf actions, etc.) */
 export function isWolfRole(role: string | undefined): boolean {
-  return role === "Werewolf" || role === "WhiteWolfKing" || role === "WolfKing";
+  return (
+    role === "Werewolf" || role === "WhiteWolfKing" || role === "WolfKing" || role === "WolfBeauty"
+  );
 }
 
 export type DifficultyLevel = "easy" | "normal" | "hard";
@@ -52,6 +55,7 @@ export type Phase =
   | "NIGHT_MUTE_ACTION"    // 禁言长老指定明天要禁言的人
   | "NIGHT_DREAM_ACTION"   // 摄梦人指定今晚的梦游者
   | "NIGHT_WOLF_ACTION"    // 狼人出刀
+  | "NIGHT_WOLF_BEAUTY_ACTION" // 狼美人魅惑（狼刀之後、女巫之前）
   | "NIGHT_WITCH_ACTION"   // 女巫用药
   | "NIGHT_SEER_ACTION"    // 预言家查验
   | "NIGHT_RESOLVE"
@@ -299,7 +303,10 @@ export interface GameState {
       seerResult?: { targetSeat: number; isWolf: boolean };
       /** 攝夢人當晚的夢游者（免疫夜間傷害；連續兩晚被攝或攝夢人夜死連帶出局） */
       dreamTarget?: number;
-      deaths?: Array<{ seat: number; reason: "wolf" | "poison" | "milk" | "dream" }>;
+      /** 狼美人當晚魅惑的座位（她出局時被魅惑者隨之殉情） */
+      wolfBeautyTarget?: number;
+      wolfBeautyReason?: string;
+      deaths?: Array<{ seat: number; reason: "wolf" | "poison" | "milk" | "dream" | "charm" }>;
       hunterShot?: { hunterSeat: number; targetSeat: number; reason?: string };
       /** 夜間行動者本人寫下的決策理由；賽中從不公開，只供本人賽後感言引用。 */
       guardReason?: string;
@@ -367,6 +374,11 @@ export interface GameState {
     /** 攝夢人當晚的夢游者（免疫夜間傷害；連續兩晚被攝或攝夢人夜死則一并出局） */
     dreamTarget?: number;
     dreamReason?: string;
+    /** 狼美人當晚魅惑的座位（每晚必選一人，不能空過、不能選自己） */
+    wolfBeautyTarget?: number;
+    wolfBeautyReason?: string;
+    /** 前晚的魅惑對象（殉情判定的依據，進黑夜時沿用） */
+    lastWolfBeautyTarget?: number;
     /** 前晚的夢游者（連攝判定的依據，進黑夜時沿用） */
     lastDreamTarget?: number;
     lastGuardTarget?: number;    // 上一晚守卫保护的目标（不能连续保护同一人）

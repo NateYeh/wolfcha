@@ -6,6 +6,7 @@ import { bindIdentityAndRoleSetting, buildDecisionContext, buildGameContext, bui
 import {
   addSystemMessage,
   generateDreamAction,
+  generateWolfBeautyAction,
   generateGuardAction,
   generateMuteAction,
   generateSeerAction,
@@ -18,6 +19,12 @@ import {
 import { canWitchSave, getGuardEligibleSeats } from "@/lib/rules/actions";
 import { getMuteEligibleSeats, isValidMuteTarget } from "@/lib/rules/mute";
 import { getDreamEligibleSeats, isValidDreamTarget, pickRandomDreamTarget } from "@/lib/rules/dream";
+import {
+  getWolfBeautyEligibleSeats,
+  getWolfKnifeEligibleSeats,
+  isValidWolfBeautyTarget,
+  pickRandomWolfBeautyTarget,
+} from "@/lib/rules/charm";
 import { humanActorPending } from "@/lib/rules/night-progress";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
@@ -63,6 +70,8 @@ export class NightPhase extends GamePhase {
         return this.buildMutePrompt(state, player);
       case "NIGHT_DREAM_ACTION":
         return this.buildDreamPrompt(state, player);
+      case "NIGHT_WOLF_BEAUTY_ACTION":
+        return this.buildWolfBeautyPrompt(state, player);
       case "NIGHT_WOLF_ACTION":
         return this.buildWolfPrompt(
           state,
@@ -104,6 +113,10 @@ export class NightPhase extends GamePhase {
     }
     if (_action.type === "CONTINUE_NIGHT_AFTER_WOLF") {
       await this.continueNightAfterWolf(_context.state, runtime);
+      return;
+    }
+    if (_action.type === "CONTINUE_NIGHT_AFTER_WOLF_BEAUTY") {
+      await this.continueNightAfterWolfBeauty(_context.state, runtime);
       return;
     }
     if (_action.type === "CONTINUE_NIGHT_AFTER_WITCH") {
@@ -382,6 +395,112 @@ export class NightPhase extends GamePhase {
     });
 
     return { system, user, systemParts };
+  }
+
+  private buildWolfBeautyPrompt(state: GameState, player: Player): PromptResult {
+    const { t } = getI18n();
+    const gameContext = buildDecisionContext(state, player);
+    const eligible = getWolfBeautyEligibleSeats(state, player.seat);
+    const options = eligible
+      .map((seat) => {
+        const target = state.players.find((p) => p.seat === seat);
+        return t("prompts.night.option", { seat: seat + 1, name: target?.displayName ?? "" });
+      })
+      .join(t("promptUtils.gameContext.listSeparator"));
+    const exampleSeat = (eligible[0] ?? 0) + 1;
+    const jsonFormat = JSON.stringify({ seat: exampleSeat, reason: t("promptUtils.gameContext.jsonReasonCharm") });
+
+    const cacheableContent = bindIdentityAndRoleSetting(t("prompts.wolfBeauty.base", {
+      seat: player.seat + 1,
+      name: player.displayName,
+      role: getRoleText(player.role),
+      coreRules: "",
+    }), player, !!state.isGenshinMode);
+    const dynamicContent = t("prompts.wolfBeauty.task", { options, jsonFormat });
+    // system 只放全桌逐字相同的共用開場（陣容／規則／攻略）；身分與本輪任務逐人不同，一律進 user。
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
+    const system = buildSystemTextFromParts(systemParts);
+
+    const user = t("prompts.wolfBeauty.user", {
+      context: [gameContext, cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
+      jsonFormat,
+    });
+
+    return { system, user, systemParts };
+  }
+
+  /**
+   * 狼美人的夜間行動：狼刀之後、女巫之前，單獨魅惑一名玩家。
+   *
+   * 與禁言／攝夢同一條規則：每晚必須指定一人（不能空過、不能選自己）；
+   * AI 沒給合法目標時由系統隨機指定（禁止靜默失敗，會 warn）。
+   */
+  private async runWolfBeautyAction(state: GameState, runtime: NightPhaseRuntime): Promise<GameState> {
+    const { t } = getI18n();
+    const speakerSystem = t("speakers.system");
+    const systemMessages = getSystemMessages();
+    const uiText = getUiText();
+    const beauty = state.players.find((p) => p.role === "WolfBeauty" && p.alive);
+
+    let currentState = this.transitionPhase(state, "NIGHT_WOLF_BEAUTY_ACTION");
+    currentState = addSystemMessage(currentState, systemMessages.wolfBeautyActionStart);
+    runtime.setGameState(currentState);
+
+    runtime.setIsWaitingForAI(true);
+    runtime.setDialogue(speakerSystem, uiText.wolfBeautyActing, false);
+    await playNarrator("wolfBeautyWake");
+
+    if (!beauty) {
+      await delay(randomFakeActionDelay());
+      await runtime.waitForUnpause();
+      if (!runtime.isTokenValid(runtime.token)) return currentState;
+      runtime.setIsWaitingForAI(false);
+      await playNarrator("wolfBeautyClose");
+      return currentState;
+    }
+
+    if (beauty.isHuman) {
+      runtime.setIsWaitingForAI(false);
+      runtime.setDialogue(speakerSystem, uiText.waitingWolfBeauty, false);
+      return currentState;
+    }
+
+    const charmOutcome = await generateWolfBeautyAction(currentState, beauty);
+    await runtime.waitForUnpause();
+
+    if (!runtime.isTokenValid(runtime.token)) return currentState;
+
+    // 不能空過：AI 沒給出合法目標就由系統隨機指定（規則要求每晚都有一名被魅惑者）。
+    const targetSeat =
+      charmOutcome !== undefined &&
+      isValidWolfBeautyTarget(currentState, beauty.seat, charmOutcome.targetSeat)
+        ? charmOutcome.targetSeat
+        : pickRandomWolfBeautyTarget(currentState, beauty.seat);
+
+    if (targetSeat === undefined) {
+      if (charmOutcome !== undefined) {
+        console.warn("[wolfcha] 狼美人魅惑目標不合法，且無其他合法目標，本晚無被魅惑者");
+      }
+    } else if (charmOutcome === undefined || targetSeat !== charmOutcome.targetSeat) {
+      console.warn("[wolfcha] 狼美人魅惑目標缺失或不合法，系統隨機指定被魅惑者");
+    }
+
+    currentState = {
+      ...currentState,
+      nightActions: {
+        ...currentState.nightActions,
+        ...(targetSeat !== undefined ? { wolfBeautyTarget: targetSeat } : {}),
+        ...(charmOutcome?.reason && targetSeat === charmOutcome.targetSeat
+          ? { wolfBeautyReason: charmOutcome.reason }
+          : {}),
+      },
+    };
+    runtime.setGameState(currentState);
+    runtime.setIsWaitingForAI(false);
+
+    await playNarrator("wolfBeautyClose");
+
+    return currentState;
   }
 
   private async runWolfAction(state: GameState, runtime: NightPhaseRuntime): Promise<GameState> {
@@ -712,6 +831,32 @@ export class NightPhase extends GamePhase {
     // 真人狼還欠第一夜分工時不能往下走：夜間流程要停在狼人階段，
     // 等前端對話框寫入計畫（寫入後由 handleWolfTeamPlanSubmit 推下去）。
     if (humanWolfNeedsNightInput(state)) return;
+
+    const hasWolfBeauty = state.players.some((player) => player.role === "WolfBeauty");
+    if (hasWolfBeauty) {
+      // 真人狼美人選完目標後，狀態已停在 NIGHT_WOLF_BEAUTY_ACTION，不再重跑一次行動
+      const afterCharm =
+        state.phase === "NIGHT_WOLF_BEAUTY_ACTION"
+          ? state
+          : await this.runWolfBeautyAction(state, runtime);
+      if (!runtime.isTokenValid(runtime.token)) return;
+
+      // 真人狼美人還沒選 → 停在這裡等前端寫入
+      if (humanActorPending(afterCharm, "NIGHT_WOLF_BEAUTY_ACTION")) return;
+
+      await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
+      await runtime.waitForUnpause();
+      if (!runtime.isTokenValid(runtime.token)) return;
+
+      await this.continueNightAfterWolfBeauty(afterCharm, runtime);
+      return;
+    }
+
+    await this.continueNightAfterWolfBeauty(state, runtime);
+  }
+
+  /** 魅惑之後接女巫（與 continueNightAfterWolf 對女巫的處理相同）。 */
+  private async continueNightAfterWolfBeauty(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
     const currentState = await this.runWitchAction(state, runtime);
     if (!runtime.isTokenValid(runtime.token)) return;
 
@@ -815,8 +960,10 @@ export class NightPhase extends GamePhase {
     const { t } = getI18n();
     const context = buildGameContext(state, player);
     const { todayTranscript } = this.buildNightEnhancements(state, player);
-    // 狼人可以刀任何存活玩家（包括队友和自己），但通常刀好人
-    const alivePlayers = state.players.filter((p) => p.alive);
+    // 狼人可以刀任何存活玩家（包括队友和自己），但**不能刀狼美人**（官方規則：不能自刀），
+    // 所以候選清單走 rules/charm 的單一真相。
+    const knifeSeats = getWolfKnifeEligibleSeats(state);
+    const alivePlayers = state.players.filter((p) => knifeSeats.includes(p.seat));
     const teammates = state.players.filter(
       (p) => isWolfRole(p.role) && p.playerId !== player.playerId && p.alive
     );

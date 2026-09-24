@@ -34,6 +34,7 @@ import { canDuel, hasAlreadyDueled } from "@/lib/rules/knight-duel";
 import { canUseDeathShot, getChainedShooter, getDeathShotKind } from "@/lib/rules/death-skills";
 import { isValidMuteTarget } from "@/lib/rules/mute";
 import { isValidDreamTarget } from "@/lib/rules/dream";
+import { applyCharmRevenge, isValidWolfBeautyTarget } from "@/lib/rules/charm";
 import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
 import {
   humanActorPending,
@@ -1128,6 +1129,8 @@ export function useGameLogic() {
     const lastGuardTarget = state.nightActions.guardTarget;
     // 同理：只帶入剛結束那一晚的夢游者（連攝判定用），其餘夜間行動一律清空。
     const lastDreamTarget = state.nightActions.dreamTarget;
+    // 同理：只帶入剛結束那一晚的魅惑對象（殉情判定用）。
+    const lastWolfBeautyTarget = state.nightActions.wolfBeautyTarget;
     // Preserve seerHistory across nights
     const seerHistory = state.nightActions.seerHistory;
     let nextState = {
@@ -1136,6 +1139,7 @@ export function useGameLogic() {
       nightActions: {
         ...(lastGuardTarget !== undefined ? { lastGuardTarget } : {}),
         ...(lastDreamTarget !== undefined ? { lastDreamTarget } : {}),
+        ...(lastWolfBeautyTarget !== undefined ? { lastWolfBeautyTarget } : {}),
         ...(seerHistory ? { seerHistory } : {}),
       },
     };
@@ -1214,6 +1218,7 @@ export function useGameLogic() {
       case "NIGHT_GUARD_ACTION":
       case "NIGHT_MUTE_ACTION":
       case "NIGHT_DREAM_ACTION":
+      case "NIGHT_WOLF_BEAUTY_ACTION":
       case "NIGHT_WOLF_ACTION":
       case "NIGHT_WITCH_ACTION": {
         // 夜間角色階段：該跳過、該等真人、該重跑，一律問 night-resume 的計畫表。
@@ -1455,6 +1460,18 @@ export function useGameLogic() {
       await delay(DELAY_CONFIG.MEDIUM);
       if (!isTokenValid(token)) return;
 
+      // 被放逐的是狼美人時，被魅惑者一并殉情（騎士決鬥不在此路徑，見 rules/charm）。
+      // 殉情者不進遺言佇列：官方對「連帶出局」的遺言沒有明文，本作比照一般連帶死亡只公告不發言。
+      const exileRevenge = applyCharmRevenge(state, result.seat, "exile");
+      if (exileRevenge.victimSeat !== null) {
+        state = addSystemMessage(
+          exileRevenge.state,
+          getSystemMessages().charmRevenge(
+            exileRevenge.victimSeat + 1,
+            state.players.find((p) => p.seat === exileRevenge.victimSeat)?.displayName ?? ""
+          )
+        );
+      }
       await startLastWordsPhase(state, result.seat, async (s) => {
         // 警长死亡，先移交警徽
         if (isSheriff && executedPlayer) {
@@ -2300,6 +2317,25 @@ export function useGameLogic() {
       await waitForUnpause();
       await continueNightAfterHumanAction(currentState, "NIGHT_DREAM_ACTION", token);
     }
+    // 狼美人（真人）：今晚的魅惑對象（必須指定，不能選自己）
+    else if (gameState.phase === "NIGHT_WOLF_BEAUTY_ACTION" && humanPlayer.role === "WolfBeauty") {
+      if (!isValidWolfBeautyTarget(currentState, humanPlayer.seat, targetSeat)) return;
+      const targetPlayer = currentState.players.find((p) => p.seat === targetSeat);
+      currentState = {
+        ...currentState,
+        nightActions: { ...currentState.nightActions, wolfBeautyTarget: targetSeat },
+      };
+      setDialogue(
+        speakerHost,
+        t("gameLogicMessages.youCharmed", { seat: targetSeat + 1, name: targetPlayer?.displayName || "" }),
+        false
+      );
+      setGameState(currentState);
+
+      await delay(1000);
+      await waitForUnpause();
+      await continueNightAfterHumanAction(currentState, "NIGHT_WOLF_BEAUTY_ACTION", token);
+    }
     // 狼人击杀
     else if (gameState.phase === "NIGHT_WOLF_ACTION" && isWolfRole(humanPlayer.role)) {
       const targetPlayer = currentState.players.find((p) => p.seat === targetSeat);
@@ -2402,6 +2438,19 @@ export function useGameLogic() {
       const diedAtNight = (currentState as GameState & { _hunterDiedAtNight?: boolean })._hunterDiedAtNight ?? true;
       if (targetSeat >= 0) {
         currentState = killPlayer(currentState, targetSeat);
+        // 自爆帶走狼美人時，被魅惑者一并殉情。
+        {
+          const carriedRevenge = applyCharmRevenge(currentState, targetSeat, "carried");
+          if (carriedRevenge.victimSeat !== null) {
+            currentState = addSystemMessage(
+              carriedRevenge.state,
+              systemMessages.charmRevenge(
+                carriedRevenge.victimSeat + 1,
+                currentState.players.find((p) => p.seat === carriedRevenge.victimSeat)?.displayName ?? ""
+              )
+            );
+          }
+        }
         const target = currentState.players.find((p) => p.seat === targetSeat);
         if (target) {
           currentState = addSystemMessage(

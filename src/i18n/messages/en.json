@@ -26,7 +26,8 @@
     "knight": "Knight",
     "muteElder": "Mute Elder",
     "wolfKing": "Wolf King",
-    "dreamweaver": "Dreamweaver"
+    "dreamweaver": "Dreamweaver",
+    "wolfBeauty": "Wolf Beauty"
   },
   "alignment": {
     "village": "Villagers",
@@ -520,7 +521,8 @@
         "knight": "Once per game, during the day speech phase only (not during the badge election), reveal and duel a player: if they are a wolf they die and night falls immediately; if they are good, the knight dies instead. Wolves killed by the duel cannot trigger death skills",
         "muteElder": "Each night silences a player so they cannot speak the next day (they can still vote and give last words)",
         "wolfKing": "Wolf side; may shoot one player when exiled by the day vote (wolf gun)",
-        "dreamweaver": "Each night you must name one player as the dreamer: they are immune to night damage (wolf knife and witch poison) that night, but a player dreamed two nights in a row - or dreamed on the night you die - dies with you"
+        "dreamweaver": "Each night you must name one player as the dreamer: they are immune to night damage (wolf knife and witch poison) that night, but a player dreamed two nights in a row - or dreamed on the night you die - dies with you",
+        "wolfBeauty": "A skill wolf: knifes with the pack each night, then charms one player on her own. When the Wolf Beauty dies, the charmed player dies with her (a knight duel death does not trigger it). She cannot self-destruct and the pack cannot knife her."
       }
     },
     "acquaintanceMode": {
@@ -1023,6 +1025,18 @@
           "Dream a wolf suspect: if the wolves knife you, he goes down with you",
           "The dream is secret - the dreamed player does not know either"
         ]
+      },
+      "wolfBeauty": {
+        "title": "Wolf Beauty",
+        "subtitle": "Charm someone, and take them with you.",
+        "abilities": [
+          "Knife with the pack each night, then charm one player on your own",
+          "When you die, the charmed player dies with you"
+        ],
+        "tips": [
+          "You cannot self-destruct and the pack cannot knife you; a knight duel death does not trigger the charm",
+          "Charm the player you would most want taken down with you, not a packmate"
+        ]
       }
     },
     "nextStep": {
@@ -1038,7 +1052,8 @@
       "knight": "On your day speech turn you can press \"Reveal & duel\" to challenge a player (not during the badge election).",
       "muteElder": "On your turn, click a player to silence them tomorrow.",
       "wolfKing": "If you are exiled by vote you may shoot one living player.",
-      "dreamweaver": "On your turn, click a player to make them tonight's dreamer."
+      "dreamweaver": "On your turn, click a player to make them tonight's dreamer.",
+      "wolfBeauty": "When your turn comes, pick a player to charm tonight."
     }
   },
   "speakers": {
@@ -1102,7 +1117,9 @@
     "knightDuelMissed": "{targetSeat} {targetName} is good - {seat} {name} dies paying for the failed duel",
     "muteActionStart": "Mute Elder, open your eyes.",
     "playerMuted": "{seat} {name} is silenced and cannot speak today (can still vote and give last words)",
-    "dreamActionStart": "Dreamweaver, open your eyes."
+    "dreamActionStart": "Dreamweaver, open your eyes.",
+    "wolfBeautyActionStart": "Wolf Beauty is acting",
+    "charmRevenge": "Seat {seat} ({name}) died with the Wolf Beauty"
   },
   "ui": {
     "waitingSeer": "Select a player to check. Tap a player card to select.",
@@ -1141,7 +1158,9 @@
     "waitingMute": "Waiting for the Mute Elder to pick a target…",
     "muteActing": "The Mute Elder is picking who to silence tomorrow…",
     "dreamActing": "The Dreamweaver is picking tonight's dreamer…",
-    "waitingDream": "Waiting for the Dreamweaver to pick the dreamer…"
+    "waitingDream": "Waiting for the Dreamweaver to pick the dreamer…",
+    "wolfBeautyActing": "The Wolf Beauty is choosing tonight's charmed player…",
+    "waitingWolfBeauty": "Waiting for the Wolf Beauty to pick a charmed player…"
   },
   "prompts": {
     "daySpeech": {
@@ -1315,6 +1334,11 @@
       "base": "【Identity】\nYou are seat {seat} \"{name}\"\nRole: {role}\n\n{coreRules}",
       "task": "【Dream (night skill)】\nEvery night you must name one **alive** player as the dreamer (never yourself, and you cannot skip).\n- The dreamer is **immune to night damage** tonight: the wolf knife and the witch's poison both miss (the skill is still spent).\n- A player dreamed **two nights in a row** dies (the witch's antidote cannot save them).\n- On the night you **die** (knifed or poisoned), the dreamer dies with you.\n- A player killed by the dream cannot use a death shot (hunter gun and wolf king gun are both blocked).\n- The dream is not public: even the dreamed player does not know.\n\n【Task】\nPick tonight's dreamer from the current situation.\n\nAlive players: {options}\n\n【Format】\nReturn a strict JSON object only - no code block, no explanation, no extra text.\nExample: {jsonFormat}\nKeep reason to one sentence (under 30 words).",
       "user": "{context}\n\nWho do you dream tonight? Return a strict JSON object.\nExample: {jsonFormat}"
+    },
+    "wolfBeauty": {
+      "base": "【Identity】\nYou are seat {seat}, \"{name}\"\nRole: {role}\n\n{coreRules}",
+      "task": "【Charm (night skill)】\nAfter the wolves knife, you **alone** charm one **living** player (not yourself, never skip).\n- The charmed player does not know, and the table is not told.\n- **When you die**, the charmed player dies with you (exiled, poisoned, or knifed at night all count).\n- Dying in a **knight duel does NOT trigger** the charm.\n- The charm is not a knife: **the guard's protection cannot stop the revenge**.\n- You cannot self-destruct and the wolves cannot knife you.\n\n【Task】\nPick tonight's charmed player: the one you would most want to take down when you die, not just anyone.\n\nLiving players: {options}\n\n【Format】\nReturn a JSON object only. No code block, no explanation, no extra text.\nExample: {jsonFormat}\nKeep reason to one sentence.",
+      "user": "{context}\n\nWho do you charm tonight? Return a JSON object only.\nExample: {jsonFormat}"
     }
   },
   "badgePhase": {
@@ -1421,6 +1445,10 @@
     "nightDream": {
       "description": "Must name one dreamer each night: the dreamer is immune to wolf knife and poison that night, but dies if dreamed two nights in a row or if the Dreamweaver dies at night",
       "human": "The Dreamweaver is picking tonight's dreamer…"
+    },
+    "nightWolfBeauty": {
+      "description": "After knifing with the pack, charm one player; if the Wolf Beauty dies, the charmed player dies with her",
+      "human": "The Wolf Beauty is choosing tonight's charmed player…"
     }
   },
   "page": {
@@ -1728,6 +1756,20 @@
           "You must dream someone, and you cannot dream yourself",
           "A player killed by the dream cannot use a death shot (hunter gun and wolf king gun are both blocked)"
         ]
+      },
+      "WolfBeauty": {
+        "desc": "Knife with the pack each night, then charm one player on your own",
+        "points": [
+          "When the Wolf Beauty dies, the charmed player dies with her",
+          "A knight duel death does not trigger the charm",
+          "The charm is not a knife: guard protection does not stop it",
+          "You cannot self-destruct and the pack cannot knife you"
+        ],
+        "action": "On your turn, pick a player to charm tonight.",
+        "tips": [
+          "Survive to the end and one life of yours trades for a good player",
+          "Charming a packmate is wasted: the revenge cannot take a good player"
+        ]
       }
     }
   },
@@ -1913,7 +1955,8 @@
       "knight": "Knight (village side; can reveal and duel one player during the day speech phase only; not during the badge election)",
       "muteElder": "Mute Elder (village side; each night silences a player so they cannot speak the next day)",
       "wolfKing": "Wolf King (wolf side; may shoot one player when exiled by vote)",
-      "dreamweaver": "Dreamweaver (village side; each night must name a dreamer who is immune to night damage, but dies if dreamed two nights in a row or if you die at night)"
+      "dreamweaver": "Dreamweaver (village side; each night must name a dreamer who is immune to night damage, but dies if dreamed two nights in a row or if you die at night)",
+      "wolfBeauty": "Wolf Beauty (wolf team): knifes with the wolves each night, then charms one player on her own; when the Wolf Beauty dies the charmed player dies with her (a knight duel death does not trigger it). She cannot self-destruct and the pack cannot knife her."
     },
     "winMotivationNote": "【What you're playing for】\nThis is a game with winners and losers, and you are here to win — not to keep the table company, and not to make the story look good.\nYour character has a personality, a stance, feelings and selfish interests, but would never throw their own side on purpose: tanking, voting at random, or feeding kills for a better story is not you.\nThere is more than one way to win: some read the ledger better, some lie convincingly to the whole table, some steer the votes where they want them, some stay hidden until the final round. Play to your strengths, and switch styles mid-game if you like.\nYou may take risks too: gamble, bluff, and own it when it fails. Nobody blames you for going off-script; they blame you for not trying to win.",
     "humannessNote": "【Imperfection allowed】\nReal players misspeak, forget which night something happened, get nervous, get carried away by emotion, dig in stubbornly, and suddenly change their minds. You do not have to be airtight in every sentence — naming the wrong seat, letting something slip, or changing your story under pressure makes you feel like a real person.\nOnly one line to hold: mistakes can be natural slips, but a lie has to hold up. Nobody docks you for acting badly, but nobody enjoys a player who has no idea what they are doing.",
@@ -2152,7 +2195,8 @@
       "deathCauseWolfKingShot": "Wolf King shot in public",
       "passiveSpeechNote": "【Host assessment】Your speech last round was judged passive (no substantive read — only waiting for others or following votes). Take part actively this round: say clearly whom you suspect most, why, and whom you want to vote for.",
       "publicScopeTitle": "【Scope and conventions】",
-      "jsonReasonDream": "one line: why dream this seat"
+      "jsonReasonDream": "one line: why dream this seat",
+      "jsonReasonCharm": "Why charm this player"
     },
     "acquaintance": {
       "header": "【Friends' table】You know everyone at this table. Below are impressions built up over past games, the underlying model each AI runs on, and each player's record. Impressions are only impressions — this game they may not follow old habits, and the wolves especially may act out of character. How you use this knowledge is up to you.",
@@ -2193,7 +2237,8 @@
       "wolfKnifeGuard": "【Guard mind game】\n- Guard mind game: before knifing, infer whom the guard will protect tonight and do not deliver the knife into his arms. The guard most likely protects publicly revealed gods, the sheriff, gold water players, and the target that was knifed last night and survived. For a target X that was knifed last night in a peaceful night: whoever kept X alive was either the guard (who cannot protect X twice in a row) or the witch (antidote already used), so knifing X again tonight usually has the highest hit rate. To switch targets, avoid the seats from the first point that the guard most likely protects and knife a key good player he cannot cover.\n- Extra account when a guard is present: if someone claims guard during the day, his word about whom he protected is not evidence, but the claim reveals whom he wants to protect tonight — follow it to find his protection seat, or use his judgment in reverse. A blocked knife does not change the numbers: when counting «how many knives to win», treat «the knife that may be blocked» as a probabilistic loss and prefer targets where «even if blocked, the loss is smallest» (blocking leaves no extra check, no badge handover). Knifing the same seat two nights in a row is a common play, and the second night is often exactly when he cannot protect it again.",
       "wolfKnifeHunter": "【The gun threat when a hunter is present】\n- The gun threat when a hunter is present: the hunter is the only card that «bounces back when killed» — on death he may shoot one player, usually the seat that most looks like a wolf. The three ways to clear a hunter cost differently: a hunter voted out still shoots, a hunter poisoned by the witch cannot shoot, a hunter taken by a blow-up still shoots; so the cleanest way is poison, then exile. If you really knife him at night, work out first: if he chooses freely, whom will he most likely take? If that is you or a teammate, the knife loses. Do not treat «he claims hunter» as proof.",
       "badgeFlow": "【Badge flow】\n- The badge flow is the seer's information line: a check report must carry it, and it is updated every round after the election — it gives the good side something to check each day (was yesterday's badge flow honoured), gives your badge a readable meaning after death, and gives middle seats a support to follow. Reporting results without a badge flow throws away persuasion every day.\n- There are two ways to declare a badge flow, and the more decodable the stronger: (1) single-check form: «tonight I check X; if good, the badge goes to X; if a wolf, to an outside confirmed good player»; (2) sequence form: «I check 6 first, then 4 the next night; the badge landing on 6 or 4 means a good seat; if both are good, the outside has more wolves, so tear the badge or give a confirmed good player; if both are wolves, the outside has more good players, so give an outside confirmed good player».\n- The landing point of the badge flow must be decodable, not two numbers filled in to look busy: in the single-check form «tonight I check X» — if the result is good, the badge goes to X himself (gold water takes the badge); if the result is a wolf, the badge goes back to a gold water you already checked and published, or to the most credible confirmed good player, and never to an unchecked seat you cannot justify. The same holds for the sequence form: the landing point is the good seat written into the promise. Declaring a landing point puts your trust ranking on the table: if it contradicts your own check statement (checking 6 tonight while dropping the good badge on an unmentioned 4, or the wolf badge on an unchecked 8, while the gold water you reported is left aside), nobody believes that badge flow on the spot.\n- Seats you accuse of being wolves (a counter-claimer, the person you gave a wolf result) can never enter your badge flow: «he is a wolf and I want to hand him the badge» is a contradiction that dismantles your own stand. To signal that you will check him tonight, state the condition: «tonight I check seat 1; if good, the badge goes to seat 1; if a wolf, to X».\n- How to read a badge flow: check the landing logic before recording the account. If the landing point contradicts his own check statement, either the badge flow was never meant to be honoured or he never worked out how to honour it — either way it can be pointed out on the spot. If a badge flow is not honoured (landing outside the promise, or quietly revised), either he got new information (ask on the spot why he changed) or the line itself is troubled — say both possibilities out loud instead of quietly swallowing them.\n- When the only seer without a counter-claim is knifed and hands the badge to someone, that is his last and most reliable statement, carrying more weight than whom he verbally suspected while alive (if he checked that seat that night, it counts as gold water). «While alive he said to look for the wolf among these two, yet the badge went to one of them» is not a contradiction but an update after a check; treating that combination as proof is exactly how wolves beat up a dead player and take the badge-receiving good player with them.\n- Handing over when you die: honour the last badge flow you announced — where the badge goes and whether it is torn will be read backwards by the table to infer your final night's check. Sequence solution: if only one of the two is good, give it to that good player; if both are good, the outside has more wolves, so tear it or give a confirmed good player; if both are wolves, the outside has more good players, so give an outside confirmed good player. If the position really changed you must still explain the change against the version you announced while alive; quietly revising voids the whole line.",
-      "dream": "【Dreamweaver】\n- Your ability cuts both ways: whoever you dream cannot be knifed or poisoned tonight, but the same player dreamed two nights in a row dies - the only active kill you own, and the witch's antidote cannot undo it.\n- Night one you have no information: aim at «the most wolf-like player» or «the information seat that must survive». Once you dream a wolf, a second dream the next night kills him - if the wolves do not knife him first.\n- On the night you are knifed or poisoned, the dreamer dies with you. So when you feel exposed, dream your top wolf suspect: if they knife you, one of your lives buys one of theirs.\n- Conversely, do not park the dream on a good player you trust: if you die at night, you personally drag them out.\n- The dream is secret and the dreamed player does not know it; at dawn the host only announces who died, with no cause - you can use that information gap.\n- A player killed by the dream cannot use a death shot (both the hunter gun and the wolf king gun are blocked)."
+      "dream": "【Dreamweaver】\n- Your ability cuts both ways: whoever you dream cannot be knifed or poisoned tonight, but the same player dreamed two nights in a row dies - the only active kill you own, and the witch's antidote cannot undo it.\n- Night one you have no information: aim at «the most wolf-like player» or «the information seat that must survive». Once you dream a wolf, a second dream the next night kills him - if the wolves do not knife him first.\n- On the night you are knifed or poisoned, the dreamer dies with you. So when you feel exposed, dream your top wolf suspect: if they knife you, one of your lives buys one of theirs.\n- Conversely, do not park the dream on a good player you trust: if you die at night, you personally drag them out.\n- The dream is secret and the dreamed player does not know it; at dawn the host only announces who died, with no cause - you can use that information gap.\n- A player killed by the dream cannot use a death shot (both the hunter gun and the wolf king gun are blocked).",
+      "wolfBeauty": "【Wolf Beauty】\n- You are the pack's \"one life for one life\": the charm matters only for who you take down when you die, so never charm a player you do not care about.\n- Charm the player you would most want removed when you go: a strong good player who is leading, the seer's line, or the sheriff seat. Charming a packmate is wasted.\n- Stay alive in the day: you are the pack's hidden tempo, and charging in early gets you voted out. Lurk, follow votes, and take a quiet side instead of fighting head-on.\n- You cannot self-destruct and the pack cannot knife you, so only witch poison or a dream chain can kill you at night; a knight duel death does not trigger the charm, so do not count that risk into your plan."
     }
   },
   "devConsole": {
@@ -2222,7 +2267,8 @@
       "HUNTER_SHOOT": "Hunter shot",
       "SELF_DESTRUCT": "Self destruct",
       "KNIGHT_DUEL": "Knight duel",
-      "GAME_END": "Game end"
+      "GAME_END": "Game end",
+      "NIGHT_WOLF_BEAUTY_ACTION": "Wolf Beauty charm"
     },
     "roles": {
       "Villager": "Villager",
@@ -2335,7 +2381,8 @@
       "wolf": "wolf kill",
       "poison": "witch poison",
       "milk": "milk poison",
-      "dream": "Dream"
+      "dream": "Dream",
+      "charm": "Charmed death"
     },
     "nightActions": "Night actions",
     "speechControl": "Speech control",
@@ -2381,7 +2428,8 @@
     "voteTie": "Tie (no one eliminated)",
     "nightDreamAction": "Night {day} Dreamweaver dream target",
     "dreamAction": "Dreamweaver dream target",
-    "muteAction": "Mute Elder mute target"
+    "muteAction": "Mute Elder mute target",
+    "wolfBeautyAction": "Night {day} Wolf Beauty charm: who does she take?"
   },
   "nightActionOverlay": {
     "target": "Target"
@@ -2557,7 +2605,8 @@
     "youAbstainedGuard": "You abstained tonight and protect nobody",
     "witchNoSelfSave": "The witch can never self-save",
     "youMuted": "Silenced seat {seat} {name} - they cannot speak tomorrow",
-    "youDreamed": "Dreamed seat {seat} {name} - they are immune to night damage tonight"
+    "youDreamed": "Dreamed seat {seat} {name} - they are immune to night damage tonight",
+    "youCharmed": "You charmed seat {seat} ({name})"
   },
   "customKey": {
     "title": "Use my own key",

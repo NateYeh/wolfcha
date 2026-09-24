@@ -11,7 +11,8 @@ export type NightActionKind =
   | "inspect"
   | "potion"
   | "silence"
-  | "dream";
+  | "dream"
+  | "charm";
 
 /** 死亡技能（死亡時可帶走一人的槍）種類；規則見 lib/rules/death-skills.ts */
 export type DeathShotKind = "none" | "hunter_gun" | "wolf_gun";
@@ -151,6 +152,20 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     // 每晚都要指定一個目標（不能空過），也不能禁言自己
     canAbstain: false,
     canSelfTarget: false,
+    canBoom: false,
+    boomTakesPlayer: false,
+    boomSwallowsBadgeOnElection: false,
+    canDuel: false,
+    deathShot: "none",
+  },
+  WolfBeauty: {
+    role: "WolfBeauty",
+    camp: "wolf",
+    nightAction: "charm",
+    // 每晚一定要魅惑一人（不能空過）；不能選自己（官方規則）
+    canAbstain: false,
+    canSelfTarget: false,
+    // 不能自爆
     canBoom: false,
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,

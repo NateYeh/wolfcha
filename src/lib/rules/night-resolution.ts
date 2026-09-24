@@ -1,7 +1,7 @@
 import type { GameState } from "@/types/game";
 
 /** 夜晚死亡原因（與 `nightHistory[day].deaths` 一致） */
-export type NightDeathReason = "wolf" | "poison" | "milk" | "dream";
+export type NightDeathReason = "wolf" | "poison" | "milk" | "dream" | "charm";
 
 /** 夜晚的一筆死亡紀錄 */
 export interface NightDeath {
@@ -10,7 +10,7 @@ export interface NightDeath {
 }
 
 /** 夜間行動者種類（回放「這一晚他還在不在場上」用） */
-export type NightActor = "guard" | "wolf" | "witch" | "dreamweaver";
+export type NightActor = "guard" | "wolf" | "witch" | "dreamweaver" | "wolfBeauty";
 
 export interface NightResolutionInput {
   /** 狼刀刀口 */
@@ -25,6 +25,10 @@ export interface NightResolutionInput {
   dreamTarget?: number;
   /** 攝夢人的座位（判斷「攝夢人夜間出局」連帶） */
   dreamerSeat?: number;
+  /** 狼美人今晚魅惑的座位 */
+  wolfBeautyTarget?: number;
+  /** 狼美人的座位（判斷「狼美人夜間出局」連帶） */
+  wolfBeautySeat?: number;
   /** 前晚的夢游者（連續兩晚被攝 → 出局） */
   previousDreamTarget?: number;
   /**
@@ -46,6 +50,8 @@ export interface NightResolutionResult {
   poisonVictimSeat?: number;
   /** 被夢帶走出局的座位（連續兩晚被攝／攝夢人夜死連帶） */
   dreamVictimSeat?: number;
+  /** 隨狼美人殉情出局的座位 */
+  charmVictimSeat?: number;
   /** 這一晚生效的夢游者（沒有攝夢人／沒指定時 undefined） */
   dreamedSeat?: number;
 }
@@ -61,6 +67,9 @@ export interface NightResolutionResult {
  * 2. 毒藥：命中夢游者同樣落空（藥照樣消耗，由呼叫端記錄）。
  * 3. 攝夢連帶：攝夢人當晚出局、或同一座位連續兩晚被攝 → 夢游者一并出局。
  *    夢死**女巫救不活**，也不受夢游者自身的免疫影響。
+ * 4. 狼美人殉情連帶：狼美人當晚出局 → 被魅惑者一并出局（死因 `charm`）。
+ *    魅惑不是狼刀，**守護擋不住**；連帶死亡不是傷害，所以夢游者免疫同樣不影響（與夢死同一條理由）。
+ *    騎士決鬥出局不在此路徑（見 `rules/charm` 的 `triggersCharmRevenge`）。
  *
  * 死因優先序：同一座位同時被刀又被毒時記「毒」（封槍與公告都以毒為準），
  * 夢死不覆蓋既有死因。
@@ -77,8 +86,9 @@ export function resolveNightDeaths(input: NightResolutionInput): NightResolution
       deaths.push({ seat, reason });
       return;
     }
-    // 刀／夢不覆蓋既有死因；毒（含毒奶）是最終死因，決定封槍與公告。
-    if (reason === "wolf" || reason === "dream") return;
+    // 刀／夢／殉情不覆蓋既有死因；毒（含毒奶）是最終死因，決定封槍與公告。
+    // 殉情只是一條「連帶出局」，不能把已經被刀死的人改寫成殉情（封槍與公告都會錯）。
+    if (reason === "wolf" || reason === "dream" || reason === "charm") return;
     existing.reason = reason;
   };
 
@@ -120,8 +130,28 @@ export function resolveNightDeaths(input: NightResolutionInput): NightResolution
     }
   }
 
+  // 4. 狼美人殉情連帶：狼美人今晚出局 → 被魅惑者一并出局。
+  //    魅惑不是狼刀，守護擋不住；連帶死亡也不是傷害，所以夢游者免疫不影響（與夢死同理）。
+  let charmVictimSeat: number | undefined;
+  const charmerSeat = isAlive("wolfBeauty") ? input.wolfBeautySeat : undefined;
+  const charmedSeat = isAlive("wolfBeauty") ? input.wolfBeautyTarget : undefined;
+  if (charmerSeat !== undefined && charmedSeat !== undefined && charmedSeat !== charmerSeat) {
+    if (deaths.some((death) => death.seat === charmerSeat)) {
+      charmVictimSeat = charmedSeat;
+      pushDeath(charmedSeat, "charm");
+    }
+  }
+
   deaths.sort((a, b) => a.seat - b.seat);
-  return { deaths, wolfKillSuccessful, wolfVictimSeat, poisonVictimSeat, dreamVictimSeat, dreamedSeat };
+  return {
+    deaths,
+    wolfKillSuccessful,
+    wolfVictimSeat,
+    poisonVictimSeat,
+    dreamVictimSeat,
+    charmVictimSeat,
+    dreamedSeat,
+  };
 }
 
 /** 該座位是不是被夢帶走出局（封槍判斷用） */

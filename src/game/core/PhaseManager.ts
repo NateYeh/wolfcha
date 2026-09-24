@@ -30,6 +30,7 @@ export class PhaseManager {
       NIGHT_MUTE_ACTION: nightPhase,
       NIGHT_DREAM_ACTION: nightPhase,
       NIGHT_WOLF_ACTION: nightPhase,
+      NIGHT_WOLF_BEAUTY_ACTION: nightPhase,
       NIGHT_WITCH_ACTION: nightPhase,
       NIGHT_SEER_ACTION: nightPhase,
       DAY_VOTE: votePhase,

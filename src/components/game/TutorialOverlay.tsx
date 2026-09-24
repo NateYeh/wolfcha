@@ -50,6 +50,7 @@ const ROLE_META: Record<Role, { accent: string; bg: string; Icon: React.Componen
   MuteElder: { accent: "var(--color-seer)", bg: "var(--color-seer-bg)", Icon: MuteElderIcon },
   Dreamweaver: { accent: "var(--color-seer)", bg: "var(--color-seer-bg)", Icon: DreamweaverIcon },
   WolfKing: { accent: "var(--color-wolf)", bg: "var(--color-wolf-bg)", Icon: WolfKingIcon },
+  WolfBeauty: { accent: "var(--color-wolf)", bg: "var(--color-wolf-bg)", Icon: WerewolfIcon },
   Villager: { accent: "var(--color-villager)", bg: "var(--color-villager-bg)", Icon: VillagerIcon },
 };
 
@@ -125,6 +126,7 @@ export function TutorialOverlay({
       Knight: t("roles.knight"),
       MuteElder: t("roles.muteElder"),
       Dreamweaver: t("roles.dreamweaver"),
+      WolfBeauty: t("roles.wolfBeauty"),
       WolfKing: t("roles.wolfKing"),
       Villager: t("roles.villager"),
     };

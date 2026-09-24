@@ -7,6 +7,7 @@ import {
   actorsForNightStep,
   dreamDecided,
   humanActorPending,
+  wolfBeautyDecided,
   isNightActionPhase,
   isNightComplete,
   muteDecided,
@@ -14,6 +15,7 @@ import {
   nightStepFor,
   pendingNightActions,
 } from "@/lib/rules/night-progress";
+import { isWolfRole } from "@/types/game";
 import type { GameState, Phase, Player, Role } from "@/types/game";
 
 // 交叉檢查會讀到 store 的轉移表（那條 import 鏈需要這兩個環境變數才不會在載入時拋錯）
@@ -33,6 +35,7 @@ const STEP_CASES: { phase: NightActionPhase; actors: Role[]; undecided: Partial<
   { phase: "NIGHT_MUTE_ACTION", actors: ["MuteElder"], undecided: {}, decided: { mutedTarget: 1 } },
   { phase: "NIGHT_DREAM_ACTION", actors: ["Dreamweaver"], undecided: {}, decided: { dreamTarget: 1 } },
   { phase: "NIGHT_WOLF_ACTION", actors: ["Werewolf"], undecided: {}, decided: { wolfTarget: 1 } },
+  { phase: "NIGHT_WOLF_BEAUTY_ACTION", actors: ["WolfBeauty"], undecided: {}, decided: { wolfBeautyTarget: 1 } },
   { phase: "NIGHT_WITCH_ACTION", actors: ["Witch"], undecided: {}, decided: { witchPoison: 1 } },
   { phase: "NIGHT_SEER_ACTION", actors: ["Seer"], undecided: {}, decided: { seerTarget: 1 } },
 ];
@@ -47,7 +50,7 @@ function board(roles: Role[], patch: Partial<GameState> = {}): GameState {
       ...p,
       role,
       alive: true,
-      alignment: (role === "Werewolf" || role === "WhiteWolfKing" ? "wolf" : "village") as Player["alignment"],
+      alignment: (isWolfRole(role) ? "wolf" : "village") as Player["alignment"],
     };
   });
   return { ...base, players, nightActions: {}, roleAbilities: { ...base.roleAbilities, witchHealUsed: false, witchPoisonUsed: false }, ...patch };
@@ -59,16 +62,16 @@ const humanAt = (state: GameState, seat: number): GameState => ({
   players: state.players.map((p) => ({ ...p, isHuman: p.seat === seat })),
 });
 
-/** 全部夜間決定都未做的板子（有守衛、禁言長老、攝夢人、狼、女巫、預言家）。 */
+/** 全部夜間決定都未做的板子（有守衛、禁言長老、攝夢人、狼、狼美人、女巫、預言家）。 */
 const fullBoard = (patch: Partial<GameState> = {}): GameState =>
-  board(["Guard", "MuteElder", "Dreamweaver", "Werewolf", "Witch", "Seer"], patch);
+  board(["Guard", "MuteElder", "Dreamweaver", "Werewolf", "WolfBeauty", "Witch", "Seer"], patch);
 
 /** 全部夜間決定都做好的板子。 */
 const allDecided = (patch: Partial<GameState> = {}): GameState =>
-  fullBoard({ nightActions: { guardTarget: 1, mutedTarget: 1, dreamTarget: 1, wolfTarget: 1, witchPoison: 1, seerTarget: 1 }, ...patch });
+  fullBoard({ nightActions: { guardTarget: 1, mutedTarget: 1, dreamTarget: 1, wolfTarget: 1, wolfBeautyTarget: 1, witchPoison: 1, seerTarget: 1 }, ...patch });
 
 test("步驟表正好覆蓋權威順序（多一個或少一個都會紅）", () => {
-  assert.deepEqual([...NIGHT_ACTION_ORDER], ["NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "NIGHT_WOLF_ACTION", "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION"]);
+  assert.deepEqual([...NIGHT_ACTION_ORDER], ["NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "NIGHT_WOLF_ACTION", "NIGHT_WOLF_BEAUTY_ACTION", "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION"]);
   const steps = Object.keys(NIGHT_STEP).sort();
   assert.deepEqual(steps, [...NIGHT_ACTION_ORDER].sort(), "NIGHT_STEP 的鍵必須正好是夜間行動階段");
   for (const phase of NIGHT_ACTION_ORDER) {
@@ -131,7 +134,7 @@ test("補齊查詢：還沒完成的步驟依序回傳，缺誰就補誰", () =>
   assert.equal(isNightComplete(fullBoard()), false);
 
   // 只有預言家未決定 → 下一個就是預言家
-  const onlySeer = fullBoard({ nightActions: { guardTarget: 1, mutedTarget: 1, dreamTarget: 1, wolfTarget: 1, witchPoison: 1 } });
+  const onlySeer = fullBoard({ nightActions: { guardTarget: 1, mutedTarget: 1, dreamTarget: 1, wolfTarget: 1, wolfBeautyTarget: 1, witchPoison: 1 } });
   assert.deepEqual(pendingNightActions(onlySeer).map((s) => s.phase), ["NIGHT_SEER_ACTION"]);
   assert.equal(nextPendingNightAction(onlySeer)?.phase, "NIGHT_SEER_ACTION");
 
@@ -144,7 +147,7 @@ test("補齊查詢：after 只看它之後的步驟（跳階時補齊用）", ()
   const state = fullBoard();
   assert.deepEqual(
     pendingNightActions(state, { after: "NIGHT_DREAM_ACTION" }).map((s) => s.phase),
-    ["NIGHT_WOLF_ACTION", "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION"]
+    ["NIGHT_WOLF_ACTION", "NIGHT_WOLF_BEAUTY_ACTION", "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION"]
   );
   assert.deepEqual(
     pendingNightActions(state, { after: "NIGHT_SEER_ACTION" }).map((s) => s.phase),

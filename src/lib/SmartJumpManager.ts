@@ -11,6 +11,8 @@ import { getI18n } from "@/i18n/translator";
 import { addSystemMessage, checkWinCondition } from "@/lib/game-master";
 import { resolveNightDeaths } from "@/lib/rules/night-resolution";
 import { getDreamEligibleSeats } from "@/lib/rules/dream";
+import { getWolfBeautyEligibleSeats } from "@/lib/rules/charm";
+import { wolfBeautyDecided } from "@/lib/rules/night-progress";
 import { getMuteEligibleSeats } from "@/lib/rules/mute";
 import {
   dreamDecided,
@@ -273,6 +275,24 @@ function analyzeForwardJump(
         });
       }
 
+      const wolfBeauty = state.players.find((p) => p.role === "WolfBeauty" && p.alive);
+      const wolfBeautyTargetExisting =
+        d === state.day
+          ? (state.nightActions.wolfBeautyTarget ?? nightRecord.wolfBeautyTarget)
+          : nightRecord.wolfBeautyTarget;
+      if (wolfBeauty && wolfBeautyTargetExisting === undefined && !hasPassed("NIGHT_WOLF_BEAUTY_ACTION")) {
+        const { t } = getI18n();
+        result.missingTasks.push({
+          phase: "NIGHT_WOLF_BEAUTY_ACTION",
+          description: t("smartJump.wolfBeautyAction", { day: d }),
+          field: `day${d}WolfBeautyTarget`,
+          options: getWolfBeautyEligibleSeats(state, wolfBeauty.seat).map((seat) => {
+            const p = state.players.find((player) => player.seat === seat);
+            return { value: seat, label: t("devConsole.playerLabel", { seat: seat + 1, name: p?.displayName ?? "" }) };
+          }),
+        });
+      }
+
       const witch = state.players.find((p) => p.role === "Witch" && p.alive);
       if (witch) {
         if (hasPassed("NIGHT_WITCH_ACTION")) {
@@ -457,6 +477,22 @@ function createMissingTask(state: GameState, phase: Phase): MissingTask | null {
         description: t("smartJump.dreamAction"),
         field: "dreamTarget",
         options: eligible.map((seat) => {
+          const p = state.players.find((player) => player.seat === seat);
+          return { value: seat, label: t("devConsole.playerLabel", { seat: seat + 1, name: p?.displayName ?? "" }) };
+        }),
+      };
+    }
+    case "NIGHT_WOLF_BEAUTY_ACTION": {
+      const wolfBeauty = state.players.find((p) => p.role === "WolfBeauty" && p.alive);
+      // 沒有狼美人或已決定（含「沒有合法目標」的退化情況）就不必補
+      if (wolfBeautyDecided(state)) return null;
+      if (!wolfBeauty) return null;
+      const { t } = getI18n();
+      return {
+        phase,
+        description: t("smartJump.wolfBeautyAction"),
+        field: "wolfBeautyTarget",
+        options: getWolfBeautyEligibleSeats(state, wolfBeauty.seat).map((seat) => {
           const p = state.players.find((player) => player.seat === seat);
           return { value: seat, label: t("devConsole.playerLabel", { seat: seat + 1, name: p?.displayName ?? "" }) };
         }),
@@ -1414,6 +1450,9 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
   const dreamTarget = nightActions.dreamTarget;
   const hasAliveDreamweaver = dreamer ? aliveAtNightStart.has(dreamer.seat) : false;
 
+  const wolfBeauty = state.players.find((p) => p.role === "WolfBeauty");
+  const hasAliveWolfBeauty = wolfBeauty ? aliveAtNightStart.has(wolfBeauty.seat) : false;
+
   const guardTargetEffective = hasAliveGuard ? guardTarget : undefined;
   const wolfTargetEffective = hasAliveWolves ? wolfTarget : undefined;
   const witchSaveEffective = hasAliveWitch ? witchSave : undefined;
@@ -1437,14 +1476,18 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
     dreamTarget: hasAliveDreamweaver ? dreamTarget : undefined,
     dreamerSeat: dreamer?.seat,
     previousDreamTarget: state.nightHistory?.[day - 1]?.dreamTarget,
+    wolfBeautyTarget: hasAliveWolfBeauty ? nightActions.wolfBeautyTarget : undefined,
+    wolfBeautySeat: wolfBeauty?.seat,
     isActorAlive: (actor) =>
-      actor === "guard"
-        ? hasAliveGuard
-        : actor === "witch"
-          ? hasAliveWitch
-          : actor === "dreamweaver"
-            ? hasAliveDreamweaver
-            : hasAliveWolves,
+      actor === "wolfBeauty"
+        ? hasAliveWolfBeauty
+        : actor === "guard"
+          ? hasAliveGuard
+          : actor === "witch"
+            ? hasAliveWitch
+            : actor === "dreamweaver"
+              ? hasAliveDreamweaver
+              : hasAliveWolves,
   });
 
   // 应用死亡到玩家存活状态
@@ -1574,6 +1617,9 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
   const dreamer = state.players.find((p) => p.role === "Dreamweaver");
   const hasAliveDreamweaver = dreamer ? aliveAtNightStart.has(dreamer.seat) : false;
 
+  const wolfBeauty = state.players.find((p) => p.role === "WolfBeauty");
+  const hasAliveWolfBeauty = wolfBeauty ? aliveAtNightStart.has(wolfBeauty.seat) : false;
+
   const poisonUsedOnOtherDay = (() => {
     for (const [dayStr, r] of Object.entries(state.nightHistory || {})) {
       if (Number(dayStr) !== day && r.witchPoison !== undefined) return true;
@@ -1590,14 +1636,18 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
     dreamTarget: hasAliveDreamweaver ? record.dreamTarget : undefined,
     dreamerSeat: dreamer?.seat,
     previousDreamTarget: state.nightHistory?.[day - 1]?.dreamTarget,
+    wolfBeautyTarget: hasAliveWolfBeauty ? record.wolfBeautyTarget : undefined,
+    wolfBeautySeat: wolfBeauty?.seat,
     isActorAlive: (actor) =>
-      actor === "guard"
-        ? hasAliveGuard
-        : actor === "witch"
-          ? hasAliveWitch
-          : actor === "dreamweaver"
-            ? hasAliveDreamweaver
-            : hasAliveWolves,
+      actor === "wolfBeauty"
+        ? hasAliveWolfBeauty
+        : actor === "guard"
+          ? hasAliveGuard
+          : actor === "witch"
+            ? hasAliveWitch
+            : actor === "dreamweaver"
+              ? hasAliveDreamweaver
+              : hasAliveWolves,
   });
 
   if (deaths.length > 0) {

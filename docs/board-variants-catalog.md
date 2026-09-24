@@ -108,88 +108,41 @@
 多獵人的槍鏈已在真實對局中實測通過（見上方「槍打槍」小節）。既有版型最多只有 1 個獵人，
 所以這條路是這個版型才會走到的。
 
-## 5.5 B 級第一棒：狼美人（實作清單，尚未動工）
+## 5.5 B 級第一棒：狼美人（已完成）
 
 「狼美人騎士」與「魔鬼騎士」兩個版型共用同一個新角色，是 B 級裡 CP 值最高的第一棒。
-下面是 2026-09-24 實際盤點出來的完整清單（跑 `pnpm exec tsc --noEmit` 會把 1–7 全部列出來）。
+2026-09-24 完成，內容如下。
 
-### 規則（來源頁已核對，勿憑印象）
+### 已實作
 
-- 狼美人**參與狼隊刀人**（她是狼隊成員），刀人之後**單獨魅惑**一名玩家；每晚固定魅惑一人，不能空過、不能魅惑自己。
-- 狼美人**出局時**，被魅惑者隨之殉情出局——放逐、被毒、夜死都算。
-- **被騎士決鬥出局不發動魅惑**（也不翻牌）。
-- 魅惑**不是普通狼刀**：不受守衛守護影響（來源站 FAQ 明列）。
-- 狼美人**不能自爆、不能被狼隊自刀**。
-- 法官順序（來源站）：魅惑 → 守衛 → 狼隊 → 女巫 → 預言家。本作建議沿用既有順序，把魅惑放在狼人之後、女巫之前（魅惑不影響夜間結算，位置只影響體驗）。
+| 項目 | 內容 |
+| --- | --- |
+| 角色權威表 | `WolfBeauty`（`camp: "wolf"`、`nightAction: "charm"`、不能空過／不能選自己／不能自爆） |
+| 新階段 | `NIGHT_WOLF_BEAUTY_ACTION`，順序：守衛 → 禁言 → 攝夢 → **狼人 → 魅惑** → 女巫 → 預言家 |
+| 規則模組 | `src/lib/rules/charm.ts`（合法座位、隨機指定、`getCharmedSeat`、`getCharmRevengeSeat`、`applyCharmRevenge`、`getWolfKnifeEligibleSeats`） |
+| 夜間結算 | `rules/night-resolution` 的步驟 4：狼美人當晚出局 → 被魅惑者一并出局，死因 `charm` |
+| 白天連帶 | 放逐（`useGameLogic.handleVoteComplete`）、自爆帶走（`useGameLogic`）、獵人槍（`useSpecialEvents`）三條路都會帶走被魅惑者 |
+| 提示詞 | `prompts.wolfBeauty.{base,task,user}` ×3 語系＋玩法指引 `promptUtils.strategyGuide.wolfBeauty` |
+| 真人操作 | `NIGHT_WOLF_BEAUTY_ACTION` 的可選目標、`gameLogicMessages.youCharmed` 對話、存檔／續跑／Dev 跳轉全部接上 |
+| 版型 | `official-12-wolf-beauty-knight`＝狼人×3＋狼美人＋預女守騎＋4 民（12 人、4 狼） |
 
-### 1. 型別（2 個檔）
+**不能自刀也實作了**：`getWolfKnifeEligibleSeats()` 排除狼美人，UI 可點選、AI 合法座位與狼刀提示詞選項都走這份名單
+（其他狼隊友仍可被刀、也可以自刀騙藥，那些規則不變）。
 
-- `src/types/game.ts`：`Role` 加 `"WolfBeauty"`、`Phase` 加 `"NIGHT_WOLF_BEAUTY_ACTION"`、
-  `isWolfRole()` 加它、`nightActions` 加 `wolfBeautyTarget?`／`wolfBeautyReason?`、
-  `nightHistory[day]` 加 `wolfBeautyTarget?`、`deaths[].reason` 加 `"charm"`。
+### 本作自行決定的兩條（來源站沒有明文，已寫進程式註解）
 
-### 2. 角色能力與階段權威表（4 個檔）
+1. **殉情不封死亡技能**：官方只列「被毒／毒奶／被夢帶走」三種封槍，殉情不在其中，所以被魅惑的獵人仍可開槍。
+   夜史仍記 `reason: "charm"`，讓死亡公告與賽後分析分得出「殉情」與「狼刀」。
+2. **殉情者不發遺言**：連帶死亡比照一般連帶（夢死同樣不進遺言佇列），只公告不發言。
 
-- `src/lib/rules/roles.ts`：`NightActionKind` 加 `"charm"`；`ROLE_CAPABILITIES.WolfBeauty`
-  （`camp: "wolf"`、`canAbstain: false`、`canSelfTarget: false`、`canBoom: false`）。
-- `src/lib/rules/boards.ts`：`ALL_ROLE_KEYS` 加它。
-- `src/lib/rules/phases.ts`：`PHASE_KIND`、`PHASE_SEQUENCE`、`NIGHT_ACTION_ORDER`、`ACTION_PHASES`、
-  `PROMPT_NEEDS_PUBLIC_EVIDENCE`。
-- `src/lib/rules/night-progress.ts`：`NIGHT_STEP` 加一步（actor＝role WolfBeauty）＋ `wolfBeautyDecided` 謂詞
-  （含「沒有合法目標可選」的退化情況，與禁言／攝夢同一條規則）。
+### 已知限制
 
-### 3. 存檔與續跑（3 個檔）
-
-- `src/lib/rules/checkpoints.ts`：`CHECKPOINT_SAFE`（`wolfBeautyDecided`）＋ `RESTORE_FALLBACK`（退回狼人／攝夢／守衛）。
-- `src/game/phases/night-resume.ts`：`NightResumeCommand` 加 `CONTINUE_NIGHT_AFTER_WOLF_BEAUTY`、
-  `ADVANCE_PLAN`、`REPLAY_COMMAND`（重播要從 `START_NIGHT` 重跑）。
-- `src/store/game-machine.ts`：`VALID_TRANSITIONS`（狼人 → 魅惑 → 女巫）＋ `PHASE_CONFIGS` 一筆。
-
-### 4. UI 對照表（8 個檔，全部是機械補齊）
-
-`src/app/page.tsx`（`PHASE_ICON`）、`src/components/game/DialogArea.tsx`（`PHASE_ROLE`）、
-`GameSetupModal`、`PlayerCardCompact`、`RoleRevealHistoryCard`（`ROLE_META`＋標籤）、
-`TutorialOverlay`、`WelcomeScreen`（標籤＋數量）、`useTutorial`、
-`src/components/analysis/constants.ts`（三張表）、`src/lib/game-analysis.ts`（陣營）、
-`src/components/DevTools/DevConsole.tsx`（死因標籤加 `charm`）。
-
-### 5. i18n（3 語系各 9 組；zh-TW 用專案的 OpenCC 從 zh-CN 轉）
-
-`roles.wolfBeauty`、`gameSetup.rolePreference.desc.wolfBeauty`、
-`roleReveal.roles.wolfBeauty.{title,subtitle}`、`roleReveal.nextStep.wolfBeauty`、
-`phase.nightWolfBeauty.{description,human}`、`ui.wolfBeautyActing`／`ui.waitingWolfBeauty`、
-`tutorialOverlay.roles.WolfBeauty.{desc,points,action,tips}`、
-`devConsole.phases.NIGHT_WOLF_BEAUTY_ACTION`、`devConsole.deathReason.charm`、
-`promptUtils.roleText.wolfBeauty`、`promptUtils.strategyGuide.wolfBeauty`（AI 玩法指引，必寫）、
-`prompts.wolfBeauty.{base,task,user}`（夜間技能提示詞）。
-
-### 6. 行為層（核心，4 個檔）
-
-- `src/lib/rules/charm.ts`（新檔，照 `dream.ts` 的形狀）：
-  `getWolfBeautyEligibleSeats`、`isValidWolfBeautyTarget`、`pickRandomWolfBeautyTarget`、
-  `getCharmedSeat`、`triggersCharmRevenge`（決鬥不算）、`getCharmRevengeSeat(state, deadSeat, cause)`。
-- `src/game/phases/NightPhase.ts`：`buildWolfBeautyPrompt`、`runWolfBeautyAction`、
-  `continueNightAfterWolfBeauty`（＝跑女巫），並把魅惑插進 `continueNightAfterWolf` 與 `handleAction` 分派；
-  `getPrompt` 的 switch 要加 case（現在的 `default` 會讓狼美人拿到狼人提示詞）。
-- `src/lib/game-master.ts`：`generateWolfBeautyAction`（照 `generateDreamAction` 抄，換 prompt 階段與 log type）。
-- `src/hooks/useGameLogic.ts`：真人狼美人的分支（照 `NIGHT_DREAM_ACTION` 那一段），
-  寫入 `nightActions.wolfBeautyTarget` 後走 `continueNightAfterHumanAction`。
-
-### 7. 殉情結算（要接三條死亡路徑，最容易漏）
-
-- `src/lib/rules/night-resolution.ts`：夜間死亡名單出爐後，若狼美人當晚出局 → 把她魅惑的座位也推進死亡名單
-  （reason `"charm"`）。注意「魅惑不吃守護」，所以不要走狼刀那條判定。
-- 白天放逐：`VotePhase`／`useGameLogic` 的放逐死亡套用它（`cause: "exile"`）。
-- 被帶走（白狼王自爆）：`useGameLogic` 的 `continueAfterSettle` 套用它（`cause: "carried"`）。
-- 騎士決鬥：**不要**接（`triggersCharmRevenge` 已回 false）。
-- `death-skills.canUseDeathShot`：殉情屬於「被技能帶走」，要不要封槍是我們的選擇——
-  建議比照夢死封槍並在文件寫明（來源站沒有規定）。
-
-### 8. 版型與文件（最後才做）
-
-`boards.ts` 加 `official-12-wolf-beauty-knight`（3 狼＋狼美人＋預女守騎＋4 民）；
-「魔鬼騎士」與它角色相同，差別只是玩家約定，可直接沿用同一組角色再開一個版型。
-**版型一定要等第 6、7 項完成才加**，否則會出現「可以選但規則不完整」的版型。
+- **殉情與守護無關**（魅惑不是狼刀），但**夢游者免疫也不擋殉情**——連帶死亡不是「夜間傷害」，與夢死同一條理由。
+- `dayHistory`／`nightHistory` 的死因欄位只記最後一筆，同晚多重連帶（例如殉情＋毒）時以既有死因為準、不覆蓋。
+- 「魔鬼騎士」尚未另開版型（角色相同，只是玩家約定不同），需要的話再加一筆版型資料即可。
+- **角色頭像沿用白狼王**（`/roles/white-wolf-king.png`，程式碼註解已標明）：美術沒有狼美人立繪，
+  這與先前紀錄的「狼王／禁言長老／攝夢人頭像」是同一批待補美術，不是這次新增的缺口。
+- 版型標籤沿用中文（`tags: ["狼美騎士", "12人"]`），英文語系下仍顯示中文——與所有既有版型一致。
 
 ## 6. B 級：需要 1–2 個新角色（建議先做這批）
 
@@ -197,8 +150,8 @@
 | --- | --- | --- |
 | 狼王魔術師 | 魔術師 | 魔術師（`Magician`）：每夜交換兩名玩家的位置，交換後刀口／查驗／毒口全部改判。 |
 | 夢魘攝夢 | 夢魘之影 | 夢魘之影（`Nightmare`）：恐懼一名玩家；恐懼到狼人則狼隊當晚無刀（動到夜間結算）。 |
-| 狼美騎士 | 狼美人 | 狼美人（`WolfBeauty`）：每夜魅惑一名玩家，自己被出局時被魅惑者一起出局（動到死亡結算）。 |
-| 魔鬼騎士 | 狼美人 | 與狼美騎士同一組角色，差異只在玩家約定（騎士不決鬥對跳預言家）→ 可與狼美騎士一起做。 |
+| ~~狼美騎士~~ | ~~狼美人~~ | ✅ 已完成（見 §5.5） |
+| 魔鬼騎士 | 狼美人 | 角色與狼美騎士相同（✅ 角色已完成），差異只在玩家約定（騎士不決鬥對跳預言家）→ 只剩加一筆版型資料。 |
 | 石像鬼守墓人 | 守墓人、石像鬼 | 石像鬼（`Gargoyle`：不進狼窩、查具體身份）＋守墓人（`Gravekeeper`：查被放逐者的身份）。 |
 | 機械狼通靈師 | 通靈師、機械狼 | 通靈師（`Medium`：查具體身份）＋機械狼（`MachineWolf`：不進狼窩、可學習身份並繼承技能，動到技能繼承）。 |
 | 血月獵魔 | 獵魔人、血月使徒 | 獵魔人（`DemonHunter`：夜間追輪次）＋血月使徒（`BloodMoonApostle`：自爆封印神職技能）。 |
