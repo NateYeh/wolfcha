@@ -34,7 +34,7 @@ test("真实警徽结算：首轮票型公开进入 PK，复投保留各轮候�
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const loadedModule = { exports: {} as { useBadgePhase: (callbacks: unknown) => BadgePhaseActions } };
   runInNewContext(`(function(require,module,exports){${code}\n})`, { console })((id: string) => {
-    assert.ok(id in modules, id); return modules[id];
+    assert.ok(id in modules, `VM 夾具未註冊模組「${id}」：請把 await import("${id}") 加進本檔的 modules 表`); return modules[id];
   }, loadedModule, loadedModule.exports);
   const hook = loadedModule.exports.useBadgePhase({
     setDialogue: () => {}, clearDialogue: () => {}, setIsWaitingForAI: () => {}, waitForUnpause: async () => {},
@@ -97,7 +97,7 @@ test("人类玩家夜 1 被刀且死亡未公布时，警徽报名会自行推�
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const loadedModule = { exports: {} as { useBadgePhase: (callbacks: unknown) => BadgePhaseActions } };
   runInNewContext(`(function(require,module,exports){${code}\n})`, { console })((id: string) => {
-    assert.ok(id in modules, id); return modules[id];
+    assert.ok(id in modules, `VM 夾具未註冊模組「${id}」：請把 await import("${id}") 加進本檔的 modules 表`); return modules[id];
   }, loadedModule, loadedModule.exports);
   const flow: { completed: GameState | null } = { completed: null };
   const hook = loadedModule.exports.useBadgePhase({
@@ -146,7 +146,7 @@ test("被禁言的候选人不在警徽竞选发言拿到发言轮（仍保留�
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const loadedModule = { exports: {} as { useBadgePhase: (callbacks: unknown) => BadgePhaseActions } };
   runInNewContext(`(function(require,module,exports){${code}\n})`, { console })((id: string) => {
-    assert.ok(id in modules, id); return modules[id];
+    assert.ok(id in modules, `VM 夾具未註冊模組「${id}」：請把 await import("${id}") 加進本檔的 modules 表`); return modules[id];
   }, loadedModule, loadedModule.exports);
   const hook = loadedModule.exports.useBadgePhase({
     setDialogue: () => {}, clearDialogue: () => {}, setIsWaitingForAI: () => {}, waitForUnpause: async () => {},

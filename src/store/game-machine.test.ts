@@ -58,7 +58,7 @@ test("投票中刷新保留每张已提交的票，旧发言延迟保存不能�
       window: {}, localStorage, console,
       setTimeout: (fn: () => void) => { timers.set(++serial, fn); return serial; },
       clearTimeout: (id: number) => timers.delete(id),
-    })((id: string) => { assert.ok(id in modules, id); return modules[id]; }, m, m.exports);
+    })((id: string) => { assert.ok(id in modules, `VM 夾具未註冊模組「${id}」：請把 await import("${id}") 加進本檔的 modules 表`); return modules[id]; }, m, m.exports);
     return m.exports;
   };
   const { gameStateAtom } = load(); const store = createStore();
