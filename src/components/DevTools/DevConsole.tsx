@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { gameStateAtom } from "@/store/game-machine";
 import type { GameState, Phase, Role, Player } from "@/types/game";
 import { ALL_ROLE_KEYS } from "@/lib/rules/boards";
+import { PHASE_SEQUENCE } from "@/lib/rules/phases";
 import { getRoleName as getRoleConstantName } from "@/lib/game-constants";
 import { isWolfRole } from "@/types/game";
 import { X, Wrench, Play, Pause, SkipForward, Eye, Users, Crosshair, Code, ChatDots, Warning, ArrowRight, ArrowLeft, Lightning, SpeakerHigh, ChartBar } from "@phosphor-icons/react";
@@ -47,27 +48,9 @@ type AILogEntry = {
 const phaseManager = new PhaseManager();
 
 // 所有可用的游戏阶段
-const ALL_PHASES: Phase[] = [
-  "LOBBY",
-  "SETUP",
-  "NIGHT_START",
-  "NIGHT_GUARD_ACTION",
-  "NIGHT_WOLF_ACTION",
-  "NIGHT_WITCH_ACTION",
-  "NIGHT_SEER_ACTION",
-  "NIGHT_RESOLVE",
-  "DAY_START",
-  "DAY_BADGE_SIGNUP",
-  "DAY_BADGE_SPEECH",
-  "DAY_BADGE_ELECTION",
-  "DAY_SPEECH",
-  "DAY_LAST_WORDS",
-  "DAY_VOTE",
-  "DAY_RESOLVE",
-  "BADGE_TRANSFER",
-  "HUNTER_SHOOT",
-  "GAME_END",
-];
+// 階段清單必須跟著權威表走：寫死清單會讓後加的階段（禁言／攝夢／自爆／翻牌決斗）
+// 在 <select> 裡找不到對應 option 或名稱顯示 undefined。
+const ALL_PHASES: Phase[] = [...PHASE_SEQUENCE];
 
 // 所有可用的角色
 // 角色清單必須跟著 ALL_ROLE_KEYS 走：寫死清單會讓新角色（騎士／禁言長老／狼王）
@@ -75,30 +58,17 @@ const ALL_PHASES: Phase[] = [
 const ALL_ROLES: Role[] = [...ALL_ROLE_KEYS];
 
 // Helper to get phase name with i18n
+// 用單一真相組出「階段 → 名稱」，不再手寫對照表（漏一個就顯示 undefined，
+// 而 `as Record<Phase, string>` 又把 tsc 騙過去——與角色名稱同一個修法）。
 const usePhaseNames = () => {
   const t = useTranslations();
-  return useMemo(() => ({
-    LOBBY: t("devConsole.phases.LOBBY"),
-    SETUP: t("devConsole.phases.SETUP"),
-    NIGHT_START: t("devConsole.phases.NIGHT_START"),
-    NIGHT_GUARD_ACTION: t("devConsole.phases.NIGHT_GUARD_ACTION"),
-    NIGHT_WOLF_ACTION: t("devConsole.phases.NIGHT_WOLF_ACTION"),
-    NIGHT_WITCH_ACTION: t("devConsole.phases.NIGHT_WITCH_ACTION"),
-    NIGHT_SEER_ACTION: t("devConsole.phases.NIGHT_SEER_ACTION"),
-    NIGHT_RESOLVE: t("devConsole.phases.NIGHT_RESOLVE"),
-    DAY_START: t("devConsole.phases.DAY_START"),
-    DAY_BADGE_SIGNUP: t("devConsole.phases.DAY_BADGE_SIGNUP"),
-    DAY_BADGE_SPEECH: t("devConsole.phases.DAY_BADGE_SPEECH"),
-    DAY_BADGE_ELECTION: t("devConsole.phases.DAY_BADGE_ELECTION"),
-    DAY_SPEECH: t("devConsole.phases.DAY_SPEECH"),
-    DAY_PK_SPEECH: t("devConsole.phases.DAY_PK_SPEECH"),
-    DAY_LAST_WORDS: t("devConsole.phases.DAY_LAST_WORDS"),
-    DAY_VOTE: t("devConsole.phases.DAY_VOTE"),
-    DAY_RESOLVE: t("devConsole.phases.DAY_RESOLVE"),
-    BADGE_TRANSFER: t("devConsole.phases.BADGE_TRANSFER"),
-    HUNTER_SHOOT: t("devConsole.phases.HUNTER_SHOOT"),
-    GAME_END: t("devConsole.phases.GAME_END"),
-  } as Record<Phase, string>), [t]);
+  return useMemo(
+    () =>
+      Object.fromEntries(
+        PHASE_SEQUENCE.map((phase) => [phase, t(`devConsole.phases.${phase}`)])
+      ) as Record<Phase, string>,
+    [t]
+  );
 };
 
 // Helper to get role name with i18n

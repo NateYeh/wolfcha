@@ -1689,6 +1689,10 @@ export function useGameLogic() {
           await resolveVotePhase(s, token);
           return;
         }
+
+        // 走到這裡代表這個目標階段還沒有跳轉實作（下拉選單列的是「所有階段」，不是「已支援的階段」）。
+        // 大聲說出來，不要讓開發者以為按了沒反應是遊戲卡住。
+        console.warn(`[wolfcha] Dev 跳轉尚未支援目標階段 ${to}，這次跳轉不會有任何動作`);
       } finally {
         clearMark();
       }

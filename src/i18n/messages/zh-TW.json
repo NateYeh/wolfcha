@@ -2192,6 +2192,8 @@
       "SETUP": "設定中",
       "NIGHT_START": "夜晚開始",
       "NIGHT_GUARD_ACTION": "守衛行動",
+      "NIGHT_MUTE_ACTION": "禁言長老行動",
+      "NIGHT_DREAM_ACTION": "攝夢人行動",
       "NIGHT_WOLF_ACTION": "狼人出刀",
       "NIGHT_WITCH_ACTION": "女巫行動",
       "NIGHT_SEER_ACTION": "預言家查驗",
@@ -2207,6 +2209,8 @@
       "DAY_RESOLVE": "投票結算",
       "BADGE_TRANSFER": "警長移交警徽",
       "HUNTER_SHOOT": "獵人開槍",
+      "SELF_DESTRUCT": "自爆階段",
+      "KNIGHT_DUEL": "翻牌決鬥",
       "GAME_END": "遊戲結束"
     },
     "roles": {

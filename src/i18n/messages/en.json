@@ -2192,6 +2192,8 @@
       "SETUP": "Setup",
       "NIGHT_START": "Night begins",
       "NIGHT_GUARD_ACTION": "Guard action",
+      "NIGHT_MUTE_ACTION": "Mute Elder action",
+      "NIGHT_DREAM_ACTION": "Dreamweaver action",
       "NIGHT_WOLF_ACTION": "Wolf attack",
       "NIGHT_WITCH_ACTION": "Witch action",
       "NIGHT_SEER_ACTION": "Seer check",
@@ -2207,6 +2209,8 @@
       "DAY_RESOLVE": "Vote resolve",
       "BADGE_TRANSFER": "Badge transfer",
       "HUNTER_SHOOT": "Hunter shot",
+      "SELF_DESTRUCT": "Self destruct",
+      "KNIGHT_DUEL": "Knight duel",
       "GAME_END": "Game end"
     },
     "roles": {
