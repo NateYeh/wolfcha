@@ -38,9 +38,10 @@
 | `c933174` | 證據矩陣由 `PROMPT_NEEDS_PUBLIC_EVIDENCE` 衍生 | 新增階段不可能再漏補矩陣 |
 | `fe5b645` | 消費端等價守衛 | 表與表之間不會再漂移 |
 
-**仍然存在、且屬於本計畫範圍的既存怪癖**：`NIGHT_MUTE_ACTION`／`NIGHT_DREAM_ACTION` 的
+**原本的既存怪癖（已於 Phase 1 處理）**：`NIGHT_MUTE_ACTION`／`NIGHT_DREAM_ACTION` 的
 `CHECKPOINT_SAFE` 為 false，但 `RESTORE_FALLBACK` 是「回退點＝自己」。兩者並存代表
-「不落盤、但恢復時停在原地」；Phase 1 必須先決定這是否符合預期，再動手。
+「不落盤、但恢復時停在原地」；查證後確認這是舊 `switch` 的 `default` 殘留，不是刻意設計
+（結論與修法見 §5.1）。
 
 ---
 
@@ -72,7 +73,7 @@
 
 | Phase | 內容 | 驗收 | 風險 |
 |---|---|---|---|
-| **1** | 決定並記錄 MUTE／DREAM 的 checkpoint 語意（可存檔？回退點？），順手讓 `CHECKPOINT_SAFE` 與 `RESTORE_FALLBACK` 的關係有測試 | 存檔／恢復測試涵蓋這兩個階段 | 低（純決策＋測試） |
+| **1** | ✅ **已完成**（結論見下方 §5.1）：兩張表搬到 `src/lib/rules/checkpoints.ts`、修掉 MUTE／DREAM 的 `default` 殘留、加上四條不變式守衛；並修掉同一路徑上挖出的第八條 bug（`IN_PROGRESS_PHASES` 漏階段——進禁言階段會刪掉整局存檔） | `checkpoints.test.ts` 9 支 + store 整合測試 1 支全綠 | 低 |
 | **2** | **純新增**：夜的推進模組（順序 + 已完成判定 + 下一步），不接任何消費端；用 `NIGHT_ACTION_ORDER` 當順序來源 | 新模組自己的測試（含「角色死亡→跳過」「無守衛在場」等矩陣） | 零（不接線） |
 | **3** | `NightPhase` 的 5 個 `continueNightAfter*` 改成向新模組查「下一步」，保留對外行為 | `context-regressions` + 夜晚流程整合測試全綠 | 中 |
 | **4** | `useGameLogic` 的存檔恢復 switch（7 個 night case）與 Dev 跳轉／軟編輯分支改向新模組查 | 存檔恢復、Dev 跳轉測試 | 中高（涉及存檔相容） |
@@ -82,6 +83,66 @@
 > 每階段都要跑：`pnpm test` → `pnpm exec tsc --noEmit` → `pnpm build`（專案自訂驗證鏈）。
 > 每個階段結束時，`useGameLogic` 的 `useRef` 數量與 `CONTINUE_NIGHT_AFTER_` 出現次數
 > 都應該下降；把這兩個數字記錄在 commit 訊息裡，作為「真的有收斂」的客觀證據。
+
+---
+
+## 5.1 Phase 1 的結論與新增發現（已完成）
+
+**決定**：MUTE／DREAM 與其他夜間角色同一規則——“已決定即可落盤；未決定時不落盤，刷新後由前一個
+穩定點重播”。證據是恢復鏈（`useGameLogic` 的 MUTE／DREAM 案例）**早就**以 `mutedTarget`／
+`dreamTarget` 寫好了「已決定則續跑」的判定；存檔端之所以拒絕，只是舊 
+`switch` 的 `default`（同族的第七條，也是最後一條）。
+
+**語意細節**：
+
+- 「已決定」包含「沒有東西要決定」：長老／攝夢人不在場，或合法目標為空
+  （`getMuteEligibleSeats`／`getDreamEligibleSeats` 為空，例如只剩自己存活；
+  `dream.ts` 的註解本來就承認後者）。
+- 回退點採「前一個**穩定**點」而非「前一個階段」：禁言未決定時它不是穩定點，
+  因此 DREAM 在全部未決定時退回 `NIGHT_START`。
+- 兩張表用同一組 `*Decided()` 判定，同一角色不會有兩種「已決定」。
+
+**新增的四條不變式守衛**（`src/lib/rules/checkpoints.test.ts`）：
+
+1. 動作階段（`ACTION_PHASES`）的回退點**不得是自己**；
+2. 夜間回退點不得往前跳（否則形成迴圈）；
+3. 回退目標**自身必須是穩定點**（回退到存不下來的點＝把不完整狀態當穩定點）；
+4. 真正的中間態（`NIGHT_RESOLVE`／`DAY_RESOLVE`／`BADGE_TRANSFER`／`HUNTER_SHOOT`／
+   `SELF_DESTRUCT`／`KNIGHT_DUEL`）仍然拒絕落盤。
+
+> 第 1 條就會抓到 MUTE／DREAM 的舊行為，第 3 條會抓到任何「回退到不穩定點」的新寫法。
+
+**本階段顺帶查到、尚未處理的兩件事**（供 Phase 3／5 使用）：
+
+1. 恢復鏈與階段續跑用的是 `field !== undefined`（`NightPhase.ts:658`／`:681`、
+   `useGameLogic.ts:1234`／`:1249`／`:1680`），**不涵蓋「沒有合法目標」的退化情況**；
+   該情況要求「只剩攝夢人自己存活」，正常對局不可達（那時早應該 GAME_END），因此只記錄。
+2. 「某個夜間決定完成了嗎」的推導散布在 8 處以上（`mutedTarget` 3、`dreamTarget` 5，
+   `guardTarget` 11、`wolfTarget` 28 等，含非「已完成」語意的讀取）——這是 Phase 2 的消費端清單。
+
+### 順帶修掉的第八條同族 bug：進禁言階段會刪掉整局存檔
+
+寫「已決定能撐過刷新」的整合測試（`src/store/game-machine.test.ts`）時，測試**沒有**失敗在存檔判定上，
+而是失敗在它前面的一道閘門，因而挖出這個：
+
+- `isRestorableGameState = isGameInProgress && hasGameSessionId`，而 `isGameInProgress` 讀的是
+  **手寫清單** `IN_PROGRESS_PHASES`（18 項），
+  漏了後加的 `NIGHT_MUTE_ACTION`／`NIGHT_DREAM_ACTION`／`KNIGHT_DUEL`（三者都在 `PHASE_SEQUENCE` 裡）。
+- `saveGameState` 在**每次狀態變更**都會先問 `isRestorableGameState`；答案為否就走「清掉存檔」那一支
+  （原意是「回到大廳才清」）。所以進入禁言階段（或攝夢、騎士決鬥）時，**整局存檔被刪掉**，
+  重新整理直接回大廳；`page.tsx` 的 `isGameInProgress` 也會把對局當成已結束（設定面板藏「退出對局」）。
+- 這比原本以為的「不能落盤」嚴重得多：不是退回上一個檢查點，是**全部丟失**。
+
+**修法**：`IN_PROGRESS_PHASES` 改由權威表以排除法推導（`PHASE_SEQUENCE` 扣掉 `LOBBY`／`SETUP`／`GAME_END`），
+新增階段預設算「進行中」，不再需要記得回來補這份清單。差集已比對：只多了這三項，沒有其他變動。
+
+> 教訓：「階段清單手寫 + 新增階段靠人記得補」這個家族，光把「有紀錄的地方」清完不夠，
+> 要清到**存檔閘門**這種「平時不會讀到」的地方。整合測試比表格測試更會撈到這種。
+
+**尚未處理（已記錄）**：`DevConsole` 的 `ALL_PHASES` 與 `usePhaseNames` 也是手寫且漏成員
+（缺 MUTE／DREAM／`SELF_DESTRUCT`／`KNIGHT_DUEL`），而且用 `as Record<Phase, string>` 把 tsc 騙過去，
+所以開發者工具在那些階段顯示 `undefined`、下拉選單也選不到。
+修它需要補三個語系的 `devConsole.phases.*` 鍵，**開發者工具可見、玩家不可見**，所以不在本階段順手改。
 
 ---
 

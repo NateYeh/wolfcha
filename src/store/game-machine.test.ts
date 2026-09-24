@@ -45,6 +45,7 @@ test("投票中刷新保留每张已提交的票，旧发言延迟保存不能�
     "@/lib/rules/mute": await import("@/lib/rules/mute"),
     "@/lib/rules/dream": await import("@/lib/rules/dream"),
     "@/lib/rules/phases": await import("@/lib/rules/phases"),
+    "@/lib/rules/checkpoints": await import("@/lib/rules/checkpoints"),
     "@/lib/rules/death-skills": await import("@/lib/rules/death-skills"),
     "@/lib/speech-skill": await import("@/lib/speech-skill"),
   };
@@ -79,4 +80,72 @@ test("投票中刷新保留每张已提交的票，旧发言延迟保存不能�
   const badgeRestored = createStore().get(load().gameStateAtom);
   assert.equal(badgeRestored.phase, "DAY_BADGE_ELECTION");
   assert.deepEqual({ ...badgeRestored.badge.votes }, badge.badge.votes);
+});
+
+test("禁言長老已決定時刷新停在禁言階段；未決定時回到上一個穩定點", async () => {
+  const [{ readFileSync }, { runInNewContext }, ts, { createStore }, { createSinglePlayerContextAuditState }] = await Promise.all([
+    import("node:fs"), import("node:vm"), import("typescript"), import("jotai"), import("../../scripts/single-player-context-audit"),
+  ]);
+  const modules: Record<string, unknown> = {
+    jotai: await import("jotai"), "jotai/utils": await import("jotai/utils"),
+    "@/types/game": await import("@/types/game"), "@/lib/game-master": await import("@/lib/game-master"),
+    "@/lib/game-session-policy": await import("@/lib/game-session-policy"), "@/i18n/translator": await import("@/i18n/translator"),
+    "@/lib/rules/roles": await import("@/lib/rules/roles"),
+    "@/lib/rules/flags": await import("@/lib/rules/flags"),
+    "@/lib/rules/self-destruct": await import("@/lib/rules/self-destruct"),
+    "@/lib/rules/boards": await import("@/lib/rules/boards"),
+    "@/lib/rules/night-deaths": await import("@/lib/rules/night-deaths"),
+    "@/lib/rules/knight-duel": await import("@/lib/rules/knight-duel"),
+    "@/lib/rules/knight-duel-apply": await import("@/lib/rules/knight-duel-apply"),
+    "@/lib/rules/settle-night-deaths": await import("@/lib/rules/settle-night-deaths"),
+    "@/lib/rules/mute": await import("@/lib/rules/mute"),
+    "@/lib/rules/dream": await import("@/lib/rules/dream"),
+    "@/lib/rules/phases": await import("@/lib/rules/phases"),
+    "@/lib/rules/checkpoints": await import("@/lib/rules/checkpoints"),
+    "@/lib/rules/death-skills": await import("@/lib/rules/death-skills"),
+    "@/lib/speech-skill": await import("@/lib/speech-skill"),
+  };
+  const storage = new Map<string, string>();
+  const timers = new Map<number, () => void>(); let serial = 0;
+  const localStorage = { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => storage.set(k, v), removeItem: (k: string) => storage.delete(k) };
+  const code = ts.transpileModule(readFileSync("src/store/game-machine.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const load = () => {
+    const m = { exports: {} as typeof import("./game-machine") };
+    runInNewContext(`(function(require,module,exports){${code}\n})`, {
+      window: {}, localStorage, console,
+      setTimeout: (fn: () => void) => { timers.set(++serial, fn); return serial; },
+      clearTimeout: (id: number) => timers.delete(id),
+    })((id: string) => { assert.ok(id in modules, `VM 夾具未註冊模組「${id}」：請把 await import("${id}") 加進本檔的 modules 表`); return modules[id]; }, m, m.exports);
+    return m.exports;
+  };
+
+  const { gameStateAtom } = load();
+  const base = createSinglePlayerContextAuditState();
+  base.gameSessionId = "mute-checkpoint-test";
+  // 把 2 號換成存活的禁言長老（存檔判定只看角色與存活）
+  const players = base.players.map((p, i) => (i === 1 ? { ...p, role: "MuteElder" as const, alive: true } : p));
+  const store = createStore();
+  const atNightStart = { ...base, players, phase: "NIGHT_START" as const, nightActions: {} };
+  store.set(gameStateAtom, atNightStart);
+  assert.ok(storage.size > 0, "夜間開始應該落盤");
+
+  // 「進行中」不再漏掉後加的階段（原本手寫清單漏了這三個，進入禁言階段會刪掉整局存檔）
+  const { isGameInProgress } = load();
+  for (const phase of ["NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "KNIGHT_DUEL"] as const) {
+    assert.equal(isGameInProgress({ ...atNightStart, phase }), true, `${phase} 應該算進行中`);
+  }
+  for (const phase of ["LOBBY", "SETUP", "GAME_END"] as const) {
+    assert.equal(isGameInProgress({ ...atNightStart, phase }), false, `${phase} 不該算進行中`);
+  }
+
+  // 未決定：不落盤，所以刷新回到上一個穩定點（夜間開始）
+  store.set(gameStateAtom, { ...atNightStart, phase: "NIGHT_MUTE_ACTION" as const });
+  const pendingRestored = createStore().get(load().gameStateAtom);
+  assert.equal(pendingRestored.phase, "NIGHT_START");
+
+  // 已決定：落盤，刷新停在禁言階段且決策保留（不再退回夜間開始重跑）
+  store.set(gameStateAtom, { ...atNightStart, phase: "NIGHT_MUTE_ACTION" as const, nightActions: { mutedTarget: 3 } });
+  const decidedRestored = createStore().get(load().gameStateAtom);
+  assert.equal(decidedRestored.phase, "NIGHT_MUTE_ACTION");
+  assert.equal(decidedRestored.nightActions.mutedTarget, 3);
 });

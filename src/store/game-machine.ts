@@ -19,6 +19,7 @@ import { isValidDreamTarget } from "@/lib/rules/dream";
 import { isPendingDeath } from "@/lib/rules/night-deaths";
 import { hasAlreadyBoomed } from "@/lib/rules/self-destruct";
 import { PHASE_SEQUENCE } from "@/lib/rules/phases";
+import { getRestorePhase, isCheckpointSafe } from "@/lib/rules/checkpoints";
 
 // ============ 游戏状态持久化配置 ============
 
@@ -31,27 +32,19 @@ interface PersistedGameState {
   savedAt: number;
 }
 
-// Phases that indicate a game is in progress (for UI display purposes)
-const IN_PROGRESS_PHASES: Phase[] = [
-  "NIGHT_START",
-  "NIGHT_GUARD_ACTION",
-  "NIGHT_WOLF_ACTION",
-  "NIGHT_WITCH_ACTION",
-  "NIGHT_SEER_ACTION",
-  "NIGHT_RESOLVE",
-  "DAY_START",
-  "DAY_BADGE_SIGNUP",
-  "DAY_BADGE_SPEECH",
-  "DAY_BADGE_ELECTION",
-  "DAY_PK_SPEECH",
-  "DAY_SPEECH",
-  "DAY_LAST_WORDS",
-  "DAY_VOTE",
-  "DAY_RESOLVE",
-  "BADGE_TRANSFER",
-  "HUNTER_SHOOT",
-  "SELF_DESTRUCT",
-];
+// 「對局進行中」＝權威階段全集扣掉大廳／設定／對局結束。
+//
+// 這裡原本是手寫清單，漏了後加的 `NIGHT_MUTE_ACTION`／`NIGHT_DREAM_ACTION`／`KNIGHT_DUEL`
+// （三者在 `PHASE_SEQUENCE` 裡都存在，是漏寫而非刻意排除）。後果不只是「存檔不安全」：
+// `saveGameState` 在每次狀態變更都會先問 `isRestorableGameState`，答案為否就走
+// 「清掉存檔」那一支——所以進入禁言階段會**刪掉整局存檔**（刷新直接回大廳），
+// 設定面板也會把對局當成已結束（`page.tsx` 的 `isGameInProgress`）。
+//
+// 改成由權威表以「排除法」推導：新增階段預設算「進行中」，不再需要記得回來補這份清單。
+const NOT_IN_PROGRESS_PHASES: readonly Phase[] = ["LOBBY", "SETUP", "GAME_END"];
+const IN_PROGRESS_PHASES: readonly Phase[] = PHASE_SEQUENCE.filter(
+  (phase) => !NOT_IN_PROGRESS_PHASES.includes(phase)
+);
 
 /**
  * Check if a game state represents a game in progress that should be restored
@@ -68,145 +61,6 @@ export function hasGameSessionId(state: GameState | null | undefined): state is 
 
 export function isRestorableGameState(state: GameState | null | undefined): boolean {
   return isGameInProgress(state) && hasGameSessionId(state);
-}
-
-/**
- * 每個階段「現在這份狀態存檔安不安全」。投票中的每張已提交票都是穩定事實，
- * 不需要等待整輪完成；未結算的技能中間態仍保留前一個檢查點。
- *
- * 用 `Record<Phase, …>` 而不是 `switch`：新增階段時 tsc 會逼你明確決定，
- * 不再被 `default` 吞掉（`SELF_DESTRUCT`／`KNIGHT_DUEL` 過去就是這樣落在 default 的）。
- *
- * 註：`NIGHT_MUTE_ACTION`／`NIGHT_DREAM_ACTION` 目前刻意不開放存檔，與 `getRestorePhase`
- * 的「回退點＝自己」並存，是既存行為，不在本次改動範圍。
- */
-const CHECKPOINT_SAFE: Record<Phase, (state: GameState) => boolean> = {
-  LOBBY: () => false,
-  SETUP: () => false,
-
-  // 過渡階段，進入時即可保存
-  NIGHT_START: () => true,
-  NIGHT_GUARD_ACTION: (state) => {
-    const guard = state.players.find((p) => p.role === "Guard" && p.alive);
-    // 沒有守衛，或守衛已選擇目標
-    return !guard || state.nightActions.guardTarget !== undefined;
-  },
-  NIGHT_MUTE_ACTION: () => false,
-  NIGHT_DREAM_ACTION: () => false,
-  NIGHT_WOLF_ACTION: (state) => {
-    const aliveWolves = state.players.filter((p) => isWolfRole(p.role) && p.alive);
-    if (aliveWolves.length === 0) return true;
-    // 狼人已選擇目標
-    return state.nightActions.wolfTarget !== undefined;
-  },
-  NIGHT_WITCH_ACTION: (state) => {
-    const witch = state.players.find((p) => p.role === "Witch" && p.alive);
-    if (!witch) return true;
-    // 藥都用完了
-    if (state.roleAbilities.witchHealUsed && state.roleAbilities.witchPoisonUsed) return true;
-    // 女巫已做出決定（救人、殺人、或明確不救）：witchSave === false 表示明確不救
-    return (
-      state.nightActions.witchSave !== undefined || state.nightActions.witchPoison !== undefined
-    );
-  },
-  NIGHT_SEER_ACTION: (state) => {
-    const seer = state.players.find((p) => p.role === "Seer" && p.alive);
-    // 沒有預言家，或預言家已查驗
-    return !seer || state.nightActions.seerTarget !== undefined;
-  },
-  // 夜晚結算階段很快就會進 DAY_START，為安全起見不在這裡保存
-  NIGHT_RESOLVE: () => false,
-
-  DAY_START: () => true,
-  // 警長競選報名：報名中途也屬「穩定態」，刷新後可繼續等待其他人
-  DAY_BADGE_SIGNUP: () => true,
-  // 發言階段允許保存（犧牲「刷新後續同一段流式發言」換取恢復顆粒度）
-  DAY_BADGE_SPEECH: () => true,
-  // 每張已提交的票都是穩定事實；恢復時只補尚未投票的人
-  DAY_BADGE_ELECTION: () => true,
-  DAY_PK_SPEECH: () => true,
-  DAY_SPEECH: () => true,
-  DAY_LAST_WORDS: () => true,
-  DAY_VOTE: () => true,
-  DAY_RESOLVE: () => false,
-
-  BADGE_TRANSFER: () => false,
-  HUNTER_SHOOT: () => false,
-  SELF_DESTRUCT: () => false,
-  KNIGHT_DUEL: () => false,
-  GAME_END: () => false,
-};
-
-function isCheckpointSafe(state: GameState): boolean {
-  return CHECKPOINT_SAFE[state.phase](state);
-}
-
-/**
- * 每個階段「動作未完成時該退到哪個穩定點」。同樣用 `Record` 強制補齊。
- *
- * 未列在舊 switch 的階段（大廳／設定／禁言／攝夢／自爆／決鬥／對局結束）過去走 `default`：
- * 回退點＝自己，這裡維持原行為。
- */
-const RESTORE_FALLBACK: Record<Phase, (state: GameState) => Phase> = {
-  LOBBY: (state) => state.phase,
-  SETUP: (state) => state.phase,
-
-  NIGHT_START: (state) => state.phase,
-  NIGHT_GUARD_ACTION: () => "NIGHT_START",
-  NIGHT_MUTE_ACTION: (state) => state.phase,
-  NIGHT_DREAM_ACTION: (state) => state.phase,
-  NIGHT_WOLF_ACTION: (state) => {
-    // 如果守衛已選，回到守衛選完後的狀態
-    const guard = state.players.find((p) => p.role === "Guard" && p.alive);
-    if (!guard || state.nightActions.guardTarget !== undefined) return "NIGHT_GUARD_ACTION";
-    return "NIGHT_START";
-  },
-  NIGHT_WITCH_ACTION: (state) =>
-    // 如果狼人已選，回到狼人選完後的狀態
-    state.nightActions.wolfTarget !== undefined ? "NIGHT_WOLF_ACTION" : "NIGHT_START",
-  NIGHT_SEER_ACTION: (state) => {
-    // 檢查女巫是否已決定
-    const witch = state.players.find((p) => p.role === "Witch" && p.alive);
-    const witchDone =
-      !witch ||
-      (state.roleAbilities.witchHealUsed && state.roleAbilities.witchPoisonUsed) ||
-      state.nightActions.witchSave !== undefined ||
-      state.nightActions.witchPoison !== undefined;
-    if (witchDone) return "NIGHT_WITCH_ACTION";
-    return state.nightActions.wolfTarget !== undefined ? "NIGHT_WOLF_ACTION" : "NIGHT_START";
-  },
-  // 回到預言家階段
-  NIGHT_RESOLVE: () => "NIGHT_SEER_ACTION",
-
-  // 以下白天階段的 CHECKPOINT_SAFE 恆為 true，不會走到這裡；保留明確值以滿足 Record
-  DAY_START: () => "DAY_START",
-  DAY_BADGE_SIGNUP: () => "DAY_START",
-  DAY_BADGE_SPEECH: () => "DAY_START",
-  DAY_BADGE_ELECTION: () => "DAY_START",
-  DAY_PK_SPEECH: () => "DAY_START",
-  DAY_SPEECH: () => "DAY_START",
-  DAY_LAST_WORDS: () => "DAY_START",
-  DAY_VOTE: () => "DAY_START",
-  // 白天的複雜階段，回到 DAY_START
-  DAY_RESOLVE: () => "DAY_START",
-
-  BADGE_TRANSFER: () => "DAY_START",
-  HUNTER_SHOOT: () => "DAY_START",
-  SELF_DESTRUCT: (state) => state.phase,
-  KNIGHT_DUEL: (state) => state.phase,
-  GAME_END: (state) => state.phase,
-};
-
-/**
- * Get the "fallback" phase to restore to if the current phase action is incomplete.
- * Returns the previous stable checkpoint.
- */
-export function getRestorePhase(state: GameState): Phase {
-  // 如果當前階段已完成，可以直接恢復到當前階段
-  if (isCheckpointSafe(state)) {
-    return state.phase;
-  }
-  return RESTORE_FALLBACK[state.phase](state);
 }
 
 /**
