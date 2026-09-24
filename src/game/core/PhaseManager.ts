@@ -10,7 +10,11 @@ import { KnightDuelPhase } from "../phases/KnightDuelPhase";
 import { SelfDestructPhase } from "../phases/SelfDestructPhase";
 
 export class PhaseManager {
-  private readonly phases: Partial<Record<Phase, GamePhase>>;
+  /**
+   * 階段 → 產生該階段提示詞的實作。用完整 `Record` 而非 `Partial`：
+   * 沒有提示詞需求的階段必須明確寫 `null`，新增 Phase 時 tsc 會逼你決定。
+   */
+  private readonly phases: Record<Phase, GamePhase | null>;
 
   constructor() {
     const nightPhase = new NightPhase();
@@ -39,11 +43,19 @@ export class PhaseManager {
       HUNTER_SHOOT: hunterPhase,
       SELF_DESTRUCT: selfDestructPhase,
       KNIGHT_DUEL: knightDuelPhase,
+
+      // 以下階段不需要提示詞（大廳／設定／夜間結算／白天過場／對局結束）
+      LOBBY: null,
+      SETUP: null,
+      NIGHT_RESOLVE: null,
+      DAY_START: null,
+      DAY_RESOLVE: null,
+      GAME_END: null,
     };
   }
 
   getPhase(phase: Phase): GamePhase | null {
-    return this.phases[phase] ?? null;
+    return this.phases[phase];
   }
 
   getPrompt(phase: Phase, context: GameContext, player: Player): PromptResult | null {

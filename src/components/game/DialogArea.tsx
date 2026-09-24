@@ -81,18 +81,39 @@ function preloadRolePortraits() {
   });
 }
 
-// 获取当前阶段对应的角色（需要人类玩家角色来区分狼人/白狼王）
-const getPhaseRole = (phase: Phase, humanRole?: string): string | null => {
-  switch (phase) {
-    case 'NIGHT_GUARD_ACTION': return 'Guard';
-    case 'NIGHT_WOLF_ACTION': return humanRole === 'WhiteWolfKing' ? 'WhiteWolfKing' : 'Werewolf';
-    case 'NIGHT_WITCH_ACTION': return 'Witch';
-    case 'NIGHT_SEER_ACTION': return 'Seer';
-    case 'HUNTER_SHOOT': return 'Hunter';
-    case 'SELF_DESTRUCT': return 'WhiteWolfKing';
-    default: return null;
-  }
+/**
+ * 階段 → 主角立繪用的角色（需要人類玩家角色來區分狼人／白狼王）。
+ * `Record<Phase, …>` 強制補齊：新增階段時 tsc 會逼你決定這裡要顯示什麼。
+ */
+const PHASE_ROLE: Record<Phase, (humanRole?: string) => string | null> = {
+  LOBBY: () => null,
+  SETUP: () => null,
+  NIGHT_START: () => null,
+  NIGHT_GUARD_ACTION: () => 'Guard',
+  NIGHT_MUTE_ACTION: () => null,
+  NIGHT_DREAM_ACTION: () => null,
+  NIGHT_WOLF_ACTION: (humanRole) => (humanRole === 'WhiteWolfKing' ? 'WhiteWolfKing' : 'Werewolf'),
+  NIGHT_WITCH_ACTION: () => 'Witch',
+  NIGHT_SEER_ACTION: () => 'Seer',
+  NIGHT_RESOLVE: () => null,
+  DAY_START: () => null,
+  DAY_BADGE_SIGNUP: () => null,
+  DAY_BADGE_SPEECH: () => null,
+  DAY_BADGE_ELECTION: () => null,
+  DAY_PK_SPEECH: () => null,
+  DAY_SPEECH: () => null,
+  DAY_LAST_WORDS: () => null,
+  DAY_VOTE: () => null,
+  DAY_RESOLVE: () => null,
+  BADGE_TRANSFER: () => null,
+  HUNTER_SHOOT: () => 'Hunter',
+  SELF_DESTRUCT: () => 'WhiteWolfKing',
+  KNIGHT_DUEL: () => null,
+  GAME_END: () => null,
 };
+
+const getPhaseRole = (phase: Phase, humanRole?: string): string | null =>
+  PHASE_ROLE[phase](humanRole);
 
 const getPlayerAvatarUrl = (player: Player, isGenshinMode: boolean) =>
   isGenshinMode && !player.isHuman

@@ -71,149 +71,142 @@ export function isRestorableGameState(state: GameState | null | undefined): bool
 }
 
 /**
- * 判断当前状态是否可恢复。投票中的每张已提交票都是稳定事实，
- * 不需要等待整轮完成；未结算的技能中间态仍保留前一个检查点。
- * 
- * 细粒度保存策略：
- * - 守卫选完 → 可保存
- * - 狼人选完 → 可保存
- * - 女巫决定完 → 可保存
- * - 预言家查完 → 可保存
- * - 白天/夜晚开始 → 可保存（过渡阶段）
+ * 每個階段「現在這份狀態存檔安不安全」。投票中的每張已提交票都是穩定事實，
+ * 不需要等待整輪完成；未結算的技能中間態仍保留前一個檢查點。
+ *
+ * 用 `Record<Phase, …>` 而不是 `switch`：新增階段時 tsc 會逼你明確決定，
+ * 不再被 `default` 吞掉（`SELF_DESTRUCT`／`KNIGHT_DUEL` 過去就是這樣落在 default 的）。
+ *
+ * 註：`NIGHT_MUTE_ACTION`／`NIGHT_DREAM_ACTION` 目前刻意不開放存檔，與 `getRestorePhase`
+ * 的「回退點＝自己」並存，是既存行為，不在本次改動範圍。
  */
+const CHECKPOINT_SAFE: Record<Phase, (state: GameState) => boolean> = {
+  LOBBY: () => false,
+  SETUP: () => false,
+
+  // 過渡階段，進入時即可保存
+  NIGHT_START: () => true,
+  NIGHT_GUARD_ACTION: (state) => {
+    const guard = state.players.find((p) => p.role === "Guard" && p.alive);
+    // 沒有守衛，或守衛已選擇目標
+    return !guard || state.nightActions.guardTarget !== undefined;
+  },
+  NIGHT_MUTE_ACTION: () => false,
+  NIGHT_DREAM_ACTION: () => false,
+  NIGHT_WOLF_ACTION: (state) => {
+    const aliveWolves = state.players.filter((p) => isWolfRole(p.role) && p.alive);
+    if (aliveWolves.length === 0) return true;
+    // 狼人已選擇目標
+    return state.nightActions.wolfTarget !== undefined;
+  },
+  NIGHT_WITCH_ACTION: (state) => {
+    const witch = state.players.find((p) => p.role === "Witch" && p.alive);
+    if (!witch) return true;
+    // 藥都用完了
+    if (state.roleAbilities.witchHealUsed && state.roleAbilities.witchPoisonUsed) return true;
+    // 女巫已做出決定（救人、殺人、或明確不救）：witchSave === false 表示明確不救
+    return (
+      state.nightActions.witchSave !== undefined || state.nightActions.witchPoison !== undefined
+    );
+  },
+  NIGHT_SEER_ACTION: (state) => {
+    const seer = state.players.find((p) => p.role === "Seer" && p.alive);
+    // 沒有預言家，或預言家已查驗
+    return !seer || state.nightActions.seerTarget !== undefined;
+  },
+  // 夜晚結算階段很快就會進 DAY_START，為安全起見不在這裡保存
+  NIGHT_RESOLVE: () => false,
+
+  DAY_START: () => true,
+  // 警長競選報名：報名中途也屬「穩定態」，刷新後可繼續等待其他人
+  DAY_BADGE_SIGNUP: () => true,
+  // 發言階段允許保存（犧牲「刷新後續同一段流式發言」換取恢復顆粒度）
+  DAY_BADGE_SPEECH: () => true,
+  // 每張已提交的票都是穩定事實；恢復時只補尚未投票的人
+  DAY_BADGE_ELECTION: () => true,
+  DAY_PK_SPEECH: () => true,
+  DAY_SPEECH: () => true,
+  DAY_LAST_WORDS: () => true,
+  DAY_VOTE: () => true,
+  DAY_RESOLVE: () => false,
+
+  BADGE_TRANSFER: () => false,
+  HUNTER_SHOOT: () => false,
+  SELF_DESTRUCT: () => false,
+  KNIGHT_DUEL: () => false,
+  GAME_END: () => false,
+};
+
 function isCheckpointSafe(state: GameState): boolean {
-  switch (state.phase) {
-    // 过渡阶段，进入时即可保存
-    case "NIGHT_START":
-    case "DAY_START":
-      return true;
-
-    // 警长竞选报名：即使在报名中途也属于“稳定态”（只是等待更多人的选择）
-    // 刷新恢复后可继续报名/等待AI报名，不需要回退到 DAY_START 重跑整个流程
-    case "DAY_BADGE_SIGNUP":
-      return true;
-
-    case "NIGHT_GUARD_ACTION": {
-      const guard = state.players.find((p) => p.role === "Guard" && p.alive);
-      // 没有守卫，或守卫已选择目标
-      return !guard || state.nightActions.guardTarget !== undefined;
-    }
-
-    case "NIGHT_WOLF_ACTION": {
-      const aliveWolves = state.players.filter((p) => isWolfRole(p.role) && p.alive);
-      if (aliveWolves.length === 0) return true;
-      // 狼人已选择目标
-      return state.nightActions.wolfTarget !== undefined;
-    }
-
-    case "NIGHT_WITCH_ACTION": {
-      const witch = state.players.find((p) => p.role === "Witch" && p.alive);
-      if (!witch) return true;
-      // 药都用完了
-      if (state.roleAbilities.witchHealUsed && state.roleAbilities.witchPoisonUsed) return true;
-      // 女巫已做出决定（救人、毒人、或明确不救）
-      // 注意：witchSave === false 表示明确不救，undefined 表示还没决定
-      return (
-        state.nightActions.witchSave !== undefined ||
-        state.nightActions.witchPoison !== undefined
-      );
-    }
-
-    case "NIGHT_SEER_ACTION": {
-      const seer = state.players.find((p) => p.role === "Seer" && p.alive);
-      // 没有预言家，或预言家已查验
-      return !seer || state.nightActions.seerTarget !== undefined;
-    }
-
-    case "NIGHT_RESOLVE":
-      // 夜晚结算阶段，通常很快就会进入 DAY_START
-      // 为安全起见，不在这里保存
-      return false;
-
-    // 每张已提交的票都是稳定事实；恢复时只补尚未投票的人。
-    case "DAY_BADGE_ELECTION":
-    case "DAY_VOTE":
-      return true;
-
-    // 发言阶段：允许保存（会牺牲“刷新后能继续同一段流式发言”的能力）
-    // 但可以显著提升 Day 1 警徽竞选、发言推进等场景的恢复颗粒度，避免刷新后回到 DAY_START 重跑流程。
-    case "DAY_BADGE_SPEECH":
-    case "DAY_PK_SPEECH":
-    case "DAY_SPEECH":
-    case "DAY_LAST_WORDS":
-      return true;
-
-    // 其他阶段比较复杂，暂不在中间保存
-    case "DAY_RESOLVE":
-    case "BADGE_TRANSFER":
-    case "HUNTER_SHOOT":
-      return false;
-
-    default:
-      return false;
-  }
+  return CHECKPOINT_SAFE[state.phase](state);
 }
+
+/**
+ * 每個階段「動作未完成時該退到哪個穩定點」。同樣用 `Record` 強制補齊。
+ *
+ * 未列在舊 switch 的階段（大廳／設定／禁言／攝夢／自爆／決鬥／對局結束）過去走 `default`：
+ * 回退點＝自己，這裡維持原行為。
+ */
+const RESTORE_FALLBACK: Record<Phase, (state: GameState) => Phase> = {
+  LOBBY: (state) => state.phase,
+  SETUP: (state) => state.phase,
+
+  NIGHT_START: (state) => state.phase,
+  NIGHT_GUARD_ACTION: () => "NIGHT_START",
+  NIGHT_MUTE_ACTION: (state) => state.phase,
+  NIGHT_DREAM_ACTION: (state) => state.phase,
+  NIGHT_WOLF_ACTION: (state) => {
+    // 如果守衛已選，回到守衛選完後的狀態
+    const guard = state.players.find((p) => p.role === "Guard" && p.alive);
+    if (!guard || state.nightActions.guardTarget !== undefined) return "NIGHT_GUARD_ACTION";
+    return "NIGHT_START";
+  },
+  NIGHT_WITCH_ACTION: (state) =>
+    // 如果狼人已選，回到狼人選完後的狀態
+    state.nightActions.wolfTarget !== undefined ? "NIGHT_WOLF_ACTION" : "NIGHT_START",
+  NIGHT_SEER_ACTION: (state) => {
+    // 檢查女巫是否已決定
+    const witch = state.players.find((p) => p.role === "Witch" && p.alive);
+    const witchDone =
+      !witch ||
+      (state.roleAbilities.witchHealUsed && state.roleAbilities.witchPoisonUsed) ||
+      state.nightActions.witchSave !== undefined ||
+      state.nightActions.witchPoison !== undefined;
+    if (witchDone) return "NIGHT_WITCH_ACTION";
+    return state.nightActions.wolfTarget !== undefined ? "NIGHT_WOLF_ACTION" : "NIGHT_START";
+  },
+  // 回到預言家階段
+  NIGHT_RESOLVE: () => "NIGHT_SEER_ACTION",
+
+  // 以下白天階段的 CHECKPOINT_SAFE 恆為 true，不會走到這裡；保留明確值以滿足 Record
+  DAY_START: () => "DAY_START",
+  DAY_BADGE_SIGNUP: () => "DAY_START",
+  DAY_BADGE_SPEECH: () => "DAY_START",
+  DAY_BADGE_ELECTION: () => "DAY_START",
+  DAY_PK_SPEECH: () => "DAY_START",
+  DAY_SPEECH: () => "DAY_START",
+  DAY_LAST_WORDS: () => "DAY_START",
+  DAY_VOTE: () => "DAY_START",
+  // 白天的複雜階段，回到 DAY_START
+  DAY_RESOLVE: () => "DAY_START",
+
+  BADGE_TRANSFER: () => "DAY_START",
+  HUNTER_SHOOT: () => "DAY_START",
+  SELF_DESTRUCT: (state) => state.phase,
+  KNIGHT_DUEL: (state) => state.phase,
+  GAME_END: (state) => state.phase,
+};
 
 /**
  * Get the "fallback" phase to restore to if the current phase action is incomplete.
  * Returns the previous stable checkpoint.
  */
 export function getRestorePhase(state: GameState): Phase {
-  // 如果当前阶段已完成，可以直接恢复到当前阶段
+  // 如果當前階段已完成，可以直接恢復到當前階段
   if (isCheckpointSafe(state)) {
     return state.phase;
   }
-
-  // 否则回退到上一个稳定点
-  switch (state.phase) {
-    case "NIGHT_GUARD_ACTION":
-      return "NIGHT_START";
-    case "NIGHT_WOLF_ACTION":
-      // 如果守卫已选，回到守卫选完后的状态
-      const guard = state.players.find((p) => p.role === "Guard" && p.alive);
-      if (!guard || state.nightActions.guardTarget !== undefined) {
-        return "NIGHT_GUARD_ACTION";
-      }
-      return "NIGHT_START";
-    case "NIGHT_WITCH_ACTION":
-      // 如果狼人已选，回到狼人选完后的状态
-      if (state.nightActions.wolfTarget !== undefined) {
-        return "NIGHT_WOLF_ACTION";
-      }
-      return "NIGHT_START";
-    case "NIGHT_SEER_ACTION":
-      // 检查女巫是否已决定
-      const witch = state.players.find((p) => p.role === "Witch" && p.alive);
-      const witchDone =
-        !witch ||
-        (state.roleAbilities.witchHealUsed && state.roleAbilities.witchPoisonUsed) ||
-        state.nightActions.witchSave !== undefined ||
-        state.nightActions.witchPoison !== undefined;
-      if (witchDone) {
-        return "NIGHT_WITCH_ACTION";
-      }
-      if (state.nightActions.wolfTarget !== undefined) {
-        return "NIGHT_WOLF_ACTION";
-      }
-      return "NIGHT_START";
-    case "NIGHT_RESOLVE":
-      // 回到预言家阶段
-      return "NIGHT_SEER_ACTION";
-    case "DAY_SPEECH":
-    case "DAY_BADGE_SIGNUP":
-    case "DAY_BADGE_SPEECH":
-    case "DAY_BADGE_ELECTION":
-    case "DAY_PK_SPEECH":
-    case "DAY_VOTE":
-    case "DAY_LAST_WORDS":
-    case "DAY_RESOLVE":
-    case "BADGE_TRANSFER":
-    case "HUNTER_SHOOT":
-      // 白天的复杂阶段，回到 DAY_START
-      return "DAY_START";
-    default:
-      return state.phase;
-  }
+  return RESTORE_FALLBACK[state.phase](state);
 }
 
 /**
