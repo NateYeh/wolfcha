@@ -76,7 +76,7 @@
 | **1** | ✅ **已完成**（結論見下方 §5.1）：兩張表搬到 `src/lib/rules/checkpoints.ts`、修掉 MUTE／DREAM 的 `default` 殘留、加上四條不變式守衛；並修掉同一路徑上挖出的第八條 bug（`IN_PROGRESS_PHASES` 漏階段——進禁言階段會刪掉整局存檔） | `checkpoints.test.ts` 9 支 + store 整合測試 1 支全綠 | 低 |
 | **2** | ✅ **已完成**（見下方 §5.2）：純新增 `src/lib/rules/night-progress.ts`（順序 / 已完成 / 下一步），**尚未接任何消費端** | `night-progress.test.ts` 11 支全綠 | 零（不接線） |
 | **3** | ✅ **已完成**（結論見 §5.3）：續跑鏈的 5 處「等真人」判定收成 `humanActorPending()`；查證後確認鏈上沒有寫死的「下一步」階段，因此不需要（也移除了）`nextNightPhaseAfter` | 新增 `night-human-wait.test.ts`（原本真人等待分支零覆蓋）+ 既有夜晚流程測試全綠 | 中 |
-| **4** | `useGameLogic` 的存檔恢復 switch（7 個 night case）與 Dev 跳轉／軟編輯分支改向新模組查 | 存檔恢復、Dev 跳轉測試 | 中高（涉及存檔相容） |
+| **4** | ✅ **已完成**（見 §5.4）：新增 `src/game/phases/night-resume.ts`（續跑指令表），`useGameLogic` 的存檔恢復／軟編輯／Dev 跳轉全部改問它；存檔恢復的 5 個同型 case 合併成一個 | 計畫表 10 支 + 行為驗證 3 支（真實一夜，逐階段）+ 既有夜晚流程測試全綠 | 中高（涉及存檔相容） |
 | **5** | 真人夜間操作分支（`:2297-2449`）改為「把決定寫進狀態」再由新模組推進 | 真人對局的手動驗證 + 既有 hook 測試 | 中 |
 | **6** | `SmartJumpManager` 改成純消費者（目標選擇 UI + 呼叫新模組） | 跳階 smoke test；`analyzeJump` 回歸 | 低 |
 
@@ -200,6 +200,58 @@ humanActorPending(state, phase)  // 決定者裡有真人，而且這一步還�
 **一處刻意保留的行為差異**：改用 `decided()` 之後，真人決定的「沒有合法目標可選」退化情況
 （例如只剩攝夢人自己存活）不再讓夜晚停在等他——那正是 `dream.ts` 註解承認的「這一晚沒有夢游者」，
 原本會卡住。
+
+---
+
+### 5.4 Phase 4：續跑指令表（已完成）
+
+新增 `src/game/phases/night-resume.ts`：回答「停在某個夜間階段時，接下來該下哪個指令」。
+出口只有兩個（`nightResumePlan`、`replayCommandFor`）＋一張 `ADVANCE_PLAN` 表，四種結果：
+`advance`（跳過這一步往下）、`resolve`（預言家之後進結算）、`replay`（AI 的決定沒落盤，從這一步重跑）、
+`wait`（真人在等輸入）。指令字串屬階段層 vocabulary，所以放在 `src/game/phases/`，不放 rules 層
+（rules 只描述、不發指令）。
+
+`useGameLogic` 的三處因此收斂：
+
+| 位置 | 之前 | 現在 |
+|---|---|---|
+| 存檔恢復 switch | 6 個 case 各自寫死指令與「已完成」判定（約 100 行） | 5 個同型 case 合併成 1 個＋預言家 1 個，都只問 `nightResumePlan` |
+| Dev 動作軟編輯 | 5 個 if，各自寫死判定；漏了禁言 | 一個 `isNightActionPhase` 判斷＋計畫表；補上禁言 |
+| Dev 跳轉 | 手寫「跳到 X 要下哪個指令」，**漏了禁言與攝夢**（跳到那兩階段夜晚會卡住） | `replayCommandFor(X)`，六個階段齊全 |
+| `runNightPhaseAction` 的參數 | 行內 union 手抄 6 個指令字串 | `NightResumeCommand`（單一來源） |
+
+**客觀收斂**：`useGameLogic` 2,804 → 2,697 行；`CONTINUE_NIGHT_AFTER_` 出現次數 16 → 6
+（剩下的 5 個是真人提交處理器，Phase 5 要處理；1 個是狼隊分工放行）。`useRef` 數量沒變（43）——
+夜間順序本來就不是靠 ref 表達的，這個指標沒有下降是正常的，不假裝。
+
+#### 讀鏈得到的三個事實（計畫原本寫錯了一個）
+
+1. **順序是「呼叫鏈」編碼的，不是資料**：`continueNightAfterGuard → …Mute → …Dream → runWolfAction
+   → …Wolf → runWitchAction → …Witch → runSeerAction → onNightComplete`。所以 Phase 3 把
+   `nextNightPhaseAfter` 移除了（它沒有真實消費端）。
+2. **每個 `CONTINUE_NIGHT_AFTER_X` 的語意是「X 已經決定，把 X 之後的步驟跑掉」**，而跳過機制是
+   「帶著的 phase 等於這一階段就不重跑」，且每個 `run*Action` 都會把 phase 改成自己。
+3. **「重跑某一步」不能只用順序推導**：禁言的重跑若用前一步的 `CONTINUE_NIGHT_AFTER_GUARD`，
+   因為那支只是轉呼叫、不改 phase，禁言行動會被整步跳過（決定根本不會做）。所以 `REPLAY_COMMAND`
+   是一張逐項寫理由的表，並由 `night-resume-flow.test.ts` 實際跑一夜驗證。
+
+> 教訓：「看起來等價」的指令在這種「靠攜帶的 phase 決定要不要跑」的鏈上不等價。
+> 兩次錯誤推論（禁言重跑、`nextNightPhaseAfter`）都是靠**實際跑一夜**才發現，靜態閱讀不夠。
+
+#### 這階段的驗收測試
+
+- `night-resume.test.ts`（10 支）：逐階段釘住三種結果、退化情況（沒有角色／沒有合法目標／藥用完）、
+  「重跑≠跳過」、「重跑指令必須是已知指令」、非夜間階段明確報錯。
+- `night-resume-flow.test.ts`（3 支）：**真實跑一夜**，逐階段確認「下了重跑指令之後，那一步的
+  決定真的有被寫入」並走完夜晚；另有一支確認鏈只往前走（從狼人階段重跑時，女巫／預言家照樣被問到）。
+
+#### 尚未處理（本階段發現、留待後續）
+
+- **重跑會把前面的 AI 步驟重新問一次**（例如從狼人階段重跑會先重跑禁言／攝夢，覆蓋原本的目標）。
+  這是舊行為，原樣保留；要修得在階段層加一個「就從這一步續跑」的指令。
+- **AI 女巫「不動作」完全不寫欄位**（`runWitchAction` 的 pass 分支不落盤），所以 `witchDecided`
+  對 AI 女巫的明確不救是 false：那一刻的存檔不可落盤、恢復會再問一次 AI 女巫。
+  真人女巫的 pass 也一樣沒寫（`witchSave: false` 的語意是文件自己承認的）——Phase 5 處理。
 
 ---
 

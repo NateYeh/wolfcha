@@ -35,6 +35,11 @@ import { canUseDeathShot, getDeathShotKind } from "@/lib/rules/death-skills";
 import { isValidMuteTarget } from "@/lib/rules/mute";
 import { isValidDreamTarget } from "@/lib/rules/dream";
 import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
+import {
+  humanActorPending,
+  isNightActionPhase,
+} from "@/lib/rules/night-progress";
+import { nightResumePlan, replayCommandFor, type NightResumeCommand } from "@/game/phases/night-resume";
 import { applyKnightDuelToState } from "@/lib/rules/knight-duel-apply";
 import {
   buildGameStartState,
@@ -447,7 +452,7 @@ export function useGameLogic() {
   );
 
   const runNightPhaseAction = useCallback(
-    async (state: GameState, token: ReturnType<typeof getToken>, action: "START_NIGHT" | "CONTINUE_NIGHT_AFTER_GUARD" | "CONTINUE_NIGHT_AFTER_MUTE" | "CONTINUE_NIGHT_AFTER_DREAM" | "CONTINUE_NIGHT_AFTER_WOLF" | "CONTINUE_NIGHT_AFTER_WITCH") => {
+    async (state: GameState, token: ReturnType<typeof getToken>, action: NightResumeCommand) => {
       const phaseImpl = phaseManagerRef.current.getPhase("NIGHT_START");
       if (!phaseImpl) return;
       await phaseImpl.handleAction(
@@ -1210,98 +1215,29 @@ export function useGameLogic() {
         break;
       }
 
-      case "NIGHT_GUARD_ACTION": {
-        // 守卫阶段：检查是否已完成
-        hasContinuedAfterRevealRef.current = true;
-        isAwaitingRoleRevealRef.current = false;
-        const guard = s.players.find((p) => p.role === "Guard" && p.alive);
-        if (!guard || s.nightActions.guardTarget !== undefined) {
-          // 守卫已选择或没有守卫，继续到狼人阶段
-          void runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_GUARD");
-        } else if (!guard.isHuman) {
-          // AI 守卫需要重新选择
-          void runNightPhaseAction(s, token, "START_NIGHT");
-        }
-        // 人类守卫等待输入
-        break;
-      }
-
-      case "NIGHT_MUTE_ACTION": {
-        // 禁言長老階段：已完成（或沒有禁言長老）就往下走
-        hasContinuedAfterRevealRef.current = true;
-        isAwaitingRoleRevealRef.current = false;
-        const elder = s.players.find((p) => p.role === "MuteElder" && p.alive);
-        if (!elder || s.nightActions.mutedTarget !== undefined) {
-          void runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_MUTE");
-        } else if (!elder.isHuman) {
-          // AI 禁言長老需要重新選擇
-          void runNightPhaseAction(s, token, "START_NIGHT");
-        }
-        // 真人禁言長老等待輸入
-        break;
-      }
-
-      case "NIGHT_DREAM_ACTION": {
-        // 攝夢人階段：已完成（或沒有攝夢人）就往下走
-        hasContinuedAfterRevealRef.current = true;
-        isAwaitingRoleRevealRef.current = false;
-        const dreamer = s.players.find((p) => p.role === "Dreamweaver" && p.alive);
-        if (!dreamer || s.nightActions.dreamTarget !== undefined) {
-          void runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_DREAM");
-        } else if (!dreamer.isHuman) {
-          // AI 攝夢人需要重新選擇
-          void runNightPhaseAction(s, token, "START_NIGHT");
-        }
-        // 真人攝夢人等待輸入
-        break;
-      }
-
-      case "NIGHT_WOLF_ACTION": {
-        // 狼人阶段：检查是否已完成
-        hasContinuedAfterRevealRef.current = true;
-        isAwaitingRoleRevealRef.current = false;
-        if (s.nightActions.wolfTarget !== undefined) {
-          // 狼人已选择，继续到女巫阶段
-          void runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_WOLF");
-        } else {
-          const humanWolf = s.players.find((p) => isWolfRole(p.role) && p.alive && p.isHuman);
-          if (!humanWolf) {
-            // AI 狼人需要重新选择
-            void runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_GUARD");
-          }
-          // 人类狼人等待输入
-        }
-        break;
-      }
-
+      case "NIGHT_GUARD_ACTION":
+      case "NIGHT_MUTE_ACTION":
+      case "NIGHT_DREAM_ACTION":
+      case "NIGHT_WOLF_ACTION":
       case "NIGHT_WITCH_ACTION": {
-        // 女巫阶段：检查是否已完成
+        // 夜間角色階段：該跳過、該等真人、該重跑，一律問 night-resume 的計畫表。
+        // （過去這五個 case 各自寫死指令，wolf 那處還會沿鏈把已決定的禁言／攝夢再問一次 AI。）
         hasContinuedAfterRevealRef.current = true;
         isAwaitingRoleRevealRef.current = false;
-        const witch = s.players.find((p) => p.role === "Witch" && p.alive);
-        const witchDone =
-          !witch ||
-          (s.roleAbilities.witchHealUsed && s.roleAbilities.witchPoisonUsed) ||
-          s.nightActions.witchSave !== undefined ||
-          s.nightActions.witchPoison !== undefined;
-
-        if (witchDone) {
-          // 女巫已决定，继续到预言家阶段
-          void runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_WITCH");
-        } else if (!witch?.isHuman) {
-          // AI 女巫需要重新选择
-          void runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_WOLF");
+        const plan = nightResumePlan(s, s.phase);
+        if (plan.kind === "advance" || plan.kind === "replay") {
+          void runNightPhaseAction(s, token, plan.command);
         }
-        // 人类女巫等待输入
+        // plan.kind === "wait"：真人在等輸入
         break;
       }
 
       case "NIGHT_SEER_ACTION": {
-        // 预言家阶段：检查是否已完成
+        // 預言家階段：已完成（含沒有預言家）就顯示查驗結果並準備收尾；AI 未查驗則重跑
         hasContinuedAfterRevealRef.current = true;
         isAwaitingRoleRevealRef.current = false;
-        if (s.nightActions.seerTarget !== undefined) {
-          // 预言家已查验，设置继续回调并显示查验结果
+        const plan = nightResumePlan(s, s.phase);
+        if (plan.kind === "advance" || plan.kind === "resolve") {
           const seerResult = s.nightActions.seerResult;
           if (seerResult) {
             const targetPlayer = s.players.find((p) => p.seat === seerResult.targetSeat);
@@ -1320,14 +1256,10 @@ export function useGameLogic() {
               await startDayPhaseInternal(resolvedState, token);
             });
           };
-        } else {
-          const seer = s.players.find((p) => p.role === "Seer" && p.alive);
-          if (!seer?.isHuman) {
-            // AI 预言家需要重新查验
-            void runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_WITCH");
-          }
-          // 人类预言家等待输入
+        } else if (plan.kind === "replay") {
+          void runNightPhaseAction(s, token, plan.command);
         }
+        // plan.kind === "wait"：真人在等輸入
         break;
       }
 
@@ -1667,42 +1599,13 @@ export function useGameLogic() {
           const token = flowController.current.getToken();
 
           // Night phases: if the required action is already set (possibly via Dev actions tab), continue.
-          if (s.phase === "NIGHT_GUARD_ACTION") {
-            const guard = s.players.find((p) => p.role === "Guard" && p.alive);
-            if (!guard || s.nightActions.guardTarget !== undefined) {
-              await runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_GUARD");
-            }
-            return;
-          }
-
-          if (s.phase === "NIGHT_DREAM_ACTION") {
-            const dreamer = s.players.find((p) => p.role === "Dreamweaver" && p.alive);
-            if (!dreamer || s.nightActions.dreamTarget !== undefined) {
-              await runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_DREAM");
-            }
-            return;
-          }
-
-          if (s.phase === "NIGHT_WOLF_ACTION") {
-            if (s.nightActions.wolfTarget !== undefined) {
-              await runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_WOLF");
-            }
-            return;
-          }
-
-          if (s.phase === "NIGHT_WITCH_ACTION") {
-            const witch = s.players.find((p) => p.role === "Witch" && p.alive);
-            const usedAll = s.roleAbilities.witchHealUsed && s.roleAbilities.witchPoisonUsed;
-            const decided = s.nightActions.witchSave !== undefined || s.nightActions.witchPoison !== undefined;
-            if (!witch || usedAll || decided) {
-              await runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_WITCH");
-            }
-            return;
-          }
-
-          if (s.phase === "NIGHT_SEER_ACTION") {
-            if (s.nightActions.seerTarget !== undefined) {
-              // 预言家已查验，设置 nightContinueRef 以便用户确认后继续
+          // 「完成了嗎」與「該下哪個指令」都問 night-resume 的計畫表，不在這裡重寫。
+          if (isNightActionPhase(s.phase)) {
+            const plan = nightResumePlan(s, s.phase);
+            if (plan.kind === "advance" || plan.kind === "replay") {
+              await runNightPhaseAction(s, token, plan.command);
+            } else if (plan.kind === "resolve") {
+              // 預言家那一步：Dev 補上查驗結果後，收尾仍由使用者按確認觸發
               nightContinueRef.current = async (state) => {
                 await resolveNight(state, token, async (resolvedState) => {
                   await startDayPhaseInternal(resolvedState, token);
@@ -1754,21 +1657,11 @@ export function useGameLogic() {
 
     (async () => {
       try {
-        if (to === "NIGHT_START" || to === "NIGHT_GUARD_ACTION") {
+        if (to === "NIGHT_START" || isNightActionPhase(to)) {
           if (isAwaitingRoleRevealRef.current) return;
-          await runNightPhaseAction(s, token, "START_NIGHT");
-          return;
-        }
-        if (to === "NIGHT_WOLF_ACTION") {
-          await runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_GUARD");
-          return;
-        }
-        if (to === "NIGHT_WITCH_ACTION") {
-          await runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_WOLF");
-          return;
-        }
-        if (to === "NIGHT_SEER_ACTION") {
-          await runNightPhaseAction(s, token, "CONTINUE_NIGHT_AFTER_WITCH");
+          // 跳到某個夜間階段：用「重跑這一步」的指令，讓續跑鏈正好停在該階段。
+          // （舊寫法把這張表手寫在這裡，而且漏了禁言／攝夢兩個目標，跳到那兩個階段時夜晚會卡住。）
+          await runNightPhaseAction(s, token, to === "NIGHT_START" ? "START_NIGHT" : replayCommandFor(to));
           return;
         }
         if (to === "NIGHT_RESOLVE") {
