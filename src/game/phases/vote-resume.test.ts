@@ -12,14 +12,14 @@ process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "vote-resume-test";
 
 test("实际投票恢复只调用未投 AI，保留已投票和弃票，跳过翻牌白痴和 PK 候选", async () => {
   const modules: Record<string, unknown> = {};
-  for (const id of ["@/lib/vote-rounds", "@/lib/prompt-utils", "@/i18n/translator", "@/lib/game-texts", "@/lib/game-constants", "@/lib/narrator-voice", "@/lib/game-flow-controller", "@/lib/rules/death-skills", "@/types/game", "@/lib/reveal-pacer"]) modules[id] = await import(id);
+  for (const id of ["@/lib/vote-rounds", "@/lib/prompt-utils", "@/i18n/translator", "@/lib/game-texts", "@/lib/game-constants", "@/lib/narrator-voice", "@/lib/game-flow-controller", "@/lib/rules/death-skills", "@/lib/rules/vote-weight", "@/types/game", "@/lib/reveal-pacer"]) modules[id] = await import(id);
   modules["../core/GamePhase"] = await import("../core/GamePhase");
   modules["@/lib/narrator-audio-player"] = { playNarrator: async () => {} };
   const calls: string[] = [];
   modules["@/lib/game-master"] = { ...await import("@/lib/game-master"), generateAIVote: async (_: GameState, p: Player) => { calls.push(p.playerId); return { seat: 2, reason: "补完投票" }; } };
   const m = { exports: {} as { VotePhase: typeof VotePhase } };
   const code = ts.transpileModule(readFileSync("src/game/phases/VotePhase.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  runInNewContext(`(function(require,module,exports){${code}\n})`, { console })((id: string) => { assert.ok(id in modules, id); return modules[id]; }, m, m.exports);
+  runInNewContext(`(function(require,module,exports){${code}\n})`, { console })((id: string) => { assert.ok(id in modules, `VM 夾具未註冊模組「${id}」：請把 await import("${id}") 加進本檔的 modules 表`); return modules[id]; }, m, m.exports);
   let state = createSinglePlayerContextAuditState();
   state.players = state.players.map((p) => ({ ...p, isHuman: p.seat === 4 }));
   state.phase = "DAY_VOTE"; state.pkSource = "vote"; state.pkTargets = [1, 2];

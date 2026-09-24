@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Eye, Gavel, Star, Shield, Skull, Heart, Droplets, ChevronDown, ChevronUp, MessageSquare, Vote, X, Crown, Swords, Crosshair, Bomb, ShieldAlert } from "lucide-react";
 import type { TimelineEntry, PlayerSpeech, DayEvent, DayPhase, VoteRecord } from "@/types/analysis";
 import { ROLE_ICONS, NIGHT_EVENT_COLORS } from "./constants";
+import { voteWeightBySeat } from "@/lib/rules/vote-weight";
 
 interface TimelineReviewProps {
   timeline: TimelineEntry[];
@@ -126,7 +127,7 @@ function VoteModal({
   const getWeightedVoteCount = (voters: number[]) => {
     let count = 0;
     for (const voter of voters) {
-      count += voter === sheriffSeat ? 1.5 : 1;
+      count += voteWeightBySeat(voter, sheriffSeat);
     }
     return count;
   };

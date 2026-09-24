@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SYSTEM_VOTE_WEIGHT, tallyAwards, type AwardBallot } from "@/lib/awards";
+import { AWARD_SYSTEM_VOTE_WEIGHT, tallyAwards, type AwardBallot } from "@/lib/awards";
 import type { Player, Role } from "@/types/game";
 
 function makePlayer(seat: number, overrides: Partial<Player> = {}): Player {
@@ -62,7 +62,7 @@ test("系統票 1.5：AI 同票時由系統票多出的 0.5 獨得，不並列",
   assert.deepEqual(result.mvp.map((award) => award.playerId), ["p1"]);
   assert.equal(result.mvp[0].reason, "客观最佳");
   const systemVote = result.awardVotes.mvp.find((vote) => vote.isSystem);
-  assert.equal(systemVote?.weight, SYSTEM_VOTE_WEIGHT);
+  assert.equal(systemVote?.weight, AWARD_SYSTEM_VOTE_WEIGHT);
   assert.equal(systemVote?.voterSeat, -1);
 });
 

@@ -10,6 +10,7 @@ import { getMutedSeat, isMutePublic } from "./rules/mute";
 import { getRoleConfiguration } from "./role-configuration";
 import { ALL_ROLE_KEYS } from "./rules/boards";
 import { getDeathShotKind } from "./rules/death-skills";
+import { voteWeightByPlayerId } from "./rules/vote-weight";
 import {
   resolveBadgeElectionWinner,
   resolveSheriffSeatAtVote,
@@ -600,7 +601,7 @@ const buildVoteGroupLines = (
       const weightedVotes = voters.reduce((sum, seat) => {
         const voter = state.players.find((p) => p.seat === seat);
         if (!voter) return sum;
-        return sum + (voter.playerId === sheriffPlayerId ? 1.5 : 1);
+        return sum + voteWeightByPlayerId(voter.playerId, sheriffPlayerId);
       }, 0);
       return { targetSeat, voters, weightedVotes };
     })
@@ -892,7 +893,7 @@ const formatTranscriptMessages = (
       .map(([target, voters]) => {
         const weighted = voters.reduce((sum, seat) => {
           const voter = state.players.find((p) => p.seat === seat);
-          return sum + (voter && voter.playerId === sheriffPlayerId ? 1.5 : 1);
+          return sum + voteWeightByPlayerId(voter?.playerId ?? "", sheriffPlayerId);
         }, 0);
         return { target: Number(target), voters, weighted };
       })

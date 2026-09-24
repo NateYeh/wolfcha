@@ -1,8 +1,13 @@
 import type { AwardVote, PlayerAward } from "@/types/analysis";
 import type { Player, Role } from "@/types/game";
 
-/** 系統客觀分析票的權重：像警長票，同票時比 AI 多 0.5 票。 */
-export const SYSTEM_VOTE_WEIGHT = 1.5;
+/**
+ * 賽後 MVP／SVP 的系統客觀分析票權重。
+ * 註：數值同為 1.5，但這是**不同概念**（賽後評選），與對局中的警長票
+ * （`@/lib/rules/vote-weight`）無關；過去同名（SYSTEM_VOTE_WEIGHT）容易讓人
+ * 誤以為共用同一條規則，故冠上 AWARD 前綴。
+ */
+export const AWARD_SYSTEM_VOTE_WEIGHT = 1.5;
 /** 每個 AI 角色一張票。 */
 export const AI_VOTE_WEIGHT = 1;
 
@@ -142,7 +147,7 @@ export function tallyAwards(params: {
       targetName: systemMvpPlayer.displayName,
       targetSeat: systemMvpPlayer.seat,
       reason: systemMvp.reason,
-      weight: SYSTEM_VOTE_WEIGHT,
+      weight: AWARD_SYSTEM_VOTE_WEIGHT,
       isSystem: true,
     });
   }
@@ -157,7 +162,7 @@ export function tallyAwards(params: {
       targetName: systemSvpPlayer.displayName,
       targetSeat: systemSvpPlayer.seat,
       reason: systemSvp.reason,
-      weight: SYSTEM_VOTE_WEIGHT,
+      weight: AWARD_SYSTEM_VOTE_WEIGHT,
       isSystem: true,
     });
   }

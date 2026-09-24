@@ -27,7 +27,7 @@ interface Call {
 
 async function runVotePhase(callDurationMs: number): Promise<{ calls: Call[]; state: GameState }> {
   const modules: Record<string, unknown> = {};
-  for (const id of ["@/lib/vote-rounds", "@/lib/prompt-utils", "@/i18n/translator", "@/lib/game-texts", "@/lib/game-constants", "@/lib/narrator-voice", "@/lib/game-flow-controller", "@/lib/rules/death-skills", "@/types/game", "@/lib/reveal-pacer"]) {
+  for (const id of ["@/lib/vote-rounds", "@/lib/prompt-utils", "@/i18n/translator", "@/lib/game-texts", "@/lib/game-constants", "@/lib/narrator-voice", "@/lib/game-flow-controller", "@/lib/rules/death-skills", "@/lib/rules/vote-weight", "@/types/game", "@/lib/reveal-pacer"]) {
     modules[id] = await import(id);
   }
   modules["../core/GamePhase"] = await import("../core/GamePhase");
@@ -49,7 +49,7 @@ async function runVotePhase(callDurationMs: number): Promise<{ calls: Call[]; st
   const m = { exports: {} as { VotePhase: typeof VotePhase } };
   const code = ts.transpileModule(readFileSync("src/game/phases/VotePhase.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   runInNewContext(`(function(require,module,exports){${code}\n})`, { console })((id: string) => {
-    assert.ok(id in modules, id);
+    assert.ok(id in modules, `VM 夾具未註冊模組「${id}」：請把 await import("${id}") 加進本檔的 modules 表`);
     return modules[id];
   }, m, m.exports);
 

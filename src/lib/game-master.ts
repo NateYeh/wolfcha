@@ -20,6 +20,7 @@ import {
 } from "@/types/game";
 import { GAME_TEMPERATURE } from "./ai-config";
 import { getMutedSeat } from "./rules/mute";
+import { voteWeightByPlayerId } from "./rules/vote-weight";
 import { sampleModelRefs, type GeneratedCharacter } from "./character-generator";
 import { withCriticalRetry } from "@/lib/critical-retry";
 import { isUpstreamTimeoutError } from "@/lib/upstream-timeout";
@@ -581,8 +582,8 @@ export function tallyVotes(state: GameState): { seat: number; count: number } | 
     if (!aliveById.has(voterId)) continue;
     if (!aliveBySeat.has(targetSeat)) continue;
     if (voterId === revealedIdiotId) continue; // 白痴翻牌后失去投票权
-    // 警长的票计算为1.5票
-    const voteWeight = voterId === sheriffPlayerId ? 1.5 : 1;
+    // 警長的一票值 1.5（規則集中在 rules/vote-weight）
+    const voteWeight = voteWeightByPlayerId(voterId, sheriffPlayerId);
     voteCounts[targetSeat] = (voteCounts[targetSeat] || 0) + voteWeight;
   }
 

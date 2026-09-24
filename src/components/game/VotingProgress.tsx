@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, HourglassSimple } from "@phosphor-icons/react";
 import type { GameState, Player } from "@/types/game";
 import { useTranslations } from "next-intl";
+import { voteWeightByPlayerId } from "@/lib/rules/vote-weight";
 
 interface VotingProgressProps {
   gameState: GameState;
@@ -49,8 +50,8 @@ export function VotingProgress({ gameState, humanPlayer }: VotingProgressProps) 
     const target = gameState.players.find(p => p.seat === targetSeat);
     if (!voter || !target) return;
     
-    // 警长的票在非警长选举阶段计算为1.5票
-    const voteWeight = (!isBadgeElection && sheriffPlayer && voterId === sheriffPlayer.playerId) ? 1.5 : 1;
+    // 警長的票在非警徽競選階段計算為 1.5 票（警徽競選期間不加權是顯示政策，票值規則本身見 rules/vote-weight）
+    const voteWeight = voteWeightByPlayerId(voterId, isBadgeElection ? null : sheriffPlayer?.playerId);
     
     if (!voteTargets[targetSeat]) {
       voteTargets[targetSeat] = { voters: [], target, voteCount: 0 };

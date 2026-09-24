@@ -21,6 +21,7 @@ import {
   transitionPhase,
 } from "@/lib/game-master";
 import { canUseDeathShot } from "@/lib/rules/death-skills";
+import { voteWeightByPlayerId } from "@/lib/rules/vote-weight";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { DELAY_CONFIG } from "@/lib/game-constants";
 import { delay, type FlowToken } from "@/lib/game-flow-controller";
@@ -261,7 +262,7 @@ export class VotePhase extends GamePhase {
       if (!aliveById.has(voterId)) continue;
       if (!aliveBySeat.has(targetSeat)) continue;
       if (voterId === revealedIdiotId) continue; // Idiot's vote doesn't count
-      const weight = voterId === sheriffPlayerId ? 1.5 : 1;
+      const weight = voteWeightByPlayerId(voterId, sheriffPlayerId);
       counts[targetSeat] = (counts[targetSeat] || 0) + weight;
     }
     return counts;
@@ -298,7 +299,7 @@ export class VotePhase extends GamePhase {
         voterSeats.forEach((voterSeat) => {
           const voter = players.find((p) => p.seat === voterSeat);
           if (voter) {
-            voteCount += voter.playerId === sheriffPlayerId ? 1.5 : 1;
+            voteCount += voteWeightByPlayerId(voter.playerId, sheriffPlayerId);
           }
         });
         return {
