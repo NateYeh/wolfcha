@@ -1558,7 +1558,8 @@
       "selfDestruct": "自爆帶走",
       "knightDuel": "翻牌決鬥",
       "mute": "禁言",
-      "dream": "攝夢"
+      "dream": "攝夢",
+      "charm": "魅惑"
     },
     "input": {
       "lastWordsPlaceholder": "有什麼想說的？",

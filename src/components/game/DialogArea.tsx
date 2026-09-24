@@ -18,7 +18,7 @@ import type { PlayerAward, AwardVote } from "@/types/analysis";
 import { RoleRevealHistoryCard, type RoleRevealEntry } from "@/components/game/RoleRevealHistoryCard";
 import LoadingMiniGame from "./MiniGame/LoadingMiniGame";
 import { getPendingDeathSeats } from "@/lib/game-master";
-import type { GameState, Player, ChatMessage, Phase } from "@/types/game";
+import type { GameState, Player, ChatMessage, Phase, Role } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { cn } from "@/lib/utils";
 import { audioManager } from "@/lib/audio-manager";
@@ -30,9 +30,10 @@ import type { DialogueState } from "@/store/game-machine";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { appendSpeechText } from "@/lib/speech-draft";
 import { ABSTAIN_SEAT } from "@/lib/rules/actions";
-import { canDuel, hasAlreadyDueled } from "@/lib/rules/knight-duel";
+import { canDuel } from "@/lib/rules/knight-duel";
 import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { getRoleCapabilities } from "@/lib/rules/roles";
+import { canHumanConfirmSeatAction } from "@/lib/rules/human-input";
 import { canSelfDestruct, hasAlreadyBoomed } from "@/lib/rules/self-destruct";
 
 const HISTORY_BOTTOM_THRESHOLD = 24;
@@ -47,17 +48,28 @@ const SPEECH_PRESET_KEYS = [
   "dialog.speechPresets.p6",
 ] as const;
 
-// 职业立绘映射
-const ROLE_PORTRAIT_MAP: Record<string, string> = {
+/**
+ * 職業立繪映射（對話頭像）。
+ *
+ * 型別刻意用 `Record<Role, string>`：新增角色時這裡會編譯失敗，不會像以前那樣
+ * 安靜地沒有立繪。`public/roles` 只有 7 張圖，沒有專屬圖的角色沿用最接近的一張
+ * （與賽後分析的 `ROLE_ICONS` 同一個約定），另外原本的 `Villager` 指向不存在的
+ * `villager.png`（圖 404 不會有任何提示），一併改成守衛圖。
+ */
+const ROLE_PORTRAIT_MAP: Record<Role, string> = {
   Werewolf: '/roles/werewolf.png',
   WhiteWolfKing: '/roles/white-wolf-king.png',
+  WolfKing: '/roles/white-wolf-king.png',
+  WolfBeauty: '/roles/white-wolf-king.png',
   Seer: '/roles/seer.png',
   Witch: '/roles/witch.png',
   Hunter: '/roles/hunter.png',
   Guard: '/roles/guard.png',
-  Idiot: '/roles/idiot.png',
   Knight: '/roles/guard.png',
-  Villager: '/roles/villager.png',
+  MuteElder: '/roles/guard.png',
+  Dreamweaver: '/roles/guard.png',
+  Idiot: '/roles/idiot.png',
+  Villager: '/roles/guard.png',
 };
 
 // 预加载所有职业立绘
@@ -78,7 +90,7 @@ function preloadRolePortraits() {
  * 階段 → 主角立繪用的角色（需要人類玩家角色來區分狼人／白狼王）。
  * `Record<Phase, …>` 強制補齊：新增階段時 tsc 會逼你決定這裡要顯示什麼。
  */
-const PHASE_ROLE: Record<Phase, (humanRole?: string) => string | null> = {
+const PHASE_ROLE: Record<Phase, (humanRole?: string) => Role | null> = {
   LOBBY: () => null,
   SETUP: () => null,
   NIGHT_START: () => null,
@@ -108,7 +120,7 @@ const PHASE_ROLE: Record<Phase, (humanRole?: string) => string | null> = {
   GAME_END: () => null,
 };
 
-const getPhaseRole = (phase: Phase, humanRole?: string): string | null =>
+const getPhaseRole = (phase: Phase, humanRole?: string): Role | null =>
   PHASE_ROLE[phase](humanRole);
 
 const getPlayerAvatarUrl = (player: Player, isGenshinMode: boolean) =>
@@ -1106,18 +1118,8 @@ export function DialogArea({
     const badgeCandidates = gameState.badge.candidates || [];
     const humanIsCandidate = humanPlayer && badgeCandidates.includes(humanPlayer.seat);
 
-    const isCorrectRoleForPhase =
-      (phase === "DAY_VOTE" && humanPlayer?.alive) ||
-      (phase === "DAY_BADGE_ELECTION" && humanPlayer?.alive && !humanIsCandidate) ||
-      (phase === "NIGHT_SEER_ACTION" && humanPlayer?.role === "Seer" && humanPlayer?.alive && gameState.nightActions.seerTarget === undefined) ||
-      (phase === "NIGHT_WOLF_ACTION" && humanPlayer && isWolfRole(humanPlayer.role) && humanPlayer.alive) ||
-      (phase === "NIGHT_GUARD_ACTION" && humanPlayer?.role === "Guard" && humanPlayer?.alive) ||
-      (phase === "NIGHT_MUTE_ACTION" && humanPlayer?.role === "MuteElder" && humanPlayer?.alive && gameState.nightActions.mutedTarget === undefined) ||
-      (phase === "NIGHT_DREAM_ACTION" && humanPlayer?.role === "Dreamweaver" && humanPlayer?.alive && gameState.nightActions.dreamTarget === undefined) ||
-      (phase === "HUNTER_SHOOT" && getDeathShotKind(humanPlayer?.role ?? "Villager") !== "none") ||
-      (phase === "BADGE_TRANSFER" && humanPlayer && gameState.badge.holderSeat === humanPlayer.seat) ||
-      (phase === "SELF_DESTRUCT" && !!humanPlayer?.alive && getRoleCapabilities(humanPlayer?.role ?? "Villager").boomTakesPlayer && !hasAlreadyBoomed(gameState.roleAbilities.boomedSeats, humanPlayer?.seat ?? -1)) ||
-      (phase === "KNIGHT_DUEL" && !!humanPlayer?.alive && getRoleCapabilities(humanPlayer?.role ?? "Villager").canDuel && !hasAlreadyDueled(gameState.roleAbilities.duelUsedSeats, humanPlayer?.seat ?? -1));
+    // 逐階段的角色／狀態條件集中在 rules/human-input（與 page.tsx 的路由同一份真相）
+    const isCorrectRoleForPhase = canHumanConfirmSeatAction(phase, humanPlayer, gameState);
 
     return Boolean(
       isCorrectRoleForPhase
@@ -1586,6 +1588,7 @@ export function DialogArea({
                   NIGHT_GUARD_ACTION: t("dialog.action.guardProtect"),
                   NIGHT_MUTE_ACTION: t("dialog.action.mute"),
                   NIGHT_DREAM_ACTION: t("dialog.action.dream"),
+                  NIGHT_WOLF_BEAUTY_ACTION: t("dialog.action.charm"),
                   HUNTER_SHOOT: t("dialog.action.hunterShoot"),
                   BADGE_TRANSFER: t("dialog.action.badgeTransfer"),
                   SELF_DESTRUCT: t("dialog.action.selfDestruct"),
@@ -1600,6 +1603,7 @@ export function DialogArea({
                   NIGHT_GUARD_ACTION: "text-[var(--color-success)]",
                   NIGHT_MUTE_ACTION: "text-[var(--color-seer)]",
                   NIGHT_DREAM_ACTION: "text-[var(--color-seer)]",
+                  NIGHT_WOLF_BEAUTY_ACTION: "text-[var(--color-danger)]",
                   HUNTER_SHOOT: "text-[var(--color-warning)]",
                   BADGE_TRANSFER: "text-[var(--color-warning)]",
                   SELF_DESTRUCT: "text-[var(--color-danger)]",

@@ -337,4 +337,25 @@ humanActorPending(state, phase)  // 決定者裡有真人，而且這一步還�
 3. 守衛的「空守」在狀態上無法表達（`guardTarget: undefined` ＝還沒決定），所以空守後刷新會重問。
 4. `DevConsole` 的 `ALL_PHASES`／`usePhaseNames` 仍是手寫且漏成員（缺 MUTE／DREAM／
    `SELF_DESTRUCT`／`KNIGHT_DUEL`），用 `as Record<Phase, string>` 把 tsc 騙過去；需補三語系鍵。
-5. 真人對話框的夜間操作路徑沒有自動化測試（本階段只能靠實際對局驗證）。
+5. ~~真人對話框的夜間操作路徑沒有自動化測試~~ → **已補**（`rules/human-input.test.ts`，見 §5.7）。
+
+---
+
+### 5.7 真人夜間操作的兩處漏接（實機測試後補）
+
+實際開一局真人狼美騎士時查出：`DialogArea`（面板出不出的來）與 `page.tsx` 的
+`confirmSelectedSeat`（確認送去哪裡）**各自手寫一份階段清單**，兩邊都沒有被型別或測試綁住，
+所以各漏一個階段，而且都不會報錯：
+
+| 症狀 | 漏在哪 |
+| --- | --- |
+| 真人**狼美人**：階段永遠停在原地（遊戲卡死） | 面板缺 `NIGHT_WOLF_BEAUTY_ACTION` → 確認面板根本不出現 |
+| 真人**攝夢人**：面板出現、按了沒反應 | 路由缺 `NIGHT_DREAM_ACTION`（既有缺口，狼美人只是照抄同一份清單） |
+
+改法：集中到 `rules/human-input.ts` 的 `SEAT_ACTION_CONFIRM_PHASES` 與
+`canHumanConfirmSeatAction`，兩個消費端讀同一份；`NIGHT_WOLF_BEAUTY_ACTION` 的確認鈕文字
+補 `dialog.action.charm`（三語系）。
+
+守衛測試用狀態機反過來掃：對每個 `actionType === "night_action"` 的階段，
+只要 `PHASE_CONFIGS[...].requiresHumanInput` 對某個角色回 true，就要求
+**面板與路由都接得住**；有專屬面板的女巫另行列出。少任何一邊都會紅。

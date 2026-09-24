@@ -1558,7 +1558,8 @@
       "selfDestruct": "Self-destruct on",
       "knightDuel": "Duel",
       "mute": "Silence",
-      "dream": "Dream"
+      "dream": "Dream",
+      "charm": "Charm"
     },
     "input": {
       "lastWordsPlaceholder": "Any last words?",

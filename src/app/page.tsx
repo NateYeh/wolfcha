@@ -36,6 +36,7 @@ import { isWolfRole } from "@/types/game";
 import { PHASE_CONFIGS, isGameInProgress } from "@/store/game-machine";
 import { getI18n } from "@/i18n/translator";
 import { getDeathShotKind } from "@/lib/rules/death-skills";
+import { isSeatActionConfirmPhase } from "@/lib/rules/human-input";
 import { getHunterShots, lastHunterShot } from "@/lib/rules/hunter-shots";
 import { getSystemMessages, getSystemPatterns } from "@/lib/game-texts";
 import { useTranslations } from "next-intl";
@@ -1193,15 +1194,8 @@ export default function Home() {
       await handleHumanVote(targetSeat);
     } else if (phase === "BADGE_TRANSFER") {
       await handleHumanBadgeTransfer(targetSeat);
-    } else if (
-      phase === "NIGHT_SEER_ACTION" ||
-      phase === "NIGHT_WOLF_ACTION" ||
-      phase === "NIGHT_GUARD_ACTION" ||
-      phase === "NIGHT_MUTE_ACTION" ||
-      phase === "HUNTER_SHOOT" ||
-      phase === "SELF_DESTRUCT" ||
-      phase === "KNIGHT_DUEL"
-    ) {
+    } else if (isSeatActionConfirmPhase(phase)) {
+      // 夜間行動（含攝夢、狼美人魅惑）與獵人開槍／自爆／騎士決鬥都走這裡
       await handleNightAction(targetSeat);
     }
   }, [selectedSeat, gameState.phase, handleHumanVote, handleHumanBadgeTransfer, handleNightAction, isRoleRevealOpen, humanPlayer, gameState.badge.holderSeat]);

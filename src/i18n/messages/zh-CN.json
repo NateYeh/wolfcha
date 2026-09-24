@@ -1558,7 +1558,8 @@
       "selfDestruct": "自爆带走",
       "knightDuel": "翻牌决斗",
       "mute": "禁言",
-      "dream": "摄梦"
+      "dream": "摄梦",
+      "charm": "魅惑"
     },
     "input": {
       "lastWordsPlaceholder": "有什么想说的？",
