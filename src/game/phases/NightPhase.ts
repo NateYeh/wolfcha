@@ -18,6 +18,7 @@ import {
 import { canWitchSave, getGuardEligibleSeats } from "@/lib/rules/actions";
 import { getMuteEligibleSeats, isValidMuteTarget } from "@/lib/rules/mute";
 import { getDreamEligibleSeats, isValidDreamTarget, pickRandomDreamTarget } from "@/lib/rules/dream";
+import { humanActorPending } from "@/lib/rules/night-progress";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { DELAY_CONFIG } from "@/lib/game-constants";
@@ -623,8 +624,8 @@ export class NightPhase extends GamePhase {
       currentState = await this.runGuardAction(currentState, runtime);
       if (!runtime.isTokenValid(runtime.token)) return;
 
-      const guard = currentState.players.find((p) => p.role === "Guard" && p.alive);
-      if (guard?.isHuman && currentState.nightActions.guardTarget === undefined) {
+      // 真人守衛還沒選 → 停在這裡等前端寫入（判定集中在 night-progress）
+      if (humanActorPending(currentState, "NIGHT_GUARD_ACTION")) {
         return;
       }
 
@@ -654,8 +655,8 @@ export class NightPhase extends GamePhase {
         currentState = await this.runMuteAction(currentState, runtime);
         if (!runtime.isTokenValid(runtime.token)) return;
 
-        const elder = currentState.players.find((p) => p.role === "MuteElder" && p.alive);
-        if (elder?.isHuman && currentState.nightActions.mutedTarget === undefined) return;
+        // 真人禁言長老還沒選 → 停在這裡等前端寫入
+        if (humanActorPending(currentState, "NIGHT_MUTE_ACTION")) return;
 
         await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
         await runtime.waitForUnpause();
@@ -677,8 +678,8 @@ export class NightPhase extends GamePhase {
         currentState = await this.runDreamAction(currentState, runtime);
         if (!runtime.isTokenValid(runtime.token)) return;
 
-        const dreamer = currentState.players.find((p) => p.role === "Dreamweaver" && p.alive);
-        if (dreamer?.isHuman && currentState.nightActions.dreamTarget === undefined) return;
+        // 真人攝夢人還沒選 → 停在這裡等前端寫入
+        if (humanActorPending(currentState, "NIGHT_DREAM_ACTION")) return;
 
         await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
         await runtime.waitForUnpause();
@@ -707,14 +708,8 @@ export class NightPhase extends GamePhase {
     const currentState = await this.runWitchAction(state, runtime);
     if (!runtime.isTokenValid(runtime.token)) return;
 
-    const witch = currentState.players.find((p) => p.role === "Witch" && p.alive);
-    const canWitchAct = witch && (!currentState.roleAbilities.witchHealUsed || !currentState.roleAbilities.witchPoisonUsed);
-    if (witch?.isHuman && canWitchAct) {
-      const decided =
-        currentState.nightActions.witchSave !== undefined ||
-        currentState.nightActions.witchPoison !== undefined;
-      if (!decided) return;
-    }
+    // 真人女巫還沒決定（藥還在，且沒明確選救人／毒人／不救）→ 停在這裡等前端寫入
+    if (humanActorPending(currentState, "NIGHT_WITCH_ACTION")) return;
 
     await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
     await runtime.waitForUnpause();
@@ -727,8 +722,8 @@ export class NightPhase extends GamePhase {
     const currentState = await this.runSeerAction(state, runtime);
     if (!runtime.isTokenValid(runtime.token)) return;
 
-    const seer = currentState.players.find((p) => p.role === "Seer" && p.alive);
-    if (seer?.isHuman && currentState.nightActions.seerTarget === undefined) {
+    // 真人預言家還沒查驗 → 停在這裡等前端寫入
+    if (humanActorPending(currentState, "NIGHT_SEER_ACTION")) {
       return;
     }
 

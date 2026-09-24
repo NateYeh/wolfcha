@@ -75,7 +75,7 @@
 |---|---|---|---|
 | **1** | ✅ **已完成**（結論見下方 §5.1）：兩張表搬到 `src/lib/rules/checkpoints.ts`、修掉 MUTE／DREAM 的 `default` 殘留、加上四條不變式守衛；並修掉同一路徑上挖出的第八條 bug（`IN_PROGRESS_PHASES` 漏階段——進禁言階段會刪掉整局存檔） | `checkpoints.test.ts` 9 支 + store 整合測試 1 支全綠 | 低 |
 | **2** | ✅ **已完成**（見下方 §5.2）：純新增 `src/lib/rules/night-progress.ts`（順序 / 已完成 / 下一步），**尚未接任何消費端** | `night-progress.test.ts` 11 支全綠 | 零（不接線） |
-| **3** | `NightPhase` 的 5 個 `continueNightAfter*` 改成向新模組查「下一步」，保留對外行為 | `context-regressions` + 夜晚流程整合測試全綠 | 中 |
+| **3** | ✅ **已完成**（結論見 §5.3）：續跑鏈的 5 處「等真人」判定收成 `humanActorPending()`；查證後確認鏈上沒有寫死的「下一步」階段，因此不需要（也移除了）`nextNightPhaseAfter` | 新增 `night-human-wait.test.ts`（原本真人等待分支零覆蓋）+ 既有夜晚流程測試全綠 | 中 |
 | **4** | `useGameLogic` 的存檔恢復 switch（7 個 night case）與 Dev 跳轉／軟編輯分支改向新模組查 | 存檔恢復、Dev 跳轉測試 | 中高（涉及存檔相容） |
 | **5** | 真人夜間操作分支（`:2297-2449`）改為「把決定寫進狀態」再由新模組推進 | 真人對局的手動驗證 + 既有 hook 測試 | 中 |
 | **6** | `SmartJumpManager` 改成純消費者（目標選擇 UI + 呼叫新模組） | 跳階 smoke test；`analyzeJump` 回歸 | 低 |
@@ -157,8 +157,8 @@
 | `isNightActionPhase`／`nightStepFor` | 型別守衛與查表 | Phase 3-6 |
 | `pendingNightActions(state, { after })` | 還缺哪些決定（`after` 用於跳階補齊） | Phase 6 `SmartJumpManager.createMissingTask`（現用 `ACTION_PHASES`） |
 | `nextPendingNightAction(state, { after })`、`isNightComplete` | 下一個要處理的步驟／今晚結束了嗎 | Phase 4 存檔恢復、Phase 5 真人操作 |
-| `nextNightPhaseAfter(phase)` | 這一步之後進哪個階段（最後一步 → `NIGHT_RESOLVE`） | Phase 3 的 5 個 `continueNightAfter*`（現在各自寫死目標階段） |
 | `actorsForNightStep(state, phase)` | 這一步由哪些玩家決定 | Phase 5 真人操作、UI 顯示 |
+| `humanActorPending(state, phase)` | 這一步是不是「正在等真人決定」 | ✅ `NightPhase` 續跑鏈（Phase 3 已接） |
 
 **編譯期保證**：`NIGHT_ACTION_ORDER` 改成 `as const satisfies readonly Phase[]` 並匯出 `NightActionPhase`；
 `NIGHT_STEP` 是 `Record<NightActionPhase, …>`，所以在權威表新增一個夜間角色階段時，**tsc 會紅**，
@@ -167,6 +167,39 @@
 **跨 seam 守衛**（`night-progress.test.ts`，11 支）：步驟表正好覆蓋權威順序、每步的決定者與完成判定、
 退化情況、女巫的「明確不救」、狼隊（多狼都是決定者）、`after` 補齊查詢、
 以及「**夜間順序必須是狀態機 `VALID_TRANSITIONS` 允許的轉移**」（順序表與轉移表不得漂移）。
+
+---
+
+### 5.3 Phase 3 的結論與教訓（已完成）
+
+**查證推翻了計畫的假設**：原本以為 5 個 `continueNightAfter*` 各自寫死「下一步是哪個階段」，
+實際上順序是由**呼叫鏈**編碼的（`continueNightAfterGuard → …Mute → …Dream → runWolfAction →
+…Wolf → runWitchAction → …Witch → runSeerAction → onNightComplete`），檔案裡沒有任何
+「下一步」的階段字面值。所以 `nextNightPhaseAfter()` 沒有真實消費端——那個概念過去就是死碼
+`getNextNightPhase`（已於 `8fa2b9c` 刪除），於是把它一併移除，而不是留一個沒人用的介面。
+
+> 教訓：計畫文件裡的「現況」也要驗證。這條錯誤假設是從掃描階段的印象寫下的，
+> 實際讀程式才發現。
+
+**Phase 3 真正該做、也做了的事**：續跑鏈上**5 處**「真人還沒決定就停在該階段」的判定各寫各的
+（`guard?.isHuman && guardTarget === undefined` 這種），女巫那處還把「藥用完了」的規則重推一次。
+現在收成 `rules/night-progress` 的一個概念：
+
+```ts
+humanActorPending(state, phase)  // 決定者裡有真人，而且這一步還沒完成
+```
+
+5 處全部改用它（守衛／禁言／攝夢／女巫／預言家）。等價性由 `night-progress.test.ts` 逐角色釘住
+（含女巫「明確不救」「兩瓶藥用完」、狼隊只要一位真人在、沒有決定者時不算等）。
+
+**順帶補上的覆蓋缺口**：真人等待分支過去**完全沒有測試**（`night-dream-flow.test.ts` 只跑全 AI 的一夜）。
+新增 `src/game/phases/night-human-wait.test.ts`：真人攝夢人在 AI 跑到他那裡時，夜晚**不會**走完、
+停在 `NIGHT_DREAM_ACTION`、AI 不代答；前端寫入決定並下 `CONTINUE_NIGHT_AFTER_DREAM` 之後才把
+狼人／女巫／預言家跑完。
+
+**一處刻意保留的行為差異**：改用 `decided()` 之後，真人決定的「沒有合法目標可選」退化情況
+（例如只剩攝夢人自己存活）不再讓夜晚停在等他——那正是 `dream.ts` 註解承認的「這一晚沒有夢游者」，
+原本會卡住。
 
 ---
 

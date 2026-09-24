@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createSinglePlayerContextAuditState } from "../../../scripts/single-player-context-audit";
-import { NIGHT_ACTION_ORDER, PHASE_SEQUENCE, type NightActionPhase } from "@/lib/rules/phases";
+import { NIGHT_ACTION_ORDER, type NightActionPhase } from "@/lib/rules/phases";
 import {
   NIGHT_STEP,
   actorsForNightStep,
+  dreamDecided,
+  humanActorPending,
   isNightActionPhase,
   isNightComplete,
-  nextNightPhaseAfter,
+  muteDecided,
   nextPendingNightAction,
   nightStepFor,
   pendingNightActions,
@@ -50,6 +52,12 @@ function board(roles: Role[], patch: Partial<GameState> = {}): GameState {
   });
   return { ...base, players, nightActions: {}, roleAbilities: { ...base.roleAbilities, witchHealUsed: false, witchPoisonUsed: false }, ...patch };
 }
+
+/** 把某個座位改成真人（其餘為 AI）。 */
+const humanAt = (state: GameState, seat: number): GameState => ({
+  ...state,
+  players: state.players.map((p) => ({ ...p, isHuman: p.seat === seat })),
+});
 
 /** 全部夜間決定都未做的板子（有守衛、禁言長老、攝夢人、狼、女巫、預言家）。 */
 const fullBoard = (patch: Partial<GameState> = {}): GameState =>
@@ -149,26 +157,73 @@ test("補齊查詢：after 只看它之後的步驟（跳階時補齊用）", ()
   assert.equal(nextPendingNightAction(state, { after: "NIGHT_WITCH_ACTION" })?.phase, "NIGHT_SEER_ACTION");
 });
 
-test("下一步：最後一步之後進 NIGHT_RESOLVE", () => {
-  for (let i = 0; i < NIGHT_ACTION_ORDER.length; i += 1) {
-    const expected = NIGHT_ACTION_ORDER[i + 1] ?? "NIGHT_RESOLVE";
-    assert.equal(nextNightPhaseAfter(NIGHT_ACTION_ORDER[i]), expected);
-  }
-  assert.equal(nextNightPhaseAfter("NIGHT_SEER_ACTION"), "NIGHT_RESOLVE");
-  assert.ok(PHASE_SEQUENCE.includes(nextNightPhaseAfter("NIGHT_SEER_ACTION")));
-});
-
 test("順序必須是狀態機允許的轉移（順序表與轉移表不得漂移）", async () => {
   const { VALID_TRANSITIONS } = await import("@/store/game-machine");
-  for (const phase of NIGHT_ACTION_ORDER) {
-    const next = nextNightPhaseAfter(phase);
+  // 相鄰兩步必須是合法轉移；最後一步之後要能進 NIGHT_RESOLVE
+  assert.ok(VALID_TRANSITIONS.NIGHT_START.includes(NIGHT_ACTION_ORDER[0]), "第一步必須能從 NIGHT_START 進入");
+  for (let i = 0; i < NIGHT_ACTION_ORDER.length; i += 1) {
+    const current = NIGHT_ACTION_ORDER[i];
+    const next: Phase = NIGHT_ACTION_ORDER[i + 1] ?? "NIGHT_RESOLVE";
     assert.ok(
-      VALID_TRANSITIONS[phase].includes(next),
-      `${phase} → ${next} 不在狀態機的合法轉移裡`
+      VALID_TRANSITIONS[current].includes(next),
+      `${current} → ${next} 不在狀態機的合法轉移裡`
     );
   }
-  // 第一步必須能從 NIGHT_START 進入
-  assert.ok(VALID_TRANSITIONS.NIGHT_START.includes(NIGHT_ACTION_ORDER[0]));
+});
+
+/**
+ * 階段層（`NightPhase` 續跑鏈）要的是「正在等真人決定」。
+ * 這組測試的重點是**與舊寫法的等價性**：舊版是各處自己寫
+ * `x?.isHuman && 某欄位 === undefined`，女巫那處還把「藥用完了」重推一次。
+ */
+test("等真人判定：真人未決定為 true，已決定／AI／沒有決定者為 false", () => {
+  for (const stepCase of STEP_CASES) {
+    const seats = [...stepCase.actors, "Villager" as Role];
+    const aiPending = board(seats, { nightActions: stepCase.undecided });
+    const humanPending = humanAt(aiPending, 0);
+    assert.equal(humanActorPending(humanPending, stepCase.phase), true, `${stepCase.phase}：真人未決定應為 true`);
+    // AI 未決定不代表要等（AI 的決定由階段自己做完）
+    assert.equal(humanActorPending(aiPending, stepCase.phase), false, `${stepCase.phase}：AI 不該算等真人`);
+
+    const humanDone = humanAt(board(seats, { nightActions: stepCase.decided }), 0);
+    assert.equal(humanActorPending(humanDone, stepCase.phase), false, `${stepCase.phase}：已決定就不等`);
+
+    // 沒有決定者（角色不在場）→ 沒東西可等
+    assert.equal(humanActorPending(humanAt(board(["Villager"], { nightActions: {} }), 0), stepCase.phase), false);
+  }
+});
+
+test("等真人判定：女巫的「藥用完了」也算已決定（舊寫法把這條規則重推了一次）", () => {
+  const base = humanAt(board(["Witch", "Villager"], { nightActions: {} }), 0);
+  assert.equal(humanActorPending(base, "NIGHT_WITCH_ACTION"), true);
+  // 明確不救
+  assert.equal(
+    humanActorPending({ ...base, nightActions: { witchSave: false } }, "NIGHT_WITCH_ACTION"),
+    false
+  );
+  // 兩瓶藥都用完
+  const noPotions = { ...base, roleAbilities: { ...base.roleAbilities, witchHealUsed: true, witchPoisonUsed: true } };
+  assert.equal(humanActorPending(noPotions, "NIGHT_WITCH_ACTION"), false);
+});
+
+test("等真人判定：狼隊只要有一位真人在且未決定就算等", () => {
+  const team = humanAt(board(["Werewolf", "WhiteWolfKing", "Villager"], { nightActions: {} }), 0);
+  assert.equal(humanActorPending(team, "NIGHT_WOLF_ACTION"), true);
+  assert.equal(
+    humanActorPending({ ...team, nightActions: { wolfTarget: 1 } }, "NIGHT_WOLF_ACTION"),
+    false
+  );
+});
+
+test("等真人判定：沒有合法目標時不算等（真人不再卡住）", () => {
+  // 只剩真人攝夢人自己存活：規則上這一晚沒有夢游者，階段不應該停在等他選
+  const loneHumanDreamer = humanAt(board(["Dreamweaver"], { nightActions: {} }), 0);
+  assert.equal(dreamDecided(loneHumanDreamer), true);
+  assert.equal(humanActorPending(loneHumanDreamer, "NIGHT_DREAM_ACTION"), false);
+
+  const loneHumanElder = humanAt(board(["MuteElder"], { nightActions: {} }), 0);
+  assert.equal(muteDecided(loneHumanElder), true);
+  assert.equal(humanActorPending(loneHumanElder, "NIGHT_MUTE_ACTION"), false);
 });
 
 test("型別守衛：夜間行動階段與其他階段分得開", () => {

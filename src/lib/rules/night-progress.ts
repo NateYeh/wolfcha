@@ -159,12 +159,6 @@ export const nextPendingNightAction = (
 export const isNightComplete = (state: GameState, options: { after?: Phase } = {}): boolean =>
   pendingNightActions(state, options).length === 0;
 
-/** 這一步完成後該進哪個階段（最後一步之後是 `NIGHT_RESOLVE`）。 */
-export const nextNightPhaseAfter = (phase: NightActionPhase): Phase => {
-  const index = NIGHT_ACTION_ORDER.indexOf(phase);
-  return NIGHT_ACTION_ORDER[index + 1] ?? "NIGHT_RESOLVE";
-};
-
 /** 這一步由哪些玩家決定（單一角色的存活持有者，或全部存活狼人）。 */
 export const actorsForNightStep = (state: GameState, phase: Phase): Player[] => {
   const step = nightStepFor(phase);
@@ -175,4 +169,17 @@ export const actorsForNightStep = (state: GameState, phase: Phase): Player[] => 
   }
   const { role } = actor;
   return state.players.filter((p) => p.role === role && p.alive);
+};
+
+/**
+ * 這一步是不是「正在等真人決定」：決定者裡有真人，而且這一步還沒完成。
+ *
+ * 階段層（`NightPhase` 的續跑鏈）需要的就是這個判斷：AI 已經做完事、真人還沒選，就停在這裡
+ * 等前端寫入；以前五處各自以 `x?.isHuman && 某欄位 === undefined` 重寫（女巫那處還把
+ * 「藥用完了」的規則重推一次）。
+ */
+export const humanActorPending = (state: GameState, phase: Phase): boolean => {
+  const step = nightStepFor(phase);
+  if (!step || step.decided(state)) return false;
+  return actorsForNightStep(state, phase).some((p) => p.isHuman);
 };
