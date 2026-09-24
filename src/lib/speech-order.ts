@@ -1,12 +1,9 @@
-import type { ChatMessage, GameState, SpeechDirection } from "@/types/game";
+import type { ChatMessage, GameState, Phase, SpeechDirection } from "@/types/game";
 import { canSpeakInPhase } from "@/lib/rules/mute";
+import { SPEECH_PHASES as AUTHORITATIVE_SPEECH_PHASES } from "@/lib/rules/phases";
 
-const SPEECH_PHASES = new Set([
-  "DAY_BADGE_SPEECH",
-  "DAY_PK_SPEECH",
-  "DAY_SPEECH",
-  "DAY_LAST_WORDS",
-]);
+/** 需要发言轮次的阶段（成员取自 `@/lib/rules/phases`，不再本地手写）。 */
+const SPEECH_PHASES = new Set<Phase>(AUTHORITATIVE_SPEECH_PHASES);
 
 export type SpeechRoundStatus = {
   orderedSeats: number[];

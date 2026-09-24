@@ -3,6 +3,14 @@
  * 遵循 DRY 原则，统一管理所有魔法数字和配置项
  */
 
+import {
+  PHASE_KIND,
+  PHASE_SEQUENCE,
+  SPEECH_PHASES as AUTHORITATIVE_SPEECH_PHASES,
+  isDayPhase,
+  isNightPhase,
+} from "@/lib/rules/phases";
+
 /** 游戏基础配置 */
 export const GAME_CONFIG = {
   /** 总玩家数 */
@@ -37,30 +45,19 @@ export const DELAY_CONFIG = {
   AI_MAX: 1200,
 } as const;
 
-/** 阶段分类 */
+/**
+ * 阶段分类（由 `@/lib/rules/phases` 衍生，不再手写清单）。
+ *
+ * 原本四份手写阵列各自会漂移：NIGHT_PHASES 漏 NIGHT_MUTE_ACTION／NIGHT_DREAM_ACTION，
+ * SPECIAL_PHASES 把 GAME_END 当特殊阶段。目前唯一消费端是 SPEECH_PHASES
+ * （useDayPhase 判断「这一阶段要不要发 AI 发言」），其余三份保留给 UI／分析使用。
+ */
 export const PHASE_CATEGORIES = {
-  NIGHT_PHASES: [
-    "NIGHT_START",
-    "NIGHT_GUARD_ACTION",
-    "NIGHT_WOLF_ACTION",
-    "NIGHT_WITCH_ACTION",
-    "NIGHT_SEER_ACTION",
-    "NIGHT_RESOLVE",
-  ] as const,
-  DAY_PHASES: [
-    "DAY_START",
-    "DAY_BADGE_SIGNUP",
-    "DAY_BADGE_SPEECH",
-    "DAY_BADGE_ELECTION",
-    "DAY_PK_SPEECH",
-    "DAY_SPEECH",
-    "DAY_LAST_WORDS",
-    "DAY_VOTE",
-    "DAY_RESOLVE",
-  ] as const,
-  SPEECH_PHASES: ["DAY_SPEECH", "DAY_LAST_WORDS", "DAY_BADGE_SPEECH", "DAY_PK_SPEECH"] as const,
-  SPECIAL_PHASES: ["BADGE_TRANSFER", "HUNTER_SHOOT", "SELF_DESTRUCT", "GAME_END"] as const,
-} as const;
+  NIGHT_PHASES: PHASE_SEQUENCE.filter(isNightPhase),
+  DAY_PHASES: PHASE_SEQUENCE.filter(isDayPhase),
+  SPEECH_PHASES: [...AUTHORITATIVE_SPEECH_PHASES],
+  SPECIAL_PHASES: PHASE_SEQUENCE.filter((phase) => PHASE_KIND[phase] === "special"),
+};
 
 import { getI18n } from "@/i18n/translator";
 

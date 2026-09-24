@@ -44,6 +44,7 @@ test("投票中刷新保留每张已提交的票，旧发言延迟保存不能�
     "@/lib/rules/settle-night-deaths": await import("@/lib/rules/settle-night-deaths"),
     "@/lib/rules/mute": await import("@/lib/rules/mute"),
     "@/lib/rules/dream": await import("@/lib/rules/dream"),
+    "@/lib/rules/phases": await import("@/lib/rules/phases"),
     "@/lib/rules/death-skills": await import("@/lib/rules/death-skills"),
     "@/lib/speech-skill": await import("@/lib/speech-skill"),
   };

@@ -18,6 +18,7 @@ import { isValidMuteTarget } from "@/lib/rules/mute";
 import { isValidDreamTarget } from "@/lib/rules/dream";
 import { isPendingDeath } from "@/lib/rules/night-deaths";
 import { hasAlreadyBoomed } from "@/lib/rules/self-destruct";
+import { PHASE_SEQUENCE } from "@/lib/rules/phases";
 
 // ============ 游戏状态持久化配置 ============
 
@@ -218,15 +219,10 @@ export function getRestorePhase(state: GameState): Phase {
 /**
  * Validate that a game state has all required fields and is structurally valid
  */
-// All valid Phase values for validation
-const VALID_PHASES: readonly string[] = [
-  "LOBBY", "SETUP",
-  "NIGHT_START", "NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "NIGHT_WOLF_ACTION",
-  "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION", "NIGHT_RESOLVE",
-  "DAY_START", "DAY_BADGE_SIGNUP", "DAY_BADGE_SPEECH", "DAY_BADGE_ELECTION",
-  "DAY_PK_SPEECH", "DAY_SPEECH", "DAY_LAST_WORDS", "DAY_VOTE", "DAY_RESOLVE",
-  "BADGE_TRANSFER", "HUNTER_SHOOT", "SELF_DESTRUCT", "GAME_END",
-] as const;
+// 存檔驗証用的合法階段集合：由權威表衍生（原本手寫清單漏了 KNIGHT_DUEL，
+// 該階段的存檔會被當成損壞而清掉；目前因為 isCheckpointSafe 拒絕在該階段落盤
+// 而沒有實際發生 —— 兩個判斷不再互相矛盾）。
+const VALID_PHASES: readonly string[] = PHASE_SEQUENCE;
 
 function isValidGameState(state: unknown): state is GameState {
   if (!state || typeof state !== "object") return false;

@@ -11,52 +11,13 @@ import { getI18n } from "@/i18n/translator";
 import { addSystemMessage, checkWinCondition } from "@/lib/game-master";
 import { resolveNightDeaths } from "@/lib/rules/night-resolution";
 import { getDreamEligibleSeats } from "@/lib/rules/dream";
+import { ACTION_PHASES, PHASE_SEQUENCE } from "@/lib/rules/phases";
 
-// ============ 阶段顺序定义 ============
-
-/** 完整的阶段顺序（用于比较先后） */
-export const PHASE_ORDER: Phase[] = [
-  "LOBBY",
-  "SETUP",
-  "NIGHT_START",
-  "NIGHT_GUARD_ACTION",
-  "NIGHT_MUTE_ACTION",
-  "NIGHT_DREAM_ACTION",
-  "NIGHT_WOLF_ACTION",
-  "NIGHT_WITCH_ACTION",
-  "NIGHT_SEER_ACTION",
-  "NIGHT_RESOLVE",
-  "DAY_START",
-  "DAY_BADGE_SIGNUP",
-  "DAY_BADGE_SPEECH",
-  "DAY_BADGE_ELECTION",
-  "DAY_SPEECH",
-  "DAY_VOTE",
-  "DAY_RESOLVE",
-  "DAY_LAST_WORDS",
-  "BADGE_TRANSFER",
-  "HUNTER_SHOOT",
-  "SELF_DESTRUCT",
-  "KNIGHT_DUEL",
-  "GAME_END",
-];
-
-/** 需要关键决策的阶段（跳过时需要补全） */
-export const ACTION_PHASES: Phase[] = [
-  "NIGHT_GUARD_ACTION",
-  "NIGHT_DREAM_ACTION",
-  "NIGHT_WOLF_ACTION",
-  "NIGHT_WITCH_ACTION",
-  "NIGHT_SEER_ACTION",
-  "DAY_VOTE",
-];
-
-/** 阶段依赖的数据字段 */
-export const PHASE_DEPENDENCIES: Partial<Record<Phase, string[]>> = {
-  NIGHT_RESOLVE: ["guardTarget", "wolfTarget"],
-  DAY_RESOLVE: ["votes"],
-  DAY_LAST_WORDS: ["votes"],
-};
+// 阶段顺序、跳阶补全名单与夜／昼判断一律取自权威表 `@/lib/rules/phases`：
+// 这个档案过去自带的 PHASE_ORDER 漏了 DAY_PK_SPEECH（indexOf 回 -1，先后比较与跳阶分析
+// 因而失准），ACTION_PHASES 漏了 NIGHT_MUTE_ACTION，PHASE_DEPENDENCIES 则是没有读取者的死资料。
+// 注：ACTION_PHASES 补上 MUTE 目前只是「宣告意图」—— createMissingTask 尚无禁言长老分支
+//（整个跳阶工具都还没整合这个角色），要等该分支补上才会实际产生补全项。
 
 // ============ 跳转上下文与结果类型 ============
 
@@ -106,7 +67,7 @@ export interface SmartJumpResult {
 
 /** 获取阶段在顺序中的索引 */
 export function getPhaseIndex(phase: Phase): number {
-  return PHASE_ORDER.indexOf(phase);
+  return PHASE_SEQUENCE.indexOf(phase);
 }
 
 /** 比较两个时间点的先后 */
@@ -127,16 +88,6 @@ export function getJumpDirection(
   if (cmp > 0) return "backward";
   if (cmp < 0) return "forward";
   return "same";
-}
-
-/** 检查阶段是否属于夜晚 */
-export function isNightPhase(phase: Phase): boolean {
-  return phase.startsWith("NIGHT_");
-}
-
-/** 检查阶段是否属于白天 */
-export function isDayPhase(phase: Phase): boolean {
-  return phase.startsWith("DAY_");
 }
 
 // ============ 跳转分析 ============
@@ -241,7 +192,7 @@ function analyzeForwardJump(
   if (state.day === target.day) {
     // 同日前跳
     for (let i = currentIdx + 1; i < targetIdx; i++) {
-      const phase = PHASE_ORDER[i];
+      const phase = PHASE_SEQUENCE[i];
       if (ACTION_PHASES.includes(phase)) {
         const tasks = createMissingTasksForPhase(state, phase);
         result.missingTasks.push(...tasks);
