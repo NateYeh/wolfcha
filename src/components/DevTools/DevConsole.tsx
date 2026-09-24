@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { gameStateAtom } from "@/store/game-machine";
 import type { GameState, Phase, Role, Player } from "@/types/game";
 import { ALL_ROLE_KEYS } from "@/lib/rules/boards";
+import { getHunterShots } from "@/lib/rules/hunter-shots";
 import { PHASE_SEQUENCE } from "@/lib/rules/phases";
 import { getRoleName as getRoleConstantName } from "@/lib/game-constants";
 import { isWolfRole } from "@/types/game";
@@ -1303,8 +1304,10 @@ function GlobalTab({
 
                     <div className="text-gray-300">
                       <span className="text-gray-400">{t("devConsole.actionRecordDetails.hunterShotNight")}</span>{" "}
-                      {night?.hunterShot
-                        ? `${getSeatLabel(night.hunterShot.hunterSeat)} → ${getSeatLabel(night.hunterShot.targetSeat)}`
+                      {getHunterShots(night).length > 0
+                        ? getHunterShots(night)
+                            .map((shot) => `${getSeatLabel(shot.hunterSeat)} → ${getSeatLabel(shot.targetSeat)}`)
+                            .join("，")
                         : t("devConsole.none")}
                     </div>
                   </div>
@@ -1330,8 +1333,10 @@ function GlobalTab({
 
                     <div className="mt-2 text-xs text-gray-300">
                       <span className="text-gray-400">{t("devConsole.actionRecordDetails.hunterShotDay")}</span>{" "}
-                      {dayRecord?.hunterShot
-                        ? `${getSeatLabel(dayRecord.hunterShot.hunterSeat)} → ${getSeatLabel(dayRecord.hunterShot.targetSeat)}`
+                      {getHunterShots(dayRecord).length > 0
+                        ? getHunterShots(dayRecord)
+                            .map((shot) => `${getSeatLabel(shot.hunterSeat)} → ${getSeatLabel(shot.targetSeat)}`)
+                            .join("，")
                         : t("devConsole.none")}
                     </div>
                   </div>

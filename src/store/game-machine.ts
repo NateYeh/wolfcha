@@ -25,7 +25,7 @@ import { getRestorePhase, isCheckpointSafe } from "@/lib/rules/checkpoints";
 // ============ 游戏状态持久化配置 ============
 
 const GAME_STATE_STORAGE_KEY = "wolfcha.game_state";
-export const GAME_STATE_VERSION = 2;
+export const GAME_STATE_VERSION = 3;
 
 interface PersistedGameState {
   version: number;

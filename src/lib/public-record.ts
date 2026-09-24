@@ -1,6 +1,7 @@
 import type { GameState } from "@/types/game";
 import { getI18n } from "@/i18n/translator";
 import { getDeathShotKind } from "@/lib/rules/death-skills";
+import { getHunterShots } from "@/lib/rules/hunter-shots";
 
 /**
  * 逐日「主持人公開記錄」：只陳述主持人公布過的客觀結果（出局、放逐、自爆、開槍、翻牌）。
@@ -46,8 +47,9 @@ export function buildPublicRecordForRemark(state: GameState): string[] {
           : t("specialEvents.publicRecordBoomNoTarget", { day, seat: boom.boomSeat + 1 })
       );
     }
-    const shot = record.hunterShot ?? night?.hunterShot;
-    if (shot) {
+    // 一天可能有多槍（槍鏈）：公開紀錄逐筆列出，不再只留最後一槍
+    const shots = [...getHunterShots(record), ...getHunterShots(night)];
+    for (const shot of shots) {
       const shooter = state.players.find((p) => p.seat === shot.hunterSeat);
       lines.push(t(
         getDeathShotKind(shooter?.role ?? "") === "wolf_gun"

@@ -25,7 +25,7 @@ test("賽後公開記錄：只列主持人公布過的客觀結果，玩家說�
   };
   state.dayHistory = {
     1: { selfDestruct: { boomSeat: 4, targetSeat: 7, reason: "票台要出我队友，炸掉作废投票" } },
-    2: { executed: { seat: 5, votes: 6.5 }, hunterShot: { hunterSeat: 1, targetSeat: 3, reason: "他死保假预言家" } },
+    2: { executed: { seat: 5, votes: 6.5 }, hunterShots: [{ hunterSeat: 1, targetSeat: 3, reason: "他死保假预言家" }] },
   };
   state.dailySummaries = { 1: ["1号当时声称他是预言家，10号是唯一没被对跳的预言家线"] };
 

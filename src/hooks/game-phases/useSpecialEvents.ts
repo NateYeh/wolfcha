@@ -23,6 +23,7 @@ import { addPlayerMessage, generateGameEndRemark } from "@/lib/game-master";
 import { getPendingLastWordsSeats } from "@/lib/rules/last-words";
 import { resolveNightDeaths } from "@/lib/rules/night-resolution";
 import { applyCharmRevenge } from "@/lib/rules/charm";
+import { appendDayHunterShot, appendNightHunterShot } from "@/lib/rules/hunter-shots";
 
 export interface SpecialEventsCallbacks {
   setDialogue: (speaker: string, text: string, isStreaming?: boolean) => void;
@@ -204,25 +205,10 @@ export function useSpecialEvents(
 
       // 记录猎人开枪（reason 为猎人自己写下的开枪理由，仅进赛后感言 prompt）
       const shot = { hunterSeat: hunter.seat, targetSeat, reason: shotDecision.reason };
-      if (diedAtNight) {
-        const prevNightRecord = (currentState.nightHistory || {})[currentState.day] || {};
-        currentState = {
-          ...currentState,
-          nightHistory: {
-            ...(currentState.nightHistory || {}),
-            [currentState.day]: { ...prevNightRecord, hunterShot: shot },
-          },
-        };
-      } else {
-        const prevDayRecord = (currentState.dayHistory || {})[currentState.day] || {};
-        currentState = {
-          ...currentState,
-          dayHistory: {
-            ...(currentState.dayHistory || {}),
-            [currentState.day]: { ...prevDayRecord, hunterShot: shot },
-          },
-        };
-      }
+      // 追加而非覆蓋：同一晚槍打槍會有多筆（rules/hunter-shots 是單一真相）。
+      currentState = diedAtNight
+        ? appendNightHunterShot(currentState, shot)
+        : appendDayHunterShot(currentState, shot);
       setGameState(currentState);
 
       // 槍打槍：被槍打死的人自己也有槍時，接著讓他開（不吞槍）。

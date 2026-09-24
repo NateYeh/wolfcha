@@ -10,6 +10,7 @@ import { getMutedSeat, isMutePublic } from "./rules/mute";
 import { getRoleConfiguration } from "./role-configuration";
 import { ALL_ROLE_KEYS } from "./rules/boards";
 import { getDeathShotKind } from "./rules/death-skills";
+import { findHunterShotByTarget, getHunterShots } from "./rules/hunter-shots";
 import { voteWeightByPlayerId } from "./rules/vote-weight";
 import {
   resolveBadgeElectionWinner,
@@ -219,7 +220,7 @@ ${t("promptUtils.gameContext.publicIdentityRule")}
 };
 
 /**
- * 公開技能翻牌的文案：獵人槍與狼王槍都會記在同一欄 `hunterShot`，
+ * 公開技能翻牌的文案：獵人槍與狼王槍都會記在同一欄 `hunterShots`（同一晚可能多筆），
  * 必須用槍的種類（死亡技能單一真相）決定講「獵人」還是「狼王」，不能一律當獵人。
  */
 const shotRevealLine = (
@@ -258,15 +259,17 @@ const buildPublicRoleReveals = (state: GameState): string => {
   Object.entries(state.nightHistory || {})
     .sort(([a], [b]) => Number(a) - Number(b))
     .forEach(([day, history]) => {
-      if (!history.hunterShot) return;
-      facts.push(shotRevealLine(state, Number(day), history.hunterShot));
+      // 一晚可能多槍（槍鏈）：逐槍揭露
+      for (const shot of getHunterShots(history)) {
+        facts.push(shotRevealLine(state, Number(day), shot));
+      }
     });
 
   Object.entries(state.dayHistory || {})
     .sort(([a], [b]) => Number(a) - Number(b))
     .forEach(([day, history]) => {
-      if (history.hunterShot) {
-        facts.push(shotRevealLine(state, Number(day), history.hunterShot));
+      for (const shot of getHunterShots(history)) {
+        facts.push(shotRevealLine(state, Number(day), shot));
       }
       if (history.selfDestruct) {
         const boomPlayer = formatSeatName(state, history.selfDestruct.boomSeat);
@@ -341,7 +344,7 @@ export const buildPublicFactsForPlayer = (state: GameState, player: Player): str
     getRecordedNightDeaths(state.nightHistory?.[state.day]).forEach((d) => deadTodaySeats.add(d.seat));
     const todayDayHistory = state.dayHistory?.[state.day];
     if (todayDayHistory?.executed) deadTodaySeats.add(todayDayHistory.executed.seat);
-    if (todayDayHistory?.hunterShot) deadTodaySeats.add(todayDayHistory.hunterShot.targetSeat);
+    for (const shot of getHunterShots(todayDayHistory)) deadTodaySeats.add(shot.targetSeat);
     if (todayDayHistory?.selfDestruct) {
       deadTodaySeats.add(todayDayHistory.selfDestruct.boomSeat);
       if (todayDayHistory.selfDestruct.targetSeat !== undefined) {
@@ -1335,15 +1338,17 @@ export const buildGameContextParts = (
         cause = publicGenericDeathCause;
         deathDay = Number(day);
       }
-      if (history.hunterShot?.targetSeat === p.seat) {
-        cause = shotDeathCauseLabel(state, history.hunterShot);
+      const nightShot = findHunterShotByTarget(history, p.seat);
+      if (nightShot) {
+        cause = shotDeathCauseLabel(state, nightShot);
         deathDay = Number(day);
       }
     }
     for (const [day, history] of Object.entries(state.dayHistory || {})) {
       if (history.executed?.seat === p.seat) { cause = publicExecutionCause; deathDay = Number(day); }
-      if (history.hunterShot?.targetSeat === p.seat) {
-        cause = shotDeathCauseLabel(state, history.hunterShot);
+      const dayShot = findHunterShotByTarget(history, p.seat);
+      if (dayShot) {
+        cause = shotDeathCauseLabel(state, dayShot);
         deathDay = Number(day);
       }
       if (history.selfDestruct?.boomSeat === p.seat || history.selfDestruct?.targetSeat === p.seat) {
@@ -1456,16 +1461,17 @@ alive_count: ${alivePlayers.length}${mutedLine}
           currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${publicExecutionCause}}`);
         }
       }
-      if (dayHistory?.hunterShot && typeof dayHistory.hunterShot.targetSeat === "number") {
-        const p = state.players.find(p => p.seat === dayHistory.hunterShot?.targetSeat);
+      // 逐槍列出當日因槍出局的人（同一晚可能多槍）
+      for (const shot of getHunterShots(dayHistory)) {
+        const p = state.players.find(player => player.seat === shot.targetSeat);
         if (p && !p.alive) {
-          currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${shotDeathCauseLabel(state, dayHistory.hunterShot)}}`);
+          currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${shotDeathCauseLabel(state, shot)}}`);
         }
       }
-      if (nightHistory?.hunterShot && typeof nightHistory.hunterShot.targetSeat === "number") {
-        const p = state.players.find(p => p.seat === nightHistory.hunterShot?.targetSeat);
+      for (const shot of getHunterShots(nightHistory)) {
+        const p = state.players.find(player => player.seat === shot.targetSeat);
         if (p && !p.alive) {
-          currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${shotDeathCauseLabel(state, nightHistory.hunterShot)}}`);
+          currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${shotDeathCauseLabel(state, shot)}}`);
         }
       }
       if (dayHistory?.selfDestruct) {

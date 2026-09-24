@@ -1,3 +1,10 @@
+/** 一次開槍的紀錄（獵人槍與狼王槍共用；同一晚可以有多筆＝槍打槍） */
+export interface HunterShot {
+  hunterSeat: number;
+  targetSeat: number;
+  reason?: string;
+}
+
 export type Role =
   | "Villager"
   | "Werewolf"
@@ -307,7 +314,7 @@ export interface GameState {
       wolfBeautyTarget?: number;
       wolfBeautyReason?: string;
       deaths?: Array<{ seat: number; reason: "wolf" | "poison" | "milk" | "dream" | "charm" }>;
-      hunterShot?: { hunterSeat: number; targetSeat: number; reason?: string };
+      hunterShots?: HunterShot[];
       /** 夜間行動者本人寫下的決策理由；賽中從不公開，只供本人賽後感言引用。 */
       guardReason?: string;
       wolfReason?: string;
@@ -324,7 +331,7 @@ export interface GameState {
       voteTie?: boolean;
       /** 当日放逐投票发生时的警长座位；null 表示当时无警长。 */
       sheriffSeatAtVote?: number | null;
-      hunterShot?: { hunterSeat: number; targetSeat: number; reason?: string };
+      hunterShots?: HunterShot[];
       /** 自爆紀錄（所有狼陣營角色；白狼王才有 targetSeat） */
       selfDestruct?: {
         boomSeat: number;

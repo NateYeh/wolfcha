@@ -4,6 +4,7 @@
  */
 
 import { ALL_ROLE_KEYS } from "@/lib/rules/boards";
+import { findHunterShotByShooter, findHunterShotByTarget, getHunterShots, lastHunterShot } from "@/lib/rules/hunter-shots";
 import type { GameState, Player, Role, Alignment, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { getSummaryModel } from "@/lib/api-keys";
@@ -231,10 +232,15 @@ const GUARD_TAGS: EvaluationTagRule[] = [
 ];
 
 function findHunterShot(p: Player, state: GameState) {
-  const dayShot = Object.values(state.dayHistory || {}).find(d => d.hunterShot?.hunterSeat === p.seat);
-  if (dayShot?.hunterShot) return dayShot.hunterShot;
-  const nightShot = Object.values(state.nightHistory || {}).find(n => n.hunterShot?.hunterSeat === p.seat);
-  if (nightShot?.hunterShot) return nightShot.hunterShot;
+  // 同一晚可能有多槍（槍鏈）：兩個歷史都掃，回傳這個人自己開的那一槍
+  for (const record of Object.values(state.dayHistory ?? {})) {
+    const shot = findHunterShotByShooter(record, p.seat);
+    if (shot) return shot;
+  }
+  for (const record of Object.values(state.nightHistory ?? {})) {
+    const shot = findHunterShotByShooter(record, p.seat);
+    if (shot) return shot;
+  }
   return null;
 }
 
@@ -419,7 +425,7 @@ function buildAnalysisContext(humanPlayer: Player, state: GameState): AnalysisCo
         humanDeathDay = parseInt(dayStr, 10);
         break;
       }
-      if (dayData.hunterShot?.targetSeat === humanPlayer.seat) {
+      if (findHunterShotByTarget(dayData, humanPlayer.seat)) {
         humanDeathDay = parseInt(dayStr, 10);
         break;
       }
@@ -432,7 +438,7 @@ function buildAnalysisContext(humanPlayer: Player, state: GameState): AnalysisCo
   // 再次兜底：检查 nightHistory 中的猎人开枪
   if (!humanPlayer.alive && !humanDeathDay) {
     for (const [dayStr, nightData] of Object.entries(nightHistory)) {
-      if (nightData.hunterShot?.targetSeat === humanPlayer.seat) {
+      if (findHunterShotByTarget(nightData, humanPlayer.seat)) {
         humanDeathDay = parseInt(dayStr, 10);
         break;
       }
@@ -443,17 +449,19 @@ function buildAnalysisContext(humanPlayer: Player, state: GameState): AnalysisCo
   if (humanPlayer.role === "Hunter") {
     let shotTargetSeat: number | undefined;
     for (const dayData of Object.values(dayHistory)) {
-      if (dayData.hunterShot?.hunterSeat === humanPlayer.seat) {
+      const shot = findHunterShotByShooter(dayData, humanPlayer.seat);
+      if (shot) {
         hunterShot = true;
-        shotTargetSeat = dayData.hunterShot.targetSeat;
+        shotTargetSeat = shot.targetSeat;
         break;
       }
     }
     if (!hunterShot) {
       for (const nightData of Object.values(nightHistory)) {
-        if (nightData.hunterShot?.hunterSeat === humanPlayer.seat) {
+        const shot = findHunterShotByShooter(nightData, humanPlayer.seat);
+        if (shot) {
           hunterShot = true;
-          shotTargetSeat = nightData.hunterShot.targetSeat;
+          shotTargetSeat = shot.targetSeat;
           break;
         }
       }
@@ -546,7 +554,7 @@ function buildPlayerSnapshots(state: GameState): PlayerSnapshot[] {
       }
       
       // Check hunter shot in nightHistory
-      if (!deathDay && nightData.hunterShot?.targetSeat === player.seat) {
+      if (!deathDay && findHunterShotByTarget(nightData, player.seat)) {
         deathDay = day;
         deathCause = "shot";
       }
@@ -564,7 +572,7 @@ function buildPlayerSnapshots(state: GameState): PlayerSnapshot[] {
           deathCause = "exiled";
           break;
         }
-        if (dayData.hunterShot?.targetSeat === player.seat) {
+        if (findHunterShotByTarget(dayData, player.seat)) {
           deathDay = parseInt(dayStr, 10);
           deathCause = "shot";
           break;
@@ -770,11 +778,12 @@ function buildStructuredDaySummary(
   } else if (dayData?.voteTie) {
     parts.push("白天平票无人出局");
   }
-  if (dayData?.hunterShot) {
-    parts.push(`猎人${formatSeatName(state, dayData.hunterShot.hunterSeat)}带走${formatSeatName(state, dayData.hunterShot.targetSeat)}`);
+  // 同一晚可能多槍：逐槍寫進摘要
+  for (const shot of getHunterShots(dayData)) {
+    parts.push(`猎人${formatSeatName(state, shot.hunterSeat)}带走${formatSeatName(state, shot.targetSeat)}`);
   }
-  if (nightData?.hunterShot) {
-    parts.push(`猎人${formatSeatName(state, nightData.hunterShot.hunterSeat)}带走${formatSeatName(state, nightData.hunterShot.targetSeat)}`);
+  for (const shot of getHunterShots(nightData)) {
+    parts.push(`猎人${formatSeatName(state, shot.hunterSeat)}带走${formatSeatName(state, shot.targetSeat)}`);
   }
   if (dayData?.selfDestruct) {
     parts.push(`自爆：${formatSeatName(state, dayData.selfDestruct.boomSeat)}${dayData.selfDestruct.targetSeat !== undefined ? `带走${formatSeatName(state, dayData.selfDestruct.targetSeat)}` : "出局"}`);
@@ -834,8 +843,8 @@ function buildAuthoritativeHistoryText(state: GameState): string {
             : "夜晚无人出局"
         );
       }
-      if (nightData.hunterShot) {
-        nightFacts.push(`猎人开枪：${formatSeatName(state, nightData.hunterShot.hunterSeat)}带走${formatSeatName(state, nightData.hunterShot.targetSeat)}`);
+      for (const shot of getHunterShots(nightData)) {
+        nightFacts.push(`猎人开枪：${formatSeatName(state, shot.hunterSeat)}带走${formatSeatName(state, shot.targetSeat)}`);
       }
       if (nightFacts.length > 0) dayLines.push(`夜晚：${nightFacts.join("；")}`);
     }
@@ -861,8 +870,8 @@ function buildAuthoritativeHistoryText(state: GameState): string {
     } else if (dayData?.voteTie) {
       dayLines.push("放逐结果：平票，无人出局");
     }
-    if (dayData?.hunterShot) {
-      dayLines.push(`猎人开枪：${formatSeatName(state, dayData.hunterShot.hunterSeat)}带走${formatSeatName(state, dayData.hunterShot.targetSeat)}`);
+    for (const shot of getHunterShots(dayData)) {
+      dayLines.push(`猎人开枪：${formatSeatName(state, shot.hunterSeat)}带走${formatSeatName(state, shot.targetSeat)}`);
     }
     if (dayData?.selfDestruct) {
       dayLines.push(`自爆：${formatSeatName(state, dayData.selfDestruct.boomSeat)}${dayData.selfDestruct.targetSeat !== undefined ? `带走${formatSeatName(state, dayData.selfDestruct.targetSeat)}` : "出局"}`);
@@ -1091,10 +1100,9 @@ function buildTimeline(state: GameState, aiSummaries?: AISpeechSummaryResult): T
       });
     }
 
-    // 猎人开枪信息（可能在夜晚或白天触发）
-    const hunterShot = dayData?.hunterShot || nightData?.hunterShot;
-    if (hunterShot) {
-      const { hunterSeat, targetSeat } = hunterShot;
+    // 猎人开枪信息（可能在夜晚或白天触发；同一晚枪链会有多笔）
+    const hunterShots = [...getHunterShots(dayData), ...getHunterShots(nightData)];
+    for (const { hunterSeat, targetSeat } of hunterShots) {
       if (targetSeat !== null && targetSeat !== undefined) {
         dayEvents.push({
           type: "hunter_shot",

@@ -44,6 +44,7 @@ import {
 import { getMuteEligibleSeats } from "@/lib/rules/mute";
 import { getDreamEligibleSeats } from "@/lib/rules/dream";
 import { getWolfBeautyEligibleSeats, getWolfKnifeEligibleSeats } from "@/lib/rules/charm";
+import { getHunterShots } from "@/lib/rules/hunter-shots";
 import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { resolveBadgeElectionWinner } from "@/lib/historical-vote-snapshots";
@@ -2977,14 +2978,17 @@ export function collectPrivateActionNotes(state: GameState, seat: number): Priva
     const day = Number(dayStr);
     const boom = record.selfDestruct;
     if (boom && boom.boomSeat === seat) push(day, "boom", boom.targetSeat, boom.reason);
-    const shot = record.hunterShot;
-    if (shot && shot.hunterSeat === seat) push(day, "shot", shot.targetSeat, shot.reason);
+    // 同一晚可能開多槍（槍鏈）：逐槍記進私人筆記
+    for (const shot of getHunterShots(record)) {
+      if (shot.hunterSeat === seat) push(day, "shot", shot.targetSeat, shot.reason);
+    }
   }
   const role = state.players.find((p) => p.seat === seat)?.role;
   for (const [dayStr, record] of Object.entries(state.nightHistory ?? {})) {
     const day = Number(dayStr);
-    const shot = record.hunterShot;
-    if (shot && shot.hunterSeat === seat) push(day, "shot", shot.targetSeat, shot.reason);
+    for (const shot of getHunterShots(record)) {
+      if (shot.hunterSeat === seat) push(day, "shot", shot.targetSeat, shot.reason);
+    }
     if (role === "Guard") push(day, "guard", record.guardTarget, record.guardReason);
     if (role && isWolfRole(role)) push(day, "wolf", record.wolfTarget, record.wolfReason);
     if (role === "Witch") {

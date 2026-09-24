@@ -204,7 +204,7 @@ test("赛后感言：本人自爆/开枪的私下理由注入自己的感言 pro
   state.dayHistory = {
     2: {
       selfDestruct: { boomSeat, targetSeat: 6, reason: "票台必出局，自爆带走最贵的女巫身份止损" },
-      hunterShot: { hunterSeat: shotSeat, targetSeat: 3, reason: "他刀口最像狼" },
+      hunterShots: [{ hunterSeat: shotSeat, targetSeat: 3, reason: "他刀口最像狼" }],
     },
   };
 

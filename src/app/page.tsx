@@ -36,6 +36,7 @@ import { isWolfRole } from "@/types/game";
 import { PHASE_CONFIGS, isGameInProgress } from "@/store/game-machine";
 import { getI18n } from "@/i18n/translator";
 import { getDeathShotKind } from "@/lib/rules/death-skills";
+import { getHunterShots, lastHunterShot } from "@/lib/rules/hunter-shots";
 import { getSystemMessages, getSystemPatterns } from "@/lib/game-texts";
 import { useTranslations } from "next-intl";
 import { useAtom } from "jotai";
@@ -1101,11 +1102,12 @@ export default function Home() {
       });
     }
 
-    const hunterShot =
-      gameState.nightHistory?.[gameState.day]?.hunterShot ||
-      gameState.dayHistory?.[gameState.day]?.hunterShot;
+    // 槍鏈可能在同一晚開很多槍：動畫看最後一槍，key 帶上槍數，才會每槍都重播
+    const shots = getHunterShots(gameState.nightHistory?.[gameState.day]);
+    const dayShots = getHunterShots(gameState.dayHistory?.[gameState.day]);
+    const hunterShot = dayShots.length > 0 ? dayShots[dayShots.length - 1] : shots[shots.length - 1];
     const hunterShotKey = hunterShot
-      ? `${gameState.day}-${hunterShot.hunterSeat}-${hunterShot.targetSeat}`
+      ? `${gameState.day}-${hunterShot.hunterSeat}-${hunterShot.targetSeat}-${shots.length + dayShots.length}`
       : null;
     if (canSeeHunter && hunterShot && hunterShotKey && hunterShotKey !== last.hunterShotKey) {
       queueMicrotask(() => {

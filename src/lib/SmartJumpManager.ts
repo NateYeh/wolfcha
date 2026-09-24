@@ -12,6 +12,7 @@ import { addSystemMessage, checkWinCondition } from "@/lib/game-master";
 import { resolveNightDeaths } from "@/lib/rules/night-resolution";
 import { getDreamEligibleSeats } from "@/lib/rules/dream";
 import { getWolfBeautyEligibleSeats } from "@/lib/rules/charm";
+import { findHunterShotByTarget, getHunterShots } from "@/lib/rules/hunter-shots";
 import { wolfBeautyDecided } from "@/lib/rules/night-progress";
 import { getMuteEligibleSeats } from "@/lib/rules/mute";
 import {
@@ -555,7 +556,7 @@ function findPlayerDeathDay(state: GameState, seat: number): number | null {
       if (record.deaths?.some((d) => d.seat === seat)) {
         return Number(dayStr);
       }
-      if (record.hunterShot?.targetSeat === seat) {
+      if (findHunterShotByTarget(record, seat)) {
         return Number(dayStr);
       }
     }
@@ -565,7 +566,7 @@ function findPlayerDeathDay(state: GameState, seat: number): number | null {
       if (record.executed?.seat === seat) {
         return Number(dayStr);
       }
-      if (record.hunterShot?.targetSeat === seat) {
+      if (findHunterShotByTarget(record, seat)) {
         return Number(dayStr);
       }
     }
@@ -579,14 +580,14 @@ function findPlayerDeathPhase(state: GameState, seat: number, day: number): Phas
   if (nightRecord?.deaths?.some((d) => d.seat === seat)) {
     return "NIGHT_RESOLVE";
   }
-  if (nightRecord?.hunterShot?.targetSeat === seat) {
+  if (findHunterShotByTarget(nightRecord, seat)) {
     return "HUNTER_SHOOT";
   }
   const dayRecord = state.dayHistory?.[day];
   if (dayRecord?.executed?.seat === seat) {
     return "DAY_RESOLVE";
   }
-  if (dayRecord?.hunterShot?.targetSeat === seat) {
+  if (findHunterShotByTarget(dayRecord, seat)) {
     return "HUNTER_SHOOT";
   }
   return null;
@@ -753,8 +754,9 @@ export function applyBackwardJump(
       if (record.deaths && shouldApply(day, "NIGHT_RESOLVE")) {
         for (const d of record.deaths) deadSeats.add(d.seat);
       }
-      if (record.hunterShot && shouldApply(day, "HUNTER_SHOOT")) {
-        deadSeats.add(record.hunterShot.targetSeat);
+      // 同一晚可能多槍（槍鏈）：每一槍的目標都要算進死者
+      if (shouldApply(day, "HUNTER_SHOOT")) {
+        for (const shot of getHunterShots(record)) deadSeats.add(shot.targetSeat);
       }
     }
 
@@ -763,8 +765,8 @@ export function applyBackwardJump(
       if (record.executed && shouldApply(day, "DAY_RESOLVE")) {
         deadSeats.add(record.executed.seat);
       }
-      if (record.hunterShot && shouldApply(day, "HUNTER_SHOOT")) {
-        deadSeats.add(record.hunterShot.targetSeat);
+      if (shouldApply(day, "HUNTER_SHOOT")) {
+        for (const shot of getHunterShots(record)) deadSeats.add(shot.targetSeat);
       }
     }
 
@@ -1547,16 +1549,16 @@ function getAliveSeatsAtNightStart(state: GameState, day: number): Set<number> {
         alive.delete(death.seat);
       }
     }
-    if (night?.hunterShot) {
-      alive.delete(night.hunterShot.targetSeat);
+    for (const shot of getHunterShots(night)) {
+      alive.delete(shot.targetSeat);
     }
 
     const dayRecord = state.dayHistory?.[d];
     if (dayRecord?.executed) {
       alive.delete(dayRecord.executed.seat);
     }
-    if (dayRecord?.hunterShot) {
-      alive.delete(dayRecord.hunterShot.targetSeat);
+    for (const shot of getHunterShots(dayRecord)) {
+      alive.delete(shot.targetSeat);
     }
   }
 

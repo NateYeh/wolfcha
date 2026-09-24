@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import type { GameState } from "@/types/game";
+import { getHunterShots } from "@/lib/rules/hunter-shots";
 import { cn } from "@/lib/utils";
 
 type PublicEventTone = "default" | "danger" | "warning" | "success";
@@ -106,20 +107,21 @@ export function EventLog({ gameState }: EventLogProps) {
         }
       }
 
-      if (nightRecord?.hunterShot) {
+      // 一晚可能開很多槍（槍打槍／八獵四狼）：逐槍一條，不再只顯示最後一槍
+      getHunterShots(nightRecord).forEach((shot, index) => {
         entries.push({
-          id: `night-hunter-shot-${day}`,
+          id: `night-hunter-shot-${day}-${index}`,
           day,
-          order: 20,
+          order: 20 + index,
           // 夜間只有獵人槍（狼王槍只在白天放逐時開）→ 不需角色判斷
           text: t("eventLog.hunterShot", {
-            hunter: formatSeat(nightRecord.hunterShot.hunterSeat),
-            target: formatSeat(nightRecord.hunterShot.targetSeat),
+            hunter: formatSeat(shot.hunterSeat),
+            target: formatSeat(shot.targetSeat),
           }),
           tone: "warning",
           icon: "shot",
         });
-      }
+      });
 
       const dayRecord = gameState.dayHistory?.[day];
       if (!dayRecord) return;
@@ -209,23 +211,25 @@ export function EventLog({ gameState }: EventLogProps) {
         });
       }
 
-      if (dayRecord.hunterShot) {
+      // 白天同理：同一輪槍鏈每一槍都是一條紀錄
+      getHunterShots(dayRecord).forEach((shot, index) => {
         entries.push({
-          id: `day-hunter-shot-${day}`,
+          id: `day-hunter-shot-${day}-${index}`,
           day,
-          order: 60,
+          order: 60 + index,
           text: t(
-            gameState.players.find((p) => p.seat === dayRecord.hunterShot?.hunterSeat)?.role === "WolfKing"
+            gameState.players.find((p) => p.seat === shot.hunterSeat)?.role === "WolfKing"
               ? "eventLog.wolfKingShot"
               : "eventLog.hunterShot",
             {
-              hunter: formatSeat(dayRecord.hunterShot.hunterSeat),
-            target: formatSeat(dayRecord.hunterShot.targetSeat),
-          }),
+              hunter: formatSeat(shot.hunterSeat),
+              target: formatSeat(shot.targetSeat),
+            }
+          ),
           tone: "warning",
           icon: "shot",
         });
-      }
+      });
     });
 
     if (gameState.winner) {

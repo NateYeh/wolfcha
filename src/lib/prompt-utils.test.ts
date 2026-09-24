@@ -242,10 +242,29 @@ test("普通夜间出局只传死因未公开，公开技能死因才按主持�
 
   state.players[5] = { ...state.players[5], alive: false };
   state.players[6] = { ...state.players[6], alive: false };
-  state.dayHistory = { 1: { hunterShot: { hunterSeat: 5, targetSeat: 6 } } };
+  state.dayHistory = { 1: { hunterShots: [{ hunterSeat: 5, targetSeat: 6 }] } };
   const publicShotContext = buildGameContext(state, state.players[2]);
   assert.match(publicShotContext, /\{seat: 7, name: 玩家7, day: 1, cause: 猎人公开开枪\}/);
   assert.match(publicShotContext, /6号玩家6 已由主持人公开确认为猎人/);
+});
+
+test("同一晚多槍：公開事實要逐槍列出，不能只留最後一槍", () => {
+  // 槍打槍：5 號打死 6 號，6 號自己也開槍打死 7 號
+  const state = makeState();
+  state.players[5] = { ...state.players[5], alive: false };
+  state.players[6] = { ...state.players[6], alive: false };
+  state.players[7] = { ...state.players[7], alive: false };
+  state.nightHistory = {
+    1: {
+      hunterShots: [
+        { hunterSeat: 5, targetSeat: 6 },
+        { hunterSeat: 6, targetSeat: 7 },
+      ],
+    },
+  };
+  const context = buildGameContext(state, state.players[2]);
+  assert.match(context, /\{seat: 7, name: 玩家7, day: 1, cause: 猎人公开开枪\}/, "第一槍的目標要在");
+  assert.match(context, /\{seat: 8, name: 玩家8, day: 1, cause: 猎人公开开枪\}/, "第二槍的目標也要在（以前會被覆蓋掉）");
 });
 
 test("狼人私密队伍按存活状态明确分组，且不包含村民", () => {
@@ -384,7 +403,7 @@ test("猎人公开开枪会结构化确认猎人身份，但不把目标身份�
   state.nightHistory = {
     3: {
       deaths: [{ seat: 5, reason: "wolf" }],
-      hunterShot: { hunterSeat: 5, targetSeat: 8 },
+      hunterShots: [{ hunterSeat: 5, targetSeat: 8 }],
     },
   };
 
@@ -890,8 +909,8 @@ test("公開技能翻牌分清獵人槍與狼王槍：狼王不能被寫成獵�
   state.day = 2;
   state.nightHistory = {};
   state.dayHistory = {
-    1: { hunterShot: { hunterSeat: wolfKing.seat, targetSeat: wolfShotTarget.seat } },
-    2: { hunterShot: { hunterSeat: hunter.seat, targetSeat: hunterShotTarget.seat } },
+    1: { hunterShots: [{ hunterSeat: wolfKing.seat, targetSeat: wolfShotTarget.seat }] },
+    2: { hunterShots: [{ hunterSeat: hunter.seat, targetSeat: hunterShotTarget.seat }] },
   };
 
   const context = buildGameContext(state, state.players[4]);

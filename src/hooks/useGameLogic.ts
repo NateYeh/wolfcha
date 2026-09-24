@@ -35,6 +35,7 @@ import { canUseDeathShot, getChainedShooter, getDeathShotKind } from "@/lib/rule
 import { isValidMuteTarget } from "@/lib/rules/mute";
 import { isValidDreamTarget } from "@/lib/rules/dream";
 import { applyCharmRevenge, isValidWolfBeautyTarget } from "@/lib/rules/charm";
+import { appendDayHunterShot, appendNightHunterShot } from "@/lib/rules/hunter-shots";
 import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
 import {
   humanActorPending,
@@ -2465,25 +2466,10 @@ export function useGameLogic() {
         }
 
         const shot = { hunterSeat: humanPlayer.seat, targetSeat };
-        if (diedAtNight) {
-          const prevNightRecord = (currentState.nightHistory || {})[currentState.day] || {};
-          currentState = {
-            ...currentState,
-            nightHistory: {
-              ...(currentState.nightHistory || {}),
-              [currentState.day]: { ...prevNightRecord, hunterShot: shot },
-            },
-          };
-        } else {
-          const prevDayRecord = (currentState.dayHistory || {})[currentState.day] || {};
-          currentState = {
-            ...currentState,
-            dayHistory: {
-              ...(currentState.dayHistory || {}),
-              [currentState.day]: { ...prevDayRecord, hunterShot: shot },
-            },
-          };
-        }
+        // 追加而非覆蓋：同一晚槍打槍會有多筆（rules/hunter-shots 是單一真相）。
+        currentState = diedAtNight
+          ? appendNightHunterShot(currentState, shot)
+          : appendDayHunterShot(currentState, shot);
         setGameState(currentState);
 
         // 槍打槍：被槍打死的人自己也有槍時，接著讓他開（真人這條也一樣）

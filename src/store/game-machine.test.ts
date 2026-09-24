@@ -20,7 +20,7 @@ test("进行中的持久化状态必须携带唯一 gameSessionId，且版本已
     isHuman: true,
   }];
 
-  assert.equal(GAME_STATE_VERSION, 2);
+  assert.equal(GAME_STATE_VERSION, 3);
   assert.equal(isRestorableGameState(state), false);
   state.gameSessionId = "session-1";
   assert.equal(isRestorableGameState(state), true);
