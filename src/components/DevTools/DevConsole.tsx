@@ -1280,6 +1280,10 @@ function GlobalTab({
                       {getSeatLabel(night?.witchPoison)}
                     </div>
                     <div className="text-gray-300">
+                      <span className="text-gray-400">{t("devConsole.actionRecordDetails.wolfBeauty")}</span>{" "}
+                      {getSeatLabel(night?.wolfBeautyTarget)}
+                    </div>
+                    <div className="text-gray-300">
                       <span className="text-gray-400">{t("devConsole.actionRecordDetails.seerCheck")}</span>{" "}
                       {getSeatLabel(night?.seerTarget)}
                       {night?.seerResult ? (

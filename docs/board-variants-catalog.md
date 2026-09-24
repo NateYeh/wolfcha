@@ -122,7 +122,7 @@
 | 夜間結算 | `rules/night-resolution` 的步驟 4：狼美人當晚出局 → 被魅惑者一并出局，死因 `charm` |
 | 白天連帶 | 放逐（`useGameLogic.handleVoteComplete`）、自爆帶走（`useGameLogic`）、獵人槍（`useSpecialEvents`）三條路都會帶走被魅惑者 |
 | 提示詞 | `prompts.wolfBeauty.{base,task,user}` ×3 語系＋玩法指引 `promptUtils.strategyGuide.wolfBeauty` |
-| 真人操作 | `NIGHT_WOLF_BEAUTY_ACTION` 的可選目標、`gameLogicMessages.youCharmed` 對話、存檔／續跑／Dev 跳轉全部接上；狼美人是狼陣營，首夜與出刀同樣會走到狼隊分工與出刀確認 |
+| 真人操作 | `NIGHT_WOLF_BEAUTY_ACTION` 的可選目標、`gameLogicMessages.youCharmed` 對話、存檔／續跑／Dev 跳轉全部接上（跳轉補全的魅惑目標一開始被靜默丟掉，已修，見下）；狼美人是狼陣營，首夜與出刀同樣會走到狼隊分工與出刀確認 |
 | 版型 | `official-12-wolf-beauty-knight`＝狼人×3＋狼美人＋預女守騎＋4 民（12 人、4 狼） |
 
 **不能自刀也實作了**：`getWolfKnifeEligibleSeats()` 排除狼美人，UI 可點選、AI 合法座位與狼刀提示詞選項都走這份名單
@@ -132,6 +132,8 @@
 原本各寫一份夜間階段清單，狼美人只寫進了路由那側，所以真人狼美人**根本按不了確認、階段卡死**；
 現在兩邊都讀 `rules/human-input.ts` 的單一清單（`SEAT_ACTION_CONFIRM_PHASES`），並有
 `human-input.test.ts` 用狀態機反過來掃描守衛。順手修掉同源的既有缺口：真人攝夢人原本是面板有、路由漏。
+
+另外實機驗證殉情時發現 **DevConsole 跳轉補全的魅惑目標被靜默丟掉**（補全清單有這一題、套用端沒有分支），導致「毒殺狼美人」不會帶走被魅惑者；已補上兩條套用分支（含同類的 `day<N>DreamTarget`）並加一道「清單端每一格，套用端都要有分支」的原始碼掃描守衛。
 
 ### 本作自行決定的兩條（來源站沒有明文，已寫進程式註解）
 

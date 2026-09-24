@@ -341,7 +341,7 @@ humanActorPending(state, phase)  // 決定者裡有真人，而且這一步還�
 
 ---
 
-### 5.7 真人夜間操作的兩處漏接（實機測試後補）
+### 5.7 實機測試後補的三處漏接（真人操作 + 跳轉補全）
 
 實際開一局真人狼美騎士時查出：`DialogArea`（面板出不出的來）與 `page.tsx` 的
 `confirmSelectedSeat`（確認送去哪裡）**各自手寫一份階段清單**，兩邊都沒有被型別或測試綁住，
@@ -351,11 +351,16 @@ humanActorPending(state, phase)  // 決定者裡有真人，而且這一步還�
 | --- | --- |
 | 真人**狼美人**：階段永遠停在原地（遊戲卡死） | 面板缺 `NIGHT_WOLF_BEAUTY_ACTION` → 確認面板根本不出現 |
 | 真人**攝夢人**：面板出現、按了沒反應 | 路由缺 `NIGHT_DREAM_ACTION`（既有缺口，狼美人只是照抄同一份清單） |
+| DevConsole 跳轉補全填了魅惑目標，卻沒有殉情 | 補全清單有這一題，但套用端（`applySmartJumpWithFilledData`）兩條路徑都沒有 `wolfBeautyTarget` 分支 → 值被靜默丟掉（同 `dreamTarget` 的舊缺口） |
 
-改法：集中到 `rules/human-input.ts` 的 `SEAT_ACTION_CONFIRM_PHASES` 與
+改法：前兩項集中到 `rules/human-input.ts` 的 `SEAT_ACTION_CONFIRM_PHASES` 與
 `canHumanConfirmSeatAction`，兩個消費端讀同一份；`NIGHT_WOLF_BEAUTY_ACTION` 的確認鈕文字
-補 `dialog.action.charm`（三語系）。
+補 `dialog.action.charm`（三語系）。第三項把 `day<N>WolfBeautyTarget` 與 `wolfBeautyTarget`
+兩條套用分支補上（順手補同一類的 `day<N>DreamTarget`）。
 
 守衛測試用狀態機反過來掃：對每個 `actionType === "night_action"` 的階段，
 只要 `PHASE_CONFIGS[...].requiresHumanInput` 對某個角色回 true，就要求
 **面板與路由都接得住**；有專屬面板的女巫另行列出。少任何一邊都會紅。
+
+跳轉補全那一類則用兩道守衛：行為測試（跨日前跳補全「毒殺狼美人」必須帶走被魅惑者）＋
+原始碼掃描（清單端宣告的每一格，套用端都要有對應分支）。

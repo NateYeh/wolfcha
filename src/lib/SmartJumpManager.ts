@@ -1219,6 +1219,18 @@ export function applySmartJumpWithFilledData(
       continue;
     }
 
+    // 攝夢人目標：跨日前跳的補全清單有這一題，但套用分支一直沒寫（同狼美人的漏接）
+    const dreamMatch = field.match(/day(\d+)DreamTarget/);
+    if (dreamMatch) {
+      const day = Number(dreamMatch[1]);
+      const prev = (newState.nightHistory || {})[day] || {};
+      newState.nightHistory = {
+        ...(newState.nightHistory || {}),
+        [day]: { ...prev, dreamTarget: value as number },
+      };
+      continue;
+    }
+
     const wolfMatch = field.match(/day(\d+)WolfTarget/);
     if (wolfMatch) {
       const day = Number(wolfMatch[1]);
@@ -1226,6 +1238,19 @@ export function applySmartJumpWithFilledData(
       newState.nightHistory = {
         ...(newState.nightHistory || {}),
         [day]: { ...prev, wolfTarget: value as number },
+      };
+      continue;
+    }
+
+    // 狼美人魅惑：這一格曾經漏了，開發者在前跳補全清單填的目標會被靜默丟掉
+    // （`missingTasks` 有產生這一題，但沒有任何一支套用分支把它寫進狀態）。
+    const wolfBeautyMatch = field.match(/day(\d+)WolfBeautyTarget/);
+    if (wolfBeautyMatch) {
+      const day = Number(wolfBeautyMatch[1]);
+      const prev = (newState.nightHistory || {})[day] || {};
+      newState.nightHistory = {
+        ...(newState.nightHistory || {}),
+        [day]: { ...prev, wolfBeautyTarget: value as number },
       };
       continue;
     }
@@ -1340,6 +1365,11 @@ export function applySmartJumpWithFilledData(
       case "dreamTarget": {
         // 这一格过去漏了：开发者在补全清单填了摄梦人目标，会被静默丢掉（switch 没有 default）
         newState.nightActions = { ...newState.nightActions, dreamTarget: value as number };
+        break;
+      }
+      case "wolfBeautyTarget": {
+        // 同 dreamTarget：missingTasks 有這題，switch 漏一格就會被靜默丟掉
+        newState.nightActions = { ...newState.nightActions, wolfBeautyTarget: value as number };
         break;
       }
       case "mutedTarget": {

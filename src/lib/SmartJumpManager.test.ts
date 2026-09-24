@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
 import type { GameState, Role } from "@/types/game";
 
@@ -62,7 +64,15 @@ const NIGHT_ROLE_BOARD: Role[] = [
   "Seer", "Villager", "Villager", "Villager", "Villager",
 ];
 
-async function nightBoard(nightActions: GameState["nightActions"] = {}): Promise<GameState> {
+const WOLF_BEAUTY_BOARD: Role[] = [
+  "WolfBeauty", "Werewolf", "Werewolf", "Seer", "Witch", "Villager",
+  "Villager", "Villager", "Villager", "Villager", "Villager", "Villager",
+];
+
+async function nightBoard(
+  nightActions: GameState["nightActions"] = {},
+  roles: Role[] = NIGHT_ROLE_BOARD
+): Promise<GameState> {
   const [{ createSinglePlayerContextAuditState }] = await Promise.all([
     import("../../scripts/single-player-context-audit"),
   ]);
@@ -73,7 +83,7 @@ async function nightBoard(nightActions: GameState["nightActions"] = {}): Promise
     day: 1,
     players: base.players.map((player, index) => ({
       ...player,
-      role: NIGHT_ROLE_BOARD[index] ?? "Villager",
+      role: roles[index] ?? "Villager",
       isHuman: false,
       alive: true,
     })),
@@ -129,4 +139,70 @@ test("補全清單填好之後真的寫進狀態（攝夢與禁言過去會被�
   assert.equal(next.nightActions.dreamTarget, 9, "攝夢目標必須寫入（套用端原本漏了 dreamTarget）");
   assert.equal(next.nightActions.wolfTarget, 10);
   assert.equal(next.nightActions.witchSave, false, "女巫明確不救");
+});
+
+test("跨日前跳的 day<N> 欄位要寫進狀態（狼美人與攝夢人原本被靜默丟掉）", async () => {
+  const { applySmartJumpWithFilledData } = await import("@/lib/SmartJumpManager");
+  const state = await nightBoard({}, WOLF_BEAUTY_BOARD);
+  const next = applySmartJumpWithFilledData(state, { day: 2, phase: "DAY_START" }, {
+    day1WolfTarget: 5,
+    day1WolfBeautyTarget: 3,
+    day1WitchSave: "false",
+    day1WitchPoison: "none",
+  });
+  assert.equal(
+    next.nightHistory?.[1]?.wolfBeautyTarget,
+    3,
+    "狼美人魅惑目標必須寫入（套用端原本沒有 day<N>WolfBeautyTarget 這一段）"
+  );
+  assert.equal(next.nightHistory?.[1]?.wolfTarget, 5);
+});
+
+test("跨日前跳補全「毒殺狼美人」會帶走被魅惑者（回歸：目標被丟掉時不會有殉情）", async () => {
+  const { applySmartJumpWithFilledData } = await import("@/lib/SmartJumpManager");
+  const state = await nightBoard({}, WOLF_BEAUTY_BOARD);
+  const next = applySmartJumpWithFilledData(state, { day: 2, phase: "DAY_START" }, {
+    day1WolfTarget: 5,
+    day1WolfBeautyTarget: 3,
+    day1WitchSave: "false",
+    day1WitchPoison: 0, // 毒狼美人自己
+  });
+  const deaths = next.nightHistory?.[1]?.deaths ?? [];
+  assert.ok(
+    deaths.some((d) => d.seat === 0 && d.reason === "poison"),
+    `狼美人自己要被毒死，實際：${JSON.stringify(deaths)}`
+  );
+  assert.ok(
+    deaths.some((d) => d.seat === 3 && d.reason === "charm"),
+    `被魅惑的 3 號要殉情，實際：${JSON.stringify(deaths)}`
+  );
+  assert.equal(next.players[0]?.alive, false);
+  assert.equal(next.players[3]?.alive, false);
+});
+
+test("單階段補全的狼美人魅惑也要寫進 nightActions", async () => {
+  const { applySmartJumpWithFilledData } = await import("@/lib/SmartJumpManager");
+  const state = await nightBoard();
+  const next = applySmartJumpWithFilledData(state, { day: 1, phase: "NIGHT_SEER_ACTION" }, {
+    wolfBeautyTarget: 5,
+  });
+  assert.equal(next.nightActions.wolfBeautyTarget, 5, "魅惑目標必須寫入（switch 原本沒有這一格）");
+});
+
+test("補全清單的每一格，套用端都要有對應分支（少一格就是靜默丟掉）", () => {
+  const source = fs.readFileSync(path.join(process.cwd(), "src/lib/SmartJumpManager.ts"), "utf8");
+  const applyStart = source.indexOf("export function applySmartJumpWithFilledData");
+  assert.ok(applyStart > 0, "找不到套用端函式");
+  const applyBody = source.slice(applyStart);
+
+  // 清單端：跨日欄位寫成 `day${d}Suffix`，同日欄位寫成 "plainName"
+  const prefixed = [...source.matchAll(/field:\s*`day\$\{d\}(\w+)`/g)].map((m) => m[1]!);
+  const plain = [...source.matchAll(/field:\s*"(\w+)"/g)].map((m) => m[1]!);
+  assert.ok(prefixed.length > 0 && plain.length > 0, "應該要掃到兩種欄位寫法");
+
+  const missing = [
+    ...prefixed.filter((name) => !applyBody.includes(name)),
+    ...plain.filter((name) => !applyBody.includes(`"${name}"`)),
+  ];
+  assert.deepEqual(missing, [], `以下補全欄位在套用端沒有分支：${missing.join(", ")}`);
 });
