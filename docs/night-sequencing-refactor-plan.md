@@ -74,7 +74,7 @@
 | Phase | 內容 | 驗收 | 風險 |
 |---|---|---|---|
 | **1** | ✅ **已完成**（結論見下方 §5.1）：兩張表搬到 `src/lib/rules/checkpoints.ts`、修掉 MUTE／DREAM 的 `default` 殘留、加上四條不變式守衛；並修掉同一路徑上挖出的第八條 bug（`IN_PROGRESS_PHASES` 漏階段——進禁言階段會刪掉整局存檔） | `checkpoints.test.ts` 9 支 + store 整合測試 1 支全綠 | 低 |
-| **2** | **純新增**：夜的推進模組（順序 + 已完成判定 + 下一步），不接任何消費端；用 `NIGHT_ACTION_ORDER` 當順序來源 | 新模組自己的測試（含「角色死亡→跳過」「無守衛在場」等矩陣） | 零（不接線） |
+| **2** | ✅ **已完成**（見下方 §5.2）：純新增 `src/lib/rules/night-progress.ts`（順序 / 已完成 / 下一步），**尚未接任何消費端** | `night-progress.test.ts` 11 支全綠 | 零（不接線） |
 | **3** | `NightPhase` 的 5 個 `continueNightAfter*` 改成向新模組查「下一步」，保留對外行為 | `context-regressions` + 夜晚流程整合測試全綠 | 中 |
 | **4** | `useGameLogic` 的存檔恢復 switch（7 個 night case）與 Dev 跳轉／軟編輯分支改向新模組查 | 存檔恢復、Dev 跳轉測試 | 中高（涉及存檔相容） |
 | **5** | 真人夜間操作分支（`:2297-2449`）改為「把決定寫進狀態」再由新模組推進 | 真人對局的手動驗證 + 既有 hook 測試 | 中 |
@@ -143,6 +143,30 @@
 （缺 MUTE／DREAM／`SELF_DESTRUCT`／`KNIGHT_DUEL`），而且用 `as Record<Phase, string>` 把 tsc 騙過去，
 所以開發者工具在那些階段顯示 `undefined`、下拉選單也選不到。
 修它需要補三個語系的 `devConsole.phases.*` 鍵，**開發者工具可見、玩家不可見**，所以不在本階段順手改。
+
+---
+
+### 5.2 Phase 2 的產出與 Phase 3-6 的接線清單（已完成）
+
+新 module `src/lib/rules/night-progress.ts`（只描述、不驅動；不改狀態、不發指令、不碰 React）：
+
+| 出口 | 回答什麼 | 預計消費端 |
+|---|---|---|
+| `NIGHT_STEP: Record<NightActionPhase, NightStep>` | 每一步的階段、決定者（單一角色／狼隊）、完成判定 | 全部 |
+| `guardDecided`／`muteDecided`／`dreamDecided`／`wolfDecided`／`witchDecided`／`seerDecided` | 這一步做完了嗎（含「沒有這個角色」「沒有合法目標」） | Phase 3 階段續跑的「真人未決定就停住」；`checkpoints.ts`（已接） |
+| `isNightActionPhase`／`nightStepFor` | 型別守衛與查表 | Phase 3-6 |
+| `pendingNightActions(state, { after })` | 還缺哪些決定（`after` 用於跳階補齊） | Phase 6 `SmartJumpManager.createMissingTask`（現用 `ACTION_PHASES`） |
+| `nextPendingNightAction(state, { after })`、`isNightComplete` | 下一個要處理的步驟／今晚結束了嗎 | Phase 4 存檔恢復、Phase 5 真人操作 |
+| `nextNightPhaseAfter(phase)` | 這一步之後進哪個階段（最後一步 → `NIGHT_RESOLVE`） | Phase 3 的 5 個 `continueNightAfter*`（現在各自寫死目標階段） |
+| `actorsForNightStep(state, phase)` | 這一步由哪些玩家決定 | Phase 5 真人操作、UI 顯示 |
+
+**編譯期保證**：`NIGHT_ACTION_ORDER` 改成 `as const satisfies readonly Phase[]` 並匯出 `NightActionPhase`；
+`NIGHT_STEP` 是 `Record<NightActionPhase, …>`，所以在權威表新增一個夜間角色階段時，**tsc 會紅**，
+不像過去只是安靜地少一個分支。
+
+**跨 seam 守衛**（`night-progress.test.ts`，11 支）：步驟表正好覆蓋權威順序、每步的決定者與完成判定、
+退化情況、女巫的「明確不救」、狼隊（多狼都是決定者）、`after` 補齊查詢、
+以及「**夜間順序必須是狀態機 `VALID_TRANSITIONS` 允許的轉移**」（順序表與轉移表不得漂移）。
 
 ---
 

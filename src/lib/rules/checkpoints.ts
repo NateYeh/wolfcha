@@ -1,7 +1,12 @@
 import type { GameState, Phase } from "@/types/game";
-import { isWolfRole } from "@/types/game";
-import { getMuteEligibleSeats } from "./mute";
-import { getDreamEligibleSeats } from "./dream";
+import {
+  dreamDecided,
+  guardDecided,
+  muteDecided,
+  seerDecided,
+  witchDecided,
+  wolfDecided,
+} from "./night-progress";
 
 /**
  * 每個階段「這份狀態落盤安不安全」與「動作未完成時退回哪個穩定點」。
@@ -23,65 +28,11 @@ import { getDreamEligibleSeats } from "./dream";
  * 動作階段（`ACTION_PHASES`）的狀態天生可能是「做到一半」的，回退到自己等於把不完整狀態
  * 當成穩定點；若該階段在「已決定」時可存檔，回退點根本不會被諮詢（`getRestorePhase`
  * 先短路回自己），所以「不可存檔 + 回退到自己」只可能是漏寫。
- */
-
-/** 守衛的決定是否已完成（沒有守衛在場也算完成）。 */
-export const guardDecided = (state: GameState): boolean => {
-  const guard = state.players.find((p) => p.role === "Guard" && p.alive);
-  return !guard || state.nightActions.guardTarget !== undefined;
-};
-
-/**
- * 禁言長老的決定是否已完成。
  *
- * 除了已指定目標，也要涵蓋「沒有合法目標可選」的退化情況
- * （`getMuteEligibleSeats` 為空，例如只剩長老自己存活）——此時這一晚沒有可禁言的人，
- * 階段已經沒有東西要等。
+ * 「某一步的決定做完了嗎」由 `./night-progress` 提供（那裡是一夜推進的權威）；
+ * 這裡只負責「這份狀態能不能落盤、恢復時退回哪一步」。
  */
-export const muteDecided = (state: GameState): boolean => {
-  const elder = state.players.find((p) => p.role === "MuteElder" && p.alive);
-  if (!elder) return true;
-  return (
-    state.nightActions.mutedTarget !== undefined ||
-    getMuteEligibleSeats(state, elder.seat).length === 0
-  );
-};
 
-/**
- * 攝夢人的決定是否已完成。
- *
- * 規則要求「不能空攝」，AI 沒給合法目標時由系統隨機指定，所以正常情況一定有 `dreamTarget`；
- * 唯一例外是沒有合法目標（例如只剩攝夢人自己存活），此時這一晚本來就沒有夢游者。
- */
-export const dreamDecided = (state: GameState): boolean => {
-  const dreamer = state.players.find((p) => p.role === "Dreamweaver" && p.alive);
-  if (!dreamer) return true;
-  return (
-    state.nightActions.dreamTarget !== undefined ||
-    getDreamEligibleSeats(state, dreamer.seat).length === 0
-  );
-};
-
-/** 狼人的決定是否已完成（沒有存活狼人，或已指定刀口）。 */
-export const wolfDecided = (state: GameState): boolean => {
-  const aliveWolves = state.players.filter((p) => isWolfRole(p.role) && p.alive);
-  return aliveWolves.length === 0 || state.nightActions.wolfTarget !== undefined;
-};
-
-/** 女巫的決定是否已完成（沒有女巫、藥已用完，或已明確決定救／毒／不救）。 */
-export const witchDecided = (state: GameState): boolean => {
-  const witch = state.players.find((p) => p.role === "Witch" && p.alive);
-  if (!witch) return true;
-  if (state.roleAbilities.witchHealUsed && state.roleAbilities.witchPoisonUsed) return true;
-  // witchSave === false 表示明確不救，undefined 表示還沒決定
-  return state.nightActions.witchSave !== undefined || state.nightActions.witchPoison !== undefined;
-};
-
-/** 預言家的決定是否已完成（沒有預言家，或已查驗）。 */
-export const seerDecided = (state: GameState): boolean => {
-  const seer = state.players.find((p) => p.role === "Seer" && p.alive);
-  return !seer || state.nightActions.seerTarget !== undefined;
-};
 
 /**
  * 每個階段「現在這份狀態存檔安不安全」。投票中的每張已提交票都是穩定事實，

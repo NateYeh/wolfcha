@@ -81,14 +81,17 @@ export const PHASE_SEQUENCE: readonly Phase[] = [
 ];
 
 /** 夜晚角色行動的權威順序（天黑 → 守衛 → 禁言長老 → 攝夢人 → 狼人 → 女巫 → 預言家 → 結算）。 */
-export const NIGHT_ACTION_ORDER: readonly Phase[] = [
+export const NIGHT_ACTION_ORDER = [
   "NIGHT_GUARD_ACTION",
   "NIGHT_MUTE_ACTION",
   "NIGHT_DREAM_ACTION",
   "NIGHT_WOLF_ACTION",
   "NIGHT_WITCH_ACTION",
   "NIGHT_SEER_ACTION",
-];
+] as const satisfies readonly Phase[];
+
+/** 夜間角色行動的階段（＝ `NIGHT_ACTION_ORDER` 的成員，用 `as const` 取得字面型別）。 */
+export type NightActionPhase = (typeof NIGHT_ACTION_ORDER)[number];
 
 /** 需要發言輪的階段（發言順序、逐字稿與發言 UI 都以此為界）。 */
 export const SPEECH_PHASES: readonly Phase[] = [

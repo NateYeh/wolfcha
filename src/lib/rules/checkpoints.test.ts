@@ -1,14 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createSinglePlayerContextAuditState } from "../../../scripts/single-player-context-audit";
-import { ACTION_PHASES, NIGHT_ACTION_ORDER, PHASE_SEQUENCE } from "@/lib/rules/phases";
-import {
-  RESTORE_FALLBACK,
-  dreamDecided,
-  getRestorePhase,
-  isCheckpointSafe,
-  muteDecided,
-} from "@/lib/rules/checkpoints";
+import { ACTION_PHASES, NIGHT_ACTION_ORDER, PHASE_SEQUENCE, type NightActionPhase } from "@/lib/rules/phases";
+import { RESTORE_FALLBACK, getRestorePhase, isCheckpointSafe } from "@/lib/rules/checkpoints";
+import { dreamDecided, muteDecided } from "@/lib/rules/night-progress";
 import type { GameState, Phase, Player, Role } from "@/types/game";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
@@ -163,7 +158,7 @@ test("不變式：夜間回退點不得往前跳（會形成迴圈）", () => {
     for (const state of [undecided(phase), decided(phase), board(["Guard"], { phase })]) {
       const fallback = RESTORE_FALLBACK[phase](state);
       if (fallback === "NIGHT_START") continue;
-      const targetIndex = NIGHT_ACTION_ORDER.indexOf(fallback);
+      const targetIndex = NIGHT_ACTION_ORDER.indexOf(fallback as NightActionPhase);
       if (targetIndex > index) failures.push(`${phase} 回退到更後面的 ${fallback}`);
     }
   }
