@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # 型別檢查：本專案有大量 Record<Phase, …>／Record<Role, …> 的完備性依賴，
+      # 這一步是「新增枚舉成員必須補齊所有對照表」的主要守衛。
+      - run: pnpm exec tsc --noEmit
+
+      # 兩套測試都跑：unit（src + scripts）與 server（需 react-server 條件）。
+      # 過去 server 那 20 個契約測試不在任何標準指令內，實際上有 2 條斷言已經失效而無人察覺。
+      - run: pnpm test
+
+      # 生產構建（pnpm build）留在本地提交前的驗證鏈，見 AGENTS.md：
+      # 它需要 Supabase／AI 供應商的環境變數，放進 CI 要另外維護 secrets，
+      # 因此在這裡只做型別與測試守衛。
