@@ -26,7 +26,12 @@ test("character generation is schema-constrained and single-pass", () => {
   assert.match(characterSource, /type: "json_schema"/);
   assert.match(characterSource, /strict: true/);
   assert.doesNotMatch(characterSource, /cachedBaseProfiles|cachedPersonaBatches/);
-  assert.doesNotMatch(characterSource, /for \(let attempt|runOnce\(/);
+  // 重試契約已由「完全單次」改為「有界重試」（glm 不吃 response_format，壞樣本是隨機現象）：
+  // 非付費路徑最多 CHARACTER_BATCH_MAX_ATTEMPTS 次，付費路徑強制 1 次以避免重複計費。
+  // 行為驗證在 src/lib/character-generator-retry.test.ts。
+  assert.match(characterSource, /const CHARACTER_BATCH_MAX_ATTEMPTS = 2;/);
+  assert.match(characterSource, /isTokenPayActive\(\) \? 1 : CHARACTER_BATCH_MAX_ATTEMPTS/);
+  assert.doesNotMatch(characterSource, /while \(true\)/);
   assert.doesNotMatch(characterSource, /normalizeBaseProfile\(/);
 });
 
