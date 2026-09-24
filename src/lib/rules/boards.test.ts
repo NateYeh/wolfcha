@@ -426,6 +426,14 @@ test("版型只決定組成：座位一律打亂，狼不會固定坐在 1~4 號
 
   const orderSeen = new Set<string>();
   const wolfSeatsSeen = new Set<string>();
+  // 版型原順序下狼的座位，用來偵測「完全沒洗牌」（舊版寫死 0,1,2,3）
+  const canonicalWolfSeats = canonical
+    .map((role, seat) => ({ role, seat }))
+    .filter((entry) => isWolfRole(entry.role))
+    .map((entry) => entry.seat)
+    .sort((a, b) => a - b)
+    .join(",");
+  let canonicalSeatRounds = 0;
   for (let round = 0; round < 25; round++) {
     const players = setupPlayers(characters, 0, "我", 12, [...canonical]);
     // 組成必須與版型相同（只是座位換了）
@@ -435,17 +443,25 @@ test("版型只決定組成：座位一律打亂，狼不會固定坐在 1~4 號
       "洗牌後角色組成必須與版型相同"
     );
     orderSeen.add(players.map((p) => p.role).join(","));
-    wolfSeatsSeen.add(
-      players
-        .filter((p) => isWolfRole(p.role))
-        .map((p) => p.seat)
-        .sort()
-        .join(",")
-    );
+    // 座位一律用數值排序：兩側必須同一個比較器，否則字串比較會讓下面的比對永遠不相等
+    const wolfSeats = players
+      .filter((p) => isWolfRole(p.role))
+      .map((p) => p.seat)
+      .sort((a, b) => a - b)
+      .join(",");
+    wolfSeatsSeen.add(wolfSeats);
+    if (wolfSeats === canonicalWolfSeats) canonicalSeatRounds += 1;
   }
   assert.ok(orderSeen.size > 1, "多次開局拿到同一個座位排列 → 版型路徑沒有洗牌");
-  assert.equal(wolfSeatsSeen.has("0,1,2,3"), false, "狼不該固定坐在 1~4 號");
   assert.ok(wolfSeatsSeen.size > 1, "狼的座位每局都一樣 → 版型路徑沒有洗牌");
+  // 「狼不固定坐在版型的前四席」不能用「那個組合一次都不許出現」來斷言：
+  // 12 人 4 狼的組合數是 C(12,4)=495，25 局裡至少出現一次的機率約 5%
+  // （實測 40 次會紅 2 次），把巧合當成錯誤等於讓 CI 隨機變紅。
+  // 真正要證明的是「洗牌有作用」：若沒有洗牌，25 局全都會是版型順序。
+  assert.ok(
+    canonicalSeatRounds <= 2,
+    `狼多局都坐在版型原座位（${canonicalWolfSeats}）→ 版型路徑沒有洗牌`
+  );
 
   // 逐座位指定（開發者自選角色）不受影響：照傳入順序、不洗牌
   const anchored = setupPlayers(
