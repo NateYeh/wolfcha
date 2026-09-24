@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import Image from "next/image";
-import type { PlayerSnapshot } from "@/types/analysis";
+import type { DeathCause, PlayerSnapshot } from "@/types/analysis";
 import { ROLE_ICONS, ROLE_NAMES } from "./constants";
 import { buildSimpleAvatarUrl } from "@/lib/avatar-config";
 import { useTranslations } from "next-intl";
@@ -15,13 +15,16 @@ interface PlayerDetailModalProps {
   onClose: () => void;
 }
 
-const DEATH_CAUSE_LABELS: Record<string, string> = {
+// 同 IdentityDashboard：鎖型別，新增死因時 tsc 會提醒（原本還漏了 milk）
+const DEATH_CAUSE_LABELS: Record<DeathCause, string> = {
   killed: "被狼人击杀",
   exiled: "被投票放逐",
   poisoned: "被女巫毒杀",
   shot: "被猎人击杀",
+  milk: "同守同救出局",
   dreamed: "被摄梦带走",
   boom: "被狼人自爆带走",
+  charmed: "随狼美人殉情出局",
 };
 
 const ALIGNMENT_LABELS: Record<string, { label: string; color: string }> = {

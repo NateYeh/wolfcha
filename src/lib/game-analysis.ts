@@ -510,12 +510,15 @@ function evaluateTag(player: Player, state: GameState, ctx: AnalysisContext): st
   return matchedTags.length > 0 ? [matchedTags[0].tag] : ["待评估"];
 }
 
-function parseDeathCause(reason: string): DeathCause {
+// 匯出供死因守衛測試使用：這是「夜史死因 → 分析用分類」的單一對照
+export function parseDeathCause(reason: string): DeathCause {
   switch (reason) {
     case "wolf": return "killed";
     case "poison": return "poisoned";
     case "milk": return "milk";
     case "dream": return "dreamed";
+    // 殉情：原本掉進 default，賽後分析會把「隨狼美人殉情出局」寫成「夜晚被刀」
+    case "charm": return "charmed";
     default: return "killed";
   }
 }
@@ -703,7 +706,8 @@ function parseSummaryBullets(raw: unknown): string[] {
   return [];
 }
 
-function formatDeathCauseText(cause?: DeathCause): string {
+// 匯出供死因守衛測試使用（每個分類都必須有非空、彼此不同的文案）
+export function formatDeathCauseText(cause?: DeathCause): string {
   switch (cause) {
     case "killed": return "夜晚被刀";
     case "exiled": return "白天被放逐";
@@ -711,6 +715,7 @@ function formatDeathCauseText(cause?: DeathCause): string {
     case "shot": return "被猎人带走";
     case "milk": return "同守同救出局";
     case "dreamed": return "被摄梦带走（梦死）";
+    case "charmed": return "随狼美人殉情出局";
     case "boom": return "白狼王自爆相关出局";
     default: return "出局原因未记录";
   }

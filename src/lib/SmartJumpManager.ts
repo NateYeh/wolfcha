@@ -491,7 +491,7 @@ function createMissingTask(state: GameState, phase: Phase): MissingTask | null {
       const { t } = getI18n();
       return {
         phase,
-        description: t("smartJump.wolfBeautyAction"),
+        description: t("smartJump.wolfBeautyAction", { day: state.day }),
         field: "wolfBeautyTarget",
         options: getWolfBeautyEligibleSeats(state, wolfBeauty.seat).map((seat) => {
           const p = state.players.find((player) => player.seat === seat);
@@ -1486,6 +1486,8 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
   const hasAliveWolfBeauty = wolfBeauty ? aliveAtNightStart.has(wolfBeauty.seat) : false;
 
   const guardTargetEffective = hasAliveGuard ? guardTarget : undefined;
+  // 狼美人目標也要寫回夜史：DevTools 的動作記錄與賽後分析都讀這一格
+  const wolfBeautyTargetEffective = hasAliveWolfBeauty ? nightActions.wolfBeautyTarget : undefined;
   const wolfTargetEffective = hasAliveWolves ? wolfTarget : undefined;
   const witchSaveEffective = hasAliveWitch ? witchSave : undefined;
   const witchPoisonEffective = hasAliveWitch ? witchPoison : undefined;
@@ -1508,7 +1510,7 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
     dreamTarget: hasAliveDreamweaver ? dreamTarget : undefined,
     dreamerSeat: dreamer?.seat,
     previousDreamTarget: state.nightHistory?.[day - 1]?.dreamTarget,
-    wolfBeautyTarget: hasAliveWolfBeauty ? nightActions.wolfBeautyTarget : undefined,
+    wolfBeautyTarget: wolfBeautyTargetEffective,
     wolfBeautySeat: wolfBeauty?.seat,
     isActorAlive: (actor) =>
       actor === "wolfBeauty"
@@ -1560,6 +1562,7 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
         seerTarget: seerTargetEffective,
         seerResult: seerResultEffective,
         dreamTarget: hasAliveDreamweaver ? dreamTarget : undefined,
+        wolfBeautyTarget: wolfBeautyTargetEffective,
         deaths,
       },
     },
@@ -1651,6 +1654,8 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
 
   const wolfBeauty = state.players.find((p) => p.role === "WolfBeauty");
   const hasAliveWolfBeauty = wolfBeauty ? aliveAtNightStart.has(wolfBeauty.seat) : false;
+  // 狼美人目標也要寫回夜史（DevTools 動作記錄與賽後分析都讀這一格）
+  const wolfBeautyTargetEffective = hasAliveWolfBeauty ? record.wolfBeautyTarget : undefined;
 
   const poisonUsedOnOtherDay = (() => {
     for (const [dayStr, r] of Object.entries(state.nightHistory || {})) {
@@ -1668,7 +1673,7 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
     dreamTarget: hasAliveDreamweaver ? record.dreamTarget : undefined,
     dreamerSeat: dreamer?.seat,
     previousDreamTarget: state.nightHistory?.[day - 1]?.dreamTarget,
-    wolfBeautyTarget: hasAliveWolfBeauty ? record.wolfBeautyTarget : undefined,
+    wolfBeautyTarget: wolfBeautyTargetEffective,
     wolfBeautySeat: wolfBeauty?.seat,
     isActorAlive: (actor) =>
       actor === "wolfBeauty"
@@ -1706,6 +1711,7 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
         seerTarget: seerTargetEffective,
         seerResult: seerResultEffective,
         dreamTarget: hasAliveDreamweaver ? record.dreamTarget : undefined,
+        wolfBeautyTarget: wolfBeautyTargetEffective,
         deaths,
       },
     },

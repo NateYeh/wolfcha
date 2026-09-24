@@ -206,3 +206,38 @@ test("補全清單的每一格，套用端都要有對應分支（少一格就�
   ];
   assert.deepEqual(missing, [], `以下補全欄位在套用端沒有分支：${missing.join(", ")}`);
 });
+
+test("補全項的說明文字不得原樣顯示 i18n key（狼美人那一題漏傳 {day} 參數）", async () => {
+  const { analyzeJump } = await import("@/lib/SmartJumpManager");
+  // 同日與跨日兩條路徑都要掃：說明文字若渲染失敗，next-intl 會回退成 key 本身
+  const cases = [
+    { state: await nightBoard({}, WOLF_BEAUTY_BOARD), target: { day: 1, phase: "DAY_START" as const } },
+    { state: await nightBoard({}, WOLF_BEAUTY_BOARD), target: { day: 2, phase: "DAY_START" as const } },
+    { state: await nightBoard(), target: { day: 1, phase: "NIGHT_SEER_ACTION" as const } },
+  ];
+  const rawKeys: string[] = [];
+  for (const { state, target } of cases) {
+    for (const task of analyzeJump(state, target).missingTasks) {
+      if (/^[a-zA-Z][\w]*\.[a-zA-Z][\w.]*$/.test(task.description)) {
+        rawKeys.push(`${task.field} → ${task.description}`);
+      }
+    }
+  }
+  assert.deepEqual(rawKeys, [], `以下補全項顯示成 i18n key（缺參數或鍵不存在）：${rawKeys.join("; ")}`);
+});
+
+test("夜間結算寫回夜史時要保留狼美人魅惑目標（DevTools 與賽後分析都讀這格）", async () => {
+  const { applySmartJumpWithFilledData } = await import("@/lib/SmartJumpManager");
+  const state = await nightBoard({}, WOLF_BEAUTY_BOARD);
+  const next = applySmartJumpWithFilledData(state, { day: 2, phase: "DAY_START" }, {
+    day1WolfTarget: 5,
+    day1WolfBeautyTarget: 3,
+    day1WitchSave: "false",
+    day1WitchPoison: "none",
+  });
+  assert.equal(
+    next.nightHistory?.[1]?.wolfBeautyTarget,
+    3,
+    "結算後夜史仍要留有魅惑目標，否則動作記錄會顯示「無」"
+  );
+});

@@ -2,7 +2,7 @@
  * 分享工具函数
  */
 
-import type { GameAnalysisData } from "@/types/analysis";
+import type { DeathCause, GameAnalysisData } from "@/types/analysis";
 
 export interface ShareOptions {
   title?: string;
@@ -139,13 +139,16 @@ const DAY_EVENT_LABELS: Record<string, string> = {
   hunter_shot: "猎人开枪",
 };
 
-const DEATH_CAUSE_LABELS: Record<string, string> = {
+// 同分析頁：鎖型別，新增死因時 tsc 會提醒（原本還漏了 boom）
+const DEATH_CAUSE_LABELS: Record<DeathCause, string> = {
   killed: "被刀",
   exiled: "被票",
   poisoned: "被毒",
   shot: "被枪",
   milk: "毒奶",
   dreamed: "被摄梦",
+  boom: "自爆",
+  charmed: "殉情",
 };
 
 const RADAR_LABELS_VILLAGE = ["逻辑严密", "发言清晰", "存活评分", "技能价值", "投票准确"];

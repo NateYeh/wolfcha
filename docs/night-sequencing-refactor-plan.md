@@ -352,6 +352,9 @@ humanActorPending(state, phase)  // 決定者裡有真人，而且這一步還�
 | 真人**狼美人**：階段永遠停在原地（遊戲卡死） | 面板缺 `NIGHT_WOLF_BEAUTY_ACTION` → 確認面板根本不出現 |
 | 真人**攝夢人**：面板出現、按了沒反應 | 路由缺 `NIGHT_DREAM_ACTION`（既有缺口，狼美人只是照抄同一份清單） |
 | DevConsole 跳轉補全填了魅惑目標，卻沒有殉情 | 補全清單有這一題，但套用端（`applySmartJumpWithFilledData`）兩條路徑都沒有 `wolfBeautyTarget` 分支 → 值被靜默丟掉（同 `dreamTarget` 的舊缺口） |
+| 補全清單顯示原始 i18n key | 訊息有 `{day}` 佔位符，單階段路徑沒傳參數，next-intl 回退成 key |
+| 跳轉結算後夜史沒有魅惑目標 → 動作記錄顯示「無」 | 兩支結算函式寫回夜史時漏了 `wolfBeautyTarget`（`dreamTarget` 有） |
+| 殉情在賽後分析被誤標成「夜晚被刀」 | `parseDeathCause` 沒有 `charm` 分支，掉進 `default: "killed"` |
 
 改法：前兩項集中到 `rules/human-input.ts` 的 `SEAT_ACTION_CONFIRM_PHASES` 與
 `canHumanConfirmSeatAction`，兩個消費端讀同一份；`NIGHT_WOLF_BEAUTY_ACTION` 的確認鈕文字

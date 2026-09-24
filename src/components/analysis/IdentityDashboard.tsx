@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import Image from "next/image";
 import { Crown, Skull, Users } from "lucide-react";
-import type { RoundState, PlayerSnapshot } from "@/types/analysis";
+import type { DeathCause, RoundState, PlayerSnapshot } from "@/types/analysis";
 import { ROLE_NAMES } from "./constants";
 import { PlayerDetailModal } from "./PlayerDetailModal";
 import { buildSimpleAvatarUrl } from "@/lib/avatar-config";
@@ -13,7 +13,9 @@ interface IdentityDashboardProps {
   onRoundChange?: (roundIndex: number) => void;
 }
 
-const DEATH_CAUSE_LABELS: Record<string, string> = {
+// 型別刻意用 Record<DeathCause, string>：新增死因（例如狼美人的殉情）時 tsc 會逼你補標籤；
+// 以前寫成 Record<string, string>，畫面上只會顯示成空白或英文代碼。
+const DEATH_CAUSE_LABELS: Record<DeathCause, string> = {
   killed: "被刀",
   exiled: "被票",
   poisoned: "被毒",
@@ -21,6 +23,7 @@ const DEATH_CAUSE_LABELS: Record<string, string> = {
   milk: "毒奶",
   dreamed: "被摄梦",
   boom: "自爆",
+  charmed: "殉情",
 };
 
 function PlayerCard({ player, onClick, seatOffset }: { player: PlayerSnapshot; onClick: () => void; seatOffset: number }) {

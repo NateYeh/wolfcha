@@ -114,7 +114,7 @@ export interface PlayerReview {
   role: Role;
 }
 
-export type DeathCause = "killed" | "exiled" | "poisoned" | "shot" | "milk" | "dreamed" | "boom";
+export type DeathCause = "killed" | "exiled" | "poisoned" | "shot" | "milk" | "dreamed" | "boom" | "charmed";
 
 export interface PlayerSnapshot {
   playerId: string;
