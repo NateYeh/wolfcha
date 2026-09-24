@@ -31,7 +31,10 @@ export function useSpeechDrafter({ state, player, setInputText }: UseSpeechDraft
     setIsDrafting(true);
     try {
       const draft = await generateSpeechDraft(state, player);
-      setInputText((prev) => applySpeechDraft(prev, draft, lastDraftRef.current));
+      // 先把「上一張草稿」取到區域變數：setInputText 的 updater 是延後執行的，
+      // 而下面那行會直接改掉 ref，updater 真的跑起來時就只會看到新草稿（永遠接續而不取代）。
+      const previousDraft = lastDraftRef.current;
+      setInputText((prev) => applySpeechDraft(prev, draft, previousDraft));
       lastDraftRef.current = draft;
     } catch (error) {
       console.error("[wolfcha] AI 擬台詞失敗", {

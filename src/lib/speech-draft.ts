@@ -136,6 +136,29 @@ function buildPhaseHint(state: GameState, player: Player, t: ReturnType<typeof g
 }
 
 /**
+ * 這個座位在這輪的「特殊處境」：模型很谷易沒注意到說話者本人就在名單裡。
+ *
+ * 實測（gemma4 + 警徽競選發言回合）：遊戲自己的競選任務文本對全桌一視同仁，
+ * 模型沒從名單推出「我自己就是候選人」，寫出了「我這次不上警」這種自我矛盾。
+ */
+function buildSituationNote(state: GameState, player: Player, t: ReturnType<typeof getI18n>["t"]): string {
+  const candidates = Array.isArray(state.badge?.candidates) ? state.badge.candidates : [];
+  const inList = (seats: number[]) => seats.includes(player.seat);
+  const seatList = (seats: number[]) => seats
+    .map((seat) => t("ui.seatNumber", { seat: seat + 1 }))
+    .join(t("common.listSeparator"));
+
+  if (state.phase === "DAY_BADGE_SPEECH" || (state.phase === "DAY_PK_SPEECH" && state.pkSource === "badge")) {
+    return inList(candidates) ? t("prompts.speechDraft.candidateNote", { candidates: seatList(candidates) }) : "";
+  }
+  if (state.phase === "DAY_PK_SPEECH") {
+    const pkSeats = Array.isArray(state.pkTargets) ? state.pkTargets : [];
+    return inList(pkSeats) ? t("prompts.speechDraft.pkNote", { candidates: seatList(pkSeats) }) : "";
+  }
+  return "";
+}
+
+/**
  * 組出擬稿用的 prompt。
  *
  * 結構沿用遊戲既有慣例：system＝全桌逐字相同的公開知識（快取前綴）；
@@ -157,13 +180,14 @@ export function buildSpeechDraftPrompt(state: GameState, player: Player): Prompt
   );
   const context = buildDecisionContext(state, player);
   const phaseHint = buildPhaseHint(state, player, t);
+  const situationNote = buildSituationNote(state, player, t);
 
   return {
     system: buildSystemTextFromParts(systemParts),
     systemParts,
     historyUser: buildPastDaysTranscript(state),
     user: [identity, context].filter(Boolean).join("\n\n"),
-    finalUser: [phaseHint, t("prompts.speechDraft.task", {
+    finalUser: [phaseHint, situationNote, t("prompts.speechDraft.task", {
       seat: player.seat + 1,
       name: player.displayName,
       maxChars: speechDraftTargetChars(),

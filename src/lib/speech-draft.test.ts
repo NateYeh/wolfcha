@@ -30,6 +30,21 @@ async function speechState(options: {
   return { state, human: state.players[humanSeat] };
 }
 
+/**
+ * 需要看中文文案的測試用這個跑：跑完把語系還原。
+ * （其他測試的斷言依賴預設語系，把語系留在別處會讓它們莫名其妙地紅。）
+ */
+async function withLocale<T>(locale: "zh-CN" | "zh-TW" | "en", run: () => Promise<T>): Promise<T> {
+  const { getLocale, setLocale } = await import("@/i18n/locale-store");
+  const before = getLocale();
+  setLocale(locale);
+  try {
+    return await run();
+  } finally {
+    setLocale(before);
+  }
+}
+
 /** 假的上游：攔下 fetch，只回傳指定的 completion 內容，並記錄所有請求。 */
 async function withStubbedChat(
   content: string | null,
@@ -116,6 +131,52 @@ test("提示詞要帶上這個玩家合法知道的身分與私有資訊，而�
   const task = prompt.finalUser ?? "";
   assert.ok(task.includes(String(speechDraftTargetChars())), "任務要交代長度上限");
   assert.equal(task.includes('["'), false, "任務不可以出現 JSON 陣列範例（會被模型照念）");
+});
+
+test("警徽競選發言要明說「你自己就是候選人」，不能讓模型寫出「我這次不上警」", async () => {
+  await withLocale("zh-TW", async () => {
+    const { buildSpeechDraftPrompt } = await import("@/lib/speech-draft");
+    // 夾具的競選名單是 1、5、6 號（座標 0、4、5）
+    const asCandidate = await speechState({ phase: "DAY_BADGE_SPEECH", humanSeat: 4 });
+    const candidatePrompt = buildSpeechDraftPrompt(asCandidate.state, asCandidate.human);
+    assert.ok((candidatePrompt.finalUser ?? "").includes("你自己就是本輪警徽競選的候選人之一"), "候選人要拿到處境說明");
+    assert.ok((candidatePrompt.finalUser ?? "").includes("1號"), "處境說明要列出候選人");
+
+    const asVoter = await speechState({ phase: "DAY_BADGE_SPEECH", humanSeat: 3 });
+    const voterPrompt = buildSpeechDraftPrompt(asVoter.state, asVoter.human);
+    assert.equal(
+      (voterPrompt.finalUser ?? "").includes("你自己就是本輪警徽競選的候選人之一"),
+      false,
+      "非候選人不該被說成候選人"
+    );
+  });
+});
+
+test("放逐平票 PK 要明說「你自己就是當事人」，一般發言不該多這段", async () => {
+  await withLocale("zh-TW", async () => {
+    const { buildSpeechDraftPrompt } = await import("@/lib/speech-draft");
+    const inPk = await speechState({ phase: "DAY_PK_SPEECH", humanSeat: 3 });
+    inPk.state.pkSource = "vote";
+    inPk.state.pkTargets = [3, 7];
+    const pkPrompt = buildSpeechDraftPrompt(inPk.state, inPk.human);
+    assert.ok((pkPrompt.finalUser ?? "").includes("你自己就是這次平票 PK 的當事人之一"), "PK 當事人要拿到處境說明");
+
+    const outsidePk = await speechState({ phase: "DAY_PK_SPEECH", humanSeat: 4 });
+    outsidePk.state.pkSource = "vote";
+    outsidePk.state.pkTargets = [3, 7];
+    assert.equal(
+      (buildSpeechDraftPrompt(outsidePk.state, outsidePk.human).finalUser ?? "").includes("你自己就是這次平票 PK 的當事人之一"),
+      false,
+      "不在 PK 名單裡就不該說他是當事人"
+    );
+
+    const normalDay = await speechState({ phase: "DAY_SPEECH", humanSeat: 4 });
+    assert.equal(
+      (buildSpeechDraftPrompt(normalDay.state, normalDay.human).finalUser ?? "").includes("當事人"),
+      false,
+      "一般白天發言沒有這段處境說明"
+    );
+  });
 });
 
 test("草稿提示詞要包含本日已公開的發言，否則會寫出無視討論的台詞", async () => {
@@ -205,6 +266,6 @@ test("生成失敗：模型回空內容要拋錯，不靜默回空字串", async
   const { generateSpeechDraft } = await import("@/lib/speech-draft");
   const { state, human } = await speechState();
   await withStubbedChat("", async () => {
-    await assert.rejects(() => generateSpeechDraft(state, human), /沒有回傳|returned no speech/);
+    await assert.rejects(() => generateSpeechDraft(state, human), /沒有回傳|没有返回|returned no speech/);
   });
 });
