@@ -140,6 +140,18 @@ function countBoardRolesOf(board: { roles: Role[] }): {
   return { byCamp, byRole, total: board.roles.length };
 }
 
+test("版型註冊表：八獵四狼＝獵人×8＋狼人×4（來源站特殊機制 · 全員槍口）", () => {
+  const board = getBoardById("official-12-eight-hunters");
+  assert.ok(board, "應收錄八獵四狼版型");
+  assert.equal(board.official, true);
+  assert.equal(board.playerCount, 12);
+  assert.deepEqual(countBoardRolesOf(board), {
+    byCamp: { wolf: 4, god: 8, villager: 0 },
+    byRole: { Werewolf: 4, Hunter: 8 },
+    total: 12,
+  });
+});
+
 test("版型註冊表：預女守白＝預言家/女巫/守衛/白痴＋4 平民＋4 小狼（首個沒有獵人的 12 人版）", () => {
   const board = getBoardById("official-12-seer-witch-guard-idiot");
   assert.ok(board, "應收錄預女守白版型");
@@ -159,11 +171,12 @@ test("版型註冊表：預女守白＝預言家/女巫/守衛/白痴＋4 平民
   assert.deepEqual(warnings, []);
 });
 
-test("版型註冊表：七個 12 人版型的陣營統計與預設版型", () => {
+test("版型註冊表：八個 12 人版型的陣營統計與預設版型", () => {
   const twelve = getBoardsByPlayerCount(12).map((board) => board.id);
   // 不鎖 UI 排列順序，只確認這幾個版型都在（順序由選單自己決定）
   assert.deepEqual([...twelve].sort(), [
     "official-12-classic",
+    "official-12-eight-hunters",
     "official-12-seer-witch-guard-idiot",
     "official-12-seer-witch-hunter-idiot",
     "official-12-seer-witch-hunter-mute",

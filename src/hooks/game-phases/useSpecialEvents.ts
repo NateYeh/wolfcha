@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { getRoleName } from "@/lib/game-constants";
 import { useAtom } from "jotai";
 import type { GameState, Player, Alignment } from "@/types/game";
@@ -13,7 +13,7 @@ import {
   generateHunterShoot,
 } from "@/lib/game-master";
 import { getSystemMessages } from "@/lib/game-texts";
-import { getDeathShotKind } from "@/lib/rules/death-skills";
+import { getChainedShooter, getDeathShotKind } from "@/lib/rules/death-skills";
 import { getI18n } from "@/i18n/translator";
 import { DELAY_CONFIG } from "@/lib/game-constants";
 import { delay, type FlowToken } from "@/lib/game-flow-controller";
@@ -211,6 +211,21 @@ export function useSpecialEvents(
         };
       }
       setGameState(currentState);
+
+      // 槍打槍：被槍打死的人自己也有槍時，接著讓他開（不吞槍）。
+      // 鏈會遞迴下去直到沒人能開；每開一槍就少一個活人，所以一定會收斂。
+      const chained = getChainedShooter(currentState, targetSeat);
+      if (chained) {
+        await delay(DELAY_CONFIG.LONG);
+        await waitForUnpause();
+        if (!isTokenValid(token)) return;
+        const chainFn = selfRef.current;
+        if (chainFn) {
+          // 續跑語意與原槍一致（夜死開的槍，整條鏈跑完才進白天）
+          await chainFn(currentState, chained, diedAtNight, token, afterHunter);
+          return;
+        }
+      }
     }
 
     const winner = checkWinCondition(currentState);
@@ -225,6 +240,10 @@ export function useSpecialEvents(
 
     await afterHunter(currentState);
   }, [setGameState, setDialogue, setIsWaitingForAI, waitForUnpause, isTokenValid, endGame]);
+
+  // 「槍打槍」鏈要靠自己遞迴；用 ref 取用同一個函式（不要在 useCallback 裡直接叫自己）。
+  const selfRef = useRef<typeof handleHunterDeath | null>(null);
+  selfRef.current = handleHunterDeath;
 
   /** 结算夜晚 */
   const resolveNight = useCallback(async (

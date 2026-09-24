@@ -5,6 +5,7 @@ import { setLocale } from "@/i18n/locale-store";
 import { getBoardById, validateBoardPreset } from "@/lib/rules/boards";
 import {
   canUseDeathShot,
+  getChainedShooter,
   getDeathShotKind,
   getDeathShotTargets,
 } from "@/lib/rules/death-skills";
@@ -29,6 +30,38 @@ function stateWith(roles: Array<[number, Player["role"]]>): GameState {
 
 // 身分與本輪任務已移到 user：斷言 prompt 內容時一律看 system＋user 全文。
 const promptText = (p: { system: string; user: string }): string => `${p.system}\n\n${p.user}`;
+
+test("槍打槍：獵人打死獵人，被帶走的那個還能開槍（八獵四狼的基礎）", () => {
+  const state = stateWith([[0, "Hunter"], [1, "Hunter"], [2, "WolfKing"]]);
+  const chained = getChainedShooter(state, 1);
+  assert.equal(chained?.seat, 1, "被打死的獵人自己要接著開");
+  assert.equal(getChainedShooter(state, 0)?.seat, 0, "打到自己以外的獵人一樣成立");
+});
+
+test("槍打槍：狼王被打死不能接著開（狼王槍只能被放逐）；平民沒有槍", () => {
+  const state = stateWith([[0, "Hunter"], [2, "WolfKing"]]);
+  assert.equal(getChainedShooter(state, 2), null, "狼王被技能帶走不開槍");
+  assert.equal(getChainedShooter(state, 3), null, "平民沒有死亡技能");
+  assert.equal(getChainedShooter(state, 99), null, "不存在的座位回 null");
+});
+
+test("槍打槍：被毒死的獵人不能接著開，全域開關關掉時也不能", () => {
+  const poisoned = {
+    ...stateWith([[0, "Hunter"], [1, "Hunter"]]),
+    nightHistory: {
+      1: {
+        deaths: [{ seat: 1, reason: "poison" as const }],
+      },
+    },
+  } as unknown as GameState;
+  assert.equal(getChainedShooter(poisoned, 1), null, "毒史封槍");
+
+  const switchedOff = {
+    ...stateWith([[1, "Hunter"]]),
+    roleAbilities: { ...createSinglePlayerContextAuditState().roleAbilities, hunterCanShoot: false },
+  } as GameState;
+  assert.equal(getChainedShooter(switchedOff, 1), null, "總開關關掉就不開槍");
+});
 
 test("死亡技能歸屬：只有獵人與狼王有槍", () => {
   assert.equal(getDeathShotKind("Hunter"), "hunter_gun");

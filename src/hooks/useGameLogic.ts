@@ -31,7 +31,7 @@ import { canSelfDestruct, hasAlreadyBoomed, shouldResumeBadgeElection } from "@/
 import { applySelfDestructToState } from "@/lib/rules/self-destruct-apply";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { canDuel, hasAlreadyDueled } from "@/lib/rules/knight-duel";
-import { canUseDeathShot, getDeathShotKind } from "@/lib/rules/death-skills";
+import { canUseDeathShot, getChainedShooter, getDeathShotKind } from "@/lib/rules/death-skills";
 import { isValidMuteTarget } from "@/lib/rules/mute";
 import { isValidDreamTarget } from "@/lib/rules/dream";
 import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
@@ -812,15 +812,11 @@ export function useGameLogic() {
     setGameState(currentState);
 
     const continueAfterSettle = async (afterState: GameState): Promise<void> => {
-      // 帶走獵人：獵人仍可開槍
+      // 帶走獵人：獵人仍可開槍（與「槍打槍」共用同一條判定）
       const victim = applied.victimSeat !== undefined
-        ? afterState.players.find((p) => p.seat === applied.victimSeat)
-        : undefined;
-      if (
-        victim &&
-        afterState.roleAbilities.hunterCanShoot &&
-        canUseDeathShot({ state: afterState, role: victim.role, seat: victim.seat, cause: "carried" })
-      ) {
+        ? getChainedShooter(afterState, applied.victimSeat)
+        : null;
+      if (victim) {
         await delay(1200);
         const hunterFn = hunterDeathRef.current;
         if (hunterFn) await hunterFn(afterState, victim, false);
@@ -2440,6 +2436,17 @@ export function useGameLogic() {
           };
         }
         setGameState(currentState);
+
+        // 槍打槍：被槍打死的人自己也有槍時，接著讓他開（真人這條也一樣）
+        const chained = getChainedShooter(currentState, targetSeat);
+        if (chained) {
+          await delay(1200);
+          const chainFn = hunterDeathRef.current;
+          if (chainFn) {
+            await chainFn(currentState, chained, diedAtNight);
+            return;
+          }
+        }
       }
 
       const winner = checkWinCondition(currentState);

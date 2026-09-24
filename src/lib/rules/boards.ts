@@ -265,6 +265,28 @@ export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
     official: true,
     tags: ["白狼騎士", "12人"],
   },
+  {
+    // 來源：werewolves.games 的「四狼八獵」（特殊機制 · 全員槍口）。
+    // 八個獵人＝八把槍，槍打槍會互相觸發（見 death-skills 的 getChainedShooter）。
+    id: "official-12-eight-hunters",
+    playerCount: 12,
+    roles: [
+      "Werewolf",
+      "Werewolf",
+      "Werewolf",
+      "Werewolf",
+      "Hunter",
+      "Hunter",
+      "Hunter",
+      "Hunter",
+      "Hunter",
+      "Hunter",
+      "Hunter",
+      "Hunter",
+    ],
+    official: true,
+    tags: ["八獵四狼", "12人"],
+  },
 ] as const;
 
 /** 該版型出現過的**角色種類**（去重、保留首次出現順序），供 UI 下拉選單使用 */

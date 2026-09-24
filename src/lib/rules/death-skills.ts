@@ -1,4 +1,4 @@
-import type { GameState, Role } from "@/types/game";
+import type { GameState, Player, Role } from "@/types/game";
 import { getRoleCapabilities, isWolfRole, type DeathShotKind } from "./roles";
 
 /**
@@ -99,4 +99,21 @@ export function getDeathShotTargets(state: GameState, shooterSeat: number): numb
   return state.players
     .filter((player) => player.alive && player.seat !== shooterSeat)
     .map((player) => player.seat);
+}
+
+/**
+ * 「槍打槍」的下一棒：被槍打死的人自己也有槍時，誰要接著開。
+ *
+ * 被打死屬於 `cause: "carried"`（技能帶走），所以判定與「被自爆帶走」完全相同：
+ * 獵人可、狼王不可、被毒的不能開。
+ *
+ * 八獵四狼這種版型才會用到（多把獵人槍互相觸發）；一般版型只有一個獵人，
+ * 這條路永遠不會被走到。回傳要接著開槍的玩家，沒有則回 `null`。
+ */
+export function getChainedShooter(state: GameState, victimSeat: number): Player | null {
+  const victim = state.players.find((player) => player.seat === victimSeat);
+  if (!victim) return null;
+  if (!state.roleAbilities.hunterCanShoot) return null;
+  if (!canUseDeathShot({ state, role: victim.role, seat: victim.seat, cause: "carried" })) return null;
+  return victim;
 }
