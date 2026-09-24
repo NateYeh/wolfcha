@@ -50,6 +50,7 @@ While we don't have a professional art team, we've crafted a polished UI/UX:
 *   **Dynamic Interactions**:
     *   Eye-blink transitions for day/night changes.
     *   Character lip-sync animations during speech.
+    *   AI speech drafting: on your own turn, ask AI to draft a line from the current table situation, then edit it before sending.
     *   Unique character portraits for special roles during night actions.
 
 ## 🧭 Roadmap

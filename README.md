@@ -26,7 +26,7 @@ Wolfcha recreates the part of Werewolf that is hardest to schedule: a complete t
 ## What happens at the table
 
 1. **Night falls** — Werewolves choose a target while special roles act on private information.
-2. **The table speaks** — Every surviving player explains, suspects, misdirects, or pushes a read.
+2. **The table speaks** — Every surviving player explains, suspects, misdirects, or pushes a read. On your own turn, one button asks AI to draft a speech from the current situation — you edit it before sending.
 3. **Everyone votes** — The group turns conversation into a decision.
 4. **The story changes** — New deaths and revealed information reshape the next round.
 

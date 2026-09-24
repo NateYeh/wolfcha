@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useMemo, useState, useCallback } from "react"
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ChatCircleDots, PaperPlaneTilt, CheckCircle, MoonStars, Eye, Drop, Crosshair, Skull, Sword, X, ArrowClockwise, CaretRight, UserCircle, Prohibit, ClipboardText, Shield } from "@phosphor-icons/react";
+import { ChatCircleDots, PaperPlaneTilt, CheckCircle, MoonStars, Eye, Drop, Crosshair, Skull, Sword, X, ArrowClockwise, CaretRight, UserCircle, Prohibit, ClipboardText, Shield, MagicWand, SpinnerGap } from "@phosphor-icons/react";
 import { WerewolfIcon, VillagerIcon, VoteIcon } from "@/components/icons/FlatIcons";
 import { VoteResultCard } from "./VoteResultCard";
 import { VotingProgress } from "./VotingProgress";
@@ -28,6 +28,7 @@ import { useTranslations } from "next-intl";
 type WitchActionType = "save" | "poison" | "pass";
 import type { DialogueState } from "@/store/game-machine";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
+import { appendSpeechText } from "@/lib/speech-draft";
 import { ABSTAIN_SEAT } from "@/lib/rules/actions";
 import { canDuel, hasAlreadyDueled } from "@/lib/rules/knight-duel";
 import { getDeathShotKind } from "@/lib/rules/death-skills";
@@ -45,14 +46,6 @@ const SPEECH_PRESET_KEYS = [
   "dialog.speechPresets.p5",
   "dialog.speechPresets.p6",
 ] as const;
-
-/** 把新文字接到既有發言後面（語音聽寫與速插模板共用）。 */
-const appendSpeechText = (prev: string | undefined, text: string): string => {
-  const base = String(prev ?? "").trim();
-  const incoming = text.trim();
-  if (!incoming) return base;
-  return base.length > 0 ? `${base} ${incoming}` : incoming;
-};
 
 // 职业立绘映射
 const ROLE_PORTRAIT_MAP: Record<string, string> = {
@@ -321,6 +314,9 @@ interface DialogAreaProps {
   onInputChange?: (text: string) => void;
   onSendMessage?: () => void;
   onFinishSpeaking?: () => void;
+  /** AI 幫我擬台詞（僅在輪到真人自己發言時顯示）。 */
+  onDraftSpeech?: () => void;
+  isDraftingSpeech?: boolean;
   // 操作相关 (从 BottomActionPanel 合并)
   selectedSeat?: number | null;
   isWaitingForAI?: boolean;
@@ -480,6 +476,8 @@ export function DialogArea({
   onInputChange,
   onSendMessage,
   onFinishSpeaking,
+  onDraftSpeech,
+  isDraftingSpeech = false,
   // 操作相关
   selectedSeat = null,
   isWaitingForAI = false,
@@ -1826,6 +1824,22 @@ export function DialogArea({
                   )}
                   {/* 常用語速插：點一下插入模板，X/Y 自己換掉 */}
                   <div className="flex flex-wrap gap-1.5">
+                    {onDraftSpeech && (
+                      <button
+                        type="button"
+                        onClick={() => onDraftSpeech()}
+                        disabled={isDraftingSpeech}
+                        className="h-7 px-2.5 rounded border border-[var(--color-gold)]/60 text-[11px] leading-none font-medium text-[#1a1614] bg-[var(--color-gold)] hover:bg-[#d4b06a] disabled:opacity-60 disabled:cursor-wait transition-all cursor-pointer flex items-center gap-1"
+                        title={t("dialog.input.aiDraftHint")}
+                      >
+                        {isDraftingSpeech ? (
+                          <SpinnerGap size={12} weight="bold" className="animate-spin" />
+                        ) : (
+                          <MagicWand size={12} weight="fill" />
+                        )}
+                        {isDraftingSpeech ? t("dialog.input.aiDraftLoading") : t("dialog.input.aiDraft")}
+                      </button>
+                    )}
                     {SPEECH_PRESET_KEYS.map((presetKey) => (
                       <button
                         key={presetKey}

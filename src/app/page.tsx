@@ -29,6 +29,7 @@ import {
 } from "@/components/icons/FlatIcons";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import { useGameLogic } from "@/hooks/useGameLogic";
+import { useSpeechDrafter } from "@/hooks/useSpeechDrafter";
 import type { Phase, Player, Role } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { PHASE_CONFIGS, isGameInProgress } from "@/store/game-machine";
@@ -173,6 +174,13 @@ export default function Home() {
     handleWolfTeamPlanSubmit,
     handleWolfTeamPlanDelegate,
   } = useGameLogic();
+
+  // 「AI 幫我擬台詞」：草稿接在輸入框後面，玩家自己改。狀態與錯誤提示都在 hook 內處理。
+  const { draftSpeech: handleDraftSpeech, isDrafting: isDraftingSpeech } = useSpeechDrafter({
+    state: gameState,
+    player: humanPlayer,
+    setInputText,
+  });
   const { settings, setBgmVolume, setSoundEnabled, setAiVoiceEnabled, setGenshinMode, setSpectatorMode, setAcquaintanceMode, setAutoAdvanceDialogueEnabled } = useSettings();
   const { bgmVolume, isSoundEnabled, isAiVoiceEnabled, isGenshinMode, isSpectatorMode, isAcquaintanceGame, isAutoAdvanceDialogueEnabled } = settings;
   const shouldUseAiVoice = isSoundEnabled && isAiVoiceEnabled && bgmVolume > 0;
@@ -1611,6 +1619,8 @@ export default function Home() {
                       inputText={inputText}
                       onInputChange={setInputText}
                       onSendMessage={handleHumanSpeech}
+                      onDraftSpeech={handleDraftSpeech}
+                      isDraftingSpeech={isDraftingSpeech}
                       onFinishSpeaking={handleFinishSpeaking}
                       selectedSeat={selectedSeat}
                       isWaitingForAI={isWaitingForAI}
