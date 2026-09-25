@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
 import { createSinglePlayerContextAuditState } from "../../../scripts/single-player-context-audit";
 import { setLocale } from "@/i18n/locale-store";
@@ -238,4 +240,30 @@ test("公開規則：狼王的技能寫進 roleSkills 與 roleText（AI 才不�
   assert.match(publicConfig, /【获胜条件】/);
   assert.match(publicConfig, /狼人数量 >= 好人数量 时获胜/);
   assert.match(publicConfig, /放逐所有狼人时获胜/);
+});
+
+test("開槍窗口的閘門不得寫死角色（真人狼王也要拿得到確認鈕與放棄開槍）", () => {
+  // 實機踩過：BottomActionPanel 用 role === "Hunter" 當閘門，真人狼王在底部面板
+  // 拿不到開槍確認鈕（只有對話框那條路能開），與 DialogArea 的 getDeathShotKind 分岔。
+  const roots = ["src/components", "src/app"];
+  const offenders: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of fs.readdirSync(path.join(process.cwd(), dir), { withFileTypes: true })) {
+      const rel = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(rel);
+        continue;
+      }
+      if (!/\.(ts|tsx)$/.test(entry.name)) continue;
+      fs.readFileSync(path.join(process.cwd(), rel), "utf8")
+        .split("\n")
+        .forEach((line, index) => {
+          if (line.includes("HUNTER_SHOOT") && /===\s*"Hunter"/.test(line)) {
+            offenders.push(`${rel}:${index + 1} → ${line.trim()}`);
+          }
+        });
+    }
+  };
+  roots.forEach(walk);
+  assert.deepEqual(offenders, [], `開槍閘門請改用 getDeathShotKind()（死亡技能單一真相）：\n${offenders.join("\n")}`);
 });

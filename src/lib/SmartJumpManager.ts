@@ -9,7 +9,7 @@ import type { GameState, Phase, Player, Role } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { getI18n } from "@/i18n/translator";
 import { addSystemMessage, checkWinCondition } from "@/lib/game-master";
-import { resolveNightDeaths } from "@/lib/rules/night-resolution";
+import { resolveNightDeaths, toPendingVictims } from "@/lib/rules/night-resolution";
 import { getDreamEligibleSeats } from "@/lib/rules/dream";
 import { getWolfBeautyEligibleSeats } from "@/lib/rules/charm";
 import { findHunterShotByTarget, getHunterShots } from "@/lib/rules/hunter-shots";
@@ -1625,7 +1625,7 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
   })();
 
   // 夜間結算走單一真相（rules/night-resolution）：狼刀／守護／解藥／毒藥／攝夢
-  const { deaths } = resolveNightDeaths({
+  const resolution = resolveNightDeaths({
     wolfTarget: wolfTargetEffective,
     guardTarget: guardTargetEffective,
     witchSave: witchSaveEffective,
@@ -1652,6 +1652,8 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
               : hasAliveWolves,
   });
 
+  const { deaths } = resolution;
+
   // 应用死亡到玩家存活状态
   if (deaths.length > 0) {
     const deathSeats = new Set(deaths.map((d) => d.seat));
@@ -1672,6 +1674,9 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
       lastGuardTarget: guardTargetEffective,
       // 連攝判定用：這一晚的夢游者（沒有攝夢人時清空）
       lastDreamTarget: hasAliveDreamweaver ? dreamTarget : undefined,
+      // 待公布死亡：白天開場的公告、當日禁言、開槍窗口都讀這三個欄位，
+      // 跳轉路徑必須跟真實路徑用同一份推導（rules/night-resolution.toPendingVictims）。
+      ...toPendingVictims(resolution),
     },
   };
 
@@ -1798,7 +1803,7 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
   })();
 
   // 夜間結算走單一真相（rules/night-resolution）
-  const { deaths } = resolveNightDeaths({
+  const resolution = resolveNightDeaths({
     wolfTarget: wolfTargetEffective,
     guardTarget: guardTargetEffective,
     witchSave: witchSaveEffective,
@@ -1824,6 +1829,8 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
               : hasAliveWolves,
   });
 
+  const { deaths } = resolution;
+
   if (deaths.length > 0) {
     const deathSeats = new Set(deaths.map((d) => d.seat));
     state = {
@@ -1833,6 +1840,12 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
   }
 
   // 被毒/毒奶死亡封槍：改由 canUseDeathShot 查夜史，不全域關 hunterCanShoot
+
+  // 待公布死亡：沒有這三個欄位，跳轉後的白天不會公告死訊、也不會開槍窗口
+  state = {
+    ...state,
+    nightActions: { ...state.nightActions, ...toPendingVictims(resolution) },
+  };
 
   const prev = (state.nightHistory || {})[day] || {};
   state = {

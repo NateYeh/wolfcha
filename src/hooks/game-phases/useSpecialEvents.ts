@@ -22,7 +22,7 @@ import { playNarrator } from "@/lib/narrator-audio-player";
 import { gameSessionTracker } from "@/lib/game-session-tracker";
 import { addPlayerMessage, generateGameEndRemark } from "@/lib/game-master";
 import { getPendingLastWordsSeats } from "@/lib/rules/last-words";
-import { resolveNightDeaths } from "@/lib/rules/night-resolution";
+import { resolveNightDeaths, toPendingVictims } from "@/lib/rules/night-resolution";
 import { applyCharmRevenge } from "@/lib/rules/charm";
 import { appendDayHunterShot, appendNightHunterShot } from "@/lib/rules/hunter-shots";
 
@@ -271,8 +271,7 @@ export function useSpecialEvents(
     )?.seat;
     // 「前一天晚上」的夢游者：同一座位連續兩晚被攝 → 隔夜出局。
     const previousDreamTarget = currentState.nightHistory?.[currentState.day - 1]?.dreamTarget;
-    const { deaths: nightDeaths, wolfKillSuccessful, wolfVictimSeat, poisonVictimSeat, dreamVictimSeat } =
-      resolveNightDeaths({
+    const resolution = resolveNightDeaths({
         wolfTarget,
         guardTarget,
         witchSave,
@@ -285,6 +284,7 @@ export function useSpecialEvents(
         magicianSwap: currentState.nightActions.magicianSwap,
         magicianSeat,
       });
+    const { deaths: nightDeaths } = resolution;
 
     // 遺言規則：只有第一夜死者有遺言（無論幾個、無論死因）。先入列，
     // 實際發表排在死亡公告之後（DaySpeechPhase.startDaySpeechAfterBadge）。
@@ -302,9 +302,8 @@ export function useSpecialEvents(
         ...currentState.nightActions,
         lastGuardTarget: guardTarget,
         lastDreamTarget: dreamTarget,
-        pendingWolfVictim: wolfKillSuccessful ? wolfVictimSeat : undefined,
-        pendingPoisonVictim: poisonVictimSeat,
-        pendingDreamVictim: dreamVictimSeat,
+        // 待公布死亡由結算結果推導（單一真相）：跳轉路徑與真實路徑共用同一份清單
+        ...toPendingVictims(resolution),
       },
     };
 

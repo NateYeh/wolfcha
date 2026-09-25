@@ -161,6 +161,31 @@ test("跨日前跳的 day<N> 欄位要寫進狀態（狼美人與攝夢人原本
     "狼美人魅惑目標必須寫入（套用端原本沒有 day<N>WolfBeautyTarget 這一段）"
   );
   assert.equal(next.nightHistory?.[1]?.wolfTarget, 5);
+  assert.equal(
+    next.nightActions.pendingWolfVictim,
+    5,
+    "跳轉造成的夜間刀口要進待公布死亡，白天才會公告、才會判開槍窗口"
+  );
+});
+
+test("同日前跳的夜間死亡也要進待公布死亡（否則白天不公告、狼王／獵人不會被問要不要開槍）", async () => {
+  const { applySmartJumpWithFilledData } = await import("@/lib/SmartJumpManager");
+  const state = await nightBoard();
+  const next = applySmartJumpWithFilledData(state, { day: 1, phase: "DAY_START" }, {
+    guardTarget: 0,
+    mutedTarget: 0,
+    dreamTarget: 0,
+    wolfTarget: 5,
+    witchSave: "false",
+    witchPoison: "none",
+  });
+  assert.ok(
+    next.nightHistory?.[1]?.deaths?.some((death) => death.seat === 5 && death.reason === "wolf"),
+    `刀口要死，實際：${JSON.stringify(next.nightHistory?.[1]?.deaths)}`
+  );
+  assert.equal(next.nightActions.pendingWolfVictim, 5, "刀口要進 pendingWolfVictim");
+  assert.equal(next.nightActions.pendingPoisonVictim, undefined, "沒用毒藥就不要有這一格");
+  assert.equal(next.nightActions.pendingDreamVictim, undefined, "沒攝夢就不要有這一格");
 });
 
 test("跨日前跳補全「毒殺狼美人」會帶走被魅惑者（回歸：目標被丟掉時不會有殉情）", async () => {

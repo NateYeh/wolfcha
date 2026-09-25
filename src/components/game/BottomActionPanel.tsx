@@ -20,6 +20,9 @@ import type { GameState, Player, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { ABSTAIN_SEAT } from "@/lib/rules/actions";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
+// 死亡技能（獵人槍／狼王槍）一律問共用真相，不要自己寫 role === "Hunter"——
+// 真人狼王先前在底部面板拿不到確認鈕與「放棄開槍」，只有對話框那條路能用。
+import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { useTranslations } from "next-intl";
 
@@ -79,7 +82,7 @@ export function BottomActionPanel({
             (phase === "NIGHT_SEER_ACTION" && humanPlayer?.role === "Seer" && humanPlayer?.alive && gameState.nightActions.seerTarget === undefined) ||
             (phase === "NIGHT_WOLF_ACTION" && humanPlayer && isWolfRole(humanPlayer.role) && humanPlayer.alive) ||
             (phase === "NIGHT_GUARD_ACTION" && humanPlayer?.role === "Guard" && humanPlayer?.alive) ||
-            (phase === "HUNTER_SHOOT" && humanPlayer?.role === "Hunter") ||
+            (phase === "HUNTER_SHOOT" && getDeathShotKind(humanPlayer?.role ?? "Villager") !== "none") ||
             (phase === "SELF_DESTRUCT" && !!humanPlayer?.alive && getRoleCapabilities(humanPlayer?.role ?? "Villager").boomTakesPlayer);
 
           if (
@@ -266,7 +269,7 @@ export function BottomActionPanel({
         )}
 
         {/* 猎人弃枪 */}
-        {phase === "HUNTER_SHOOT" && humanPlayer?.role === "Hunter" && !isWaitingForAI && selectedSeat === null && (
+        {phase === "HUNTER_SHOOT" && getDeathShotKind(humanPlayer?.role ?? "Villager") !== "none" && !isWaitingForAI && selectedSeat === null && (
           <motion.div
             key="hunter-pass"
             initial={{ opacity: 0, y: 10 }}

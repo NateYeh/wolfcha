@@ -167,6 +167,27 @@ export function resolveNightDeaths(input: NightResolutionInput): NightResolution
   };
 }
 
+/**
+ * 夜間結算 → 「待公布死亡」三個欄位（白天開場的死亡公告、當日禁言、以及獵人／狼王
+ * 開槍窗口都只讀這三個欄位）。
+ *
+ * 真實夜間流程（`useSpecialEvents`）與 DevTools 跳轉補全（`SmartJumpManager`）都必須
+ * 從同一份結算結果推導——跳轉路徑先前只寫 `nightHistory.deaths` 而漏了這三個欄位，
+ * 造成「跳轉出來的夜間死亡不公告、也不開槍」。
+ */
+export function toPendingVictims(resolution: NightResolutionResult): {
+  pendingWolfVictim?: number;
+  pendingPoisonVictim?: number;
+  pendingDreamVictim?: number;
+} {
+  return {
+    // 狼刀被守護／解藥擋掉時 `wolfKillSuccessful` 為 false，此時沒有待公布的刀口
+    pendingWolfVictim: resolution.wolfKillSuccessful ? resolution.wolfVictimSeat : undefined,
+    pendingPoisonVictim: resolution.poisonVictimSeat,
+    pendingDreamVictim: resolution.dreamVictimSeat,
+  };
+}
+
 /** 該座位是不是被夢帶走出局（封槍判斷用） */
 export function isDreamDeath(state: GameState, seat: number): boolean {
   return Object.values(state.nightHistory ?? {}).some((record) =>

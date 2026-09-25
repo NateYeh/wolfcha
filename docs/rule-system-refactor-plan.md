@@ -332,6 +332,10 @@ WelcomeScreen 開發者面板的「角色」分頁可用「套用官方版型」
 | 被騎士決鬥出局 | ❌ | ❌ |
 | 自爆（自己） | — | ❌（自爆本身沒有技能，`cause: "self_destruct"` 一律 false） |
 
+**實機驗證（2026-09-25）**：真人狼王在夜裡刻意自刀（`canSelectPlayer` 允許刀自己與隊友，只排除狼美人）
+→ 隔天開場確實跳出「確認射擊」開槍窗口並完成開槍（存活數 11 → 9），
+證明「夜裡被狼刀死的狼王能開槍」在真實流程中生效。
+
 - 流程端不再寫 `role === "Hunter"`：`VotePhase`（放逐）、`DaySpeechPhase`（夜刀公告）、
   `applySelfDestruct`（被帶走）、警徽移交後的放逐路徑，全部改呼叫
   `canUseDeathShot({ state, role, seat, cause })`；`cause` ∈ exile／night_kill／poison／carried／duel。
@@ -344,6 +348,15 @@ WelcomeScreen 開發者面板的「角色」分頁可用「套用官方版型」
 - 順帶收斂：`RoleCapabilities.deathShot` 取代散落的 `role === "Hunter"`；`getRoleText`／
   `getRoleWinCondition`／`getRoleName`／教學卡（`tutorialOverlay.roles`）補齊 Knight／MuteElder／WolfKing
   （先前缺這幾個 case 會讓新角色的 prompt 說自己是「村民」、教學卡讀到 undefined）。
+- **開槍窗口的兩個單一真相**（2026-09-25 補）：
+  1. **該不該開** → `rules/death-skills.canUseDeathShot()`；UI 問「這個人算不算有槍」時只能用
+     `getDeathShotKind(role) !== "none"`，**禁止再寫 `role === "Hunter"`**（`BottomActionPanel`
+     先前寫死，導致真人狼王在底部面板拿不到確認鈕與「放棄開槍」，只有對話框那條路能開）。
+  2. **誰死了要公告／要問開槍** → `nightActions.pendingWolfVictim／pendingPoisonVictim／
+     pendingDreamVictim`，一律由 `rules/night-resolution.toPendingVictims(resolution)` 推導。
+     真實流程（`useSpecialEvents`）與 DevTools 跳轉補全（`SmartJumpManager` 兩處）共用；
+     跳轉路徑先前只寫 `nightHistory.deaths` 而漏了這三格，造成「跳轉出來的夜間死亡不公告、
+     也不開槍」（同檔案卻又設了 `hunterCanShoot = true`，自相矛盾）。
 
 ## 攝夢人（Dreamweaver）與狼王攝夢人版型（進階）
 
