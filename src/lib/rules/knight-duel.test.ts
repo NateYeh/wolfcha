@@ -230,7 +230,7 @@ test("白狼騎士版型：12 人、4 狼（含白狼王）、騎士在場，且
   assert.equal(board.roles.filter((r) => r === "Villager").length, 4);
   assert.equal(board.roles.filter((r) => r === "WhiteWolfKing").length, 1);
   assert.deepEqual(
-    ["Seer", "Witch", "Guard", "Knight"].every((role) => board.roles.includes(role as never)),
+    ["Seer", "Witch", "Hunter", "Knight"].every((role) => board.roles.includes(role as never)),
     true
   );
   const validation = validateBoardPreset(board);

@@ -232,7 +232,8 @@ type BoardPreset = {
 
 ## 騎士（Knight）與白狼騎士版型
 
-**版型**：`official-12-white-wolf-knight`＝預言家、女巫、守衛、騎士、4 村民、3 狼人、白狼王（12 人）。
+**版型**：`official-12-white-wolf-knight`＝預言家、女巫、獵人、騎士、4 村民、3 狼人、白狼王（12 人）。
+（組成以 `werewolves.games` 目錄為準；原本誤植為守衛。）
 另有 `official-12-seer-witch-hunter-idiot`（預女獵白）＝預言家、女巫、獵人、白痴、4 平民、4 狼人
 與 `official-12-seer-witch-guard-idiot`（預女守白）＝預言家、女巫、守衛、白痴、4 平民、4 小狼
 （**首個沒有獵人的 12 人版**：獵人相關流程全為條件觸發，無人持有該角色時不會進入 HUNTER_SHOOT）——

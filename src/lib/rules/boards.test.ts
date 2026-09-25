@@ -581,3 +581,62 @@ test("版型只決定組成：座位一律打亂，狼不會固定坐在 1~4 號
   );
   assert.deepEqual(anchored.map((p) => p.role), canonical, "逐座位指定時必須照傳入順序");
 });
+
+test("12 人版的排列順序＝參考目錄順序（動順序要一起改註解與這條清單）", () => {
+  // 出處：https://werewolves.games/variants/ 的版型目錄（按學習難度／機制密度排）。
+  // 我們只收錄其中一部分，照它的相對順序排；它沒收錄的兩個版型插在性質相近處，
+  // 而 `official-12-classic` 固定第一個（`getDefaultBoard` 取 boards[0]，是 12 人局預設）。
+  const expected = [
+    "official-12-classic",
+    "official-12-seer-witch-hunter-idiot",
+    "official-12-seer-witch-hunter-mute",
+    "official-12-seer-witch-guard-idiot",
+    "official-12-wolf-king-guard",
+    "official-12-wolf-king-dreamweaver",
+    "official-12-wolf-king-magician",
+    "official-12-white-wolf-knight",
+    "official-12-wolf-beauty-knight",
+    "official-12-wolf-beauty-hunter-knight",
+    "official-12-eight-hunters",
+  ];
+  assert.deepEqual(
+    getBoardsByPlayerCount(12).map((board) => board.id),
+    expected,
+    "UI 下拉、開發者分頁與教學頁都是這個順序；改順序請一併更新註解與這條清單"
+  );
+});
+
+test("12 人版型的角色組成以 werewolves.games 目錄為準（本站只收錄其中一部分）", () => {
+  // 出處：https://werewolves.games/variants/ 的版型速查矩陣。使用者的規則：
+  // **版型是從該站來的，角色組成不符時一律以網站為準。**
+  // 這裡把「站上有、我們也收錄」的 9 個版型組成釘住；站上沒收錄的
+  // `official-12-classic`（經典）與 `official-12-seer-witch-guard-idiot`（預女守白）不在此列。
+  // 實際案例：白狼騎士原本寫成守衛，與站上的白狼王騎士（獵人）不符 → 已改。
+  const expected: Record<string, string[]> = {
+    "official-12-seer-witch-hunter-idiot": ["Hunter", "Idiot", "Seer", "Villager", "Villager", "Villager", "Villager", "Werewolf", "Werewolf", "Werewolf", "Werewolf", "Witch"],
+    "official-12-seer-witch-hunter-mute": ["Hunter", "MuteElder", "Seer", "Villager", "Villager", "Villager", "Villager", "Werewolf", "Werewolf", "Werewolf", "Werewolf", "Witch"],
+    "official-12-wolf-king-guard": ["Guard", "Hunter", "Seer", "Villager", "Villager", "Villager", "Villager", "Werewolf", "Werewolf", "Werewolf", "Witch", "WolfKing"],
+    "official-12-wolf-king-dreamweaver": ["Dreamweaver", "Hunter", "Seer", "Villager", "Villager", "Villager", "Villager", "Werewolf", "Werewolf", "Werewolf", "Witch", "WolfKing"],
+    "official-12-wolf-king-magician": ["Hunter", "Magician", "Seer", "Villager", "Villager", "Villager", "Villager", "Werewolf", "Werewolf", "Werewolf", "Witch", "WolfKing"],
+    "official-12-white-wolf-knight": ["Hunter", "Knight", "Seer", "Villager", "Villager", "Villager", "Villager", "Werewolf", "Werewolf", "Werewolf", "WhiteWolfKing", "Witch"],
+    "official-12-wolf-beauty-knight": ["Guard", "Knight", "Seer", "Villager", "Villager", "Villager", "Villager", "Werewolf", "Werewolf", "Werewolf", "WolfBeauty", "Witch"],
+    "official-12-wolf-beauty-hunter-knight": ["Hunter", "Knight", "Seer", "Villager", "Villager", "Villager", "Villager", "Werewolf", "Werewolf", "Werewolf", "WolfBeauty", "Witch"],
+    "official-12-eight-hunters": ["Hunter", "Hunter", "Hunter", "Hunter", "Hunter", "Hunter", "Hunter", "Hunter", "Werewolf", "Werewolf", "Werewolf", "Werewolf"],
+  };
+  const mismatches: string[] = [];
+  for (const [id, roles] of Object.entries(expected)) {
+    const board = getBoardsByPlayerCount(12).find((b) => b.id === id);
+    if (!board) {
+      mismatches.push(`${id} 不存在`);
+      continue;
+    }
+    const actual = [...board.roles].sort();
+    if (JSON.stringify(actual) !== JSON.stringify([...roles].sort())) {
+      mismatches.push(`${id}
+  網站: ${[...roles].sort().join(",")}
+  程式: ${actual.join(",")}`);
+    }
+  }
+  assert.deepEqual(mismatches, [], `以下版型組成與來源目錄不符：\n${mismatches.join("\n")}`);
+});
+
