@@ -228,6 +228,27 @@ export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
     tags: ["預女守白", "12人"],
   },
   {
+    // 狼王魔術師：狼人×3＋狼王／預女獵魔＋4 民（來源 https://werewolves.games/lang-wang-mo-shu-shi/）
+    id: "official-12-wolf-king-magician",
+    playerCount: 12,
+    roles: [
+      "Werewolf",
+      "Werewolf",
+      "Werewolf",
+      "WolfKing",
+      "Seer",
+      "Witch",
+      "Hunter",
+      "Magician",
+      "Villager",
+      "Villager",
+      "Villager",
+      "Villager",
+    ],
+    official: true,
+    tags: ["狼王魔術師", "12人"],
+  },
+  {
     id: "official-12-wolf-king-dreamweaver",
     playerCount: 12,
     roles: [

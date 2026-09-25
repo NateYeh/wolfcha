@@ -173,7 +173,7 @@
 
 | 版型 | 新角色 | 為什麼值得先做 |
 | --- | --- | --- |
-| 狼王魔術師 | 魔術師 | 魔術師（`Magician`）：每夜交換兩名玩家的位置，交換後刀口／查驗／毒口全部改判。 |
+| ~~狼王魔術師~~ | ~~魔術師~~ | ✅ 2026-09-24 完成（`official-12-wolf-king-magician`）。魔術師（`Magician`）：每夜交換兩名玩家的位置，交換後刀口／查驗／毒口全部改判（槍口不換，白天才開）。 |
 | 夢魘攝夢 | 夢魘之影 | 夢魘之影（`Nightmare`）：恐懼一名玩家；恐懼到狼人則狼隊當晚無刀（動到夜間結算）。 |
 | ~~狼美騎士~~ | ~~狼美人~~ | ✅ 已完成（見 §5.5） |
 | 魔鬼騎士 | 狼美人 | ✅ 2026-09-24 完成（`official-12-wolf-beauty-hunter-knight`）。與狼美騎士差在神職：守衛 → 獵人。 |
@@ -209,7 +209,7 @@
 | 6 | 真人操作 `rules/human-input.ts` + `DialogArea` + `page.tsx` | 交換要點**兩張卡**（不是一張）→ `SEAT_ACTION_CONFIRM_PHASES` 這種「單一選座位」的清單**裝不下**：要新增「兩段式選取」的判定，並讓 `human-input.test.ts` 的狀態機守衛涵蓋它（狼美人那次就是面板與路由各寫一份清單而卡死） |
 | 7 | 提示詞與文案 | `prompts.magician.{base,task,user}` ×3 語系＋`promptUtils.strategyGuide.magician`＋`dialog.action.swap`（＝「交換」）＋死亡公告不提及交換（見下方裁定 3） |
 | 8 | 紀錄與賽後 | 夜史 `nightHistory[day].magicianSwap`；`DevConsole`「全場動作資訊記錄」＋跳轉補全（`SmartJumpManager` 的 `field:` 與**套用分支兩邊都要有**，`day<N>MagicianSwap` 也是——這是被靜默丟掉兩次的同一類坑）；賽後分析要能解釋「誰被換到哪」 |
-| 9 | 版型 | `official-12-wolf-king-magician`（狼王魔術師，`tags: ["狼王魔術師", "12人"]`）＋`boards.test.ts` 釘角色組成 |
+| 9 版型 `official-12-wolf-king-magician` | ✅ 完成（狼人×3＋狼王／預女獵魔＋4 民；`boards.test.ts` 釘角色組成與 11 個 12 人版型清單） |
 
 **已經裁定的 5 件事（2026-09-24 使用者拍板）**
 
@@ -232,7 +232,10 @@
 | 6 真人兩段式選取（面板與路由） | ✅ 完成（`TWO_SEAT_ACTION_PHASES` 是單一真相；面板與路由各讀同一份，狀態機守衛涵蓋） |
 | 7 `prompts.magician.*` 與玩法指引 | ✅ 完成（三語系 `prompts.magician`＋`strategyGuide.magician`＋`ui/system` 文案＋旁白鍵） |
 | 8 夜史、DevConsole、跳轉補全、賽後分析 | ✅ 完成（夜史寫回、DevConsole 一格、補全兩列＋兩條套用分支、時間軸 `swap` 事件與夜晚事實） |
-| 9 版型 `official-12-wolf-king-magician` | ⬜ 待做 |
+| 9 版型 `official-12-wolf-king-magician` | ✅ 完成（狼人×3＋狼王／預女獵魔＋4 民；`boards.test.ts` 釘角色組成與 11 個 12 人版型清單） |
+
+**全數完成（2026-09-24）**：這個角色從角色層到版型都已落地——九個步驟全部 ✅，
+`official-12-wolf-king-magician` 是可玩的版型。剩下的只有實機驗證與後續平衡調整。
 
 **第二輪（階段層＋AI 決策＋換位結算）的補充**
 
