@@ -18,7 +18,8 @@ export type Role =
   | "Dreamweaver"
   | "WolfKing"
   | "WhiteWolfKing"
-  | "WolfBeauty";
+  | "WolfBeauty"
+  | "Magician";
 
 /** Check if a role belongs to the wolf team (used for seer checks, wolf actions, etc.) */
 export function isWolfRole(role: string | undefined): boolean {
@@ -310,6 +311,8 @@ export interface GameState {
       seerResult?: { targetSeat: number; isWolf: boolean };
       /** 攝夢人當晚的夢游者（免疫夜間傷害；連續兩晚被攝或攝夢人夜死連帶出局） */
       dreamTarget?: number;
+      /** 魔術師當晚交換的兩名玩家（當晚指向其中一人的技能改判到另一人身上） */
+      magicianSwap?: [number, number];
       /** 狼美人當晚魅惑的座位（她出局時被魅惑者隨之殉情） */
       wolfBeautyTarget?: number;
       wolfBeautyReason?: string;
@@ -381,6 +384,9 @@ export interface GameState {
     /** 攝夢人當晚的夢游者（免疫夜間傷害；連續兩晚被攝或攝夢人夜死則一并出局） */
     dreamTarget?: number;
     dreamReason?: string;
+    /** 魔術師當晚交換的兩名玩家（可以包含自己；兩人不相同、都要存活） */
+    magicianSwap?: [number, number];
+    magicianReason?: string;
     /** 狼美人當晚魅惑的座位（每晚必選一人，不能空過、不能選自己） */
     wolfBeautyTarget?: number;
     wolfBeautyReason?: string;

@@ -27,7 +27,8 @@
     "muteElder": "Mute Elder",
     "wolfKing": "Wolf King",
     "dreamweaver": "Dreamweaver",
-    "wolfBeauty": "Wolf Beauty"
+    "wolfBeauty": "Wolf Beauty",
+    "magician": "Magician"
   },
   "alignment": {
     "village": "Villagers",
@@ -522,7 +523,8 @@
         "muteElder": "Each night silences a player so they cannot speak the next day (they can still vote and give last words)",
         "wolfKing": "Wolf side; may shoot one player when exiled by the day vote (wolf gun)",
         "dreamweaver": "Each night you must name one player as the dreamer: they are immune to night damage (wolf knife and witch poison) that night, but a player dreamed two nights in a row - or dreamed on the night you die - dies with you",
-        "wolfBeauty": "A skill wolf: knifes with the pack each night, then charms one player on her own. When the Wolf Beauty dies, the charmed player dies with her (a knight duel death does not trigger it). She cannot self-destruct and the pack cannot knife her."
+        "wolfBeauty": "A skill wolf: knifes with the pack each night, then charms one player on her own. When the Wolf Beauty dies, the charmed player dies with her (a knight duel death does not trigger it). She cannot self-destruct and the pack cannot knife her.",
+        "magician": "A village god role: each night swap two players, so that night's targeted skills (wolf knife, witch poison, seer check, guard protection) resolve onto the other one. Shots fired in daylight are unaffected. You may swap yourself, and the same player may be swapped repeatedly."
       }
     },
     "acquaintanceMode": {
@@ -1024,6 +1026,20 @@
           "A double dream is a guaranteed kill: the witch's antidote cannot save them",
           "Dream a wolf suspect: if the wolves knife you, he goes down with you",
           "The dream is secret - the dreamed player does not know either"
+        ]
+      },
+      "magician": {
+        "title": "Magician",
+        "subtitle": "Swap two players and send tonight's skills astray.",
+        "abilities": [
+          "Each night you must swap two players (they must be different and both alive)",
+          "That night, skills aimed at one of them resolve onto the other: wolf knife, witch poison, seer check, guard protection",
+          "You may swap yourself, and the same player may be swapped repeatedly"
+        ],
+        "tips": [
+          "Swapping the wolf knife onto the guarded player wastes the pack's night",
+          "The swap never affects daylight shots (hunter shot, wolf king shot)",
+          "The swap is not announced - only you and the post-game review can see it"
         ]
       },
       "wolfBeauty": {
@@ -1559,7 +1575,8 @@
       "knightDuel": "Duel",
       "mute": "Silence",
       "dream": "Dream",
-      "charm": "Charm"
+      "charm": "Charm",
+      "swap": "Swap"
     },
     "input": {
       "lastWordsPlaceholder": "Any last words?",
@@ -1957,7 +1974,8 @@
       "muteElder": "Mute Elder (village side; each night silences a player so they cannot speak the next day)",
       "wolfKing": "Wolf King (wolf side; may shoot one player when exiled by vote)",
       "dreamweaver": "Dreamweaver (village side; each night must name a dreamer who is immune to night damage, but dies if dreamed two nights in a row or if you die at night)",
-      "wolfBeauty": "Wolf Beauty (wolf team): knifes with the wolves each night, then charms one player on her own; when the Wolf Beauty dies the charmed player dies with her (a knight duel death does not trigger it). She cannot self-destruct and the pack cannot knife her."
+      "wolfBeauty": "Wolf Beauty (wolf team): knifes with the wolves each night, then charms one player on her own; when the Wolf Beauty dies the charmed player dies with her (a knight duel death does not trigger it). She cannot self-destruct and the pack cannot knife her.",
+      "magician": "Magician (village camp; each night swaps two players so that night's skills aimed at one of them - wolf knife, witch poison, seer check, guard protection - resolve onto the other; daylight shots are unaffected)"
     },
     "winMotivationNote": "【What you're playing for】\nThis is a game with winners and losers, and you are here to win — not to keep the table company, and not to make the story look good.\nYour character has a personality, a stance, feelings and selfish interests, but would never throw their own side on purpose: tanking, voting at random, or feeding kills for a better story is not you.\nThere is more than one way to win: some read the ledger better, some lie convincingly to the whole table, some steer the votes where they want them, some stay hidden until the final round. Play to your strengths, and switch styles mid-game if you like.\nYou may take risks too: gamble, bluff, and own it when it fails. Nobody blames you for going off-script; they blame you for not trying to win.",
     "humannessNote": "【Imperfection allowed】\nReal players misspeak, forget which night something happened, get nervous, get carried away by emotion, dig in stubbornly, and suddenly change their minds. You do not have to be airtight in every sentence — naming the wrong seat, letting something slip, or changing your story under pressure makes you feel like a real person.\nOnly one line to hold: mistakes can be natural slips, but a lie has to hold up. Nobody docks you for acting badly, but nobody enjoys a player who has no idea what they are doing.",

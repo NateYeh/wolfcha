@@ -12,7 +12,8 @@ export type NightActionKind =
   | "potion"
   | "silence"
   | "dream"
-  | "charm";
+  | "charm"
+  | "swap";
 
 /** 死亡技能（死亡時可帶走一人的槍）種類；規則見 lib/rules/death-skills.ts */
 export type DeathShotKind = "none" | "hunter_gun" | "wolf_gun";
@@ -179,6 +180,21 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     // 每晚一定要指定夢游者（不能空攝）；不能選自己（官方規則）
     canAbstain: false,
     canSelfTarget: false,
+    canBoom: false,
+    boomTakesPlayer: false,
+    boomSwallowsBadgeOnElection: false,
+    canDuel: false,
+    deathShot: "none",
+  },
+  Magician: {
+    role: "Magician",
+    camp: "god",
+    nightAction: "swap",
+    // 每晚必須交換兩名玩家（不能空過）。
+    canAbstain: false,
+    // 使用者裁定（2026-09-24）：可以把自己換進去，所以 canSelfTarget 為 true；
+    // 「兩人不相同、且都是存活玩家」另外由 rules/magician.ts 把關。
+    canSelfTarget: true,
     canBoom: false,
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,

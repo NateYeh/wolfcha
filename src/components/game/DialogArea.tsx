@@ -61,6 +61,7 @@ const ROLE_PORTRAIT_MAP: Record<Role, string> = {
   WhiteWolfKing: '/roles/white-wolf-king.png',
   WolfKing: '/roles/white-wolf-king.png',
   WolfBeauty: '/roles/white-wolf-king.png',
+  Magician: '/roles/guard.png',
   Seer: '/roles/seer.png',
   Witch: '/roles/witch.png',
   Hunter: '/roles/hunter.png',

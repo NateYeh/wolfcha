@@ -108,6 +108,16 @@ function getRoleMeta(role: Player["role"], t: ReturnType<typeof useTranslations>
         abilities: t.raw("roleReveal.roles.dreamweaver.abilities"),
         tips: t.raw("roleReveal.roles.dreamweaver.tips"),
       };
+    case "Magician":
+      return {
+        title: t("roleReveal.roles.magician.title"),
+        subtitle: t("roleReveal.roles.magician.subtitle"),
+        color: "var(--color-seer)",
+        bg: "var(--color-seer-bg)",
+        Icon: DreamweaverIcon,
+        abilities: t.raw("roleReveal.roles.magician.abilities"),
+        tips: t.raw("roleReveal.roles.magician.tips"),
+      };
     case "WolfKing":
       return {
         title: t("roleReveal.roles.wolfKing.title"),

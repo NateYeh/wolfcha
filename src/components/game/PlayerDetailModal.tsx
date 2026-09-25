@@ -50,6 +50,7 @@ const getRoleIcon = (role: string, size: number = 20) => {
     case "MuteElder": return <GuardIcon size={size} />;
     case "Dreamweaver": return <GuardIcon size={size} />;
     case "WolfBeauty": return <WerewolfIcon size={size} />;
+    case "Magician": return <GuardIcon size={size} />;
     case "WolfKing": return <WhiteWolfKingIcon size={size} />;
     default: return <VillagerIcon size={size} />;
   }

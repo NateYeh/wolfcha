@@ -61,6 +61,7 @@ const ROLE_ALIGNMENT: Record<Role, Alignment> = {
   Dreamweaver: "village",
   WolfKing: "wolf",
   WolfBeauty: "wolf",
+  Magician: "village",
   Villager: "village",
 };
 

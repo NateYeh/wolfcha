@@ -40,6 +40,7 @@ export const ALL_ROLE_KEYS: Role[] = [
   "Knight",
   "MuteElder",
   "Dreamweaver",
+  "Magician",
   "Villager",
 ];
 

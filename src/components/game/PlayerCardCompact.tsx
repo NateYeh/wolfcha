@@ -127,6 +127,7 @@ export function PlayerCardCompact({
     Dreamweaver: t("roles.dreamweaver"),
     WolfBeauty: t("roles.wolfBeauty"),
     WolfKing: t("roles.wolfKing"),
+    Magician: t("roles.magician"),
     Villager: t("roles.villager"),
   }), [t]);
   const getRoleLabel = (role: Role) => roleLabels[role] ?? t("roles.villager");

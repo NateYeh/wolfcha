@@ -423,6 +423,7 @@ export function WelcomeScreen({
   const roleOptions: Role[] = ALL_ROLE_KEYS;
   const roleLabels = useMemo<Record<Role, string>>(
     () => ({
+      Magician: t("roles.magician"),
       Villager: t("roles.villager"),
       Werewolf: t("roles.werewolf"),
       WhiteWolfKing: t("roles.whiteWolfKing"),
@@ -476,6 +477,7 @@ export function WelcomeScreen({
     if (fixedRoles.some((r) => !r)) return false;
 
     const counts: Record<Role, number> = {
+      Magician: 0,
       Villager: 0,
       Werewolf: 0,
       Seer: 0,

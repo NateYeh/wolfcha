@@ -465,8 +465,8 @@ test("角色能力表：守衛可空守、女巫不可自救（目標規則）",
 });
 
 test("角色能力表：未知角色退回平民能力，不拋錯", () => {
-  // 這裡刻意用**還沒實作**的角色（狼美人已實作，改用它會測不到 fallback）
-  const fallback = getRoleCapabilities("Magician");
+  // 這裡刻意用**還沒實作**的角色（狼美人、魔術師都已實作，改用它們會測不到 fallback）
+  const fallback = getRoleCapabilities("Gargoyle");
   assert.equal(fallback.role, "Villager");
   assert.equal(fallback.camp, "villager");
   assert.equal(fallback.canBoom, false);

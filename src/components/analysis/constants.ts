@@ -13,6 +13,7 @@ export const ROLE_ICONS: Record<Role, string> = {
   Dreamweaver: "/roles/guard.png",
   WolfBeauty: "/roles/white-wolf-king.png",
   WolfKing: "/roles/white-wolf-king.png",
+  Magician: "/roles/guard.png",
   Villager: "/roles/guard.png",
 };
 
@@ -29,6 +30,7 @@ export const ROLE_NAMES: Record<Role, string> = {
   Dreamweaver: "摄梦人",
   WolfBeauty: "狼美人",
   WolfKing: "狼王",
+  Magician: "魔术师",
   Villager: "平民",
 };
 
@@ -45,6 +47,7 @@ export const ROLE_SHORT: Record<Role, string> = {
   Dreamweaver: "摄",
   WolfKing: "狼王",
   WolfBeauty: "美",
+  Magician: "魔",
   Villager: "民",
 };
 

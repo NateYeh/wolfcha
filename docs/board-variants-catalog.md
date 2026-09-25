@@ -201,7 +201,7 @@
 
 | # | 檔案／項目 | 內容 |
 | --- | --- | --- |
-| 1 | `src/types/game.ts` + `rules/roles.ts` | `Role` 加 `Magician`；`ROLE_CAPABILITIES`（`camp: "villager"`、`nightAction: "swap"`、不能空過、`canSelfTarget: false`）；`ALL_ROLE_KEYS` 同步（`role-enumeration.test.ts` 會反過來掃） |
+| 1 | `src/types/game.ts` + `rules/roles.ts` | `Role` 加 `Magician`；`ROLE_CAPABILITIES`（`camp: "villager"`、`nightAction: "swap"`、不能空過、`canSelfTarget: true`（裁定 3））；`ALL_ROLE_KEYS` 同步（`role-enumeration.test.ts` 會反過來掃） |
 | 2 | `src/lib/rules/phases.ts` | 新階段 `NIGHT_MAGICIAN_ACTION`，插在 `NIGHT_DREAM_ACTION` 與 `NIGHT_WOLF_ACTION` 之間（`PHASE_SEQUENCE`、`PHASE_CONFIGS`、`CHECKPOINT_SAFE`／`PHASE_ROLE`／`RESTORE_FALLBACK` 都是 `Record<Phase,…>`，少一格 tsc 就紅） |
 | 3 | `src/lib/rules/magician.ts`（新） | 單一真相：`getMagicianSwapOptions(state, magicianSeat)`（存活、不含自己、不重複同一人）、`isValidSwap`、`pickRandomSwap`、`redirectSeat(seat, swap)`。**換位只有這一份對照**，其他模組一律呼叫它 |
 | 4 | `src/lib/rules/night-resolution.ts` | `NightResolutionInput` 加 `magicianSwap?: [number, number]` + `magicianSeat?: number`；在讀 `wolfTarget`／`guardTarget`／`witchPoison`／`dreamTarget`／`wolfBeautyTarget` 前先過 `redirectSeat`。**`NightActor` 也要加 `magician`**（回放用） |
@@ -211,14 +211,37 @@
 | 8 | 紀錄與賽後 | 夜史 `nightHistory[day].magicianSwap`；`DevConsole`「全場動作資訊記錄」＋跳轉補全（`SmartJumpManager` 的 `field:` 與**套用分支兩邊都要有**，`day<N>MagicianSwap` 也是——這是被靜默丟掉兩次的同一類坑）；賽後分析要能解釋「誰被換到哪」 |
 | 9 | 版型 | `official-12-wolf-king-magician`（狼王魔術師，`tags: ["狼王魔術師", "12人"]`）＋`boards.test.ts` 釘角色組成 |
 
-**需要先裁定的 5 件事（建議值）**
+**已經裁定的 5 件事（2026-09-24 使用者拍板）**
 
-1. **守護要不要一起換位**：來源說要 → 建議**照來源**（守衛的守護也改判到被換到的對象）。
-2. **同一人整局只能被換一次**：來源說「通常」→ 建議**不強制**（AI 局裡多這條只會讓提示詞更難寫），
-   但要在程式註解與文件寫明我們選擇不採。
-3. **交換公不公開**：真局法官不會公告 → 建議**遊戲中不公告**，只寫進夜史供賽後分析與 DevTools 看。
-4. **槍口不換位**：來源明確排除 → 建議**照來源**，並寫成一條測試（換位後槍口仍指向原始目標）。
-5. **能不能換自己／死者**：建議**都不能**（存活、不含自己、兩人不相同），與 `canSelfTarget: false` 一致。
+1. **守護一起換位**：照來源——守衛守的人被換走時，守護也改判到換到的對象。
+2. **槍口不換位**：獵人槍／狼王槍是**白天**才開，夜間換位不影響；寫成一條測試釘住。
+3. **可以換自己**：魔術師可以是兩名被交換者之一（`canSelfTarget: true`）；
+   但 `(X, X)` 同一人仍然不合法、兩人必須都是存活玩家。
+4. **允許重複被換**：不採來源的「通常整局只能換一次」，程式註解與文件都要寫明這是本作選擇。
+5. **交換不公告**：遊戲中不公告，只寫進 `nightHistory[day].magicianSwap` 供賽後分析與 DevTools 使用。
+
+**目前進度（2026-09-24）**
+
+| 步驟 | 狀態 |
+| --- | --- |
+| 1 角色權威表（`Role`／`ROLE_CAPABILITIES`／`ALL_ROLE_KEYS`）＋六張 UI 名稱與圖示表＋`game-constants`／`prompt-utils`／`PlayerDetailModal`／`RoleRevealOverlay` 的角色列舉＋i18n 三語系（`roles`／`roleReveal`／`promptUtils.roleText`／設定偏好說明） | ✅ 完成 |
+| 3 `rules/magician.ts`（合法組合、隨機選擇、`redirectSeat`、`getMagicianSwap`） | ✅ 完成（測試待補） |
+| 2 階段 `NIGHT_MAGICIAN_ACTION` | ⬜ **試作後收回**（見下） |
+| 4 `night-resolution` 的換位套用 | ⬜ 待做 |
+| 5 AI 決策 `runMagicianAction`（續跑指令與階段一起做） | ⬜ 待做 |
+| 6 真人兩段式選取（面板與路由） | ⬜ 待做 |
+| 7 `prompts.magician.*` 與玩法指引（`dialog.action.swap`、`roleReveal`、`roleText` 已有） | 🔶 部分 |
+| 8 夜史、DevConsole、跳轉補全、賽後分析 | ⬜ 待做 |
+| 9 版型 `official-12-wolf-king-magician` | ⬜ 待做 |
+
+**階段層為什麼收回**：加 `NIGHT_MAGICIAN_ACTION` 時 `tsc` 會逼出 17 處 `Record<Phase, …>`
+（`PHASE_KIND`／`PHASE_SEQUENCE`／`NIGHT_ACTION_ORDER`／`ACTION_PHASES`／`PROMPT_NEEDS_PUBLIC_EVIDENCE`／
+`CHECKPOINT_SAFE`／`RESTORE_FALLBACK`／`NIGHT_STEP`／`VALID_TRANSITIONS`／`PHASE_CONFIGS`／階段圖示／
+動作名稱／`NightPhase` 續跑鏈／兩個 night-resume 測試 fixture），另外有 13 條「釘子測試」
+（階段順序、PhaseManager 提示詞實作數、證據矩陣覆蓋、存檔／續跑 fixture…）要同步更新。
+其中 **`night-resume-flow.test.ts` 的「重跑指令要真的執行那一步的行動」必須等 AI 決策實作才會過**，
+所以階段層與 AI 決策應該**同一輪一起做**，不要分兩次改測試。這一輪先把角色層與規則模組做進去、
+把階段層原樣收回，維持全綠（角色沒有任何版型收錄，狀態是惰性的）。
 
 **測試清單（照狼美人那輪的教訓）**
 

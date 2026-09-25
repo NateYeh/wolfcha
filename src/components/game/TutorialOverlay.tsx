@@ -51,6 +51,7 @@ const ROLE_META: Record<Role, { accent: string; bg: string; Icon: React.Componen
   Dreamweaver: { accent: "var(--color-seer)", bg: "var(--color-seer-bg)", Icon: DreamweaverIcon },
   WolfKing: { accent: "var(--color-wolf)", bg: "var(--color-wolf-bg)", Icon: WolfKingIcon },
   WolfBeauty: { accent: "var(--color-wolf)", bg: "var(--color-wolf-bg)", Icon: WerewolfIcon },
+  Magician: { accent: "var(--color-seer)", bg: "var(--color-seer-bg)", Icon: DreamweaverIcon },
   Villager: { accent: "var(--color-villager)", bg: "var(--color-villager-bg)", Icon: VillagerIcon },
 };
 
@@ -128,6 +129,7 @@ export function TutorialOverlay({
       Dreamweaver: t("roles.dreamweaver"),
       WolfBeauty: t("roles.wolfBeauty"),
       WolfKing: t("roles.wolfKing"),
+      Magician: t("roles.magician"),
       Villager: t("roles.villager"),
     };
     const roleDataMap = t.raw("tutorialOverlay.roles" as any) as Record<Role, {

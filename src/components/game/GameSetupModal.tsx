@@ -126,6 +126,7 @@ export function GameSetupModal({
 
   const roleLabels = useMemo<Record<Role, string>>(
     () => ({
+      Magician: t("roles.magician"),
       Villager: t("roles.villager"),
       Werewolf: t("roles.werewolf"),
       WhiteWolfKing: t("roles.whiteWolfKing"),
@@ -145,6 +146,7 @@ export function GameSetupModal({
 
   const roleDescriptions = useMemo<Record<Role, string>>(
     () => ({
+      Magician: t("gameSetup.rolePreference.desc.magician"),
       Villager: t("gameSetup.rolePreference.desc.villager"),
       Werewolf: t("gameSetup.rolePreference.desc.werewolf"),
       WhiteWolfKing: t("gameSetup.rolePreference.desc.whiteWolfKing"),

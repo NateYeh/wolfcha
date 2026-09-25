@@ -46,6 +46,8 @@ export const getRoleText = (role: string) => {
       return t("promptUtils.roleText.dreamweaver");
     case "WolfBeauty":
       return t("promptUtils.roleText.wolfBeauty");
+    case "Magician":
+      return t("promptUtils.roleText.magician");
     case "WolfKing":
       return t("promptUtils.roleText.wolfKing");
     default:

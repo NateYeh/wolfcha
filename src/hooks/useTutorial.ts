@@ -25,6 +25,7 @@ const createDefaultRolesState = (): Record<Role, boolean> => ({
   Dreamweaver: false,
   WolfKing: false,
   WolfBeauty: false,
+  Magician: false,
   Villager: false,
 });
 

@@ -87,6 +87,8 @@ export function getRoleName(role: string): string {
       return getI18n().t("roles.wolfBeauty");
     case "Dreamweaver":
       return t("roles.dreamweaver");
+    case "Magician":
+      return t("roles.magician");
     case "WolfKing":
       return t("roles.wolfKing");
     case "Villager":
