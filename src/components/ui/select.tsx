@@ -66,7 +66,7 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 min-w-[8rem] overflow-hidden rounded-md border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "relative z-50 min-w-[8rem] max-h-[var(--radix-select-content-available-height)] overflow-hidden rounded-md border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className
@@ -75,8 +75,18 @@ const SelectContent = React.forwardRef<
       {...props}
     >
       <SelectScrollUpButton />
+      {/*
+        高度上限用 Radix 給的可用高度：不然清單一長（例如 12 人局有 11 個版型、每項兩行，
+        實測高 626px）就會直接頂出視窗，而且 `overflow-hidden` 讓它連滾都不能滾。
+        popper 定位時 Radix 會把 `--radix-select-content-available-height` 設在 content 上
+        （`var(--radix-popper-available-height)`），繼承下來就能用；`item-aligned` 取不到這個
+        變數時 max-height 會退回 none，與舊行為相同。
+      */}
       <SelectPrimitive.Viewport
-        className={cn("p-1", position === "popper" && "w-full min-w-[var(--radix-select-trigger-width)]")}
+        className={cn(
+          "p-1 max-h-[var(--radix-select-content-available-height)] overflow-y-auto",
+          position === "popper" && "w-full min-w-[var(--radix-select-trigger-width)]"
+        )}
       >
         {children}
       </SelectPrimitive.Viewport>

@@ -846,7 +846,7 @@ import type { SpringCampaignSnapshot } from "@/lib/spring-campaign";
                             onValueChange={(v) => setGeneratorModelState(v)}
                           >
                             <SelectTrigger id="generator-model"><SelectValue placeholder={t("customKey.selectModel")} /></SelectTrigger>
-                            <SelectContent className="max-h-60">
+                            <SelectContent>
                               {availableModelPool.map((r) => (
                                 <SelectItem key={`${r.provider}:${r.model}`} value={r.model} label={r.model} description={getProviderLabel(r.provider)} icon={getModelLogoPath(r)} />
                               ))}
@@ -860,7 +860,7 @@ import type { SpringCampaignSnapshot } from "@/lib/spring-campaign";
                             onValueChange={(v) => setSummaryModelState(v)}
                           >
                             <SelectTrigger id="summary-model"><SelectValue placeholder={t("customKey.selectModel")} /></SelectTrigger>
-                            <SelectContent className="max-h-60">
+                            <SelectContent>
                               {availableModelPool.map((r) => (
                                 <SelectItem key={`${r.provider}:${r.model}`} value={r.model} label={r.model} description={getProviderLabel(r.provider)} icon={getModelLogoPath(r)} />
                               ))}
@@ -874,7 +874,7 @@ import type { SpringCampaignSnapshot } from "@/lib/spring-campaign";
                             onValueChange={(v) => setReviewModelState(v)}
                           >
                             <SelectTrigger id="review-model"><SelectValue placeholder={t("customKey.selectModel")} /></SelectTrigger>
-                            <SelectContent className="max-h-60">
+                            <SelectContent>
                               {availableModelPool.map((r) => (
                                 <SelectItem key={`${r.provider}:${r.model}`} value={r.model} label={r.model} description={getProviderLabel(r.provider)} icon={getModelLogoPath(r)} />
                               ))}

@@ -542,7 +542,7 @@ export function GameSetupModal({
                   onValueChange={handleGeneratorModelChange}
                 >
                   <SelectTrigger><SelectValue placeholder={t("customKey.selectModel")} /></SelectTrigger>
-                  <SelectContent className="max-h-60">
+                  <SelectContent>
                     {modelConfigOptions.map((ref) => (
                       <SelectItem key={`${ref.provider}:${ref.model}`} value={ref.model} label={ref.model} />
                     ))}
@@ -556,7 +556,7 @@ export function GameSetupModal({
                   onValueChange={handleSummaryModelChange}
                 >
                   <SelectTrigger><SelectValue placeholder={t("customKey.selectModel")} /></SelectTrigger>
-                  <SelectContent className="max-h-60">
+                  <SelectContent>
                     {modelConfigOptions.map((ref) => (
                       <SelectItem key={`${ref.provider}:${ref.model}`} value={ref.model} label={ref.model} />
                     ))}
@@ -570,7 +570,7 @@ export function GameSetupModal({
                   onValueChange={handleReviewModelChange}
                 >
                   <SelectTrigger><SelectValue placeholder={t("customKey.selectModel")} /></SelectTrigger>
-                  <SelectContent className="max-h-60">
+                  <SelectContent>
                     {modelConfigOptions.map((ref) => (
                       <SelectItem key={`${ref.provider}:${ref.model}`} value={ref.model} label={ref.model} />
                     ))}
