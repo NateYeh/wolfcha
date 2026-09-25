@@ -1465,11 +1465,11 @@
     },
     "nightMute": {
       "description": "Each night silences a player so they cannot speak the next day (they can still vote and give last words)",
-      "human": "The Mute Elder is picking who to silence tomorrow…"
+      "human": "Who do you want to silence?"
     },
     "nightDream": {
       "description": "Must name one dreamer each night: the dreamer is immune to wolf knife and poison that night, but dies if dreamed two nights in a row or if the Dreamweaver dies at night",
-      "human": "The Dreamweaver is picking tonight's dreamer…"
+      "human": "Who do you want to dream?"
     },
     "nightMagician": {
       "description": "The Magician swaps two players (that night's targeted skills resolve onto the other one)",
@@ -1477,7 +1477,7 @@
     },
     "nightWolfBeauty": {
       "description": "After knifing with the pack, charm one player; if the Wolf Beauty dies, the charmed player dies with her",
-      "human": "The Wolf Beauty is choosing tonight's charmed player…"
+      "human": "Who do you want to charm?"
     }
   },
   "page": {
