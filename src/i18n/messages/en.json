@@ -1979,6 +1979,7 @@
     }
   },
   "promptUtils": {
+    "outputLanguageRule": "Output language: always English. Every player-facing string — speech, vote reasoning, badge campaign and wolf-team plans, character profiles, and the post-game review — must be in English, even if the surrounding context is in Chinese.",
     "roleText": {
       "werewolf": "Werewolf (evil team)",
       "seer": "Seer (good team, checks one player each night)",
