@@ -286,17 +286,29 @@ export function PlayerCardCompact({
         </div>
       )}
 
-      {/* 警徽标记 */}
-      {isBadgeHolder && !isDead && isReady && (
-        <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-sm flex items-center justify-center z-10 bg-[var(--color-gold)] border border-black/20 shadow-[0_0_8px_rgba(184,134,11,0.35)] text-[10px] font-semibold tracking-wide text-[var(--bg-dark)]">
-          {t("playerCard.badgeHolder")}
-        </div>
-      )}
-      
-      {/* 警长候选人标记 */}
-      {isBadgeCandidate && !isDead && isReady && (
-        <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-sm flex items-center justify-center z-10 bg-[var(--color-gold)] border border-black/20 shadow-sm text-[10px] font-semibold tracking-wide text-[var(--bg-dark)]">
-          {t("playerCard.badgeCandidate")}
+      {/* 右上標籤：警徽／競選／禁言共用同一排（同一個角落，不互相覆蓋）
+          —— 以前警徽與競選各自 absolute 同一個位置（同時成立時會疊在一起），
+          禁言則分散在名字那一行；現在三者同一行，禁言維持紫色。 */}
+      {!isDead && isReady && (isBadgeHolder || isBadgeCandidate || isMuted) && (
+        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1">
+          {isBadgeHolder && (
+            <div className="px-1.5 py-0.5 rounded-sm flex items-center justify-center bg-[var(--color-gold)] border border-black/20 shadow-[0_0_8px_rgba(184,134,11,0.35)] text-[10px] font-semibold leading-none tracking-wide whitespace-nowrap text-[var(--bg-dark)]">
+              {t("playerCard.badgeHolder")}
+            </div>
+          )}
+          {isBadgeCandidate && (
+            <div className="px-1.5 py-0.5 rounded-sm flex items-center justify-center bg-[var(--color-gold)] border border-black/20 shadow-sm text-[10px] font-semibold leading-none tracking-wide whitespace-nowrap text-[var(--bg-dark)]">
+              {t("playerCard.badgeCandidate")}
+            </div>
+          )}
+          {isMuted && (
+            <span
+              className="px-1.5 py-0.5 rounded-sm flex items-center justify-center bg-[var(--color-witch)] border border-black/20 shadow-sm text-[10px] font-semibold leading-none tracking-wide whitespace-nowrap text-white"
+              title={t("playerCard.mutedHint")}
+            >
+              🔇 {t("playerCard.muted")}
+            </span>
+          )}
         </div>
       )}
 
@@ -341,14 +353,6 @@ export function PlayerCardCompact({
             {isMe && isReady && (
               <span className="text-[10px] bg-[var(--color-gold)]/90 text-[#1a1614] px-1.5 rounded-sm font-bold leading-none py-0.5 shadow-sm">
                 {t("common.you")}
-              </span>
-            )}
-            {isMuted && isReady && !isDead && (
-              <span
-                className="shrink-0 text-[10px] leading-none bg-[var(--color-witch)] text-white px-1 py-0.5 rounded-sm shadow-sm"
-                title={t("playerCard.mutedHint")}
-              >
-                🔇
               </span>
             )}
           </div>
@@ -399,16 +403,6 @@ export function PlayerCardCompact({
                   title={modelLabel}
                 >
                   {modelLabel}
-                </motion.span>
-              )}
-              {isMuted && isReady && !isDead && (
-                <motion.span
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="shrink-0 text-[10px] leading-none font-semibold bg-[var(--color-witch)] text-white px-1.5 py-0.5 rounded-sm shadow-sm whitespace-nowrap"
-                  title={t("playerCard.mutedHint")}
-                >
-                  🔇 {t("playerCard.muted")}
                 </motion.span>
               )}
             </div>
