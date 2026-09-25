@@ -1,21 +1,8 @@
 import type { Role } from "@/types/game";
+import { ROLE_PORTRAIT_MAP } from "@/lib/rules/role-art";
 
-export const ROLE_ICONS: Record<Role, string> = {
-  Werewolf: "/roles/werewolf.png",
-  Seer: "/roles/seer.png",
-  Witch: "/roles/witch.png",
-  Hunter: "/roles/hunter.png",
-  Guard: "/roles/guard.png",
-  Idiot: "/roles/idiot.png",
-  WhiteWolfKing: "/roles/white-wolf-king.png",
-  Knight: "/roles/guard.png",
-  MuteElder: "/roles/guard.png",
-  Dreamweaver: "/roles/guard.png",
-  WolfBeauty: "/roles/white-wolf-king.png",
-  WolfKing: "/roles/white-wolf-king.png",
-  Magician: "/roles/guard.png",
-  Villager: "/roles/guard.png",
-};
+/** 賽後分析的立繪（與遊戲對話框同一個真相，見 `@/lib/rules/role-art`）。 */
+export const ROLE_ICONS: Record<Role, string> = ROLE_PORTRAIT_MAP;
 
 export const ROLE_NAMES: Record<Role, string> = {
   Werewolf: "狼人",

@@ -35,6 +35,7 @@ import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { canHumanConfirmSeatAction, requiresTwoSeats } from "@/lib/rules/human-input";
 import { canSelfDestruct, hasAlreadyBoomed } from "@/lib/rules/self-destruct";
+import { ROLE_PORTRAIT_MAP } from "@/lib/rules/role-art";
 
 const HISTORY_BOTTOM_THRESHOLD = 24;
 
@@ -51,27 +52,10 @@ const SPEECH_PRESET_KEYS = [
 /**
  * 職業立繪映射（對話頭像）。
  *
- * 型別刻意用 `Record<Role, string>`：新增角色時這裡會編譯失敗，不會像以前那樣
- * 安靜地沒有立繪。`public/roles` 只有 7 張圖，沒有專屬圖的角色沿用最接近的一張
- * （與賽後分析的 `ROLE_ICONS` 同一個約定），另外原本的 `Villager` 指向不存在的
- * `villager.png`（圖 404 不會有任何提示），一併改成守衛圖。
+ * 這份對應以前在這裡與賽後分析各手抄一份（漏改只會讓兩邊顯示不同的圖，沒有任何錯誤訊息），
+ * 現在集中在 `@/lib/rules/role-art`。型別是 `Record<Role, string>`：新增角色時會編譯失敗，
+ * 不會像以前那樣安靜地沒有立繪；指向不存在的檔案則由 `role-art.test.ts` 擋。
  */
-const ROLE_PORTRAIT_MAP: Record<Role, string> = {
-  Werewolf: '/roles/werewolf.png',
-  WhiteWolfKing: '/roles/white-wolf-king.png',
-  WolfKing: '/roles/white-wolf-king.png',
-  WolfBeauty: '/roles/white-wolf-king.png',
-  Magician: '/roles/guard.png',
-  Seer: '/roles/seer.png',
-  Witch: '/roles/witch.png',
-  Hunter: '/roles/hunter.png',
-  Guard: '/roles/guard.png',
-  Knight: '/roles/guard.png',
-  MuteElder: '/roles/guard.png',
-  Dreamweaver: '/roles/guard.png',
-  Idiot: '/roles/idiot.png',
-  Villager: '/roles/guard.png',
-};
 
 // 预加载所有职业立绘
 const ALL_ROLE_PORTRAITS = Object.values(ROLE_PORTRAIT_MAP);
