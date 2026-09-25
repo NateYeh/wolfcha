@@ -305,6 +305,8 @@ export interface GameState {
       /** 夜间结算已由主持人公开，不能用提示词的 phase 代替。 */
       resultsAnnounced?: boolean;
       guardTarget?: number;
+      /** 這一晚守衛是否明確空守（與「還沒決定」區分；夜史要留下這個事實） */
+      guardAbstained?: boolean;
       wolfTarget?: number;
       witchSave?: boolean;
       witchPoison?: number;
@@ -383,6 +385,14 @@ export interface GameState {
   };
   nightActions: {
     guardTarget?: number;        // 守卫保护的目标
+    /**
+     * 守衛這一晚明確選擇「空守」（不保護任何人）。
+     *
+     * 「空守」與「還沒決定」以前都是 `guardTarget === undefined`，於是存檔恢復／Dev 重跑
+     * 會把已經空守的那一步再問一次 AI（可能變成保護某個人），跳轉補全也會一直要求補這一格。
+     * 決定「有沒有決定」用這個旗標，決定「守了誰」用 `guardTarget`。
+     */
+    guardAbstained?: boolean;
     /** 禁言長老指定的目標（次日白天不能發言；警徽投票／放逐投票／遺言不受限） */
     mutedTarget?: number;
     muteReason?: string;

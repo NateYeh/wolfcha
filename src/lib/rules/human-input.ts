@@ -86,7 +86,12 @@ export const canHumanConfirmSeatAction = (
       // 狼陣營（含狼王、狼美人）一起出刀，所以用 isWolfRole 而不是單一角色。
       return Boolean(human && isWolfRole(role) && human.alive);
     case "NIGHT_GUARD_ACTION":
-      return Boolean(human?.role === "Guard" && human.alive);
+      return Boolean(
+        human?.role === "Guard" &&
+          human.alive &&
+          state.nightActions.guardTarget === undefined &&
+          state.nightActions.guardAbstained !== true
+      );
     case "NIGHT_MUTE_ACTION":
       return Boolean(
         human?.role === "MuteElder" && human.alive && state.nightActions.mutedTarget === undefined

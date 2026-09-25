@@ -172,6 +172,17 @@ test("沒有合法目標的退化情況（只剩自己存活）也算已完成",
   });
 });
 
+test("守衛空守：算已完成，續跑直接往下（不會再問一次 AI）", () => {
+  const state = board(BOARD_12_WITH_ALL_NIGHT_ROLES, { guardAbstained: true });
+  assert.deepEqual(nightResumePlan(state, "NIGHT_GUARD_ACTION"), {
+    kind: "advance",
+    command: "CONTINUE_NIGHT_AFTER_GUARD",
+  });
+  // 對照組：還沒決定 → AI 重跑
+  const undecided = board(BOARD_12_WITH_ALL_NIGHT_ROLES, {});
+  assert.equal(nightResumePlan(undecided, "NIGHT_GUARD_ACTION").kind, "replay");
+});
+
 test("女巫：兩瓶藥用完就算已完成（不必再等任何人）", () => {
   const state = board(BOARD_12_WITH_ALL_NIGHT_ROLES, {});
   const outOfPotions: GameState = {

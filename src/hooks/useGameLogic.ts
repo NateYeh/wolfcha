@@ -2272,7 +2272,10 @@ export function useGameLogic() {
         ...currentState,
         nightActions: {
           ...currentState.nightActions,
+          // 空守要有自己的表示（`guardAbstained`）：只寫 `guardTarget: undefined`
+          // 會與「還沒決定」同形，存檔恢復時會被再問一次 AI。
           guardTarget: abstain ? undefined : targetSeat,
+          guardAbstained: abstain || undefined,
         },
       };
       setDialogue(
@@ -2287,8 +2290,8 @@ export function useGameLogic() {
       await delay(1000);
       await waitForUnpause();
       if (abstain) {
-        // 空守：狀態裡的 `guardTarget: undefined` 就是「還沒決定」，計畫表無法表達「決定不守」，
-        // 所以這條仍然明確往下推（與舊行為一致）。
+        // 空守：`guardAbstained` 讓「決定不守」與「還沒決定」分得開（night-progress
+        // 的 guardDecided 讀得到），所以這條明確往下推。
         await runNightPhaseAction(currentState, token, "CONTINUE_NIGHT_AFTER_GUARD");
       } else {
         await continueNightAfterHumanAction(currentState, "NIGHT_GUARD_ACTION", token);

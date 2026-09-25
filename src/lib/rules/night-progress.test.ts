@@ -3,6 +3,7 @@ import test from "node:test";
 import { createSinglePlayerContextAuditState } from "../../../scripts/single-player-context-audit";
 import { NIGHT_ACTION_ORDER, type NightActionPhase } from "@/lib/rules/phases";
 import {
+  guardDecided,
   NIGHT_STEP,
   actorsForNightStep,
   dreamDecided,
@@ -55,6 +56,18 @@ function board(roles: Role[], patch: Partial<GameState> = {}): GameState {
   });
   return { ...base, players, nightActions: {}, roleAbilities: { ...base.roleAbilities, witchHealUsed: false, witchPoisonUsed: false }, ...patch };
 }
+
+test("守衛「空守」也算已決定（不然存檔恢復會再問一次 AI，把空守改成守人）", () => {
+  const abstained = board(["Guard"], { nightActions: { guardAbstained: true } });
+  assert.equal(guardDecided(abstained), true, "空守是一個決定");
+  assert.deepEqual(pendingNightActions(abstained).map((step) => step.phase), [], "空守之後不該再要求補守衛");
+  // 對照組：真的還沒決定
+  assert.equal(guardDecided(board(["Guard"], { nightActions: {} })), false);
+  assert.deepEqual(
+    pendingNightActions(board(["Guard"], { nightActions: {} })).map((step) => step.phase),
+    ["NIGHT_GUARD_ACTION"]
+  );
+});
 
 /** 把某個座位改成真人（其餘為 AI）。 */
 const humanAt = (state: GameState, seat: number): GameState => ({

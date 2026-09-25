@@ -219,6 +219,39 @@ test("單階段補全的狼美人魅惑也要寫進 nightActions", async () => {
   assert.equal(next.nightActions.wolfBeautyTarget, 5, "魅惑目標必須寫入（switch 原本沒有這一格）");
 });
 
+test("跨日前跳的補全清單要有禁言長老（同日有、跨日原本缺這一題）", async () => {
+  const { analyzeJump } = await import("@/lib/SmartJumpManager");
+  const state = await nightBoard({}, NIGHT_ROLE_BOARD);
+  // 跨日：目標是第 2 天的白天 → 第 1 夜的所有步驟都要補
+  const tasks = analyzeJump(state, { day: 2, phase: "DAY_START" }).missingTasks;
+  const muteTask = tasks.find((task) => task.field === "day1MutedTarget");
+  assert.ok(muteTask, `跨日補全清單要有 day1MutedTarget，實際：${tasks.map((t) => t.field).join(", ")}`);
+  // 合法目標要問單一真相：長老自己（座位 1）不能出現
+  assert.equal(
+    (muteTask?.options ?? []).some((option) => option.value === 1),
+    false,
+    "長老自己（座位 1）不該出現在跨日禁言的可選清單"
+  );
+});
+
+test("跨日前跳填好的禁言要寫進那一夜的夜史", async () => {
+  const { applySmartJumpWithFilledData } = await import("@/lib/SmartJumpManager");
+  const state = await nightBoard({}, NIGHT_ROLE_BOARD);
+  const next = applySmartJumpWithFilledData(state, { day: 2, phase: "DAY_START" }, {
+    day1GuardTarget: 5,
+    day1MutedTarget: 6,
+    day1DreamTarget: 7,
+    day1WolfTarget: 8,
+    day1WitchSave: "false",
+    day1WitchPoison: "none",
+  });
+  assert.equal(
+    next.nightHistory?.[1]?.mutedTarget,
+    6,
+    "跳過去的夜晚要留下禁言目標（否則隔天不會公布禁言，DevTools 也顯示無）"
+  );
+});
+
 test("補全清單的每一格，套用端都要有對應分支（少一格就是靜默丟掉）", () => {
   const source = fs.readFileSync(path.join(process.cwd(), "src/lib/SmartJumpManager.ts"), "utf8");
   const applyStart = source.indexOf("export function applySmartJumpWithFilledData");

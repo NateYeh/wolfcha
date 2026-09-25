@@ -2459,6 +2459,7 @@
   },
   "smartJump": {
     "nightGuardAction": "第 {day} 夜 守卫保护目标",
+    "nightMuteAction": "第 {day} 夜 禁言长老禁言目标",
     "nightWolfAction": "第 {day} 夜 狼人击杀目标",
     "nightWitchSave": "第 {day} 夜 女巫是否使用解药",
     "nightWitchPoison": "第 {day} 夜 女巫是否使用毒药",

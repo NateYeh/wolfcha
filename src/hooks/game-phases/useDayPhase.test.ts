@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { AsyncFlowController } from "@/lib/game-flow-controller";
+import { PHASE_CATEGORIES } from "@/lib/game-constants";
 import * as speechRequest from "@/lib/speech-request";
 import { withTimeout } from "@/lib/request-timeout";
 
@@ -51,7 +52,9 @@ function harness(tts = false) {
       },
     };
     if (id === "@/lib/speech-order") return { getNextSpeechSeat: () => null };
-    if (id === "@/lib/game-constants") return { PHASE_CATEGORIES: { SPEECH_PHASES: ["DAY_SPEECH", "DAY_LAST_WORDS", "DAY_PK_SPEECH"] } };
+    // 手寫一份 SPEECH_PHASES 會與權威表分岔（先前漏了 DAY_BADGE_SPEECH，
+    // 於是「這階段要不要發 AI 發言」在測試裡永遠測不到警上發言）。直接用真實常數。
+    if (id === "@/lib/game-constants") return { PHASE_CATEGORIES };
     if (id === "@/lib/audio-manager") return { makeAudioTaskId: () => "audio", audioManager: {
       isEnabled: () => tts, addToQueue: (task: any) => audio.push(task.text),
       ensureReady: (task: any) => { if (!readiness.has(task.text)) readiness.set(task.text, deferred()); return readiness.get(task.text)!.promise; },

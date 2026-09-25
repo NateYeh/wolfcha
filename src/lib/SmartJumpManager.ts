@@ -231,7 +231,14 @@ function analyzeForwardJump(
         d === state.day
           ? (state.nightActions.guardTarget ?? nightRecord.guardTarget)
           : nightRecord.guardTarget;
-      if (guard && guardTargetExisting === undefined && !hasPassed("NIGHT_GUARD_ACTION")) {
+      // 空守也是已決定（夜史現在留著 guardAbstained；否則跳轉補全會一直要求補這一格）
+      const guardAbstainedExisting = d === state.day ? state.nightActions.guardAbstained : nightRecord.guardAbstained;
+      if (
+        guard &&
+        guardTargetExisting === undefined &&
+        guardAbstainedExisting !== true &&
+        !hasPassed("NIGHT_GUARD_ACTION")
+      ) {
         const { t } = getI18n();
         result.missingTasks.push({
           phase: "NIGHT_GUARD_ACTION",
@@ -243,6 +250,25 @@ function analyzeForwardJump(
         });
       }
 
+      // 禁言長老：跨日前跳的補全清單一直沒有這一題（同日有 `mutedTarget`、跨日缺），
+      // 於是跳過去的那一夜少了禁言決定，隔天也不會公布禁言。
+      const muteElder = state.players.find((p) => p.role === "MuteElder" && p.alive);
+      const mutedTargetExisting =
+        d === state.day ? (state.nightActions.mutedTarget ?? nightRecord.mutedTarget) : nightRecord.mutedTarget;
+      if (muteElder && mutedTargetExisting === undefined && !hasPassed("NIGHT_MUTE_ACTION")) {
+        const { t } = getI18n();
+        result.missingTasks.push({
+          phase: "NIGHT_MUTE_ACTION",
+          description: t("smartJump.nightMuteAction", { day: d }),
+          field: `day${d}MutedTarget`,
+          // 合法目標問單一真相（不能禁言自己）
+          options: getMuteEligibleSeats(state, muteElder.seat).map((seat) => {
+            const p = state.players.find((player) => player.seat === seat);
+            return { value: seat, label: t("devConsole.playerLabel", { seat: seat + 1, name: p?.displayName ?? "" }) };
+          }),
+        });
+      }
+
       const dreamer = state.players.find((p) => p.role === "Dreamweaver" && p.alive);
       const dreamTargetExisting =
         d === state.day ? (state.nightActions.dreamTarget ?? nightRecord.dreamTarget) : nightRecord.dreamTarget;
@@ -250,7 +276,7 @@ function analyzeForwardJump(
         const { t } = getI18n();
         result.missingTasks.push({
           phase: "NIGHT_DREAM_ACTION",
-          description: t("smartJump.dreamAction", { day: d }),
+          description: t("smartJump.nightDreamAction", { day: d }),
           field: `day${d}DreamTarget`,
           options: getDreamEligibleSeats(state, dreamer.seat).map((seat) => {
             const p = state.players.find((player) => player.seat === seat);
@@ -1302,7 +1328,8 @@ export function applySmartJumpWithFilledData(
       const prev = (newState.nightHistory || {})[day] || {};
       newState.nightHistory = {
         ...(newState.nightHistory || {}),
-        [day]: { ...prev, guardTarget: value as number },
+        // 明確填了守護目標 → 這一夜就不是空守
+        [day]: { ...prev, guardTarget: value as number, guardAbstained: undefined },
       };
       continue;
     }
@@ -1324,6 +1351,19 @@ export function applySmartJumpWithFilledData(
           [day]: { ...prev, magicianSwap: swap },
         };
       }
+      continue;
+    }
+
+    // 禁言長老目標：跨日前跳的補全清單一直沒有這一題，套用分支也沒有
+    // （同日那條是 `mutedTarget`）。
+    const muteMatch = field.match(/day(\d+)MutedTarget/);
+    if (muteMatch) {
+      const day = Number(muteMatch[1]);
+      const prev = (newState.nightHistory || {})[day] || {};
+      newState.nightHistory = {
+        ...(newState.nightHistory || {}),
+        [day]: { ...prev, mutedTarget: value as number },
+      };
       continue;
     }
 

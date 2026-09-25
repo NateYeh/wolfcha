@@ -36,10 +36,15 @@ export type NightStep = {
   decided: (state: GameState) => boolean;
 };
 
-/** 守衛的決定是否已完成（沒有守衛在場也算完成）。 */
+/** 守衛的決定是否已完成（沒有守衛在場也算完成）。
+ *
+ * 「空守」（`guardAbstained`）也是一個決定：只以 `guardTarget !== undefined` 當條件時，
+ * 空守會看起來像「還沒決定」，存檔恢復／Dev 重跑就會再問一次 AI（可能改成保護某人）。
+ */
 export const guardDecided = (state: GameState): boolean => {
   const guard = state.players.find((p) => p.role === "Guard" && p.alive);
-  return !guard || state.nightActions.guardTarget !== undefined;
+  if (!guard) return true;
+  return state.nightActions.guardTarget !== undefined || state.nightActions.guardAbstained === true;
 };
 
 /**

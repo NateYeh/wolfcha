@@ -2459,6 +2459,7 @@
   },
   "smartJump": {
     "nightGuardAction": "Night {day} Guard protect target",
+    "nightMuteAction": "Night {day} Mute Elder mute target",
     "nightWolfAction": "Night {day} Werewolf kill target",
     "nightWitchSave": "Night {day} Witch use antidote?",
     "nightWitchPoison": "Night {day} Witch use poison?",

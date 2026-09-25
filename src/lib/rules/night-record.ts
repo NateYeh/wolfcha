@@ -17,6 +17,7 @@ import type { GameState } from "@/types/game";
 /** 要寫進夜史的夜間行動欄位（公開結果：誰做了什麼）。 */
 export const NIGHT_RECORD_ACTION_KEYS = [
   "guardTarget",
+  "guardAbstained",
   "mutedTarget",
   "wolfTarget",
   "witchSave",

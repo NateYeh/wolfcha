@@ -108,6 +108,22 @@ test("真人攝夢人：面板與路由都在（回歸：面板在、路由漏�
   assert.equal(canHumanConfirmSeatAction("NIGHT_DREAM_ACTION", dreamer, state), true);
 });
 
+test("真人守衛：空守或已守人之後就不再開面板（空守以前會與「還沒決定」同形）", () => {
+  const guard = humanWith(freshState(), "Guard");
+  const undecided = freshState();
+  assert.equal(canHumanConfirmSeatAction("NIGHT_GUARD_ACTION", guard, undecided), true);
+  const abstained: GameState = { ...undecided, nightActions: { guardAbstained: true } };
+  assert.equal(
+    canHumanConfirmSeatAction("NIGHT_GUARD_ACTION", guard, abstained),
+    false,
+    "空守之後不該再能確認（否則會變成守人）"
+  );
+  const protectedSomeone: GameState = { ...undecided, nightActions: { guardTarget: 3 } };
+  assert.equal(canHumanConfirmSeatAction("NIGHT_GUARD_ACTION", guard, protectedSomeone), false);
+  // 非守衛不受影響
+  assert.equal(canHumanConfirmSeatAction("NIGHT_GUARD_ACTION", humanWith(undecided, "Seer"), undecided), false);
+});
+
 test("狼陣營都能確認出刀（狼王、狼美人都算）", () => {
   const state = freshState();
   for (const role of ["Werewolf", "WolfKing", "WolfBeauty"] as const) {
