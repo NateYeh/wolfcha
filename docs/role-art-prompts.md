@@ -142,12 +142,47 @@ Expression: sultry half-lidded smile, chin lowered, looking straight at the view
 
 （必須看得出是「同一個狼族的女版」但走華麗路線，不是盔甲、不是皮衣。）
 
-## 5. 兩種產圖流程
+## 5. 三種產圖流程（文字／單欄／參考圖）
+
+速查：**正向與負向不要串在一起**。
+
+| 工具 | 怎麼貼 |
+| --- | --- |
+| SD／Flux（ComfyUI、Forge、Fooocus…） | **正向欄**＝§2＋§4 的角色段；**負向欄**＝§3 那串 |
+| gpt-image-1／Nano Banana／Seedream／即夢（指令型，單欄） | 只貼**肯定句版**（見 B），負向清單整串丟掉 |
+| Midjourney | 一行到底，結尾 `--ar 1:1 --style raw --no color, text, watermark` |
 
 **A. 純文字（最省事）**：共用風格段 + 該角色的段落 + 負向詞，一次生一張，同一輪把 7 張生完
 （模型換輪次會飄風格）。
 
-**B. 參考圖（風格最穩，建議）**：如果你的工具吃參考圖（nano-banana／gpt-image 的 edit／
+**B. 單欄（指令型模型：gpt-image-1、Nano Banana／Gemini、Seedream、即夢）**：這些模型沒有負向欄，
+**不要把 §3 的負向清單貼進去**（指令型模型會照著把 `color`／`text` 畫出來）。改成三件事：
+
+1. 把硬要求寫成**肯定句**：「pure black ink lines on a plain flat white background, exactly one
+   character, square 1:1 canvas, generous empty margin, plain empty background」。
+2. 整串負向詞拿掉，只留「空白背景／乾淨留白」這類正向描述去排掉背景雜物。
+3. 尺寸交給參數：gpt-image API 帶 `size: "1024x1024"`、`background: "transparent"`。
+
+以村民為例（其餘角色同格式：第 1 段硬要求 → 第 2 段構圖 → 第 3 段角色）：
+
+```text
+Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
+confident outlines with variable line weight, form described by sparse parallel hatching and a few
+solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
+exactly one character, on a square 1:1 canvas.
+
+Anthropomorphic rabbit village farmer, waist-up bust, three-quarter view, head in the upper-centre,
+shoulders spanning the full width, torso cut off by the bottom edge, generous empty margin around the
+character, plain empty background.
+
+Long ears, one ear flopped forward through a hole in his straw hat, buck teeth. Patched linen shirt
+with rolled-up sleeves, rope belt, straw hat pushed back on the head. A hoe rests over one shoulder.
+Plain honest face, slightly worried, ears half-dropped, eyebrows raised. Modern-folk village-fantasy
+world, slightly gritty but friendly, matching a cast of anthropomorphic animals in plaid shirts,
+denim vests and hooded robes.
+```
+
+**C. 參考圖（風格最穩，建議）**：如果你的工具吃參考圖（nano-banana／gpt-image 的 edit／
 Flux Kontext／Seedream 都吃），就把 `public/roles/guard.png`（或 `werewolf.png`）當**純風格參考**附上：
 
 ```text
