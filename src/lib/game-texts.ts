@@ -37,9 +37,10 @@ export const getSystemMessages = (locale?: AppLocale) => {
     witchPoison: (seat: number, name: string) => t("system.witchPoison", { seat, name }),
     guardProtect: (seat: number, name: string) => t("system.guardProtect", { seat, name }),
     playerMuted: (seat: number, name: string) => t("system.playerMuted", { seat, name }),
-    // 開槍公告必須寫明是獵人槍還是狼王槍（兩者都記在 hunterShots 欄位，只看資料分不出來）
-    hunterShoot: (shooterSeat: number, shooterName: string, targetSeat: number, targetName: string, shooterRole: string) =>
-      t("system.hunterShoot", { shooterSeat, shooterName, targetSeat, targetName, shooterRole }),
+    // 開槍公告**不揭露槍種**（規則：場上不會知道開槍的是獵人還是狼王）；
+    // 真實槍種留在 hunterShots 紀錄裡，只有賽後分析與 DevTools 看得到。
+    hunterShoot: (shooterSeat: number, shooterName: string, targetSeat: number, targetName: string) =>
+      t("system.hunterShoot", { shooterSeat, shooterName, targetSeat, targetName }),
     badgeTransferStart: (seat: number, name: string) => t("system.badgeTransferStart", { seat, name }),
     badgeTransferred: (fromSeat: number, toSeat: number, toName: string) => t("system.badgeTransferred", { toSeat, toName }),
     badgeTorn: (seat: number, name: string) => t("system.badgeTorn", { seat, name }),

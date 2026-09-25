@@ -3,6 +3,7 @@ import test from "node:test";
 import { createSinglePlayerContextAuditState } from "../../../scripts/single-player-context-audit";
 import { setLocale } from "@/i18n/locale-store";
 import { getBoardById, validateBoardPreset } from "@/lib/rules/boards";
+import { getRoleCapabilities } from "@/lib/rules/roles";
 import {
   canUseDeathShot,
   getChainedShooter,
@@ -38,7 +39,7 @@ test("槍打槍：獵人打死獵人，被帶走的那個還能開槍（八獵�
   assert.equal(getChainedShooter(state, 0)?.seat, 0, "打到自己以外的獵人一樣成立");
 });
 
-test("槍打槍：狼王被打死不能接著開（狼王槍只能被放逐）；平民沒有槍", () => {
+test("槍打槍：狼王被技能帶走不能接著開（被打死屬於「技能帶走」）；平民沒有槍", () => {
   const state = stateWith([[0, "Hunter"], [2, "WolfKing"]]);
   assert.equal(getChainedShooter(state, 2), null, "狼王被技能帶走不開槍");
   assert.equal(getChainedShooter(state, 3), null, "平民沒有死亡技能");
@@ -80,11 +81,52 @@ test("獵人槍：放逐／夜刀／被自爆帶走都能開；被毒死不能�
   assert.equal(canUseDeathShot({ state, role: "Hunter", seat: 0, cause: "duel" }), false, "決鬥出局一律不能開槍");
 });
 
-test("狼王槍：只有白天被放逐能開；夜死／被毒／被帶走／被決鬥都不行", () => {
+test("狼王槍：被放逐與夜裡被狼刀都能開；被毒／被帶走／自爆／被決鬥都不行", () => {
   const state = stateWith([[0, "WolfKing"]]);
-  assert.equal(canUseDeathShot({ state, role: "WolfKing", seat: 0, cause: "exile" }), true);
-  for (const cause of ["night_kill", "poison", "carried", "duel"] as const) {
+  assert.equal(canUseDeathShot({ state, role: "WolfKing", seat: 0, cause: "exile" }), true, "被放逐能開槍");
+  assert.equal(canUseDeathShot({ state, role: "WolfKing", seat: 0, cause: "night_kill" }), true, "夜裡被狼刀能開槍");
+  for (const cause of ["poison", "carried", "self_destruct", "duel"] as const) {
     assert.equal(canUseDeathShot({ state, role: "WolfKing", seat: 0, cause }), false, `狼王 ${cause} 不該能開槍`);
+  }
+});
+
+test("使用者校訂的四條槍規則（2026-09-25）", () => {
+  const state = stateWith([[0, "Hunter"], [1, "WolfKing"]]);
+
+  // ① 夜晚被狼刀死：兩把槍都能開
+  for (const [seat, role] of [[0, "Hunter"], [1, "WolfKing"]] as const) {
+    assert.equal(
+      canUseDeathShot({ state, role, seat, cause: "night_kill" }),
+      true,
+      `${role} 夜裡被狼刀死應該能開槍`
+    );
+  }
+
+  // ② 夜晚被女巫毒死：兩把槍都不能開
+  for (const [seat, role] of [[0, "Hunter"], [1, "WolfKing"]] as const) {
+    assert.equal(
+      canUseDeathShot({ state, role, seat, cause: "poison" }),
+      false,
+      `${role} 被毒死不能開槍`
+    );
+  }
+
+  // ③ 自己自爆：沒有開槍窗口（狼王、白狼王都一樣）
+  const boomers = state.players.filter((p) => getRoleCapabilities(p.role).canBoom);
+  assert.ok(boomers.length > 0, "這張盤至少要有一個能自爆的角色");
+  for (const boomer of boomers) {
+    assert.equal(
+      canUseDeathShot({ state, role: boomer.role, seat: boomer.seat, cause: "self_destruct" }),
+      false,
+      `${boomer.role} 自爆後不能開槍`
+    );
+  }
+  for (const role of ["WolfKing", "WhiteWolfKing", "Hunter"] as const) {
+    assert.equal(
+      canUseDeathShot({ state: stateWith([[0, role]]), role, seat: 0, cause: "self_destruct" }),
+      false,
+      `${role} 自爆不能開槍`
+    );
   }
 });
 
@@ -171,7 +213,7 @@ test("開槍窗口 prompt：狼王看到的是狼槍任務與狼隊思路，獵�
   const wolfState = stateWith([[0, "WolfKing"]]);
   const wolfPrompt = manager.getPrompt("HUNTER_SHOOT", { state: { ...wolfState, phase: "HUNTER_SHOOT" } }, wolfState.players[0])!;
   assert.match(promptText(wolfPrompt), /狼王技能（狼枪）/);
-  assert.match(promptText(wolfPrompt), /只有\*\*白天被投票放逐\*\*时可开枪/);
+  assert.match(promptText(wolfPrompt), /被\*\*白天投票放逐\*\*、或被\*\*狼人夜刀杀死\*\*时可以开枪/);
   assert.match(promptText(wolfPrompt), /别打队友/);
   assert.doesNotMatch(promptText(wolfPrompt), /你是死前唯一能带走一个人的好人/);
 
@@ -187,6 +229,9 @@ test("公開規則：狼王的技能寫進 roleSkills 與 roleText（AI 才不�
   assert.match(shared, /狼王/);
   assert.match(shared, /狼枪|开枪带走一名存活玩家/);
   assert.match(getRoleText("WolfKing"), /狼王/);
+  // 2026-09-25 校訂：夜裡被狼刀死也能開槍
+  assert.match(shared, /被狼人夜刀杀死时可以开枪带走一名存活玩家/);
+  assert.match(getRoleText("WolfKing"), /被放逐或被夜刀杀死时可开枪带走一人/);
   // 勝負條件是公開資訊，統一放在 <public_role_configuration>（不再逐角色塞進個人區）
   const { buildPublicRoleConfiguration } = await import("@/lib/prompt-utils");
   const publicConfig = buildPublicRoleConfiguration(stateWith([[0, "WolfKing"]]));

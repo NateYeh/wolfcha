@@ -244,8 +244,10 @@ test("普通夜间出局只传死因未公开，公开技能死因才按主持�
   state.players[6] = { ...state.players[6], alive: false };
   state.dayHistory = { 1: { hunterShots: [{ hunterSeat: 5, targetSeat: 6 }] } };
   const publicShotContext = buildGameContext(state, state.players[2]);
-  assert.match(publicShotContext, /\{seat: 7, name: 玩家7, day: 1, cause: 猎人公开开枪\}/);
-  assert.match(publicShotContext, /6号玩家6 已由主持人公开确认为猎人/);
+  // 公開死因不揭露槍種（規則 2026-09-25 校訂）
+  assert.match(publicShotContext, /\{seat: 7, name: 玩家7, day: 1, cause: 公开开枪\}/);
+  assert.match(publicShotContext, /6号玩家6 开枪带走 7号玩家7/);
+  assert.doesNotMatch(publicShotContext, /确认为猎人|确认为狼王|猎人公开开枪|狼王公开开枪/);
 });
 
 test("同一晚多槍：公開事實要逐槍列出，不能只留最後一槍", () => {
@@ -263,8 +265,11 @@ test("同一晚多槍：公開事實要逐槍列出，不能只留最後一槍",
     },
   };
   const context = buildGameContext(state, state.players[2]);
-  assert.match(context, /\{seat: 7, name: 玩家7, day: 1, cause: 猎人公开开枪\}/, "第一槍的目標要在");
-  assert.match(context, /\{seat: 8, name: 玩家8, day: 1, cause: 猎人公开开枪\}/, "第二槍的目標也要在（以前會被覆蓋掉）");
+  assert.match(context, /\{seat: 7, name: 玩家7, day: 1, cause: 公开开枪\}/, "第一槍的目標要在");
+  assert.match(context, /\{seat: 8, name: 玩家8, day: 1, cause: 公开开枪\}/, "第二槍的目標也要在（以前會被覆蓋掉）");
+  // 兩槍的公開資訊逐槍列出，但都不揭露槍種
+  assert.match(context, /6号玩家6 开枪带走 7号玩家7/);
+  assert.match(context, /7号玩家7 开枪带走 8号玩家8/);
 });
 
 test("狼人私密队伍按存活状态明确分组，且不包含村民", () => {
@@ -394,7 +399,7 @@ test("历史消息保持真实时间顺序，不把遗言通知提前到白天�
   assert.doesNotMatch(history, /夜晚出局:/);
 });
 
-test("猎人公开开枪会结构化确认猎人身份，但不把目标身份当成查验结果", () => {
+test("公开开枪不确认开枪者的身份，也不把目标身份当成查验结果", () => {
   const state = makeState();
   state.day = 3;
   state.phase = "DAY_SPEECH";
@@ -409,8 +414,10 @@ test("猎人公开开枪会结构化确认猎人身份，但不把目标身份�
 
   const context = buildGameContext(state, state.players[2]);
 
-  assert.match(context, /6号玩家6 已由主持人公开确认为猎人/);
-  assert.match(context, /开枪不产生查验结果，也不公开 9号玩家9 的身份/);
+  // 規則 2026-09-25：公告只說「某號開槍帶走某號」，不會說開槍的是獵人還是狼王
+  assert.match(context, /6号玩家6 开枪带走 9号玩家9/);
+  assert.doesNotMatch(context, /确认为猎人|确认为狼王/);
+  assert.match(context, /开枪不公开开枪者是谁/);
   assert.match(context, /<today_deaths>[\s\S]*seat: 6, name: 玩家6[\s\S]*seat: 9, name: 玩家9[\s\S]*<\/today_deaths>/);
   assert.doesNotMatch(context, /9号玩家9 已由主持人公开确认为/);
 });
@@ -896,7 +903,7 @@ test("攻略：被查殺時不得認同查殺自己的人（好人自證／狼�
   assert.match(systemText, /被查杀时别替对方背书/);
 });
 
-test("公開技能翻牌分清獵人槍與狼王槍：狼王不能被寫成獵人", async () => {
+test("公開技能翻牌不揭露槍種：狼王槍與獵人槍的公開資訊一模一樣（紀錄仍分得清）", async () => {
   const { buildPublicRecordForRemark } = await import("./public-record");
   const state = makeState();
   const wolfKing = { ...state.players[0], role: "WolfKing" as Role, alive: false };
@@ -914,16 +921,22 @@ test("公開技能翻牌分清獵人槍與狼王槍：狼王不能被寫成獵�
   };
 
   const context = buildGameContext(state, state.players[4]);
-  // 狼王槍：講狼王，不可以講獵人
-  assert.match(context, new RegExp(`第1天：\\d+号.*已由主持人公开确认为狼王`));
-  assert.doesNotMatch(context, /第1天：.*确认为猎人/);
-  // 獵人槍照舊
-  assert.match(context, new RegExp(`第2天：\\d+号.*已由主持人公开确认为猎人`));
-  // 死因文案也要分開
-  assert.match(context, /狼王公开开枪/);
-  assert.match(context, /猎人公开开枪/);
-  // 賽後公開記錄同樣分清
+  // 兩槍的公開資訊一模一樣：只說誰開槍帶走誰，不說是哪一把槍
+  assert.match(context, new RegExp(`第1天：\\d+号.*开枪带走`));
+  assert.match(context, new RegExp(`第2天：\\d+号.*开枪带走`));
+  assert.doesNotMatch(context, /确认为猎人|确认为狼王|猎人公开开枪|狼王公开开枪/);
+  assert.match(context, /开枪不公开开枪者是谁/);
+
   const record = buildPublicRecordForRemark(state).join("\n");
-  assert.match(record, /狼王开枪带走/);
-  assert.match(record, /猎人开枪带走/);
+  assert.doesNotMatch(record, /猎人|狼王/);
+
+  // 但紀錄本身仍保留真實槍種：賽後分析與 DevTools 要看得出是狼王還是獵人
+  const { getDeathShotKind } = await import("@/lib/rules/death-skills");
+  assert.equal(getDeathShotKind(wolfKing.role), "wolf_gun");
+  assert.equal(getDeathShotKind(hunter.role), "hunter_gun");
+  assert.deepEqual(
+    state.dayHistory[1].hunterShots,
+    [{ hunterSeat: wolfKing.seat, targetSeat: wolfShotTarget.seat }],
+    "紀錄仍記下開槍者座位（槍種由他的角色推得）"
+  );
 });

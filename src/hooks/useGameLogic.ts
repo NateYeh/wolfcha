@@ -815,6 +815,19 @@ export function useGameLogic() {
     setGameState(currentState);
 
     const continueAfterSettle = async (afterState: GameState): Promise<void> => {
+      // 規則：自爆者自己沒有開槍窗口。這一條本來就由流程保證（自爆不接開槍判定），
+      // 這裡明寫一次並在判定異常時出聲——以後若有人「順手」讓自爆者也開槍，至少不會靜默。
+      if (
+        canUseDeathShot({
+          state: afterState,
+          role: boomer.role,
+          seat: boomer.seat,
+          cause: "self_destruct",
+        })
+      ) {
+        console.warn("[wolfcha] 自爆者依規則不得開槍（規則表異常）", boomer.role, boomer.seat + 1);
+      }
+
       // 帶走獵人：獵人仍可開槍（與「槍打槍」共用同一條判定）
       const victim = applied.victimSeat !== undefined
         ? getChainedShooter(afterState, applied.victimSeat)
@@ -2459,11 +2472,11 @@ export function useGameLogic() {
         if (target) {
           currentState = addSystemMessage(
             currentState,
-            systemMessages.hunterShoot(humanPlayer.seat + 1, humanPlayer.displayName, targetSeat + 1, target.displayName, getRoleName(humanPlayer.role))
+            systemMessages.hunterShoot(humanPlayer.seat + 1, humanPlayer.displayName, targetSeat + 1, target.displayName)
           );
           setDialogue(
             speakerHost,
-            systemMessages.hunterShoot(humanPlayer.seat + 1, humanPlayer.displayName, targetSeat + 1, target.displayName, getRoleName(humanPlayer.role)),
+            systemMessages.hunterShoot(humanPlayer.seat + 1, humanPlayer.displayName, targetSeat + 1, target.displayName),
             false
           );
         }

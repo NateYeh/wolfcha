@@ -50,13 +50,12 @@ export function buildPublicRecordForRemark(state: GameState): string[] {
     // 一天可能有多槍（槍鏈）：公開紀錄逐筆列出，不再只留最後一槍
     const shots = [...getHunterShots(record), ...getHunterShots(night)];
     for (const shot of shots) {
-      const shooter = state.players.find((p) => p.seat === shot.hunterSeat);
-      lines.push(t(
-        getDeathShotKind(shooter?.role ?? "") === "wolf_gun"
-          ? "specialEvents.publicRecordWolfKingShot"
-          : "specialEvents.publicRecordShot",
-        { day, seat: shot.hunterSeat + 1, target: shot.targetSeat + 1 }
-      ));
+      // 公開紀錄不揭露槍種（獵人槍／狼王槍同一句）：誰是狼王不該由開槍公告洩漏
+      lines.push(t("specialEvents.publicRecordShot", {
+        day,
+        seat: shot.hunterSeat + 1,
+        target: shot.targetSeat + 1,
+      }));
     }
     if (record.idiotRevealed) {
       lines.push(t("specialEvents.publicRecordIdiot", { day, seat: record.idiotRevealed.seat + 1 }));

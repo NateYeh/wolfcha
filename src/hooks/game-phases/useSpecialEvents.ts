@@ -195,11 +195,11 @@ export function useSpecialEvents(
       if (target) {
         currentState = addSystemMessage(
           currentState,
-          texts.systemMessages.hunterShoot(hunter.seat + 1, hunter.displayName, targetSeat + 1, target.displayName, getRoleName(hunter.role))
+          texts.systemMessages.hunterShoot(hunter.seat + 1, hunter.displayName, targetSeat + 1, target.displayName)
         );
         setDialogue(
           texts.speakerHost,
-          texts.systemMessages.hunterShoot(hunter.seat + 1, hunter.displayName, targetSeat + 1, target.displayName, getRoleName(hunter.role)),
+          texts.systemMessages.hunterShoot(hunter.seat + 1, hunter.displayName, targetSeat + 1, target.displayName),
           false
         );
       }

@@ -35,7 +35,9 @@ test("賽後公開記錄：只列主持人公布過的客觀結果，玩家說�
   assert.match(text, /第2夜：11号、10号出局（死因未公开）/);
   assert.match(text, /第1天：5号自爆，带走8号/);
   assert.match(text, /第1天：狼人自爆作废当日放逐投票，无人被放逐/);
-  assert.match(text, /第2天：2号猎人开枪带走4号/);
+  // 公開紀錄不揭露槍種（規則 2026-09-25）：只說誰開槍帶走誰
+  assert.match(text, /第2天：2号开枪带走4号/);
+  assert.doesNotMatch(text, /猎人|狼王/);
   assert.match(text, /第2天：6号被放逐（6.5票）/);
   // 摘要裡的玩家主張（含錯誤主張）不得被升級成公開事實
   assert.doesNotMatch(text, /预言家/);

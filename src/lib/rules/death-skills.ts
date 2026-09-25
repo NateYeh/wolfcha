@@ -4,11 +4,13 @@ import { getRoleCapabilities, isWolfRole, type DeathShotKind } from "./roles";
 /**
  * 死亡技能（「槍」）規則（單一真相）。
  *
- * 目前有兩把槍：
- * - 獵人槍（`hunter_gun`）：被投票放逐、被狼人夜刀、被自爆帶走都可以開；**被毒死不能開**，
+ * 目前有兩把槍（規則由使用者 2026-09-25 校訂）：
+ * - 獵人槍（`hunter_gun`）：被投票放逐、**被狼人夜刀**、被自爆帶走都可以開；**被毒死不能開**，
  *   被攝夢帶走（夢死）同樣不能開。
- * - 狼王槍（`wolf_gun`）：**只有白天被投票放逐**能開；非最後一狼、非被毒、非夜間死亡、
- *   非自爆（自爆沒技能）、被騎士決鬥出局也不能開（見 knight-duel 的決鬥死亡封鎖）。
+ * - 狼王槍（`wolf_gun`）：被投票放逐、**被狼人夜刀**都可以開；被毒死、自爆（自爆者自己沒有技能）、
+ *   被騎士決鬥出局都不能開；只剩自己這一隻狼時也沒有開槍窗口。
+ * - **公告不揭露槍種**：狼王槍與獵人槍的公開公告一模一樣（「某號開槍帶走某號」），
+ *   只有賽後紀錄（`hunterShots`）與 DevTools 看得到是誰開的槍。
  *
  * 這一張表就是「誰、在什麼死因下、能不能開槍」的唯一答案：流程端只呼叫
  * `canUseDeathShot()`，不要在各階段自己寫 `role === "Hunter"`。
@@ -22,6 +24,8 @@ export interface DeathShotRules {
   onPoison: boolean;
   /** 被自爆／技能帶走時可開槍（獵人可、狼王不可） */
   onCarried: boolean;
+  /** 自己就是自爆者時可開槍（一律 false：狼王、白狼王自爆後都沒有槍） */
+  onSelfDestruct: boolean;
   /** 被騎士翻牌決鬥出局時可開槍（一律 false） */
   onDuel: boolean;
   /** 只剩自己這一隻狼時不得開槍（狼王專屬） */
@@ -33,6 +37,7 @@ const NO_SHOT: DeathShotRules = {
   onNightKill: false,
   onPoison: false,
   onCarried: false,
+  onSelfDestruct: false,
   onDuel: false,
   forbiddenWhenLastWolf: false,
 };
@@ -48,12 +53,14 @@ export const DEATH_SHOT_RULES: Record<DeathShotKind, DeathShotRules> = {
   wolf_gun: {
     ...NO_SHOT,
     onExile: true,
+    // 夜裡被狼刀死也能開槍（2026-09-25 校訂；先前只認白天放逐）
+    onNightKill: true,
     forbiddenWhenLastWolf: true,
   },
 };
 
 /** 死因（流程端傳入；與 dayHistory／nightHistory 的記法對齊） */
-export type DeathShotCause = "exile" | "night_kill" | "poison" | "carried" | "duel";
+export type DeathShotCause = "exile" | "night_kill" | "poison" | "carried" | "self_destruct" | "duel";
 
 /** 這個角色的死亡技能種類 */
 export function getDeathShotKind(role: Role | string): DeathShotKind {
@@ -73,6 +80,7 @@ export function canUseDeathShot(input: {
   if (cause === "night_kill" && !rules.onNightKill) return false;
   if (cause === "poison" && !rules.onPoison) return false;
   if (cause === "carried" && !rules.onCarried) return false;
+  if (cause === "self_destruct" && !rules.onSelfDestruct) return false;
   if (cause === "duel" && !rules.onDuel) return false;
   // 被毒／毒奶／被夢帶走的座位：死亡技能一律封鎖（查夜史死亡紀錄，取代舊的全域 hunterCanShoot=false hack）。
   // 被夢帶走（連續兩晚被攝、或被夜死的攝夢人連帶）依官方規則同樣不能發動技能。

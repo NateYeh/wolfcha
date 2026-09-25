@@ -222,8 +222,11 @@ ${t("promptUtils.gameContext.publicIdentityRule")}
 };
 
 /**
- * 公開技能翻牌的文案：獵人槍與狼王槍都會記在同一欄 `hunterShots`（同一晚可能多筆），
- * 必須用槍的種類（死亡技能單一真相）決定講「獵人」還是「狼王」，不能一律當獵人。
+ * 公開開槍的文案（**不揭露槍種**）。
+ *
+ * 獵人槍與狼王槍都記在同一欄 `hunterShots`，但公開資訊只說「某號開槍帶走某號」——
+ * 依規則，場上不會知道開槍的是獵人還是狼王（賽後紀錄與 DevTools 才看得到）。
+ * 所以這裡刻意不分槍種：分槍種寫等於把「誰是狼王」送給全場。
  */
 const shotRevealLine = (
   state: GameState,
@@ -231,27 +234,17 @@ const shotRevealLine = (
   shot: { hunterSeat: number; targetSeat: number }
 ): string => {
   const { t } = getI18n();
-  const shooter = state.players.find((p) => p.seat === shot.hunterSeat);
-  const isWolfGun = getDeathShotKind(shooter?.role ?? "") === "wolf_gun";
-  return t(isWolfGun
-    ? "promptUtils.gameContext.wolfKingRoleReveal"
-    : "promptUtils.gameContext.hunterRoleReveal", {
+  return t("promptUtils.gameContext.hunterRoleReveal", {
     day,
-    [isWolfGun ? "player" : "hunter"]: formatSeatName(state, shot.hunterSeat),
+    shooter: formatSeatName(state, shot.hunterSeat),
     target: formatSeatName(state, shot.targetSeat),
   });
 };
 
-/** 被槍打死者的公開死因文案：同樣要分清獵人槍與狼王槍。 */
-const shotDeathCauseLabel = (
-  state: GameState,
-  shot: { hunterSeat: number }
-): string => {
+/** 被槍打死者的公開死因文案：同樣不揭露槍種。 */
+const shotDeathCauseLabel = (): string => {
   const { t } = getI18n();
-  const shooter = state.players.find((p) => p.seat === shot.hunterSeat);
-  return getDeathShotKind(shooter?.role ?? "") === "wolf_gun"
-    ? t("promptUtils.gameContext.deathCauseWolfKingShot")
-    : t("promptUtils.gameContext.deathCauseHunterShot");
+  return t("promptUtils.gameContext.deathCauseHunterShot");
 };
 
 const buildPublicRoleReveals = (state: GameState): string => {
@@ -1342,7 +1335,7 @@ export const buildGameContextParts = (
       }
       const nightShot = findHunterShotByTarget(history, p.seat);
       if (nightShot) {
-        cause = shotDeathCauseLabel(state, nightShot);
+        cause = shotDeathCauseLabel();
         deathDay = Number(day);
       }
     }
@@ -1350,7 +1343,7 @@ export const buildGameContextParts = (
       if (history.executed?.seat === p.seat) { cause = publicExecutionCause; deathDay = Number(day); }
       const dayShot = findHunterShotByTarget(history, p.seat);
       if (dayShot) {
-        cause = shotDeathCauseLabel(state, dayShot);
+        cause = shotDeathCauseLabel();
         deathDay = Number(day);
       }
       if (history.selfDestruct?.boomSeat === p.seat || history.selfDestruct?.targetSeat === p.seat) {
@@ -1467,13 +1460,13 @@ alive_count: ${alivePlayers.length}${mutedLine}
       for (const shot of getHunterShots(dayHistory)) {
         const p = state.players.find(player => player.seat === shot.targetSeat);
         if (p && !p.alive) {
-          currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${shotDeathCauseLabel(state, shot)}}`);
+          currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${shotDeathCauseLabel()}}`);
         }
       }
       for (const shot of getHunterShots(nightHistory)) {
         const p = state.players.find(player => player.seat === shot.targetSeat);
         if (p && !p.alive) {
-          currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${shotDeathCauseLabel(state, shot)}}`);
+          currentDayDeaths.push(`{seat: ${p.seat + 1}, name: ${p.displayName}, cause: ${shotDeathCauseLabel()}}`);
         }
       }
       if (dayHistory?.selfDestruct) {

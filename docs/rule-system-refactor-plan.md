@@ -326,11 +326,11 @@ WelcomeScreen 開發者面板的「角色」分頁可用「套用官方版型」
 | 死因 | 獵人槍 | 狼王槍 |
 | --- | --- | --- |
 | 白天被投票放逐 | ✅ | ✅（且**非最後一狼**） |
-| 夜間被狼刀 | ✅ | ❌ |
+| 夜間被狼刀 | ✅ | ✅（2026-09-25 校訂：先前只有白天放逐能開） |
 | 被女巫毒死 | ❌ | ❌ |
 | 被自爆／技能帶走 | ✅ | ❌ |
 | 被騎士決鬥出局 | ❌ | ❌ |
-| 自爆（自己） | — | ❌（自爆本身沒有技能） |
+| 自爆（自己） | — | ❌（自爆本身沒有技能，`cause: "self_destruct"` 一律 false） |
 
 - 流程端不再寫 `role === "Hunter"`：`VotePhase`（放逐）、`DaySpeechPhase`（夜刀公告）、
   `applySelfDestruct`（被帶走）、警徽移交後的放逐路徑，全部改呼叫
@@ -338,7 +338,9 @@ WelcomeScreen 開發者面板的「角色」分頁可用「套用官方版型」
 - 狼王「非最後一狼」由 `forbiddenWhenLastWolf` 實現：只剩他這隻狼時，出局即終局、不開窗。
 - 開槍窗口沿用既有的 `HUNTER_SHOOT` 階段與 `hunterDeathRef` 流程（真人 UI、AI 決策、警徽移交、
   勝負判定都不變），但提示文字依角色切換：`prompts.hunter.*` vs `prompts.wolfKingShot.*`，
-  系統訊息改為角色中立（帶射手名字），EventLog／賽後標籤在射手是狼王時顯示「狼王開槍」。
+  系統訊息**完全角色中立**：公開公告與公開紀錄都只說「某號開槍帶走某號」，
+  **不揭露是獵人槍還是狼王槍**（2026-09-25 校訂）；真實槍種只留在 `hunterShots` 紀錄裡，
+  只有 EventLog／DevTools／賽後分析看得到（那些是賽後視角，不算公告）。
 - 順帶收斂：`RoleCapabilities.deathShot` 取代散落的 `role === "Hunter"`；`getRoleText`／
   `getRoleWinCondition`／`getRoleName`／教學卡（`tutorialOverlay.roles`）補齊 Knight／MuteElder／WolfKing
   （先前缺這幾個 case 會讓新角色的 prompt 說自己是「村民」、教學卡讀到 undefined）。

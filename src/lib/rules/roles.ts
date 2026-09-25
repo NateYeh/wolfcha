@@ -115,7 +115,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapabilities> = {
     nightAction: "kill",
     canAbstain: false,
     canSelfTarget: false,
-    // 狼王可以自爆（只是自爆後不能開槍：狼槍只在白天被放逐時發動）
+    // 狼王可以自爆（自爆後不能開槍：槍只認被放逐與夜裡被狼刀）
     canBoom: true,
     boomTakesPlayer: false,
     boomSwallowsBadgeOnElection: false,
