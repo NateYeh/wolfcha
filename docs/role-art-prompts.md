@@ -204,3 +204,135 @@ style (style reference only, do not copy the character). Draw a completely diffe
    屆時可加一層淺色卡片底或 `invert`；夜間光暈目前只認 6 個角色，新角色可一併配色。
 
 把原始檔（白底即可）丟到 `temp/role-art/` 我就接手，或直接告訴我生成器是哪一個，我照它的習慣再調提示詞。
+
+## 7. ChatGPT 直接複製版（7 段，單欄肯定句）
+
+ChatGPT 生圖是**單欄**且會照著字面畫，所以這一節把 §2／§3／§4 合成「一段一段可直接貼」的版本：
+沒有負向清單，硬要求全部寫成肯定句。**一段訊息生一張，同一輪把 7 張生完**（換聊天室會飄風格）。
+生出來多半是白底非透明——**留白就好，不要自己裁切或置中**，去背與比例統一由程式端處理。
+
+### 7.1 村民 → `villager.png`
+
+```text
+Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
+confident outlines with variable line weight, form described by sparse parallel hatching and a few
+solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
+exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+
+Anthropomorphic rabbit, waist-up bust, three-quarter view, head in the upper-centre, shoulders
+spanning the full width, torso cut off by the bottom edge.
+
+An ordinary village farmer with no armour and no weapon of war: long ears, one ear flopped forward
+through a hole in his straw hat, buck teeth. He wears a patched linen shirt with rolled-up sleeves
+and a rope belt, his straw hat pushed back on his head, and rests a hoe over one shoulder. Plain
+honest face, slightly worried, ears half-dropped, eyebrows raised.
+Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded robes and leather jackets — a modern-folk village-fantasy world, slightly gritty but friendly.
+```
+
+### 7.2 騎士 → `knight.png`
+
+```text
+Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
+confident outlines with variable line weight, form described by sparse parallel hatching and a few
+solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
+exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+
+Anthropomorphic stag with antlers, waist-up bust, three-quarter view, head in the upper-centre, shoulders
+spanning the full width, torso cut off by the bottom edge.
+
+A daylight duelling knight who stakes his own life on the challenge: steel plate armour with a dented
+pauldron and visible rivets, a tattered cape, gauntlets on both hands, the antlers poking out of an
+open helm. He holds a longsword point-down in front of his chest, both hands resting on the pommel,
+no shield. Stern and unwavering, brows lowered, chin lifted, mouth a flat line.
+Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded robes and leather jackets — a modern-folk village-fantasy world, slightly gritty but friendly.
+```
+
+### 7.3 禁言長老 → `mute-elder.png`
+
+```text
+Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
+confident outlines with variable line weight, form described by sparse parallel hatching and a few
+solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
+exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+
+Anthropomorphic old ram, waist-up bust, three-quarter view, head in the upper-centre, shoulders
+spanning the full width, torso cut off by the bottom edge.
+
+An elder who silences one player every night: thick curled horns, a long pointed beard, drooping
+ears, wearing a long hooded robe with a woven shawl and a small bell at the collar, hood down. One
+raised index finger is pressed to his lips in a shush gesture; his other hand grips a tall wooden
+staff with a small bell hanging from it. Narrow stern eyes, mouth closed, unimpressed.
+Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded robes and leather jackets — a modern-folk village-fantasy world, slightly gritty but friendly.
+```
+
+### 7.4 狼王 → `wolf-king.png`
+
+```text
+Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
+confident outlines with variable line weight, form described by sparse parallel hatching and a few
+solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
+exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+
+Anthropomorphic huge grey wolf, waist-up bust, three-quarter view, head in the upper-centre, shoulders
+spanning the full width, torso cut off by the bottom edge.
+
+The alpha wolf of the pack — older, bigger and heavier than the other wolves: thick neck, broad
+chest, a notched ear and a scar over one eye, in a plain torn tunic under a heavy fur mantle, and a
+crude iron band-crown with a single dark gem. Shoulders squared, one hand clenched into a fist at
+chest height, baring his fangs mid-snarl, commanding and contemptuous.
+Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded robes and leather jackets — a modern-folk village-fantasy world, slightly gritty but friendly.
+```
+
+### 7.5 攝夢人 → `dreamweaver.png`
+
+```text
+Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
+confident outlines with variable line weight, form described by sparse parallel hatching and a few
+solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
+exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+
+Anthropomorphic tapir with a long snout and small round ears, waist-up bust, three-quarter view, head in the upper-centre, shoulders
+spanning the full width, torso cut off by the bottom edge.
+
+The one who decides who dreams tonight: a tapir (the Baku that eats dreams) in a long hooded
+night-robe with crescent-moon and star embroidery and a loose sash. One hand raises a hoop
+dreamcatcher with dangling feathers, the other holds a small round lantern with a thin curl of smoke
+rising from it. Half-closed sleepy eyes, gentle drowsy smile, head tilted to one side.
+Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded robes and leather jackets — a modern-folk village-fantasy world, slightly gritty but friendly.
+```
+
+### 7.6 魔術師 → `magician.png`
+
+```text
+Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
+confident outlines with variable line weight, form described by sparse parallel hatching and a few
+solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
+exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+
+Anthropomorphic fox, waist-up bust, three-quarter view, head in the upper-centre, shoulders
+spanning the full width, torso cut off by the bottom edge.
+
+A stage magician who swaps two players every night: a sly grin and a bushy tail visible past one
+shoulder, wearing a formal tailcoat with a waistcoat, a bow tie, white gloves and a top hat with a
+band. He holds two playing cards crossed in an X in front of his chest, with three small cards
+fanning out in mid-air beside him. Confident sly grin, one eyebrow raised, chin turned slightly aside.
+Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded robes and leather jackets — a modern-folk village-fantasy world, slightly gritty but friendly.
+```
+
+### 7.7 狼美人 → `wolf-beauty.png`
+
+```text
+Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
+confident outlines with variable line weight, form described by sparse parallel hatching and a few
+solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
+exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+
+Anthropomorphic elegant female wolf, waist-up bust, three-quarter view, head in the upper-centre, shoulders
+spanning the full width, torso cut off by the bottom edge.
+
+The wolf pack's charmer — whoever she charms dies with her: a sleek long mane, long eyelashes and a
+narrow muzzle, wearing a long fur-collared coat over a slit dress, a choker with a small heart
+pendant, a rose tucked behind one ear and a ribbon of thread wound around one wrist. One hand raised
+near her lips blowing a kiss. Sultry half-lidded smile, chin lowered, looking at the viewer.
+Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded robes and leather jackets — a modern-folk village-fantasy world, slightly gritty but friendly.
+```
