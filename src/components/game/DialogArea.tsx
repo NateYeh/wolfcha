@@ -35,7 +35,7 @@ import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { canHumanConfirmSeatAction, requiresTwoSeats } from "@/lib/rules/human-input";
 import { canSelfDestruct, hasAlreadyBoomed } from "@/lib/rules/self-destruct";
-import { ROLE_PORTRAIT_MAP } from "@/lib/rules/role-art";
+import { ROLE_PORTRAIT_GLOW, ROLE_PORTRAIT_MAP, phasePortraitRole } from "@/lib/rules/role-art";
 
 const HISTORY_BOTTOM_THRESHOLD = 24;
 
@@ -61,43 +61,10 @@ function preloadRolePortraits() {
   });
 }
 
-/**
- * 階段 → 主角立繪用的角色（需要人類玩家角色來區分狼人／白狼王）。
- * `Record<Phase, …>` 強制補齊：新增階段時 tsc 會逼你決定這裡要顯示什麼。
- */
-const PHASE_ROLE: Record<Phase, (humanRole?: string) => Role | null> = {
-  LOBBY: () => null,
-  SETUP: () => null,
-  NIGHT_START: () => null,
-  NIGHT_GUARD_ACTION: () => 'Guard',
-  NIGHT_MUTE_ACTION: () => null,
-  NIGHT_DREAM_ACTION: () => null,
-  NIGHT_MAGICIAN_ACTION: () => 'Magician',
-  NIGHT_WOLF_BEAUTY_ACTION: () => 'WolfBeauty',
-  NIGHT_WOLF_ACTION: (humanRole) => (humanRole === 'WhiteWolfKing' ? 'WhiteWolfKing' : 'Werewolf'),
-  NIGHT_WITCH_ACTION: () => 'Witch',
-  NIGHT_SEER_ACTION: () => 'Seer',
-  NIGHT_RESOLVE: () => null,
-  DAY_START: () => null,
-  DAY_BADGE_SIGNUP: () => null,
-  DAY_BADGE_SPEECH: () => null,
-  DAY_BADGE_ELECTION: () => null,
-  DAY_PK_SPEECH: () => null,
-  DAY_SPEECH: () => null,
-  DAY_LAST_WORDS: () => null,
-  DAY_VOTE: () => null,
-  DAY_RESOLVE: () => null,
-  BADGE_TRANSFER: () => null,
-  HUNTER_SHOOT: () => 'Hunter',
-  // 自爆只有狼陣營能做，因此依行動者角色決定立繪（一般狼過去看不到自己的狼人立繪，
-  // 一律顯示白狼王）
-  SELF_DESTRUCT: (humanRole) => (humanRole === 'WhiteWolfKing' ? 'WhiteWolfKing' : 'Werewolf'),
-  KNIGHT_DUEL: () => null,
-  GAME_END: () => null,
-};
-
+/** 階段 → 主角立繪用的角色搬到了 `@/lib/rules/role-art`（與角色→立繪同一份單一真相），
+ * 方便測試直接檢查；這裡只留下取值。 */
 const getPhaseRole = (phase: Phase, humanRole?: string): Role | null =>
-  PHASE_ROLE[phase](humanRole);
+  phasePortraitRole(phase, humanRole);
 
 const getPlayerAvatarUrl = (player: Player, isGenshinMode: boolean) =>
   isGenshinMode && !player.isHuman
@@ -651,16 +618,11 @@ export function DialogArea({
               transition={{ duration: 0.35, ease: "easeOut" }}
               className="relative flex flex-col items-center"
             >
-              {/* 光晕效果 - 根据角色调整颜色 */}
+              {/* 光晕效果 - 配色集中在 `@/lib/rules/role-art`（新增角色漏配色會被測試點出來） */}
               <motion.div 
                 className={cn(
                   "absolute bottom-[20%] left-1/2 -translate-x-1/2 w-40 h-40 rounded-full blur-2xl",
-                  phaseRole === 'Werewolf' && "bg-gradient-radial from-red-500/30 via-transparent to-transparent",
-                  phaseRole === 'WhiteWolfKing' && "bg-gradient-radial from-red-400/30 via-transparent to-transparent",
-                  phaseRole === 'Seer' && "bg-gradient-radial from-blue-500/30 via-transparent to-transparent",
-                  phaseRole === 'Witch' && "bg-gradient-radial from-purple-500/30 via-transparent to-transparent",
-                  phaseRole === 'Guard' && "bg-gradient-radial from-emerald-500/30 via-transparent to-transparent",
-                  phaseRole === 'Hunter' && "bg-gradient-radial from-orange-500/30 via-transparent to-transparent",
+                  phaseRole ? ROLE_PORTRAIT_GLOW[phaseRole] : undefined,
                 )}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

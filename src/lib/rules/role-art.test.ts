@@ -1,10 +1,22 @@
 import assert from "node:assert/strict";
+import type { Phase, Role } from "@/types/game";
 import zlib from "node:zlib";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { ALL_ROLE_KEYS } from "@/lib/rules/boards";
-import { ROLES_REUSING_PORTRAIT, ROLE_ICONS, ROLE_PORTRAIT_MAP } from "@/lib/rules/role-art";
+import { NIGHT_SEAT_ACTION_PHASES, SEAT_ACTION_CONFIRM_PHASES, seatActionRole } from "@/lib/rules/human-input";
+import {
+  PHASE_SEQUENCE,
+} from "@/lib/rules/phases";
+import {
+  PHASE_ROLE_PORTRAIT,
+  ROLES_REUSING_PORTRAIT,
+  ROLE_ICONS,
+  ROLE_PORTRAIT_GLOW,
+  ROLE_PORTRAIT_MAP,
+  phasePortraitRole,
+} from "@/lib/rules/role-art";
 
 /**
  * 角色立繪的守門測試。
@@ -192,5 +204,61 @@ test("每張立繪都是「亮色墨線 × 透明底」（黑墨在暗色 UI 上
     if (notes.length) problems.push(`${src}：${notes.join("；")}`);
   }
   assert.deepEqual(problems, [], `立繪像素檢查未通過：\n${problems.join("\n")}`);
+});
+
+/**
+ * 「哪個階段顯示哪張立繪」的守門測試。
+ *
+ * 禁言長老與攝夢人的夜間面板長期顯示玩家頭像而不是職業立繪——那是重構前
+ * `switch (phase) { … default: return null }` 的原始行為，兩個角色從來沒被列進去。
+ * 魔術師／狼美人則是「有立繪、沒有光暈」。三條測試分別把這兩類漏掉釘住。
+ */
+
+/** 會出現「真人操作面板」的階段（座位行動 ＋ 女巫的專屬面板）。 */
+const HUMAN_PANEL_PHASES: readonly Phase[] = [
+  ...SEAT_ACTION_CONFIRM_PHASES,
+  "NIGHT_WITCH_ACTION",
+];
+
+/** 夜間舞台上可能出現的角色（把「依行動者角色」的兩個階段也展開）。 */
+function nightStageRoles(): Set<Role> {
+  const roles = new Set<Role>();
+  for (const phase of PHASE_SEQUENCE) {
+    for (const humanRole of [undefined, "WhiteWolfKing", "WolfKing", "Werewolf"]) {
+      const role = phasePortraitRole(phase, humanRole);
+      if (role) roles.add(role);
+    }
+  }
+  return roles;
+}
+
+test("每個有真人夜間面板的階段都要有職業立繪（禁言／攝夢先前是 null）", () => {
+  const missing = HUMAN_PANEL_PHASES.filter((phase) => phasePortraitRole(phase) === null);
+  assert.deepEqual(
+    missing,
+    [],
+    `以下階段有真人操作面板，卻沒有立繪（畫面會顯示玩家頭像）：${missing.join(", ")}`
+  );
+});
+
+test("夜間座位行動階段的立繪角色必須等於該階段的行动角色（seatActionRole）", () => {
+  const mismatched = NIGHT_SEAT_ACTION_PHASES.filter((phase) => phase !== "NIGHT_WOLF_ACTION")
+    .map((phase) => ({ phase, portrait: phasePortraitRole(phase), action: seatActionRole(phase) }))
+    .filter(({ portrait, action }) => portrait !== action)
+    .map(({ phase, portrait, action }) => `${phase}: 立繪 ${portrait ?? "null"} ≠ 行動角色 ${action ?? "undefined"}`);
+  assert.deepEqual(mismatched, [], `立繪角色與行動角色不一致：\n${mismatched.join("\n")}`);
+});
+
+test("夜間舞台上的每個角色都要有光暈配色，且不得留死設定（魔術師／狼美人先前沒有）", () => {
+  const stage = nightStageRoles();
+  const withoutGlow = [...stage].filter((role) => !ROLE_PORTRAIT_GLOW[role]);
+  assert.deepEqual(withoutGlow, [], `以下角色會出現在夜間舞台，卻沒有光暈配色：${withoutGlow.join(", ")}`);
+  const dead = Object.keys(ROLE_PORTRAIT_GLOW).filter((role) => !stage.has(role as Role));
+  assert.deepEqual(dead, [], `以下角色不會出現在夜間舞台，光暈配色是死設定：${dead.join(", ")}`);
+});
+
+test("PHASE_ROLE_PORTRAIT 必須窮舉所有階段（新增階段時 tsc 已經會擋，這裡再擋一次）", () => {
+  const missing = PHASE_SEQUENCE.filter((phase) => !(phase in PHASE_ROLE_PORTRAIT));
+  assert.deepEqual(missing, [], `以下階段沒有在 PHASE_ROLE_PORTRAIT 裡決定要顯示什麼：${missing.join(", ")}`);
 });
 
