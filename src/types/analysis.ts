@@ -1,6 +1,6 @@
 import type { Alignment, AvatarStyle, Persona, Role } from "./game";
 
-export type NightEventType = "kill" | "save" | "poison" | "check" | "guard";
+export type NightEventType = "kill" | "save" | "poison" | "check" | "guard" | "swap";
 export type DayEventType = "exile" | "badge" | "hunter_shot" | "self_destruct" | "idiot_reveal";
 
 export interface NightEvent {

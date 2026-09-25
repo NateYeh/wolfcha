@@ -13,7 +13,8 @@ import { resolveNightDeaths } from "@/lib/rules/night-resolution";
 import { getDreamEligibleSeats } from "@/lib/rules/dream";
 import { getWolfBeautyEligibleSeats } from "@/lib/rules/charm";
 import { findHunterShotByTarget, getHunterShots } from "@/lib/rules/hunter-shots";
-import { wolfBeautyDecided } from "@/lib/rules/night-progress";
+import { getSwapEligibleSeats, isValidSwap } from "@/lib/rules/magician";
+import { magicianDecided, wolfBeautyDecided } from "@/lib/rules/night-progress";
 import { getMuteEligibleSeats } from "@/lib/rules/mute";
 import {
   dreamDecided,
@@ -294,6 +295,32 @@ function analyzeForwardJump(
         });
       }
 
+      const magician = state.players.find((p) => p.role === "Magician" && p.alive);
+      const magicianSwapExisting =
+        d === state.day
+          ? (state.nightActions.magicianSwap ?? nightRecord.magicianSwap)
+          : nightRecord.magicianSwap;
+      if (magician && magicianSwapExisting === undefined && !hasPassed("NIGHT_MAGICIAN_ACTION")) {
+        const { t } = getI18n();
+        // 兩列：補全對話框的每一列只給一個座位，而交換是兩人一組，所以拆成第一人／第二人
+        const swapOptions = getSwapEligibleSeats(state).map((seat) => {
+          const p = state.players.find((player) => player.seat === seat);
+          return { value: seat, label: t("devConsole.playerLabel", { seat: seat + 1, name: p?.displayName ?? "" }) };
+        });
+        result.missingTasks.push({
+          phase: "NIGHT_MAGICIAN_ACTION",
+          description: t("smartJump.magicianSwapFirst", { day: d }),
+          field: `day${d}MagicianSwapFirst`,
+          options: swapOptions,
+        });
+        result.missingTasks.push({
+          phase: "NIGHT_MAGICIAN_ACTION",
+          description: t("smartJump.magicianSwapSecond", { day: d }),
+          field: `day${d}MagicianSwapSecond`,
+          options: swapOptions,
+        });
+      }
+
       const witch = state.players.find((p) => p.role === "Witch" && p.alive);
       if (witch) {
         if (hasPassed("NIGHT_WITCH_ACTION")) {
@@ -379,9 +406,47 @@ function createMissingTasksForPhase(state: GameState, phase: Phase): MissingTask
   if (phase === "NIGHT_WITCH_ACTION") {
     return createMissingTasksForWitch(state);
   }
+  if (phase === "NIGHT_MAGICIAN_ACTION") {
+    return createMissingTasksForMagician(state);
+  }
 
   const task = createMissingTask(state, phase);
   return task ? [task] : [];
+}
+
+/**
+ * 魔術師的補全清單：**兩列**（第一人、第二人）。
+ *
+ * 交換是「兩人一組」的決定，而補全對話框的每一列只給一個座位，所以拆成兩列、
+ * 由套用分支把兩個座位合成一組（再用 `isValidSwap` 驗一次）。這也是為什麼
+ * `createMissingTasksForPhase` 要能回傳多列——單列版本裝不下這種決定。
+ */
+function createMissingTasksForMagician(state: GameState): MissingTask[] {
+  const magician = state.players.find((p) => p.role === "Magician" && p.alive);
+  // 沒有魔術師、或今晚已經換過（含沒有合法組合的退化情況）就不必補
+  if (!magician || magicianDecided(state)) return [];
+
+  const { t } = getI18n();
+  const options = getSwapEligibleSeats(state).map((seat) => {
+    const p = state.players.find((player) => player.seat === seat);
+    return { value: seat, label: t("devConsole.playerLabel", { seat: seat + 1, name: p?.displayName ?? "" }) };
+  });
+  const day = state.day;
+
+  return [
+    {
+      phase: "NIGHT_MAGICIAN_ACTION",
+      description: t("smartJump.magicianSwapFirst", { day }),
+      field: "magicianSwapFirst",
+      options,
+    },
+    {
+      phase: "NIGHT_MAGICIAN_ACTION",
+      description: t("smartJump.magicianSwapSecond", { day }),
+      field: "magicianSwapSecond",
+      options,
+    },
+  ];
 }
 
 function createMissingTasksForWitch(state: GameState): MissingTask[] {
@@ -1194,6 +1259,29 @@ export function applySmartJump(
 }
 
 /**
+ * 把補全對話框的兩列（第一人／第二人）合成一組換位。
+ *
+ * 缺一列或組合不合法（同一人、死者、名單外）就回 `undefined` **並出聲**：
+ * 這一晚的換位留給夜間流程自己決定（AI 或隨機），而不是寫一組錯的進去。
+ */
+function combineMagicianSwap(
+  state: GameState,
+  first: unknown,
+  second: unknown
+): [number, number] | undefined {
+  if (first === undefined || second === undefined) {
+    console.warn("[wolfcha] 跳轉補全的魔術師換位只填了一列，這一晚的換位留給夜間流程", { first, second });
+    return undefined;
+  }
+  const swap: [number, number] = [Number(first), Number(second)];
+  if (!isValidSwap(state, swap)) {
+    console.warn("[wolfcha] 跳轉補全的魔術師換位組合不合法，這一晚的換位留給夜間流程", swap);
+    return undefined;
+  }
+  return swap;
+}
+
+/**
  * 应用手动补全数据后的跳转
  * @param currentState 当前游戏状态
  * @param target 目标时间点
@@ -1216,6 +1304,26 @@ export function applySmartJumpWithFilledData(
         ...(newState.nightHistory || {}),
         [day]: { ...prev, guardTarget: value as number },
       };
+      continue;
+    }
+
+    // 魔術師的換位是**兩列**（第一人／第二人）：兩列都填齊才合成一組，並用 isValidSwap 驗一次。
+    // 只填一列或組合不合法 → 不寫入（晚上的流程會自己決定），但一律出聲，不靜默吞掉。
+    const magicianMatch = field.match(/day(\d+)MagicianSwap(First|Second)/);
+    if (magicianMatch) {
+      const day = Number(magicianMatch[1]);
+      const swap = combineMagicianSwap(
+        newState,
+        filledData[`day${day}MagicianSwapFirst`],
+        filledData[`day${day}MagicianSwapSecond`]
+      );
+      if (swap !== undefined) {
+        const prev = (newState.nightHistory || {})[day] || {};
+        newState.nightHistory = {
+          ...(newState.nightHistory || {}),
+          [day]: { ...prev, magicianSwap: swap },
+        };
+      }
       continue;
     }
 
@@ -1372,6 +1480,16 @@ export function applySmartJumpWithFilledData(
         newState.nightActions = { ...newState.nightActions, wolfBeautyTarget: value as number };
         break;
       }
+      case "magicianSwapFirst":
+      case "magicianSwapSecond": {
+        // 換位是兩列（第一人／第二人）：兩列的值都在 filledData 裡，所以這裡直接合成
+        // （不看套用順序），寫入後才會有完整的一組
+        const swap = combineMagicianSwap(newState, filledData.magicianSwapFirst, filledData.magicianSwapSecond);
+        if (swap !== undefined) {
+          newState.nightActions = { ...newState.nightActions, magicianSwap: swap };
+        }
+        break;
+      }
       case "mutedTarget": {
         newState.nightActions = { ...newState.nightActions, mutedTarget: value as number };
         break;
@@ -1485,9 +1603,14 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
   const wolfBeauty = state.players.find((p) => p.role === "WolfBeauty");
   const hasAliveWolfBeauty = wolfBeauty ? aliveAtNightStart.has(wolfBeauty.seat) : false;
 
+  const magician = state.players.find((p) => p.role === "Magician");
+  const hasAliveMagician = magician ? aliveAtNightStart.has(magician.seat) : false;
+
   const guardTargetEffective = hasAliveGuard ? guardTarget : undefined;
   // 狼美人目標也要寫回夜史：DevTools 的動作記錄與賽後分析都讀這一格
   const wolfBeautyTargetEffective = hasAliveWolfBeauty ? nightActions.wolfBeautyTarget : undefined;
+  // 魔術師的換位組合同理（少了這一格，DevTools 會顯示「無」而賽後分析看不到換位）
+  const magicianSwapEffective = hasAliveMagician ? nightActions.magicianSwap : undefined;
   const wolfTargetEffective = hasAliveWolves ? wolfTarget : undefined;
   const witchSaveEffective = hasAliveWitch ? witchSave : undefined;
   const witchPoisonEffective = hasAliveWitch ? witchPoison : undefined;
@@ -1512,8 +1635,13 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
     previousDreamTarget: state.nightHistory?.[day - 1]?.dreamTarget,
     wolfBeautyTarget: wolfBeautyTargetEffective,
     wolfBeautySeat: wolfBeauty?.seat,
+    // 換位要在結算前套用（夜間指向改判到另一人），與 rules/night-resolution 的單一真相一致
+    magicianSwap: magicianSwapEffective,
+    magicianSeat: magician?.seat,
     isActorAlive: (actor) =>
-      actor === "wolfBeauty"
+      actor === "magician"
+        ? hasAliveMagician
+        : actor === "wolfBeauty"
         ? hasAliveWolfBeauty
         : actor === "guard"
           ? hasAliveGuard
@@ -1563,6 +1691,7 @@ function ensureNightResolvedForDay(state: GameState, day: number): GameState {
         seerResult: seerResultEffective,
         dreamTarget: hasAliveDreamweaver ? dreamTarget : undefined,
         wolfBeautyTarget: wolfBeautyTargetEffective,
+        magicianSwap: magicianSwapEffective,
         deaths,
       },
     },
@@ -1654,8 +1783,12 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
 
   const wolfBeauty = state.players.find((p) => p.role === "WolfBeauty");
   const hasAliveWolfBeauty = wolfBeauty ? aliveAtNightStart.has(wolfBeauty.seat) : false;
+
+  const magician = state.players.find((p) => p.role === "Magician");
+  const hasAliveMagician = magician ? aliveAtNightStart.has(magician.seat) : false;
   // 狼美人目標也要寫回夜史（DevTools 動作記錄與賽後分析都讀這一格）
   const wolfBeautyTargetEffective = hasAliveWolfBeauty ? record.wolfBeautyTarget : undefined;
+  const magicianSwapEffective = hasAliveMagician ? record.magicianSwap : undefined;
 
   const poisonUsedOnOtherDay = (() => {
     for (const [dayStr, r] of Object.entries(state.nightHistory || {})) {
@@ -1675,8 +1808,12 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
     previousDreamTarget: state.nightHistory?.[day - 1]?.dreamTarget,
     wolfBeautyTarget: wolfBeautyTargetEffective,
     wolfBeautySeat: wolfBeauty?.seat,
+    magicianSwap: magicianSwapEffective,
+    magicianSeat: magician?.seat,
     isActorAlive: (actor) =>
-      actor === "wolfBeauty"
+      actor === "magician"
+        ? hasAliveMagician
+        : actor === "wolfBeauty"
         ? hasAliveWolfBeauty
         : actor === "guard"
           ? hasAliveGuard
@@ -1712,6 +1849,7 @@ function ensureNightResolvedForDayFromHistory(state: GameState, day: number): Ga
         seerResult: seerResultEffective,
         dreamTarget: hasAliveDreamweaver ? record.dreamTarget : undefined,
         wolfBeautyTarget: wolfBeautyTargetEffective,
+        magicianSwap: magicianSwapEffective,
         deaths,
       },
     },

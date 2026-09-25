@@ -231,7 +231,7 @@
 | 5 AI 決策 `runMagicianAction`／`generateMagicianSwap` | ✅ 完成（回應格式 `{"seats":[a,b],"reason":…}`；不合法就 `pickRandomSwap`，不靜默少做） |
 | 6 真人兩段式選取（面板與路由） | ✅ 完成（`TWO_SEAT_ACTION_PHASES` 是單一真相；面板與路由各讀同一份，狀態機守衛涵蓋） |
 | 7 `prompts.magician.*` 與玩法指引 | ✅ 完成（三語系 `prompts.magician`＋`strategyGuide.magician`＋`ui/system` 文案＋旁白鍵） |
-| 8 夜史、DevConsole、跳轉補全、賽後分析 | ⬜ 待做 |
+| 8 夜史、DevConsole、跳轉補全、賽後分析 | ✅ 完成（夜史寫回、DevConsole 一格、補全兩列＋兩條套用分支、時間軸 `swap` 事件與夜晚事實） |
 | 9 版型 `official-12-wolf-king-magician` | ⬜ 待做 |
 
 **第二輪（階段層＋AI 決策＋換位結算）的補充**

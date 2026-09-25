@@ -2412,7 +2412,8 @@
       "dayExecution": "Day execution",
       "voteTieNoElim": "Tie, no one eliminated",
       "hunterShotDay": "Hunter shot (day):",
-      "voteInfo": "Vote info"
+      "voteInfo": "Vote info",
+      "magicianSwap": "Magician swap"
     },
     "deathReason": {
       "wolf": "wolf kill",
@@ -2466,7 +2467,9 @@
     "nightDreamAction": "Night {day} Dreamweaver dream target",
     "dreamAction": "Dreamweaver dream target",
     "muteAction": "Mute Elder mute target",
-    "wolfBeautyAction": "Night {day} Wolf Beauty charm: who does she take?"
+    "wolfBeautyAction": "Night {day} Wolf Beauty charm: who does she take?",
+    "magicianSwapFirst": "Night {day} swap (first player)",
+    "magicianSwapSecond": "Night {day} swap (second player)"
   },
   "nightActionOverlay": {
     "target": "Target"

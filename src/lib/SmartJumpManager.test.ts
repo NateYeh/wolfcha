@@ -64,6 +64,11 @@ const NIGHT_ROLE_BOARD: Role[] = [
   "Seer", "Villager", "Villager", "Villager", "Villager",
 ];
 
+const MAGICIAN_BOARD: Role[] = [
+  "Magician", "Werewolf", "Werewolf", "Seer", "Witch", "Villager",
+  "Villager", "Villager", "Villager", "Villager", "Villager", "Villager",
+];
+
 const WOLF_BEAUTY_BOARD: Role[] = [
   "WolfBeauty", "Werewolf", "Werewolf", "Seer", "Witch", "Villager",
   "Villager", "Villager", "Villager", "Villager", "Villager", "Villager",
@@ -240,4 +245,66 @@ test("夜間結算寫回夜史時要保留狼美人魅惑目標（DevTools 與�
     3,
     "結算後夜史仍要留有魅惑目標，否則動作記錄會顯示「無」"
   );
+});
+
+test("魔術師的補全是兩列（第一人／第二人），兩列都填才合成一組寫進 nightActions", async () => {
+  const { analyzeJump, applySmartJumpWithFilledData } = await import("@/lib/SmartJumpManager");
+  const state = await nightBoard({}, MAGICIAN_BOARD);
+  const fields = analyzeJump(state, { day: 1, phase: "NIGHT_WOLF_ACTION" }).missingTasks.map((t) => t.field);
+  assert.ok(fields.includes("magicianSwapFirst"), `換位第一人應該要被補全，實際：${fields.join(", ")}`);
+  assert.ok(fields.includes("magicianSwapSecond"), `換位第二人應該要被補全，實際：${fields.join(", ")}`);
+
+  const next = applySmartJumpWithFilledData(state, { day: 1, phase: "NIGHT_WOLF_ACTION" }, {
+    magicianSwapFirst: 6,
+    magicianSwapSecond: 3,
+  });
+  assert.deepEqual(next.nightActions.magicianSwap, [6, 3], "兩列合成一組，寫進 nightActions");
+});
+
+test("魔術師的兩列只填一列或填同一人 → 不寫入（留給夜間流程決定，但會出聲）", async () => {
+  const { applySmartJumpWithFilledData } = await import("@/lib/SmartJumpManager");
+  const state = await nightBoard({}, MAGICIAN_BOARD);
+
+  const half = applySmartJumpWithFilledData(state, { day: 1, phase: "NIGHT_WOLF_ACTION" }, {
+    magicianSwapFirst: 6,
+  });
+  assert.equal(half.nightActions.magicianSwap, undefined, "只填一列不該寫入半組");
+
+  const same = applySmartJumpWithFilledData(state, { day: 1, phase: "NIGHT_WOLF_ACTION" }, {
+    magicianSwapFirst: 6,
+    magicianSwapSecond: 6,
+  });
+  assert.equal(same.nightActions.magicianSwap, undefined, "(X, X) 不是合法的換位");
+});
+
+test("跨日前跳的換位要寫進夜史，而且結算後仍在（DevTools 與賽後分析都讀這格）", async () => {
+  const { applySmartJumpWithFilledData } = await import("@/lib/SmartJumpManager");
+  const state = await nightBoard({}, MAGICIAN_BOARD);
+  const next = applySmartJumpWithFilledData(state, { day: 2, phase: "DAY_START" }, {
+    day1MagicianSwapFirst: 6,
+    day1MagicianSwapSecond: 3,
+    day1WolfTarget: 5,
+    day1WitchSave: "false",
+    day1WitchPoison: "none",
+  });
+  assert.deepEqual(
+    next.nightHistory?.[1]?.magicianSwap,
+    [6, 3],
+    "夜間結算寫回夜史時仍要保留換位組合，否則動作記錄會顯示「無」"
+  );
+});
+
+test("魔術師在場時，換位也會反映在跳轉後的死亡結算（刀口改判）", async () => {
+  const { applySmartJumpWithFilledData } = await import("@/lib/SmartJumpManager");
+  const state = await nightBoard({}, MAGICIAN_BOARD);
+  // 狼刀 5 號、魔術師把 5 號與 1 號交換 → 死的應該是被換到的 1 號
+  const next = applySmartJumpWithFilledData(state, { day: 2, phase: "DAY_START" }, {
+    day1MagicianSwapFirst: 5,
+    day1MagicianSwapSecond: 1,
+    day1WolfTarget: 5,
+    day1WitchSave: "false",
+    day1WitchPoison: "none",
+  });
+  assert.equal(next.players.find((p) => p.seat === 1)?.alive, false, "換位後死的應該是被換到的 1 號");
+  assert.equal(next.players.find((p) => p.seat === 5)?.alive, true, "原本被刀的 5 號被換走了，應該活著");
 });

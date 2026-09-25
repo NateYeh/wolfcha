@@ -19,6 +19,7 @@ const NIGHT_ACTION_LABELS: Record<string, string> = {
   save: "救",
   poison: "毒",
   check: "查验",
+  swap: "交换",
 };
 
 function formatSeatTarget(target: string): string {

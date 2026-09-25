@@ -65,6 +65,8 @@ export const NIGHT_EVENT_COLORS: Record<string, { text: string; border: string }
   poison: { text: "text-[#6b46c1]", border: "border-[#6b46c1]/30" },
   check: { text: "text-[#2c5282]", border: "border-[#2c5282]/30" },
   guard: { text: "text-[#d97706]", border: "border-[#d97706]/30" },
+  // 魔術師的交換（不公告，只有賽後時間軸看得到）
+  swap: { text: "text-[#2c5282]", border: "border-[#2c5282]/30" },
 };
 
 export const DAY_EVENT_LABELS: Record<string, string> = {

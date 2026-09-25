@@ -2412,7 +2412,8 @@
       "dayExecution": "白天处决",
       "voteTieNoElim": "平票，无人出局",
       "hunterShotDay": "猎人开枪(日):",
-      "voteInfo": "投票信息"
+      "voteInfo": "投票信息",
+      "magicianSwap": "魔术师换位"
     },
     "deathReason": {
       "wolf": "狼刀",
@@ -2466,7 +2467,9 @@
     "nightDreamAction": "第 {day} 夜 摄梦人梦游者",
     "dreamAction": "摄梦人梦游者",
     "muteAction": "禁言长老禁言目标",
-    "wolfBeautyAction": "第 {day} 夜狼美人魅惑：帶走誰？"
+    "wolfBeautyAction": "第 {day} 夜狼美人魅惑：帶走誰？",
+    "magicianSwapFirst": "第 {day} 天换位（第一人）",
+    "magicianSwapSecond": "第 {day} 天换位（第二人）"
   },
   "nightActionOverlay": {
     "target": "目标"

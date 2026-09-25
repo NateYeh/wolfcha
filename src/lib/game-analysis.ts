@@ -825,6 +825,10 @@ function buildAuthoritativeHistoryText(state: GameState): string {
 
     if (nightData) {
       const nightFacts: string[] = [];
+      if (nightData.magicianSwap) {
+        const [firstSeat, secondSeat] = nightData.magicianSwap;
+        nightFacts.push(`魔术师交换${formatSeatName(state, firstSeat)}与${formatSeatName(state, secondSeat)}`);
+      }
       if (nightData.guardTarget !== undefined) {
         nightFacts.push(`守卫守护${formatSeatName(state, nightData.guardTarget)}`);
       }
@@ -1082,6 +1086,16 @@ function buildTimeline(state: GameState, aiSummaries?: AISpeechSummaryResult): T
           type: "guard",
           source: "守卫",
           target: `${nightData.guardTarget + 1}号`,
+        });
+      }
+      
+      // 魔術師的換位（不公告，只有賽後時間軸看得到）：兩個座位一起顯示
+      if (nightData.magicianSwap) {
+        const [firstSeat, secondSeat] = nightData.magicianSwap;
+        nightEvents.push({
+          type: "swap",
+          source: "魔术师",
+          target: `${firstSeat + 1}号 ⇄ ${secondSeat + 1}号`,
         });
       }
     }
