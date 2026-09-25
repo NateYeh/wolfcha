@@ -13,6 +13,7 @@ import {
   generateHunterShoot,
 } from "@/lib/game-master";
 import { getSystemMessages } from "@/lib/game-texts";
+import { pickNightRecordActions } from "@/lib/rules/night-record";
 import { getChainedShooter, getDeathShotKind } from "@/lib/rules/death-skills";
 import { getI18n } from "@/i18n/translator";
 import { DELAY_CONFIG } from "@/lib/game-constants";
@@ -313,24 +314,11 @@ export function useSpecialEvents(
       nightHistory: {
         ...(currentState.nightHistory || {}),
         [currentState.day]: {
-          guardTarget: currentState.nightActions.guardTarget,
-          wolfTarget: currentState.nightActions.wolfTarget,
-          witchSave: currentState.nightActions.witchSave,
-          witchPoison: currentState.nightActions.witchPoison,
-          seerTarget: currentState.nightActions.seerTarget,
-          seerResult: currentState.nightActions.seerResult,
-          dreamTarget: currentState.nightActions.dreamTarget,
-          wolfBeautyTarget: currentState.nightActions.wolfBeautyTarget,
+          // 夜間行動欄位共用一份清單（rules/night-record）：手寫清單漏一格，
+          // 賽後分析與 DevTools 就會顯示「無」——狼美人與魔術師各被抓到一次。
+          ...pickNightRecordActions(currentState.nightActions),
           deaths: nightDeaths,
           resultsAnnounced: false,
-          // 本人的私有決策理由：賽中不公開，只備賽後感言引用。
-          guardReason: currentState.nightActions.guardReason,
-          wolfReason: currentState.nightActions.wolfReason,
-          witchSaveReason: currentState.nightActions.witchSaveReason,
-          witchPoisonReason: currentState.nightActions.witchPoisonReason,
-          seerReason: currentState.nightActions.seerReason,
-          dreamReason: currentState.nightActions.dreamReason,
-          wolfBeautyReason: currentState.nightActions.wolfBeautyReason,
         },
       },
     };

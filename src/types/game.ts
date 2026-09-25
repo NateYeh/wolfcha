@@ -314,6 +314,8 @@ export interface GameState {
       dreamTarget?: number;
       /** 魔術師當晚交換的兩名玩家（當晚指向其中一人的技能改判到另一人身上） */
       magicianSwap?: [number, number];
+      /** 禁言長老當晚禁言的座位（隔天不能發言） */
+      mutedTarget?: number;
       /** 狼美人當晚魅惑的座位（她出局時被魅惑者隨之殉情） */
       wolfBeautyTarget?: number;
       wolfBeautyReason?: string;
@@ -326,6 +328,8 @@ export interface GameState {
       witchPoisonReason?: string;
       seerReason?: string;
       dreamReason?: string;
+      muteReason?: string;
+      magicianReason?: string;
     }
   >;
   dayHistory?: Record<

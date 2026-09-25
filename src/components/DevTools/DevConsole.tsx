@@ -1268,6 +1268,10 @@ function GlobalTab({
                       {getSeatLabel(night?.guardTarget)}
                     </div>
                     <div className="text-gray-300">
+                      <span className="text-gray-400">{t("devConsole.actionRecordDetails.mutedTarget")}</span>{" "}
+                      {getSeatLabel(night?.mutedTarget)}
+                    </div>
+                    <div className="text-gray-300">
                       <span className="text-gray-400">{t("devConsole.actionRecordDetails.wolfTarget")}</span>{" "}
                       {getSeatLabel(night?.wolfTarget)}
                     </div>

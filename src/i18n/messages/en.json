@@ -2426,7 +2426,8 @@
       "voteTieNoElim": "Tie, no one eliminated",
       "hunterShotDay": "Hunter shot (day):",
       "voteInfo": "Vote info",
-      "magicianSwap": "Magician swap"
+      "magicianSwap": "Magician swap",
+      "mutedTarget": "Mute Elder"
     },
     "deathReason": {
       "wolf": "wolf kill",

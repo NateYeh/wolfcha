@@ -2426,7 +2426,8 @@
       "voteTieNoElim": "平票，无人出局",
       "hunterShotDay": "猎人开枪(日):",
       "voteInfo": "投票信息",
-      "magicianSwap": "魔术师换位"
+      "magicianSwap": "魔术师换位",
+      "mutedTarget": "禁言长老"
     },
     "deathReason": {
       "wolf": "狼刀",
