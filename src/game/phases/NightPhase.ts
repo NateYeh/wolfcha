@@ -1,4 +1,4 @@
-import { redirectSeat } from "@/lib/rules/magician";
+import { getSwapEligibleSeats, isValidSwap, pickRandomSwap, redirectSeat } from "@/lib/rules/magician";
 import type { GameState, Player, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
@@ -7,6 +7,7 @@ import { bindIdentityAndRoleSetting, buildDecisionContext, buildGameContext, bui
 import {
   addSystemMessage,
   generateDreamAction,
+  generateMagicianSwap,
   generateWolfBeautyAction,
   generateGuardAction,
   generateMuteAction,
@@ -71,6 +72,8 @@ export class NightPhase extends GamePhase {
         return this.buildMutePrompt(state, player);
       case "NIGHT_DREAM_ACTION":
         return this.buildDreamPrompt(state, player);
+      case "NIGHT_MAGICIAN_ACTION":
+        return this.buildMagicianPrompt(state, player);
       case "NIGHT_WOLF_BEAUTY_ACTION":
         return this.buildWolfBeautyPrompt(state, player);
       case "NIGHT_WOLF_ACTION":
@@ -367,6 +370,48 @@ export class NightPhase extends GamePhase {
     await playNarrator("dreamClose");
 
     return currentState;
+  }
+
+  /**
+   * 魔術師 AI 提示：選**兩名**存活玩家交換（可含自己，但不能同一人；見 §6.1 裁定 3）。
+   *
+   * 名單刻意給「全部存活玩家（含自己）」，因為本作允許換自己；`(X, X)` 這種組合靠
+   * `isValidSwap` 把關（schema 只擋得住「不在名單裡」）。
+   */
+  private buildMagicianPrompt(state: GameState, player: Player): PromptResult {
+    const { t } = getI18n();
+    const gameContext = buildDecisionContext(state, player);
+    const eligible = getSwapEligibleSeats(state);
+    const options = eligible
+      .map((seat) => {
+        const target = state.players.find((p) => p.seat === seat);
+        return t("prompts.night.option", { seat: seat + 1, name: target?.displayName ?? "" });
+      })
+      .join(t("promptUtils.gameContext.listSeparator"));
+    const exampleA = (eligible[0] ?? 0) + 1;
+    const exampleB = (eligible[1] ?? 0) + 1;
+    const jsonFormat = JSON.stringify({ seats: [exampleA, exampleB], reason: t("promptUtils.gameContext.jsonReasonSwap") });
+    // 自己也在名單裡時明說一句，免得模型以為「不能選自己」而漏掉合法解
+    const selfNote = eligible.includes(player.seat)
+      ? t("prompts.magician.selfNote", { seat: player.seat + 1 })
+      : "";
+
+    const cacheableContent = bindIdentityAndRoleSetting(t("prompts.magician.base", {
+      seat: player.seat + 1,
+      name: player.displayName,
+      role: getRoleText(player.role),
+      coreRules: "",
+    }), player, !!state.isGenshinMode);
+    const dynamicContent = t("prompts.magician.task", { options, jsonFormat, selfNote });
+    const systemParts: SystemPromptPart[] = [...buildSharedSystemParts(state)];
+    const system = buildSystemTextFromParts(systemParts);
+
+    const user = t("prompts.magician.user", {
+      context: [gameContext, cacheableContent, dynamicContent].filter(Boolean).join("\n\n"),
+      jsonFormat,
+    });
+
+    return { system, user, systemParts };
   }
 
   /** 攝夢人 AI 提示：必須選一名存活玩家、不能選自己 */
@@ -801,6 +846,72 @@ export class NightPhase extends GamePhase {
     await this.continueNightAfterDream(currentState, runtime);
   }
 
+  /**
+   * 魔術師的夜間行動：選兩名玩家交換（AI 決策；真人由前端面板選兩張卡，§6.1 步驟 6）。
+   *
+   * 「不能空過」是規則：AI 沒給出合法組合（或上游逾時）時由 `pickRandomSwap` 隨機補一組，
+   * 絕不靜默地少做一件事——所以這裡一定會寫入 `magicianSwap`（除非場上湊不出兩個活人）。
+   */
+  private async runMagicianAction(state: GameState, runtime: NightPhaseRuntime): Promise<GameState> {
+    const { t } = getI18n();
+    const speakerSystem = t("speakers.system");
+    const systemMessages = getSystemMessages();
+    const uiText = getUiText();
+    const magician = state.players.find((p) => p.role === "Magician" && p.alive);
+
+    let currentState = this.transitionPhase(state, "NIGHT_MAGICIAN_ACTION");
+    currentState = addSystemMessage(currentState, systemMessages.magicianActionStart);
+    runtime.setGameState(currentState);
+
+    runtime.setIsWaitingForAI(true);
+    runtime.setDialogue(speakerSystem, uiText.magicianActing, false);
+    await playNarrator("magicianWake");
+
+    if (!magician) {
+      await delay(randomFakeActionDelay());
+      await runtime.waitForUnpause();
+      if (!runtime.isTokenValid(runtime.token)) return currentState;
+      runtime.setIsWaitingForAI(false);
+      await playNarrator("magicianClose");
+      return currentState;
+    }
+
+    if (magician.isHuman) {
+      runtime.setIsWaitingForAI(false);
+      runtime.setDialogue(speakerSystem, uiText.waitingMagician, false);
+      return currentState;
+    }
+
+    const swapOutcome = await generateMagicianSwap(currentState, magician);
+    await runtime.waitForUnpause();
+    if (!runtime.isTokenValid(runtime.token)) return currentState;
+
+    const aiSwap = swapOutcome?.swap;
+    const swap = aiSwap !== undefined && isValidSwap(currentState, aiSwap) ? aiSwap : pickRandomSwap(currentState);
+    const usedAiSwap = swap !== undefined && aiSwap !== undefined && swap[0] === aiSwap[0] && swap[1] === aiSwap[1];
+
+    if (swap === undefined) {
+      console.warn("[wolfcha] 場上湊不出兩名存活玩家，魔術師本晚不換位");
+    } else if (!usedAiSwap) {
+      console.warn("[wolfcha] 魔術師的換位組合缺失或不合法，系統隨機選擇一組");
+    }
+
+    currentState = {
+      ...currentState,
+      nightActions: {
+        ...currentState.nightActions,
+        ...(swap !== undefined ? { magicianSwap: swap } : {}),
+        ...(usedAiSwap && swapOutcome?.reason ? { magicianReason: swapOutcome.reason } : {}),
+      },
+    };
+    runtime.setGameState(currentState);
+    runtime.setIsWaitingForAI(false);
+
+    await playNarrator("magicianClose");
+
+    return currentState;
+  }
+
   /** 攝夢人 → 狼人 → 女巫 → 預言家（AI 與真人共用同一條續跑鏈） */
   private async continueNightAfterDream(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
     let currentState = state;
@@ -824,16 +935,25 @@ export class NightPhase extends GamePhase {
     await this.continueNightAfterMagician(currentState, runtime);
   }
 
-  /**
-   * 魔術師 → 狼人 → …（AI 與真人共用）。
-   *
-   * ⚠️ 魔術師**自己的換位行動還沒接上**（`runMagicianAction`／`generateMagicianSwap` 是 §6.1 步驟 5）：
-   * 目前沒有任何版型收錄魔術師，所以到不了；一旦加了版型就必須先補上這一步，
-   * 否則這一晚會沒有換位（不會卡住，但會少一件事）。
-   * 這裡先把它後面的狼人鏈接起來，免得新增的續跑指令落空。
-   */
+  /** 魔術師 → 狼人 → 女巫 → 預言家（AI 與真人共用同一條續跑鏈）。 */
   private async continueNightAfterMagician(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
-    const currentState = state;
+    let currentState = state;
+
+    // 真人魔術師選完兩張牌後，狀態已停在 NIGHT_MAGICIAN_ACTION，不再重跑一次行動
+    if (currentState.phase !== "NIGHT_MAGICIAN_ACTION") {
+      const hasMagician = currentState.players.some((p) => p.role === "Magician");
+      if (hasMagician) {
+        currentState = await this.runMagicianAction(currentState, runtime);
+        if (!runtime.isTokenValid(runtime.token)) return;
+
+        // 真人魔術師還沒選 → 停在這裡等前端寫入（§6.1 步驟 6）
+        if (humanActorPending(currentState, "NIGHT_MAGICIAN_ACTION")) return;
+
+        await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
+        await runtime.waitForUnpause();
+        if (!runtime.isTokenValid(runtime.token)) return;
+      }
+    }
 
     const afterWolf = await this.runWolfAction(currentState, runtime);
     if (!runtime.isTokenValid(runtime.token)) return;

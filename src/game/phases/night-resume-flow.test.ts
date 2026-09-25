@@ -25,6 +25,7 @@ const ROLES: Role[] = [
   "Guard",
   "MuteElder",
   "Dreamweaver",
+  "Magician",
   "Werewolf",
   "WolfBeauty",
   "Witch",
@@ -44,13 +45,14 @@ const BEFORE: Record<NightActionPhase, GameState["nightActions"]> = {
   NIGHT_GUARD_ACTION: {},
   NIGHT_MUTE_ACTION: { guardTarget: 5 },
   NIGHT_DREAM_ACTION: { guardTarget: 5, mutedTarget: 6 },
-  NIGHT_MAGICIAN_ACTION: { guardTarget: 5, mutedTarget: 6, magicianSwap: [0, 1] },
-  NIGHT_WOLF_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7 },
-  NIGHT_WOLF_BEAUTY_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7, wolfTarget: 0 },
+  NIGHT_MAGICIAN_ACTION: { guardTarget: 5, mutedTarget: 6 },
+  NIGHT_WOLF_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7, magicianSwap: [0, 1] },
+  NIGHT_WOLF_BEAUTY_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7, magicianSwap: [0, 1], wolfTarget: 0 },
   NIGHT_WITCH_ACTION: {
     guardTarget: 5,
     mutedTarget: 6,
     dreamTarget: 7,
+    magicianSwap: [0, 1],
     wolfTarget: 0,
     wolfBeautyTarget: 0,
   },
@@ -58,6 +60,7 @@ const BEFORE: Record<NightActionPhase, GameState["nightActions"]> = {
     guardTarget: 5,
     mutedTarget: 6,
     dreamTarget: 7,
+    magicianSwap: [0, 1],
     wolfTarget: 0,
     wolfBeautyTarget: 0,
   },
@@ -109,9 +112,13 @@ async function runReplayCommand(
       .join("\n");
     // 女巫要的是 action 形狀（而且「不動作」不會落盤，所以這裡要給真的會寫入的毒殺）；
     // 其他角色給 11 號（索引 10，存活村民）：避開「座位 0＝空守」與「不能選自己」。
+    // 魔術師要的是**一對**座位（`generateMagicianSwap` 的契約），其他角色是單一座位；
+    // 女巫要 action 形狀。三者混用會讓解析失敗 → 退成隨機，測不到「用了 AI 的答案」。
     const content = text.includes("【女巫技能】")
       ? witchAnswer
-      : { seat: ANSWER_DISPLAY_SEAT, reason: "測試" };
+      : /【魔[術术]（夜間技能）/u.test(text.replace("（夜间技能）", "（夜間技能）"))
+        ? { seats: [ANSWER_DISPLAY_SEAT, 2], reason: "測試" }
+        : { seat: ANSWER_DISPLAY_SEAT, reason: "測試" };
     return Response.json({
       id: "test",
       choices: [{ message: { role: "assistant", content: JSON.stringify(content), finish_reason: "stop" } }],
@@ -161,33 +168,25 @@ const DECISION: Record<NightActionPhase, (state: GameState) => unknown> = {
   NIGHT_SEER_ACTION: (s) => s.nightActions.seerTarget,
 };
 
-/**
- * 魔術師的換位行動**還沒接上**（`docs/board-variants-catalog.md` §6.1 步驟 5）：
- * 目前這一步不會問 AI、也就不會寫入 `magicianSwap`。這條測試刻意把「現在會發生什麼」
- * 寫死——等步驟 5 做完，這裡會紅，逼著把它改成跟其他角色一樣的斷言。
- */
-const ACTION_WIRED_PHASES = NIGHT_ACTION_ORDER.filter((phase) => phase !== "NIGHT_MAGICIAN_ACTION");
-
 test("重跑指令會真的執行那一步的行動，並把夜晚走完", async () => {
-  for (const phase of ACTION_WIRED_PHASES) {
+  for (const phase of NIGHT_ACTION_ORDER) {
     const { completed, askedCount } = await runReplayCommand(phase);
     assert.ok(completed, `${phase}：下了重跑指令之後夜晚必須走完（卡住就不會到這裡）`);
     assert.ok(askedCount > 0, `${phase}：應該有問過 AI`);
     const decision = DECISION[phase](completed as GameState);
+    if (phase === "NIGHT_MAGICIAN_ACTION") {
+      // 魔術師的決定是**一對**座位：必須正好兩席、且包含 AI 給的那一席
+      assert.ok(Array.isArray(decision), `${phase}：換位必須是一對座位`);
+      assert.equal((decision as number[]).length, 2, `${phase}：換位必須正好兩人`);
+      assert.ok(
+        (decision as number[]).includes(ANSWER_SEAT),
+        `${phase}：應該使用 AI 給的 ${ANSWER_DISPLAY_SEAT} 號座位（實際 ${JSON.stringify(decision)}）`
+      );
+      continue;
+    }
     assert.notEqual(decision, undefined, `${phase}：那一步的決定必須被寫入（否則就是整步被跳過）`);
     assert.equal(decision, ANSWER_SEAT, `${phase}：應該使用 AI 給的 ${ANSWER_DISPLAY_SEAT} 號座位`);
   }
-});
-
-test("魔術師的換位行動還沒接上：重跑不會有換位，也因此夜晚判定為未完成（步驟 5 做完這條要改）", async () => {
-  const { completed } = await runReplayCommand("NIGHT_MAGICIAN_ACTION");
-  // 現況：這一步不會問 AI、不會寫入 magicianSwap，所以 `magicianDecided` 永遠是 false，
-  // 續跑迴圈會一直認為夜晚還沒做完。沒有任何版型收錄魔術師，所以到不了；
-  // 接上步驟 5（`runMagicianAction`）之後，這條要改成跟其他角色一樣「必須完成」。
-  // 現況：這一步不會問 AI（`runMagicianAction` 是 §6.1 步驟 5），
-  // 所以「AI 給的組合」當然不存在；這裡只要求**續跑指令不能落空**——夜晚必須走完。
-  // 接上步驟 5 之後，這條要改成跟其他角色一樣：斷言 `DECISION[phase]` 等於 AI 給的組合。
-  assert.ok(completed, "就算換位還沒接上，夜晚也必須走完");
 });
 
 test("女巫說「不救」也是決定：要落盤（否則恢復存檔會再問一次）", async () => {

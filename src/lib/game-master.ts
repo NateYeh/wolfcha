@@ -44,6 +44,7 @@ import {
 import { getMuteEligibleSeats } from "@/lib/rules/mute";
 import { getDreamEligibleSeats } from "@/lib/rules/dream";
 import { getWolfBeautyEligibleSeats, getWolfKnifeEligibleSeats } from "@/lib/rules/charm";
+import { getSwapEligibleSeats } from "@/lib/rules/magician";
 import { getHunterShots } from "@/lib/rules/hunter-shots";
 import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
 import { getRoleCapabilities } from "@/lib/rules/roles";
@@ -1865,6 +1866,14 @@ export interface NightActionOutcome {
   reason: string;
 }
 
+/**
+ * 魔術師的夜間行動回傳的是**一對座位**（不是單一座位），所以不能用 `NightActionOutcome`。
+ */
+export interface MagicianSwapOutcome {
+  swap: [number, number];
+  reason: string;
+}
+
 export async function generateSeerAction(
   state: GameState,
   player: Player
@@ -2732,6 +2741,145 @@ export async function generateDreamAction(
       response: {
         content: "",
         parsed: { targetSeat: undefined },
+        attempts,
+        duration: Date.now() - startTime,
+        failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",
+      },
+      error: String(error),
+    });
+    return undefined;
+  }
+}
+
+/**
+ * 魔術師的回應格式：`{"seats": [a, b], "reason": "..."}`。
+ *
+ * 不能沿用 `seatSelectionResponseFormat`（那是單一座位）。`seats` 用 enum 限制在合法座位上，
+ * 但**合法組合**（兩人相異、都是存活玩家）不靠 schema 保證——schema 只擋得住「不在名單裡」，
+ * 所以真正的把關仍在 `runMagicianAction` 呼叫 `isValidSwap`（單一真相）。
+ */
+function swapResponseFormat(
+  modelRef: Pick<ModelRef, "provider" | "model">,
+  name: string,
+  validSeats: number[]
+): NonNullable<GenerateOptions["response_format"]> {
+  return structuredResponseFormat(modelRef, name, {
+    type: "object",
+    properties: {
+      seats: {
+        type: "array",
+        items: { type: "integer", enum: validSeats.map((seat) => seat + 1) },
+        minItems: 2,
+        maxItems: 2,
+      },
+      reason: { type: "string" },
+    },
+    required: ["seats", "reason"],
+    additionalProperties: false,
+  });
+}
+
+/** 從一則回應裡取出「兩個相異且合法的座位」；取不到回 null（呼叫端會退成隨機）。 */
+function parseSwapSeats(raw: string, validSeats: number[]): [number, number] | null {
+  if (validSeats.length < 2) return null;
+  const cleaned = stripMarkdownCodeFences(raw).trim();
+  const parsed = parseLLMJson<unknown>(cleaned);
+  const collected: number[] = [];
+
+  const push = (value: unknown): void => {
+    const seat = parseDisplaySeatValue(value, validSeats);
+    if (seat !== null && !collected.includes(seat)) collected.push(seat);
+  };
+
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    const record = parsed as Record<string, unknown>;
+    for (const key of ["seats", "swap", "pair", "targets"]) {
+      const value = record[key];
+      if (Array.isArray(value)) value.forEach(push);
+    }
+    for (const key of ["seat", "seat1", "firstSeat", "target", "targetSeat", "from"]) push(record[key]);
+    for (const key of ["secondSeat", "seat2", "target2", "to"]) push(record[key]);
+  }
+
+  // 格式不符時的退路：把整段文字裡的「N號／座位 N」抓出來（同一人只算一次）
+  if (collected.length < 2) {
+    const matches = cleaned.matchAll(/(\d{1,2})\s*(?:號|号|seat|Seat)/g);
+    for (const match of matches) push(Number.parseInt(match[1], 10));
+  }
+
+  return collected.length >= 2 ? [collected[0], collected[1]] : null;
+}
+
+/**
+ * 魔術師的夜間行動：選兩名存活玩家交換（可含自己，見 docs/board-variants-catalog.md §6.1 裁定 3）。
+ *
+ * 與 `generateDreamAction` 同一套契約：解析失敗／上游逾時回 undefined，
+ * 由呼叫端（NightPhase）用 `pickRandomSwap` 補一個合法組合（規則要求每晚都得換）。
+ */
+export async function generateMagicianSwap(
+  state: GameState,
+  player: Player
+): Promise<MagicianSwapOutcome | undefined> {
+  const prompt = resolvePhasePrompt("NIGHT_MAGICIAN_ACTION", state, player);
+  const eligibleSeats = getSwapEligibleSeats(state);
+  const eligiblePlayers = state.players.filter((p) => eligibleSeats.includes(p.seat));
+  const startTime = Date.now();
+  let attempts = 0;
+  const { messages } = buildMessagesForPrompt(prompt);
+
+  if (eligiblePlayers.length < 2) return undefined;
+
+  try {
+    const completion = await withCriticalRetry(
+      "magician_swap",
+      async () => {
+        attempts += 1;
+        return await generateCompletionAndParse<[number, number]>(
+          mergeOptionsFromModelRef(player.agentProfile!.modelRef, {
+            model: player.agentProfile!.modelRef.model,
+            messages,
+            promptScope: "gameplay",
+            temperature: GAME_TEMPERATURE.ACTION,
+            response_format: swapResponseFormat(player.agentProfile!.modelRef, "magician_swap", eligibleSeats),
+          }),
+          (cleaned) => {
+            const parsed = parseSwapSeats(cleaned, eligibleSeats);
+            return parsed === null ? parseFail() : parseOk(parsed);
+          }
+        );
+      },
+    );
+    const swap = completion.parsed ?? undefined;
+    await aiLogger.log({
+      type: "magician_swap",
+      request: {
+        model: player.agentProfile!.modelRef.model,
+        messages,
+        player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+      },
+      response: {
+        content: completion.cleaned,
+        raw: completion.result.content,
+        rawResponse: JSON.stringify(completion.result.raw, null, 2),
+        finishReason: completion.result.raw.choices?.[0]?.finish_reason,
+        parsed: { swap: swap ?? null, attempts: completion.attempts },
+        attempts,
+        duration: Date.now() - startTime,
+      },
+    });
+    return swap === undefined ? undefined : { swap, reason: extractActionReason(completion.cleaned) };
+  } catch (error) {
+    console.warn("[wolfcha] generateMagicianSwap failed, falling back to a random swap:", error);
+    await aiLogger.log({
+      type: "magician_swap",
+      request: {
+        model: player.agentProfile!.modelRef.model,
+        messages,
+        player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+      },
+      response: {
+        content: "",
+        parsed: { swap: null },
         attempts,
         duration: Date.now() - startTime,
         failure: isUpstreamTimeoutError(error) ? "upstream_timeout" : "error",

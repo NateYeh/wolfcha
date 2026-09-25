@@ -21,7 +21,7 @@ import { getRoleCapabilities } from "./roles";
  */
 
 /** 一晚的換位組合（座標一律是 0 基的 `seat`） */
-export type MagicianSwap = readonly [number, number];
+export type MagicianSwap = [number, number];
 
 /**
  * 今晚可以參與交換的座位：**存活玩家全部**（含魔術師自己，裁定 3）。
