@@ -1802,6 +1802,19 @@
           "Survive to the end and one life of yours trades for a good player",
           "Charming a packmate is wasted: the revenge cannot take a good player"
         ]
+      },
+      "Magician": {
+        "desc": "Every night you must swap two players so tonight's skills aimed at one of them resolve onto the other",
+        "points": [
+          "Wolf knife, poison, seer check and guard protection all get redirected; shots do not (they are daylight)",
+          "You may swap yourself in, and the same player can be swapped again later in the game",
+          "The swap is never announced — only you and the post-game review see it"
+        ],
+        "action": "At night pick two player cards (first one, then the other) and confirm the swap",
+        "tips": [
+          "The two players must differ and both must be alive",
+          "Redirecting the knife onto the guarded player wastes the save — pick carefully"
+        ]
       }
     }
   },

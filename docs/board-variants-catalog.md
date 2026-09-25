@@ -234,6 +234,12 @@
 | 8 夜史、DevConsole、跳轉補全、賽後分析 | ✅ 完成（夜史寫回、DevConsole 一格、補全兩列＋兩條套用分支、時間軸 `swap` 事件與夜晚事實） |
 | 9 版型 `official-12-wolf-king-magician` | ✅ 完成（狼人×3＋狼王／預女獵魔＋4 民；`boards.test.ts` 釘角色組成與 11 個 12 人版型清單） |
 
+**實機測試抓到的坑（2026-09-24）**：角色層做完、`tsc` 全綠、單元測試全過之後，一開局點掉身份牌
+就 **client-side exception**——`tutorialOverlay.roles` 少了新角色，教學面板讀 `.desc` 時炸掉。
+這是 `t.raw(...)` 的動態查表，型別檢查抓不到，三語系一致性測試也抓不到（三個檔案一起缺就通過），
+所以另外加了 `src/i18n/role-guides.test.ts`：用 `ALL_ROLE_KEYS` 反過來掃三個語系的教學卡，
+**新增角色就必須補教學卡**（desc／points／action／tips）。
+
 **全數完成（2026-09-24）**：這個角色從角色層到版型都已落地——九個步驟全部 ✅，
 `official-12-wolf-king-magician` 是可玩的版型。剩下的只有實機驗證與後續平衡調整。
 
