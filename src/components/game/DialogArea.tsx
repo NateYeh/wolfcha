@@ -39,16 +39,6 @@ import { ROLE_PORTRAIT_MAP } from "@/lib/rules/role-art";
 
 const HISTORY_BOTTOM_THRESHOLD = 24;
 
-/** 發言速插模板：狼人殺發言高度模板化，一鍵插入比語音更快。 */
-const SPEECH_PRESET_KEYS = [
-  "dialog.speechPresets.p1",
-  "dialog.speechPresets.p2",
-  "dialog.speechPresets.p3",
-  "dialog.speechPresets.p4",
-  "dialog.speechPresets.p5",
-  "dialog.speechPresets.p6",
-] as const;
-
 /**
  * 職業立繪映射（對話頭像）。
  *
@@ -1831,9 +1821,9 @@ export function DialogArea({
                       </button>
                     </div>
                   )}
-                  {/* 常用語速插：點一下插入模板，X/Y 自己換掉 */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {onDraftSpeech && (
+                  {/* 發言輔助：只留 AI 擬稿（一鍵插入的固定模板已移除） */}
+                  {onDraftSpeech && (
+                    <div className="flex flex-wrap gap-1.5">
                       <button
                         type="button"
                         onClick={() => onDraftSpeech()}
@@ -1848,19 +1838,8 @@ export function DialogArea({
                         )}
                         {isDraftingSpeech ? t("dialog.input.aiDraftLoading") : t("dialog.input.aiDraft")}
                       </button>
-                    )}
-                    {SPEECH_PRESET_KEYS.map((presetKey) => (
-                      <button
-                        key={presetKey}
-                        type="button"
-                        onClick={() => onInputChange?.(appendSpeechText(inputText, t(presetKey)))}
-                        className="h-7 px-2.5 rounded border border-[var(--color-gold)]/35 text-[11px] leading-none text-[var(--color-gold)] bg-transparent hover:bg-[var(--color-gold)]/10 transition-all cursor-pointer"
-                        title={t(presetKey)}
-                      >
-                        {t(presetKey)}
-                      </button>
-                    ))}
-                  </div>
+                    </div>
+                  )}
 
                   <div className="wc-input-box relative" style={{ minHeight: "112px", alignItems: "flex-start", padding: "14px 16px 56px" }}>
                     <MentionInput

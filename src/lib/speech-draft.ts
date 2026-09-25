@@ -71,7 +71,7 @@ const SPEECH_DRAFT_MAX_TOKENS = 1024;
 const DRAFT_PHASES = ["DAY_SPEECH", "DAY_BADGE_SPEECH", "DAY_PK_SPEECH", "DAY_LAST_WORDS"] as const;
 
 /**
- * 把新文字接到既有發言後面（語音聽寫、速插模板與 AI 擬稿共用同一條規則）。
+ * 把新文字接到既有發言後面（語音聽寫與 AI 擬稿共用同一條規則）。
  * 單一真相：以前 DialogArea 自己有一份，AI 擬稿再抄一份就會漂移。
  */
 export function appendSpeechText(prev: string | undefined, text: string): string {

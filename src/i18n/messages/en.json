@@ -1602,14 +1602,6 @@
       "aiDraftError": "Draft failed",
       "aiDraftErrorHint": "Try again; if it keeps failing, check the model and API key in game settings"
     },
-    "speechPresets": {
-      "p1": "I claim seer — I checked seat X last night: good.",
-      "p2": "Badge flow: check seat X tonight, seat Y tomorrow night.",
-      "p3": "Seat X is a fake seer claim — don't hand the badge to the counter-claim.",
-      "p4": "Vote seat X today, nobody flip.",
-      "p5": "I'm on seat X's line — I read seat Y as a wolf.",
-      "p6": "I'm a villager, let me hear everyone out before voting."
-    },
     "magicianSwapQuestion": "Confirm {action} {first} with {second}?"
   },
   "tutorialOverlay": {

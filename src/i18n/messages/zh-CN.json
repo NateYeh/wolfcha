@@ -1602,14 +1602,6 @@
       "aiDraftError": "拟稿失败",
       "aiDraftErrorHint": "请再试一次；如果一直失败，检查游戏设置里的模型与 API Key"
     },
-    "speechPresets": {
-      "p1": "我报预言家，昨晚验 X号是好人",
-      "p2": "警徽流：今晚验 X号，明晚验 Y号",
-      "p3": "X号在悍跳，别把警徽给对跳位",
-      "p4": "今天投 X号，不要跳车",
-      "p5": "我站 X号这条线，X号是我认的狼位",
-      "p6": "我是好人，先听完再投"
-    },
     "magicianSwapQuestion": "确定要{action} {first} 与 {second} 吗？"
   },
   "tutorialOverlay": {
