@@ -27,10 +27,11 @@
 ## 2. 共用風格提示詞（每張都貼同一段）
 
 ```text
-Black-and-white ink line art character portrait, hand-drawn comic/manga ink illustration:
-crisp confident outlines with variable line weight, form described by sparse parallel hatching
-and a few solid black fills (nose, pupils, pocket flaps), pure black lines on a plain flat white
-background, no color, no greyscale shading, no gradients, no screentone texture.
+Black-and-white ink line art character portrait, bold hand-drawn comic/manga ink illustration:
+thick confident black outlines with strong line-weight variation, large solid black shadow shapes
+(pocket flaps, under the jaw, inside cloth folds), only a few sparse parallel hatch marks elsewhere,
+high-contrast screen-print look, no pencil-like light shading, pure black lines on a plain flat white
+background, no color, no greyscale, no gradients, no screentone texture.
 
 Anthropomorphic animal character, waist-up bust, three-quarter view, head in the upper-centre of a
 square canvas, shoulders spanning the full width, torso cut off by the bottom edge, generous empty
@@ -166,10 +167,10 @@ Expression: sultry half-lidded smile, chin lowered, looking straight at the view
 以村民為例（其餘角色同格式：第 1 段硬要求 → 第 2 段構圖 → 第 3 段角色）：
 
 ```text
-Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
-confident outlines with variable line weight, form described by sparse parallel hatching and a few
-solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
-exactly one character, on a square 1:1 canvas.
+Hand-drawn black-and-white ink line art character portrait, bold comic/manga ink illustration:
+thick confident black outlines with strong line-weight variation, large solid black shadow shapes,
+only a few sparse parallel hatch marks elsewhere, high-contrast screen-print look. Pure black lines
+on a plain flat white background, exactly one character, on a square 1:1 canvas.
 
 Anthropomorphic rabbit village farmer, waist-up bust, three-quarter view, head in the upper-centre,
 shoulders spanning the full width, torso cut off by the bottom edge, generous empty margin around the
@@ -209,15 +210,22 @@ style (style reference only, do not copy the character). Draw a completely diffe
 
 ChatGPT 生圖是**單欄**且會照著字面畫，所以這一節把 §2／§3／§4 合成「一段一段可直接貼」的版本：
 沒有負向清單，硬要求全部寫成肯定句。**一段訊息生一張，同一輪把 7 張生完**（換聊天室會飄風格）。
+
+**實測（用 `chatgpt.com` 生村民那張）**：純文字生出來的線條偏細、偏鉛筆草稿感，
+與現有 7 張的「重墨、實心黑塊」有落差 → 共用風格段已改成
+`thick confident black outlines … large solid black shadow shapes … high-contrast screen-print look`，
+並且**建議附一張現有立繪當風格參考**（見 §5.C；ChatGPT 吃附件，比純文字準得多）。
+
 生出來多半是白底非透明——**留白就好，不要自己裁切或置中**，去背與比例統一由程式端處理。
 
 ### 7.1 村民 → `villager.png`
 
 ```text
-Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
-confident outlines with variable line weight, form described by sparse parallel hatching and a few
-solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
-exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+Hand-drawn black-and-white ink line art character portrait, bold comic/manga ink illustration:
+thick confident black outlines with strong line-weight variation, large solid black shadow shapes
+(pocket flaps, under the jaw, inside cloth folds), only a few sparse parallel hatch marks elsewhere,
+high-contrast screen-print look. Pure black lines on a plain flat white background, exactly one
+character, on a square 1:1 canvas, generous empty margin, plain empty background.
 
 Anthropomorphic rabbit, waist-up bust, three-quarter view, head in the upper-centre, shoulders
 spanning the full width, torso cut off by the bottom edge.
@@ -232,10 +240,11 @@ Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded 
 ### 7.2 騎士 → `knight.png`
 
 ```text
-Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
-confident outlines with variable line weight, form described by sparse parallel hatching and a few
-solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
-exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+Hand-drawn black-and-white ink line art character portrait, bold comic/manga ink illustration:
+thick confident black outlines with strong line-weight variation, large solid black shadow shapes
+(pocket flaps, under the jaw, inside cloth folds), only a few sparse parallel hatch marks elsewhere,
+high-contrast screen-print look. Pure black lines on a plain flat white background, exactly one
+character, on a square 1:1 canvas, generous empty margin, plain empty background.
 
 Anthropomorphic stag with antlers, waist-up bust, three-quarter view, head in the upper-centre, shoulders
 spanning the full width, torso cut off by the bottom edge.
@@ -250,10 +259,11 @@ Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded 
 ### 7.3 禁言長老 → `mute-elder.png`
 
 ```text
-Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
-confident outlines with variable line weight, form described by sparse parallel hatching and a few
-solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
-exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+Hand-drawn black-and-white ink line art character portrait, bold comic/manga ink illustration:
+thick confident black outlines with strong line-weight variation, large solid black shadow shapes
+(pocket flaps, under the jaw, inside cloth folds), only a few sparse parallel hatch marks elsewhere,
+high-contrast screen-print look. Pure black lines on a plain flat white background, exactly one
+character, on a square 1:1 canvas, generous empty margin, plain empty background.
 
 Anthropomorphic old ram, waist-up bust, three-quarter view, head in the upper-centre, shoulders
 spanning the full width, torso cut off by the bottom edge.
@@ -268,10 +278,11 @@ Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded 
 ### 7.4 狼王 → `wolf-king.png`
 
 ```text
-Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
-confident outlines with variable line weight, form described by sparse parallel hatching and a few
-solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
-exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+Hand-drawn black-and-white ink line art character portrait, bold comic/manga ink illustration:
+thick confident black outlines with strong line-weight variation, large solid black shadow shapes
+(pocket flaps, under the jaw, inside cloth folds), only a few sparse parallel hatch marks elsewhere,
+high-contrast screen-print look. Pure black lines on a plain flat white background, exactly one
+character, on a square 1:1 canvas, generous empty margin, plain empty background.
 
 Anthropomorphic huge grey wolf, waist-up bust, three-quarter view, head in the upper-centre, shoulders
 spanning the full width, torso cut off by the bottom edge.
@@ -286,10 +297,11 @@ Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded 
 ### 7.5 攝夢人 → `dreamweaver.png`
 
 ```text
-Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
-confident outlines with variable line weight, form described by sparse parallel hatching and a few
-solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
-exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+Hand-drawn black-and-white ink line art character portrait, bold comic/manga ink illustration:
+thick confident black outlines with strong line-weight variation, large solid black shadow shapes
+(pocket flaps, under the jaw, inside cloth folds), only a few sparse parallel hatch marks elsewhere,
+high-contrast screen-print look. Pure black lines on a plain flat white background, exactly one
+character, on a square 1:1 canvas, generous empty margin, plain empty background.
 
 Anthropomorphic tapir with a long snout and small round ears, waist-up bust, three-quarter view, head in the upper-centre, shoulders
 spanning the full width, torso cut off by the bottom edge.
@@ -304,10 +316,11 @@ Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded 
 ### 7.6 魔術師 → `magician.png`
 
 ```text
-Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
-confident outlines with variable line weight, form described by sparse parallel hatching and a few
-solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
-exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+Hand-drawn black-and-white ink line art character portrait, bold comic/manga ink illustration:
+thick confident black outlines with strong line-weight variation, large solid black shadow shapes
+(pocket flaps, under the jaw, inside cloth folds), only a few sparse parallel hatch marks elsewhere,
+high-contrast screen-print look. Pure black lines on a plain flat white background, exactly one
+character, on a square 1:1 canvas, generous empty margin, plain empty background.
 
 Anthropomorphic fox, waist-up bust, three-quarter view, head in the upper-centre, shoulders
 spanning the full width, torso cut off by the bottom edge.
@@ -322,10 +335,11 @@ Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded 
 ### 7.7 狼美人 → `wolf-beauty.png`
 
 ```text
-Hand-drawn black-and-white ink line art character portrait, comic/manga ink illustration: crisp
-confident outlines with variable line weight, form described by sparse parallel hatching and a few
-solid black fills (nose, pupils, pocket flaps). Pure black ink lines on a plain flat white background,
-exactly one character, on a square 1:1 canvas, generous empty margin, plain empty background.
+Hand-drawn black-and-white ink line art character portrait, bold comic/manga ink illustration:
+thick confident black outlines with strong line-weight variation, large solid black shadow shapes
+(pocket flaps, under the jaw, inside cloth folds), only a few sparse parallel hatch marks elsewhere,
+high-contrast screen-print look. Pure black lines on a plain flat white background, exactly one
+character, on a square 1:1 canvas, generous empty margin, plain empty background.
 
 Anthropomorphic elegant female wolf, waist-up bust, three-quarter view, head in the upper-centre, shoulders
 spanning the full width, torso cut off by the bottom edge.
