@@ -350,3 +350,24 @@ pendant, a rose tucked behind one ear and a ribbon of thread wound around one wr
 near her lips blowing a kiss. Sultry half-lidded smile, chin lowered, looking at the viewer.
 Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded robes and leather jackets — a modern-folk village-fantasy world, slightly gritty but friendly.
 ```
+
+## 8. 實測筆記（2026-09-25，用 `chatgpt.com` 免費版）
+
+**額度**：Free plan 的圖像生成上限是 **3 張／24 小時**。實測順序：村民（純文字 pilot）→
+騎士、禁言長老（附參考圖），第 4 張開始回應
+`You've hit the Free plan limit for image generations requests. You can create more images when the limit resets in 24 hours.`
+→ 要一次生完 7 張得等額度重置分幾天跑，或升級 Plus／改用額度較寬的生成器（Nano Banana、Gemini 等）。
+
+**附參考圖有效**：拿 `guard.png`＋`werewolf.png` 當附件（純風格參考、明確寫「不要複製這兩個角色」）之後，
+生出來的騎士（鹿）與禁言長老（公羊）在筆觸、實心黑塊、線寬變化上都與現有 7 張同級；
+純文字版的村民則明顯偏細、偏鉛筆草稿感 → **優先走這條**。
+
+**抓圖**：生成圖的 `img.src` 是 `https://chatgpt.com/backend-api/estuary/content?id=file_…`（同源），
+`fetch(src, {credentials:'include'})` 就能拿到原檔（實測 1254×1254 PNG，非 1024）→ 後處理再縮到 1024。
+注意頁面是**延遲渲染**：捲動範圍外的圖還沒有 `src`，抓圖前要先確認目標圖已渲染。
+
+**驅動腳本的坑**（`/tmp/cg_gen_all.py`，暫存檔不進版控）：
+- 對話裡的**參考圖附件在 DOM 裡也是 `img`**，計數要把基準線扣掉，否則「等下一張」會立刻成立、
+  抓到上一張圖（曾把狼王／攝夢人存成禁言長老的副本）。
+- 存證檔名不可含 `/`（`5/7 magician.png` 會讓寫檔失敗，蓋掉真正的錯誤）。
+
