@@ -100,27 +100,17 @@ test("已完成：跳過這一步往下（預言家完成後直接進結算）",
   }
 });
 
-test("AI 未決定：從這一步重跑（指令見 REPLAY_COMMAND 的逐項理由）", () => {
-  // 禁言／攝夢不能用「前一步的續跑指令」：前一步只是轉呼叫、不改 phase，那一步會被跳過。
-  // 這張表的正確性由 night-resume-flow.test.ts 以真實一夜驗證。
-  const expected: Record<NightActionPhase, NightResumeCommand> = {
-    NIGHT_GUARD_ACTION: "START_NIGHT",
-    NIGHT_MUTE_ACTION: "START_NIGHT",
-    NIGHT_DREAM_ACTION: "START_NIGHT",
-    NIGHT_MAGICIAN_ACTION: "START_NIGHT",
-    NIGHT_WOLF_ACTION: "CONTINUE_NIGHT_AFTER_GUARD",
-    // 魅惑這一步前面每一步都可能還沒做完（狼刀在前、守／禁／夢更前），所以從最前面重跑
-    NIGHT_WOLF_BEAUTY_ACTION: "START_NIGHT",
-    NIGHT_WITCH_ACTION: "CONTINUE_NIGHT_AFTER_WOLF",
-    NIGHT_SEER_ACTION: "CONTINUE_NIGHT_AFTER_WITCH",
-  };
+test("AI 未決定：從這一步重跑（一律 `START_NIGHT`，靠 `decided()` 只補缺的步驟）", () => {
+  // 這張表以前逐階段不同，守衛／禁言／攝夢／魔術師／狼美人的 `START_NIGHT`
+  // 會沿著鏈把前面**已決定**的步驟重新問一次 AI、覆蓋掉玩家的決定。
+  // 現在鏈上的守衛問 `NIGHT_STEP[phase].decided(state)`，所以統一 `START_NIGHT` 就夠了。
   for (const phase of NIGHT_ACTION_ORDER) {
     const state = board(BOARD_12_WITH_ALL_NIGHT_ROLES, {});
-    assert.equal(replayCommandFor(phase), expected[phase], `${phase}：重跑指令`);
+    assert.equal(replayCommandFor(phase), "START_NIGHT", `${phase}：重跑指令`);
     assert.deepEqual(
       nightResumePlan(state, phase),
-      { kind: "replay", command: expected[phase] },
-      `${phase}：AI 沒落盤應該從這一步重跑`
+      { kind: "replay", command: "START_NIGHT" },
+      `${phase}：AI 沒落盤應該從頭補齊（已決定的步驟會被 decided() 擋掉）`
     );
   }
 });

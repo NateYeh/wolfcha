@@ -10,18 +10,22 @@ import { NIGHT_STEP, actorsForNightStep, isNightActionPhase } from "@/lib/rules/
  * `useGameLogic` 三處、各自寫死字串，而且 wolf 那處寫成了 `CONTINUE_NIGHT_AFTER_GUARD`——
  * 那會沿著續跑鏈把「禁言」「攝夢」兩個已經決定好的步驟**再問一次 AI**，把玩家看過的決定覆蓋掉。
  *
- * 續跑鏈上每個步驟自己的守衛是「帶著的 phase 已經在這一階段就不重跑」
- * （`if (currentState.phase !== "NIGHT_X_ACTION")`），而**每個 `run*Action` 都會把 phase 改成自己**。
- * 因此「跳過」與「重跑」各自要下什麼指令是從這個機制推出來的：
+ * 續跑鏈現在每一步都問單一真相 `NIGHT_STEP[phase].decided(state)`（`rules/night-progress`）
+ * 來決定「這一步要不要跑」，**不再看 phase 是不是自己**。這一點很重要：
+ * 「帶著的 phase 已經在這一階段」有兩種可能——(a) 這一步真的做完了；(b) 這一步的決定沒有落盤。
+ * 只有 `decided()` 能分辨兩者（夜晚開始時 `useGameLogic` 會重建 `nightActions`，所以
+ * 新的一夜一切仍未決定；而重跑與恢復都是在同一夜之內）。
  *
- * - **跳過**這一步（已完成）＝ `CONTINUE_NIGHT_AFTER_X`：帶著的 phase 就是 X，正好跳過它、往下繼續；
- * - **重跑**這一步（AI 的決定沒落盤）＝ 必須讓鏈帶著一個 **≠ X** 的 phase 走到這一步，所以只能從
- *   「更前面的指令」進去（`REPLAY_COMMAND` 表逐項說明了理由）。
+ * 因此：
  *
- * 這張表無法只用順序推導：例如禁言的重跑**不能**用前一步的 `CONTINUE_NIGHT_AFTER_GUARD`
- * （它只是轉呼叫、不改 phase，於是禁言步驟被跳過、決定根本不會做）。這種細節只有實際跑過
- * 一夜才看得出來，所以 `night-resume-flow.test.ts` 逐階段驗證「下了重跑指令之後，那一步的
- * 決定真的有被寫入」。
+ * - **跳過**這一步（已完成）＝ `CONTINUE_NIGHT_AFTER_X`；
+ * - **重跑**缺少決定的步驟＝ `START_NIGHT`：沿著夜間順序走一遍，
+ *   已決定的步驟會被 `decided()` 擋掉、**不會重問 AI**，未決定的才會補上。
+ *
+ * 這張表以前逐階段不同（守衛／禁言／攝夢／魔術師／狼美人只能下 `START_NIGHT`），
+ * 而那些 `START_NIGHT` 會把前面已決定的步驟重新問一遍——現在統一成同一個指令。
+ * `night-resume-flow.test.ts` 逐階段驗證「下了重跑指令之後，那一步的決定真的有被寫入，
+ * 而且前面已決定的步驟沒有被覆蓋」。
  */
 
 /** 夜間續跑鏈可下的指令（與 `NightPhase.handleAction` 的 vocabulary 一致）。 */
@@ -59,37 +63,16 @@ const ADVANCE_PLAN: Record<NightActionPhase, NightResumePlan> = {
 };
 
 /**
- * 重跑某一步的指令：讓續跑鏈「帶著不等於該步驟的 phase」走到那一步，於是那一步的行動會被執行。
+ * 重跑某一步的指令：**一律 `START_NIGHT`**。
  *
- * 逐項理由（由 `NightPhase` 的鏈結構推導，並由 `night-resume-flow.test.ts` 實際驗證）：
- *
- * | 階段 | 重跑指令 | 為何是它 |
- * |---|---|---|
- * | 守衛 | `START_NIGHT` | `runNightPhase` 是唯一會跑守衛行動的入口 |
- * | 禁言 | `START_NIGHT` | `CONTINUE_NIGHT_AFTER_GUARD` 只是轉呼叫、不改 phase，禁言會被跳過 |
- * | 攝夢 | `START_NIGHT` | 同上：從頭跑才會帶著守衛／禁言的 phase 走到攝夢 |
- * | 狼人 | `CONTINUE_NIGHT_AFTER_GUARD` | 鏈會先跑禁言／攝夢（AI 重問），然後無條件跑狼人 |
- * | 女巫 | `CONTINUE_NIGHT_AFTER_WOLF` | 這一支無條件呼叫 `runWitchAction` |
- * | 預言家 | `CONTINUE_NIGHT_AFTER_WITCH` | 這一支無條件呼叫 `runSeerAction` |
- *
- * ⚠️ 狼人／女巫／預言家以外的重跑會把**前面的 AI 步驟重新問一次**（覆蓋掉原本的目標）。
- * 這是舊行為，這裡先原樣保留；要修得在階段層加一個「就從這一步續跑」的指令，
- * 屬 Phase 5／6 的範圍（見 docs/night-sequencing-refactor-plan.md）。
+ * 鏈上的守衛現在問 `NIGHT_STEP[phase].decided(state)`，所以從頭走一遍
+ * *只會* 補上還沒決定的步驟：已決定的不會被重問 AI（舊表逐階段不同，
+ * 守衛／禁言／攝夢／魔術師／狼美人的 `START_NIGHT` 會把前面已決定的重新問一次）。
  */
-const REPLAY_COMMAND: Record<NightActionPhase, NightResumeCommand> = {
-  NIGHT_GUARD_ACTION: "START_NIGHT",
-  NIGHT_MUTE_ACTION: "START_NIGHT",
-  NIGHT_DREAM_ACTION: "START_NIGHT",
-  NIGHT_MAGICIAN_ACTION: "START_NIGHT",
-  NIGHT_WOLF_ACTION: "CONTINUE_NIGHT_AFTER_GUARD",
-  // 重播魅惑這一步：前面每一步都可能還沒做完，所以從最前面的 START_NIGHT 重跑
-  NIGHT_WOLF_BEAUTY_ACTION: "START_NIGHT",
-  NIGHT_WITCH_ACTION: "CONTINUE_NIGHT_AFTER_WOLF",
-  NIGHT_SEER_ACTION: "CONTINUE_NIGHT_AFTER_WITCH",
-};
+const REPLAY_COMMAND: NightResumeCommand = "START_NIGHT";
 
-/** 重跑某一步的指令（Dev 跳轉到某個夜間階段也是用同一張表）。 */
-export const replayCommandFor = (phase: NightActionPhase): NightResumeCommand => REPLAY_COMMAND[phase];
+/** 重跑某一步的指令（Dev 跳轉到某個夜間階段也是用同一個答案）。 */
+export const replayCommandFor = (_phase: NightActionPhase): NightResumeCommand => REPLAY_COMMAND;
 
 /**
  * 停在一個夜間階段時的續跑計畫。

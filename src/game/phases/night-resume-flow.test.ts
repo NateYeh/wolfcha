@@ -205,6 +205,38 @@ test("重跑指令不會把「目標步驟之後」的決定一起做掉（鏈�
   assert.notEqual(state.nightActions.seerTarget, undefined, "預言家在鏈上接著被問到");
 });
 
+test("重跑指令不會覆蓋前面已決定的步驟（AI 不再被重問一次）", async () => {
+  // 這次修正的核心：舊行為下守衛／禁言／攝夢／魔術師／狼美人重跑一律從 `START_NIGHT`
+  // 進去，而鏈上守衛看的是「phase 是不是自己」——於是前面已經落盤的決定會被重新問一次 AI、
+  // 覆蓋成測試答案（10 號）。現在鏈上問 `decided()`，這些欄位必須原封不動。
+  const cases: Array<[NightActionPhase, Array<keyof GameState["nightActions"]>]> = [
+    ["NIGHT_MUTE_ACTION", ["guardTarget"]],
+    ["NIGHT_DREAM_ACTION", ["guardTarget", "mutedTarget"]],
+    ["NIGHT_MAGICIAN_ACTION", ["guardTarget", "mutedTarget"]],
+    ["NIGHT_WOLF_ACTION", ["guardTarget", "mutedTarget", "dreamTarget", "magicianSwap"]],
+    ["NIGHT_WOLF_BEAUTY_ACTION", ["guardTarget", "mutedTarget", "dreamTarget", "magicianSwap", "wolfTarget"]],
+    [
+      "NIGHT_WITCH_ACTION",
+      ["guardTarget", "mutedTarget", "dreamTarget", "magicianSwap", "wolfTarget", "wolfBeautyTarget"],
+    ],
+    [
+      "NIGHT_SEER_ACTION",
+      ["guardTarget", "mutedTarget", "dreamTarget", "magicianSwap", "wolfTarget", "wolfBeautyTarget"],
+    ],
+  ];
+  for (const [phase, fields] of cases) {
+    const { completed } = await runReplayCommand(phase);
+    const state = completed as GameState;
+    for (const field of fields) {
+      assert.deepEqual(
+        state.nightActions[field],
+        BEFORE[phase][field],
+        `${phase}：${String(field)} 已決定，不該被重跑覆蓋（實際 ${JSON.stringify(state.nightActions[field])}）`
+      );
+    }
+  }
+});
+
 test("重跑指令的字串本身必須是 NightPhase 認得的指令", async () => {
   // 打錯字會靜默變成 no-op（handleAction 的 if 鏈不匹配就什麼都不做），所以釘住
   const phaseModule = await import("@/game/phases/NightPhase");
