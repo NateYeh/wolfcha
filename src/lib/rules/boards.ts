@@ -267,8 +267,8 @@ export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
     tags: ["白狼騎士", "12人"],
   },
   {
-    // 來源：werewolves.games 的「四狼八獵」（特殊機制 · 全員槍口）。
-    // 八個獵人＝八把槍，槍打槍會互相觸發（見 death-skills 的 getChainedShooter）。
+    // 來源：werewolves.games 的「狼美騎士」（12 人經典進階版型）：
+    // 狼人×3＋狼美人／預言家、女巫、**守衛**、騎士、平民×4。
     id: "official-12-wolf-beauty-knight",
     playerCount: 12,
     roles: [
@@ -289,6 +289,32 @@ export const OFFICIAL_BOARDS: readonly BoardPreset[] = [
     tags: ["狼美騎士", "12人"],
   },
   {
+    // 來源：werewolves.games 的「魔鬼騎士」——狼美騎士的衍生版型，
+    // 差別只有神職的**守衛換成獵人**（不是玩家約定差異）：
+    // 狼人×3＋狼美人／預言家、女巫、**獵人**、騎士、平民×4。
+    // 兩版共用同一個狼美人；「被騎士決鬥出局不發動魅惑」由 charm.ts 統一處理（cause !== "duel"）。
+    id: "official-12-wolf-beauty-hunter-knight",
+    playerCount: 12,
+    roles: [
+      "Werewolf",
+      "Werewolf",
+      "Werewolf",
+      "WolfBeauty",
+      "Seer",
+      "Witch",
+      "Hunter",
+      "Knight",
+      "Villager",
+      "Villager",
+      "Villager",
+      "Villager",
+    ],
+    official: true,
+    tags: ["魔鬼騎士", "12人"],
+  },
+  {
+    // 來源：werewolves.games 的「四狼八獵」（特殊機制 · 全員槍口）。
+    // 八個獵人＝八把槍，槍打槍會互相觸發（見 death-skills 的 getChainedShooter）。
     id: "official-12-eight-hunters",
     playerCount: 12,
     roles: [

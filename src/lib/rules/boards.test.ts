@@ -177,6 +177,42 @@ test("版型註冊表：狼美騎士＝狼人×3＋狼美人＋預女守騎＋4 
   assert.deepEqual(warnings, []);
 });
 
+test("版型註冊表：魔鬼騎士＝狼人×3＋狼美人＋預女獵騎＋4 平民（與狼美騎士只差守衛換獵人）", () => {
+  const board = getBoardById("official-12-wolf-beauty-hunter-knight");
+  assert.ok(board, "應收錄魔鬼騎士版型");
+  assert.equal(board.official, true);
+  assert.equal(board.playerCount, 12);
+  assert.deepEqual(countBoardRolesOf(board), {
+    byCamp: { wolf: 4, god: 4, villager: 4 },
+    byRole: {
+      Werewolf: 3,
+      WolfBeauty: 1,
+      Seer: 1,
+      Witch: 1,
+      Hunter: 1,
+      Knight: 1,
+      Villager: 4,
+    },
+    total: 12,
+  });
+  const { errors, warnings } = validateBoardPreset(board);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(warnings, []);
+
+  // 來源站把兩版定位成「衍生版型」，差別在神職：狼美騎士是守衛、魔鬼騎士是獵人。
+  // 目錄與程式碼一度把它寫成「同一組角色、只是玩家約定不同」，這條把它釘住：
+  // 兩張版型的角色集合必須「只差 Guard ↔ Hunter」這一格。
+  const beautyKnight = getBoardById("official-12-wolf-beauty-knight");
+  assert.ok(beautyKnight);
+  assert.deepEqual(
+    board.roles.filter((role) => role !== "Hunter"),
+    beautyKnight.roles.filter((role) => role !== "Guard"),
+    "兩張狼美人版型除了守衛／獵人之外不得有其他差異"
+  );
+  assert.equal(beautyKnight.roles.includes("Guard"), true, "狼美騎士帶守衛");
+  assert.equal(board.roles.includes("Guard"), false, "魔鬼騎士沒有守衛（是獵人）");
+});
+
 test("版型註冊表：預女守白＝預言家/女巫/守衛/白痴＋4 平民＋4 小狼（首個沒有獵人的 12 人版）", () => {
   const board = getBoardById("official-12-seer-witch-guard-idiot");
   assert.ok(board, "應收錄預女守白版型");
@@ -196,12 +232,13 @@ test("版型註冊表：預女守白＝預言家/女巫/守衛/白痴＋4 平民
   assert.deepEqual(warnings, []);
 });
 
-test("版型註冊表：九個 12 人版型的陣營統計與預設版型", () => {
+test("版型註冊表：十個 12 人版型的陣營統計與預設版型", () => {
   const twelve = getBoardsByPlayerCount(12).map((board) => board.id);
   // 不鎖 UI 排列順序，只確認這幾個版型都在（順序由選單自己決定）
   assert.deepEqual([...twelve].sort(), [
     "official-12-classic",
     "official-12-eight-hunters",
+    "official-12-wolf-beauty-hunter-knight",
     "official-12-wolf-beauty-knight",
     "official-12-seer-witch-guard-idiot",
     "official-12-seer-witch-hunter-idiot",
