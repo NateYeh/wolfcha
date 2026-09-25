@@ -183,6 +183,52 @@
 | 覺醒狼王 | 覺醒狼王 | 覺醒狼王（`AwakenedWolfKing`）：兩次狼王爪，可保留雙槍或傳承給狼隊友。 |
 | 假面舞會 | 舞者、假面 | 舞者（`Dancer`）＋假面（`Masked`）：身份置換機制（動到身份可見性）。 |
 
+### 6.1 下一個 B 級角色：狼王魔術師（`Magician`）實作清單
+
+來源：<https://werewolves.games/lang-wang-mo-shu-shi/>（2026-09-24 核對）。
+版型＝狼人×3＋狼王／**預言家、女巫、獵人、魔術師**＋4 民。
+
+**來源規則（要照抄的部分）**
+
+- 魔術師每晚選**兩名玩家交換**：當晚**指向其中一人的技能結算到另一人身上**。
+- 來源明確點名會受影響的是**刀口、毒口、查驗、守護**（「交換會影響刀口、毒口、查驗和死亡公佈對象」）。
+- 來源明確排除的是**槍口**：「狼王槍按出局方式與開槍狀態判定……魔術師換位主要影響夜間指向結算」
+  → 我們的獵人槍／狼王槍**不套用換位**（這條要寫成測試）。
+- 來源的法官順序是「魔術師 → 狼隊 → 女巫 → 預言家」→ 本作插在 `NIGHT_DREAM_ACTION` 之後、
+  `NIGHT_WOLF_ACTION` 之前。
+
+**要動的檔案（照狼美人那一輪的順序，一步一個 commit 可以）**
+
+| # | 檔案／項目 | 內容 |
+| --- | --- | --- |
+| 1 | `src/types/game.ts` + `rules/roles.ts` | `Role` 加 `Magician`；`ROLE_CAPABILITIES`（`camp: "villager"`、`nightAction: "swap"`、不能空過、`canSelfTarget: false`）；`ALL_ROLE_KEYS` 同步（`role-enumeration.test.ts` 會反過來掃） |
+| 2 | `src/lib/rules/phases.ts` | 新階段 `NIGHT_MAGICIAN_ACTION`，插在 `NIGHT_DREAM_ACTION` 與 `NIGHT_WOLF_ACTION` 之間（`PHASE_SEQUENCE`、`PHASE_CONFIGS`、`CHECKPOINT_SAFE`／`PHASE_ROLE`／`RESTORE_FALLBACK` 都是 `Record<Phase,…>`，少一格 tsc 就紅） |
+| 3 | `src/lib/rules/magician.ts`（新） | 單一真相：`getMagicianSwapOptions(state, magicianSeat)`（存活、不含自己、不重複同一人）、`isValidSwap`、`pickRandomSwap`、`redirectSeat(seat, swap)`。**換位只有這一份對照**，其他模組一律呼叫它 |
+| 4 | `src/lib/rules/night-resolution.ts` | `NightResolutionInput` 加 `magicianSwap?: [number, number]` + `magicianSeat?: number`；在讀 `wolfTarget`／`guardTarget`／`witchPoison`／`dreamTarget`／`wolfBeautyTarget` 前先過 `redirectSeat`。**`NightActor` 也要加 `magician`**（回放用） |
+| 5 | `src/game/phases/` + `useSpecialEvents.ts` | 新階段模組（AI 決策）＋夜間推進；預言家查驗的結算在 `useSpecialEvents`／`game-master`，**查驗目標也要過 `redirectSeat`**（這是第 4 步之外的漏接熱點） |
+| 6 | 真人操作 `rules/human-input.ts` + `DialogArea` + `page.tsx` | 交換要點**兩張卡**（不是一張）→ `SEAT_ACTION_CONFIRM_PHASES` 這種「單一選座位」的清單**裝不下**：要新增「兩段式選取」的判定，並讓 `human-input.test.ts` 的狀態機守衛涵蓋它（狼美人那次就是面板與路由各寫一份清單而卡死） |
+| 7 | 提示詞與文案 | `prompts.magician.{base,task,user}` ×3 語系＋`promptUtils.strategyGuide.magician`＋`dialog.action.swap`（＝「交換」）＋死亡公告不提及交換（見下方裁定 3） |
+| 8 | 紀錄與賽後 | 夜史 `nightHistory[day].magicianSwap`；`DevConsole`「全場動作資訊記錄」＋跳轉補全（`SmartJumpManager` 的 `field:` 與**套用分支兩邊都要有**，`day<N>MagicianSwap` 也是——這是被靜默丟掉兩次的同一類坑）；賽後分析要能解釋「誰被換到哪」 |
+| 9 | 版型 | `official-12-wolf-king-magician`（狼王魔術師，`tags: ["狼王魔術師", "12人"]`）＋`boards.test.ts` 釘角色組成 |
+
+**需要先裁定的 5 件事（建議值）**
+
+1. **守護要不要一起換位**：來源說要 → 建議**照來源**（守衛的守護也改判到被換到的對象）。
+2. **同一人整局只能被換一次**：來源說「通常」→ 建議**不強制**（AI 局裡多這條只會讓提示詞更難寫），
+   但要在程式註解與文件寫明我們選擇不採。
+3. **交換公不公開**：真局法官不會公告 → 建議**遊戲中不公告**，只寫進夜史供賽後分析與 DevTools 看。
+4. **槍口不換位**：來源明確排除 → 建議**照來源**，並寫成一條測試（換位後槍口仍指向原始目標）。
+5. **能不能換自己／死者**：建議**都不能**（存活、不含自己、兩人不相同），與 `canSelfTarget: false` 一致。
+
+**測試清單（照狼美人那輪的教訓）**
+
+- `magician.test.ts`：合法座位、`redirectSeat` 對稱性（換兩次＝還原）、`(X,X)` 不合法。
+- `night-resolution` 加測：刀口被換 → 死的是被換到的座位；毒口被換；守護被換；**夢遊者免疫與殉情連帶都跟著換位後的目標**。
+- **槍不換位**：換位後獵人／狼王槍仍指向原始目標。
+- `human-input.test.ts`：狀態機掃到 `NIGHT_MAGICIAN_ACTION` 時，面板與路由都要接得住（兩段式選取）。
+- `SmartJumpManager.test.ts`：補全清單每一格都有套用分支的原始碼掃描要能涵蓋 `magicianSwap`。
+- `boards.test.ts`：新版的角色組成（狼人×3＋狼王／預女獵魔＋4 民）。
+
 ## 7. C 級：動到共用機制或一次多角色
 
 - **預女獵白混**（混血兒）：混血兒（`HalfBlood`）：選榜樣並跟隨其陣營 → 動到陣營判定與勝負條件。
