@@ -4,6 +4,7 @@ import { NIGHT_ACTION_ORDER, type NightActionPhase } from "./phases";
 import { getMuteEligibleSeats } from "./mute";
 import { getDreamEligibleSeats } from "./dream";
 import { getWolfBeautyEligibleSeats } from "./charm";
+import { getSwapEligibleSeats } from "./magician";
 
 /**
  * 一夜的推進（單一真相）。
@@ -76,6 +77,12 @@ export const muteDecided = (state: GameState): boolean => {
  * 規則要求「不能空攝」，AI 沒給合法目標時由系統隨機指定，所以正常情況一定有 `dreamTarget`；
  * 唯一例外是沒有合法目標（例如只剩攝夢人自己存活），此時這一晚本來就沒有夢游者。
  */
+export const magicianDecided = (state: GameState): boolean => {
+  const magician = state.players.find((p) => p.role === "Magician" && p.alive);
+  if (!magician) return true;
+  return state.nightActions.magicianSwap !== undefined || getSwapEligibleSeats(state).length < 2;
+};
+
 export const dreamDecided = (state: GameState): boolean => {
   const dreamer = state.players.find((p) => p.role === "Dreamweaver" && p.alive);
   if (!dreamer) return true;
@@ -122,6 +129,11 @@ export const NIGHT_STEP: Record<NightActionPhase, NightStep> = {
     phase: "NIGHT_DREAM_ACTION",
     actor: { kind: "role", role: "Dreamweaver" },
     decided: dreamDecided,
+  },
+  NIGHT_MAGICIAN_ACTION: {
+    phase: "NIGHT_MAGICIAN_ACTION",
+    actor: { kind: "role", role: "Magician" },
+    decided: magicianDecided,
   },
   NIGHT_WOLF_ACTION: {
     phase: "NIGHT_WOLF_ACTION",

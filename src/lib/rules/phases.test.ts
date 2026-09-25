@@ -30,10 +30,10 @@ test("PHASE_KIND 與 PHASE_SEQUENCE 涵蓋同一組階段，且各出現一次",
     PHASE_SEQUENCE.length,
     "PHASE_SEQUENCE 有重複的階段",
   );
-  assert.equal(kinds.length, 25, `Phase 聯集應為 25 個，目前 ${kinds.length} 個`);
+  assert.equal(kinds.length, 26, `Phase 聯集應為 26 個，目前 ${kinds.length} 個`);
 });
 
-test("夜晚行動順序：全為夜間階段，且順序與規則記載一致（守衛→禁言→攝夢→狼→魅惑→女巫→預言家）", () => {
+test("夜晚行動順序：全為夜間階段，且順序與規則記載一致（守衛→禁言→攝夢→魔術師→狼→魅惑→女巫→預言家）", () => {
   for (const phase of NIGHT_ACTION_ORDER) {
     assert.ok(isNightPhase(phase), `${phase} 不是夜間階段，不該出現在夜晚行動順序`);
     assert.ok(PHASE_SEQUENCE.includes(phase), `${phase} 不在 PHASE_SEQUENCE 內`);
@@ -42,6 +42,7 @@ test("夜晚行動順序：全為夜間階段，且順序與規則記載一致�
     "NIGHT_GUARD_ACTION",
     "NIGHT_MUTE_ACTION",
     "NIGHT_DREAM_ACTION",
+    "NIGHT_MAGICIAN_ACTION",
     "NIGHT_WOLF_ACTION",
     // 狼美人魅惑排在狼刀之後、女巫之前（她參與刀人，之後才單獨行動）
     "NIGHT_WOLF_BEAUTY_ACTION",

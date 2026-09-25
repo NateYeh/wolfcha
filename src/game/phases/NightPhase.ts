@@ -1,3 +1,4 @@
+import { redirectSeat } from "@/lib/rules/magician";
 import type { GameState, Player, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
@@ -109,6 +110,10 @@ export class NightPhase extends GamePhase {
     }
     if (_action.type === "CONTINUE_NIGHT_AFTER_DREAM") {
       await this.continueNightAfterDream(_context.state, runtime);
+      return;
+    }
+    if (_action.type === "CONTINUE_NIGHT_AFTER_MAGICIAN") {
+      await this.continueNightAfterMagician(_context.state, runtime);
       return;
     }
     if (_action.type === "CONTINUE_NIGHT_AFTER_WOLF") {
@@ -720,7 +725,10 @@ export class NightPhase extends GamePhase {
     }
 
     const targetSeat = seerOutcome.targetSeat;
-    const targetPlayer = currentState.players.find((p) => p.seat === targetSeat);
+    // 魔術師換位：查驗「改判」——預言家以為自己查了 A，實際查的是與 A 交換的 B。
+    // 記錄的 targetSeat 仍是預言家選的人（那是他相信的事實），結果才是改判後的。
+    const effectiveSeat = redirectSeat(targetSeat, currentState.nightActions.magicianSwap) ?? targetSeat;
+    const targetPlayer = currentState.players.find((p) => p.seat === effectiveSeat);
     const isWolf = targetPlayer ? targetPlayer.alignment === "wolf" : false;
 
     const seerHistory = currentState.nightActions.seerHistory || [];
@@ -812,6 +820,20 @@ export class NightPhase extends GamePhase {
         if (!runtime.isTokenValid(runtime.token)) return;
       }
     }
+
+    await this.continueNightAfterMagician(currentState, runtime);
+  }
+
+  /**
+   * 魔術師 → 狼人 → …（AI 與真人共用）。
+   *
+   * ⚠️ 魔術師**自己的換位行動還沒接上**（`runMagicianAction`／`generateMagicianSwap` 是 §6.1 步驟 5）：
+   * 目前沒有任何版型收錄魔術師，所以到不了；一旦加了版型就必須先補上這一步，
+   * 否則這一晚會沒有換位（不會卡住，但會少一件事）。
+   * 這裡先把它後面的狼人鏈接起來，免得新增的續跑指令落空。
+   */
+  private async continueNightAfterMagician(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
+    const currentState = state;
 
     const afterWolf = await this.runWolfAction(currentState, runtime);
     if (!runtime.isTokenValid(runtime.token)) return;

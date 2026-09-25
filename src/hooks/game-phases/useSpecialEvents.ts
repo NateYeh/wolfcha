@@ -264,6 +264,10 @@ export function useSpecialEvents(
     const wolfBeautySeat = currentState.players.find(
       (player) => player.role === "WolfBeauty" && player.alive
     )?.seat;
+    // 魔術師座位與當晚的換位組合：「指向其中一人的技能改判到另一人」。
+    const magicianSeat = currentState.players.find(
+      (player) => player.role === "Magician" && player.alive
+    )?.seat;
     // 「前一天晚上」的夢游者：同一座位連續兩晚被攝 → 隔夜出局。
     const previousDreamTarget = currentState.nightHistory?.[currentState.day - 1]?.dreamTarget;
     const { deaths: nightDeaths, wolfKillSuccessful, wolfVictimSeat, poisonVictimSeat, dreamVictimSeat } =
@@ -277,6 +281,8 @@ export function useSpecialEvents(
         previousDreamTarget,
         wolfBeautyTarget,
         wolfBeautySeat,
+        magicianSwap: currentState.nightActions.magicianSwap,
+        magicianSeat,
       });
 
     // 遺言規則：只有第一夜死者有遺言（無論幾個、無論死因）。先入列，

@@ -52,7 +52,7 @@ test("VALID_TRANSITIONS 涵蓋所有階段（新增階段必須補上轉移）",
   }
 });
 
-test("PhaseManager：恰好 19 個階段有提示詞實作，其餘明確為 null", async () => {
+test("PhaseManager：恰好 20 個階段有提示詞實作，其餘明確為 null", async () => {
   const { PhaseManager } = await import("@/game/core/PhaseManager");
   const manager = new PhaseManager();
   const withPrompt = PHASE_SEQUENCE.filter((phase) => manager.getPhase(phase) !== null);
@@ -61,6 +61,7 @@ test("PhaseManager：恰好 19 個階段有提示詞實作，其餘明確為 nul
     "NIGHT_GUARD_ACTION",
     "NIGHT_MUTE_ACTION",
     "NIGHT_DREAM_ACTION",
+    "NIGHT_MAGICIAN_ACTION",
     "NIGHT_WOLF_ACTION",
     "NIGHT_WOLF_BEAUTY_ACTION",
     "NIGHT_WITCH_ACTION",

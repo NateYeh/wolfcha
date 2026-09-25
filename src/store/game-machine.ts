@@ -14,6 +14,7 @@ import { getI18n } from "@/i18n/translator";
 import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { getRoleCapabilities } from "@/lib/rules/roles";
 import { hasAlreadyDueled } from "@/lib/rules/knight-duel";
+import { getSwapEligibleSeats } from "@/lib/rules/magician";
 import { isValidMuteTarget } from "@/lib/rules/mute";
 import { isValidDreamTarget } from "@/lib/rules/dream";
 import { getWolfKnifeEligibleSeats, isValidWolfBeautyTarget } from "@/lib/rules/charm";
@@ -528,6 +529,23 @@ export const PHASE_CONFIGS: Record<Phase, PhaseConfig> = {
     },
     actionType: "night_action",
   },
+  NIGHT_MAGICIAN_ACTION: {
+    phase: "NIGHT_MAGICIAN_ACTION",
+    description: "phase.nightMagician.description",
+    humanDescription: () => {
+      const { t } = getI18n();
+      return t("phase.nightMagician.human");
+    },
+    // 真人魔術師要**選兩個**座位：面板與路由的兩段式選取還沒接上（§6.1 步驟 6），
+    // 所以先不宣告 requiresHumanInput——宣告了就會被 human-input.test.ts 的狀態機守衛抓到
+    // （那正是它存在的目的）。在那之前，真人魔術師的換位會由 AI 代決。
+    requiresHumanInput: () => false,
+    canSelectPlayer: (hp, target, gs) => {
+      if (!hp || hp.role !== "Magician") return false;
+      return getSwapEligibleSeats(gs).includes(target.seat);
+    },
+    actionType: "night_action",
+  },
   NIGHT_WOLF_ACTION: {
     phase: "NIGHT_WOLF_ACTION",
     description: "phase.nightWolf.description",
@@ -897,10 +915,11 @@ export const VALID_TRANSITIONS: Record<Phase, Phase[]> = {
   SETUP: ["NIGHT_START"],
   
   // 夜晚流程: 守卫 -> 禁言长老 -> 摄梦人 -> 狼人 -> 女巫 -> 预言家 -> 结算
-  NIGHT_START: ["NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "NIGHT_WOLF_ACTION"],
-  NIGHT_GUARD_ACTION: ["NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "NIGHT_WOLF_ACTION"],
-  NIGHT_MUTE_ACTION: ["NIGHT_DREAM_ACTION", "NIGHT_WOLF_ACTION"],
-  NIGHT_DREAM_ACTION: ["NIGHT_WOLF_ACTION"],
+  NIGHT_START: ["NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "NIGHT_MAGICIAN_ACTION", "NIGHT_WOLF_ACTION"],
+  NIGHT_GUARD_ACTION: ["NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "NIGHT_MAGICIAN_ACTION", "NIGHT_WOLF_ACTION"],
+  NIGHT_MUTE_ACTION: ["NIGHT_DREAM_ACTION", "NIGHT_MAGICIAN_ACTION", "NIGHT_WOLF_ACTION"],
+  NIGHT_DREAM_ACTION: ["NIGHT_MAGICIAN_ACTION", "NIGHT_WOLF_ACTION"],
+  NIGHT_MAGICIAN_ACTION: ["NIGHT_WOLF_ACTION"],
   // 沒有狼美人的盤：狼刀之後直接進女巫（與禁言長老／攝夢人同樣會整步略過）
   NIGHT_WOLF_ACTION: ["NIGHT_WOLF_BEAUTY_ACTION", "NIGHT_WITCH_ACTION"],
   NIGHT_WOLF_BEAUTY_ACTION: ["NIGHT_WITCH_ACTION"],

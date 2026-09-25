@@ -1462,6 +1462,10 @@
       "description": "Must name one dreamer each night: the dreamer is immune to wolf knife and poison that night, but dies if dreamed two nights in a row or if the Dreamweaver dies at night",
       "human": "The Dreamweaver is picking tonight's dreamer…"
     },
+    "nightMagician": {
+      "description": "The Magician swaps two players (that night's targeted skills resolve onto the other one)",
+      "human": "Which two players do you want to swap?"
+    },
     "nightWolfBeauty": {
       "description": "After knifing with the pack, charm one player; if the Wolf Beauty dies, the charmed player dies with her",
       "human": "The Wolf Beauty is choosing tonight's charmed player…"
@@ -2287,7 +2291,8 @@
       "SELF_DESTRUCT": "Self destruct",
       "KNIGHT_DUEL": "Knight duel",
       "GAME_END": "Game end",
-      "NIGHT_WOLF_BEAUTY_ACTION": "Wolf Beauty charm"
+      "NIGHT_WOLF_BEAUTY_ACTION": "Wolf Beauty charm",
+      "NIGHT_MAGICIAN_ACTION": "Magician swap"
     },
     "roles": {
       "Villager": "Villager",

@@ -14,6 +14,7 @@
  * - DRY: 复用子模块，避免重复代码
  */
 
+import { redirectSeat } from "@/lib/rules/magician";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtom, useStore } from "jotai";
 import { useLocalStorageState } from "ahooks";
@@ -2414,7 +2415,9 @@ export function useGameLogic() {
       if (currentState.nightActions.seerTarget !== undefined) {
         return;
       }
-      const targetPlayer = currentState.players.find((p) => p.seat === targetSeat);
+      // 魔術師換位：與 AI 預言家同一條改判（記錄的 targetSeat 仍是玩家選的人）
+      const effectiveSeat = redirectSeat(targetSeat, currentState.nightActions.magicianSwap) ?? targetSeat;
+      const targetPlayer = currentState.players.find((p) => p.seat === effectiveSeat);
       const isWolf = targetPlayer ? targetPlayer.alignment === "wolf" : false;
       const seerHistory = currentState.nightActions.seerHistory || [];
 

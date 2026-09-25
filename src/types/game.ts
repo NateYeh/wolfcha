@@ -62,6 +62,7 @@ export type Phase =
   | "NIGHT_GUARD_ACTION"   // 守卫保护
   | "NIGHT_MUTE_ACTION"    // 禁言长老指定明天要禁言的人
   | "NIGHT_DREAM_ACTION"   // 摄梦人指定今晚的梦游者
+  | "NIGHT_MAGICIAN_ACTION" // 魔术师交换两名玩家（夜晚第一个行动，早于狼刀）
   | "NIGHT_WOLF_ACTION"    // 狼人出刀
   | "NIGHT_WOLF_BEAUTY_ACTION" // 狼美人魅惑（狼刀之後、女巫之前）
   | "NIGHT_WITCH_ACTION"   // 女巫用药

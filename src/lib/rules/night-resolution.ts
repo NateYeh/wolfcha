@@ -1,4 +1,5 @@
 import type { GameState } from "@/types/game";
+import { redirectSeat } from "./magician";
 
 /** 夜晚死亡原因（與 `nightHistory[day].deaths` 一致） */
 export type NightDeathReason = "wolf" | "poison" | "milk" | "dream" | "charm";
@@ -10,7 +11,7 @@ export interface NightDeath {
 }
 
 /** 夜間行動者種類（回放「這一晚他還在不在場上」用） */
-export type NightActor = "guard" | "wolf" | "witch" | "dreamweaver" | "wolfBeauty";
+export type NightActor = "guard" | "wolf" | "witch" | "dreamweaver" | "wolfBeauty" | "magician";
 
 export interface NightResolutionInput {
   /** 狼刀刀口 */
@@ -29,6 +30,10 @@ export interface NightResolutionInput {
   wolfBeautyTarget?: number;
   /** 狼美人的座位（判斷「狼美人夜間出局」連帶） */
   wolfBeautySeat?: number;
+  /** 魔術師當晚交換的兩名玩家（指向其中一人的技能改判到另一人） */
+  magicianSwap?: [number, number];
+  /** 魔術師的座位（判斷換位是否生效） */
+  magicianSeat?: number;
   /** 前晚的夢游者（連續兩晚被攝 → 出局） */
   previousDreamTarget?: number;
   /**
@@ -73,10 +78,18 @@ export interface NightResolutionResult {
  *
  * 死因優先序：同一座位同時被刀又被毒時記「毒」（封槍與公告都以毒為準），
  * 夢死不覆蓋既有死因。
+ *
+ * 步驟 0：魔術師的換位。**所有夜間指向**（狼刀、守護、毒藥、攝夢、魅惑）都先過一次
+ * `redirectSeat`，之後的判定全部用改判後的座位——所以「被守又被救」也自然跟著換位後的
+ * 位置算。槍口不在此路徑（白天才開，見 `rules/charm`／`death-skills`）。
  */
 export function resolveNightDeaths(input: NightResolutionInput): NightResolutionResult {
   const isAlive = input.isActorAlive ?? (() => true);
-  const dreamedSeat = isAlive("dreamweaver") ? input.dreamTarget : undefined;
+
+  // 0. 魔術師換位：沒有魔術師／沒給組合時原樣回傳
+  const swap = isAlive("magician") ? input.magicianSwap : undefined;
+  const at = (seat: number | undefined): number | undefined => redirectSeat(seat, swap);
+  const dreamedSeat = isAlive("dreamweaver") ? at(input.dreamTarget) : undefined;
   const dreamerSeat = isAlive("dreamweaver") ? input.dreamerSeat : undefined;
 
   const deaths: NightDeath[] = [];
@@ -99,9 +112,9 @@ export function resolveNightDeaths(input: NightResolutionInput): NightResolution
   // 1. 狼刀
   let wolfKillSuccessful = false;
   let wolfVictimSeat: number | undefined;
-  const wolfTarget = isAlive("wolf") ? input.wolfTarget : undefined;
+  const wolfTarget = isAlive("wolf") ? at(input.wolfTarget) : undefined;
   if (wolfTarget !== undefined && !immune(wolfTarget)) {
-    const isProtected = isAlive("guard") && input.guardTarget === wolfTarget;
+    const isProtected = isAlive("guard") && at(input.guardTarget) === wolfTarget;
     const isSaved = isAlive("witch") && input.witchSave === true;
     if ((isProtected && isSaved) || (!isProtected && !isSaved)) {
       wolfKillSuccessful = true;
@@ -112,7 +125,7 @@ export function resolveNightDeaths(input: NightResolutionInput): NightResolution
 
   // 2. 女巫毒殺
   let poisonVictimSeat: number | undefined;
-  const witchPoison = isAlive("witch") ? input.witchPoison : undefined;
+  const witchPoison = isAlive("witch") ? at(input.witchPoison) : undefined;
   if (witchPoison !== undefined && !immune(witchPoison)) {
     poisonVictimSeat = witchPoison;
     pushDeath(witchPoison, "poison");
@@ -134,7 +147,7 @@ export function resolveNightDeaths(input: NightResolutionInput): NightResolution
   //    魅惑不是狼刀，守護擋不住；連帶死亡也不是傷害，所以夢游者免疫不影響（與夢死同理）。
   let charmVictimSeat: number | undefined;
   const charmerSeat = isAlive("wolfBeauty") ? input.wolfBeautySeat : undefined;
-  const charmedSeat = isAlive("wolfBeauty") ? input.wolfBeautyTarget : undefined;
+  const charmedSeat = isAlive("wolfBeauty") ? at(input.wolfBeautyTarget) : undefined;
   if (charmerSeat !== undefined && charmedSeat !== undefined && charmedSeat !== charmerSeat) {
     if (deaths.some((death) => death.seat === charmerSeat)) {
       charmVictimSeat = charmedSeat;

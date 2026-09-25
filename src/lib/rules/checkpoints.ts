@@ -2,6 +2,7 @@ import type { GameState, Phase } from "@/types/game";
 import {
   wolfBeautyDecided,
   dreamDecided,
+  magicianDecided,
   guardDecided,
   muteDecided,
   seerDecided,
@@ -48,6 +49,7 @@ export const CHECKPOINT_SAFE: Record<Phase, (state: GameState) => boolean> = {
   NIGHT_GUARD_ACTION: guardDecided,
   NIGHT_MUTE_ACTION: muteDecided,
   NIGHT_DREAM_ACTION: dreamDecided,
+  NIGHT_MAGICIAN_ACTION: magicianDecided,
   NIGHT_WOLF_ACTION: wolfDecided,
   // 狼美人與前面幾步同一條規則：決定了就能存檔
   NIGHT_WOLF_BEAUTY_ACTION: wolfBeautyDecided,
@@ -98,6 +100,11 @@ export const RESTORE_FALLBACK: Record<Phase, (state: GameState) => Phase> = {
   NIGHT_GUARD_ACTION: () => "NIGHT_START",
   NIGHT_MUTE_ACTION: (state) => (guardDecided(state) ? "NIGHT_GUARD_ACTION" : "NIGHT_START"),
   NIGHT_DREAM_ACTION: (state) => {
+    if (muteDecided(state)) return "NIGHT_MUTE_ACTION";
+    return guardDecided(state) ? "NIGHT_GUARD_ACTION" : "NIGHT_START";
+  },
+  NIGHT_MAGICIAN_ACTION: (state) => {
+    if (dreamDecided(state)) return "NIGHT_DREAM_ACTION";
     if (muteDecided(state)) return "NIGHT_MUTE_ACTION";
     return guardDecided(state) ? "NIGHT_GUARD_ACTION" : "NIGHT_START";
   },

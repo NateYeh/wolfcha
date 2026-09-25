@@ -1462,6 +1462,10 @@
       "description": "每晚必須指定一名玩家成為夢遊者：夢遊者當晚免疫狼刀與毒藥，但連續兩晚被攝、或攝夢人夜裡出局時會一併出局",
       "human": "攝夢人正在選擇今晚的夢遊者…"
     },
+    "nightMagician": {
+      "description": "魔術師交換兩名玩家（當晚指向其中一人的技能改判到另一人）",
+      "human": "你要交換哪兩名玩家？"
+    },
     "nightWolfBeauty": {
       "description": "每晚參與狼隊刀人後，單獨魅惑一名玩家；狼美人出局時被魅惑者隨之殉情出局",
       "human": "狼美人正在選擇今晚要魅惑的玩家…"
@@ -2287,7 +2291,8 @@
       "SELF_DESTRUCT": "自爆階段",
       "KNIGHT_DUEL": "翻牌決鬥",
       "GAME_END": "遊戲結束",
-      "NIGHT_WOLF_BEAUTY_ACTION": "狼美人魅惑"
+      "NIGHT_WOLF_BEAUTY_ACTION": "狼美人魅惑",
+      "NIGHT_MAGICIAN_ACTION": "魔術師交換"
     },
     "roles": {
       "Villager": "村民",

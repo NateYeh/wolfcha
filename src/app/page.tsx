@@ -8,6 +8,7 @@ import {
   NotePencil,
   X,
   Eye,
+  ArrowsLeftRight,
   Heart,
   Skull,
   Shield,
@@ -596,6 +597,8 @@ export default function Home() {
         return humanPlayer.role === "Guard" ? "guard" : undefined;
       case "NIGHT_DREAM_ACTION":
         return humanPlayer.role === "Dreamweaver" ? "seer" : undefined;
+      case "NIGHT_MAGICIAN_ACTION":
+        return humanPlayer.role === "Magician" ? "seer" : undefined;
       case "NIGHT_WOLF_BEAUTY_ACTION":
         return humanPlayer.role === "WolfBeauty" ? "wolf" : undefined;
       case "NIGHT_WITCH_ACTION":
@@ -935,6 +938,8 @@ export default function Home() {
         return "Guard";
       case "NIGHT_DREAM_ACTION":
         return "Dreamweaver";
+      case "NIGHT_MAGICIAN_ACTION":
+        return "Magician";
       case "NIGHT_WOLF_BEAUTY_ACTION":
         return "WolfBeauty";
       case "HUNTER_SHOOT":
@@ -1253,6 +1258,7 @@ export default function Home() {
     NIGHT_MUTE_ACTION: () => <Ear size={14} />,
     NIGHT_WITCH_ACTION: () => <Drop size={14} />,
     NIGHT_DREAM_ACTION: () => <Eye size={14} />,
+    NIGHT_MAGICIAN_ACTION: () => <ArrowsLeftRight size={14} />,
     NIGHT_WOLF_BEAUTY_ACTION: () => <Heart size={14} />,
     HUNTER_SHOOT: () => <Crosshair size={14} />,
     DAY_SPEECH: () => <SpeechIcon size={14} />,

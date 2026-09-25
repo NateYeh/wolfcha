@@ -197,8 +197,8 @@ test("夢死封槍：被夢帶走的獵人不能開槍（比照被毒）", () =>
 
 test("階段機：NIGHT_DREAM_ACTION 排在禁言長老之後、狼人之前，且只有真人攝夢人需要輸入", async () => {
   const { PHASE_CONFIGS, VALID_TRANSITIONS } = await import("@/store/game-machine");
-  assert.deepEqual(VALID_TRANSITIONS.NIGHT_MUTE_ACTION, ["NIGHT_DREAM_ACTION", "NIGHT_WOLF_ACTION"]);
-  assert.deepEqual(VALID_TRANSITIONS.NIGHT_DREAM_ACTION, ["NIGHT_WOLF_ACTION"]);
+  assert.deepEqual(VALID_TRANSITIONS.NIGHT_MUTE_ACTION, ["NIGHT_DREAM_ACTION", "NIGHT_MAGICIAN_ACTION", "NIGHT_WOLF_ACTION"]);
+  assert.deepEqual(VALID_TRANSITIONS.NIGHT_DREAM_ACTION, ["NIGHT_MAGICIAN_ACTION", "NIGHT_WOLF_ACTION"]);
 
   const state = fresh();
   const config = PHASE_CONFIGS.NIGHT_DREAM_ACTION;

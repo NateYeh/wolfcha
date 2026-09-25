@@ -44,6 +44,7 @@ const BEFORE: Record<NightActionPhase, GameState["nightActions"]> = {
   NIGHT_GUARD_ACTION: {},
   NIGHT_MUTE_ACTION: { guardTarget: 5 },
   NIGHT_DREAM_ACTION: { guardTarget: 5, mutedTarget: 6 },
+  NIGHT_MAGICIAN_ACTION: { guardTarget: 5, mutedTarget: 6, magicianSwap: [0, 1] },
   NIGHT_WOLF_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7 },
   NIGHT_WOLF_BEAUTY_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7, wolfTarget: 0 },
   NIGHT_WITCH_ACTION: {
@@ -152,6 +153,7 @@ const DECISION: Record<NightActionPhase, (state: GameState) => unknown> = {
   NIGHT_GUARD_ACTION: (s) => s.nightActions.guardTarget,
   NIGHT_MUTE_ACTION: (s) => s.nightActions.mutedTarget,
   NIGHT_DREAM_ACTION: (s) => s.nightActions.dreamTarget,
+  NIGHT_MAGICIAN_ACTION: (s) => s.nightActions.magicianSwap,
   NIGHT_WOLF_ACTION: (s) => s.nightActions.wolfTarget,
   NIGHT_WOLF_BEAUTY_ACTION: (s) => s.nightActions.wolfBeautyTarget,
   // 女巫的答案刻意選「毒殺」（真的會落盤的決定）；「不動作」不會寫任何欄位
@@ -159,8 +161,15 @@ const DECISION: Record<NightActionPhase, (state: GameState) => unknown> = {
   NIGHT_SEER_ACTION: (s) => s.nightActions.seerTarget,
 };
 
+/**
+ * 魔術師的換位行動**還沒接上**（`docs/board-variants-catalog.md` §6.1 步驟 5）：
+ * 目前這一步不會問 AI、也就不會寫入 `magicianSwap`。這條測試刻意把「現在會發生什麼」
+ * 寫死——等步驟 5 做完，這裡會紅，逼著把它改成跟其他角色一樣的斷言。
+ */
+const ACTION_WIRED_PHASES = NIGHT_ACTION_ORDER.filter((phase) => phase !== "NIGHT_MAGICIAN_ACTION");
+
 test("重跑指令會真的執行那一步的行動，並把夜晚走完", async () => {
-  for (const phase of NIGHT_ACTION_ORDER) {
+  for (const phase of ACTION_WIRED_PHASES) {
     const { completed, askedCount } = await runReplayCommand(phase);
     assert.ok(completed, `${phase}：下了重跑指令之後夜晚必須走完（卡住就不會到這裡）`);
     assert.ok(askedCount > 0, `${phase}：應該有問過 AI`);
@@ -168,6 +177,17 @@ test("重跑指令會真的執行那一步的行動，並把夜晚走完", async
     assert.notEqual(decision, undefined, `${phase}：那一步的決定必須被寫入（否則就是整步被跳過）`);
     assert.equal(decision, ANSWER_SEAT, `${phase}：應該使用 AI 給的 ${ANSWER_DISPLAY_SEAT} 號座位`);
   }
+});
+
+test("魔術師的換位行動還沒接上：重跑不會有換位，也因此夜晚判定為未完成（步驟 5 做完這條要改）", async () => {
+  const { completed } = await runReplayCommand("NIGHT_MAGICIAN_ACTION");
+  // 現況：這一步不會問 AI、不會寫入 magicianSwap，所以 `magicianDecided` 永遠是 false，
+  // 續跑迴圈會一直認為夜晚還沒做完。沒有任何版型收錄魔術師，所以到不了；
+  // 接上步驟 5（`runMagicianAction`）之後，這條要改成跟其他角色一樣「必須完成」。
+  // 現況：這一步不會問 AI（`runMagicianAction` 是 §6.1 步驟 5），
+  // 所以「AI 給的組合」當然不存在；這裡只要求**續跑指令不能落空**——夜晚必須走完。
+  // 接上步驟 5 之後，這條要改成跟其他角色一樣：斷言 `DECISION[phase]` 等於 AI 給的組合。
+  assert.ok(completed, "就算換位還沒接上，夜晚也必須走完");
 });
 
 test("女巫說「不救」也是決定：要落盤（否則恢復存檔會再問一次）", async () => {

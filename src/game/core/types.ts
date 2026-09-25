@@ -29,6 +29,7 @@ export type GameAction =
   | { type: "CONTINUE_NIGHT_AFTER_GUARD" }
   | { type: "CONTINUE_NIGHT_AFTER_MUTE" }
   | { type: "CONTINUE_NIGHT_AFTER_DREAM" }
+  | { type: "CONTINUE_NIGHT_AFTER_MAGICIAN" }
   | { type: "CONTINUE_NIGHT_AFTER_WOLF" }
   | { type: "CONTINUE_NIGHT_AFTER_WOLF_BEAUTY" }
   | { type: "CONTINUE_NIGHT_AFTER_WITCH" }
