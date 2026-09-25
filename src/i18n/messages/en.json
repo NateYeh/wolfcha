@@ -1609,7 +1609,8 @@
       "p4": "Vote seat X today, nobody flip.",
       "p5": "I'm on seat X's line — I read seat Y as a wolf.",
       "p6": "I'm a villager, let me hear everyone out before voting."
-    }
+    },
+    "magicianSwapQuestion": "Confirm {action} {first} with {second}?"
   },
   "tutorialOverlay": {
     "guideLabel": "Guide",
@@ -2642,7 +2643,8 @@
     "witchNoSelfSave": "The witch can never self-save",
     "youMuted": "Silenced seat {seat} {name} - they cannot speak tomorrow",
     "youDreamed": "Dreamed seat {seat} {name} - they are immune to night damage tonight",
-    "youCharmed": "You charmed seat {seat} ({name})"
+    "youCharmed": "You charmed seat {seat} ({name})",
+    "magicianSwapText": "You swapped seat {firstSeat} {firstName} with seat {secondSeat} {secondName} (tonight's skills aimed at one of them resolve onto the other)"
   },
   "customKey": {
     "title": "Use my own key",

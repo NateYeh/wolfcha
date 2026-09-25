@@ -14,7 +14,7 @@
  * - DRY: 复用子模块，避免重复代码
  */
 
-import { redirectSeat } from "@/lib/rules/magician";
+import { isValidSwap, redirectSeat } from "@/lib/rules/magician";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtom, useStore } from "jotai";
 import { useLocalStorageState } from "ahooks";
@@ -2549,6 +2549,53 @@ export function useGameLogic() {
     }
   }, [gameState, humanPlayer, setGameState, setDialogue, setIsWaitingForAI, waitForUnpause, getToken, runNightPhaseAction, resolveNight, startDayPhaseInternal, proceedToNight, endGameSafely, transitionPhase, speakerHost, t, continueAfterHunterShot, applyKnightDuel, runDaySpeechAction]);
 
+  /**
+   * 魔術師（真人）的夜間行動：選**兩名**玩家交換（`docs/board-variants-catalog.md` §6.1 步驟 6）。
+   *
+   * 與 AI 路徑共用同一份合法性判定（`isValidSwap`）——換位的規則只有 `rules/magician.ts` 一份。
+   * 寫入後交給 `continueNightAfterHumanAction` 依計畫表往下走：這一步在續跑鏈上**不是**最後一步
+   * （後面還有狼人、女巫、預言家），所以計畫表會回 `advance`，夜晚自然繼續。
+   */
+  const handleMagicianSwap = useCallback(
+    async (firstSeat: number, secondSeat: number) => {
+      if (!humanPlayer || humanPlayer.role !== "Magician" || !humanPlayer.alive) return;
+      if (gameState.phase !== "NIGHT_MAGICIAN_ACTION") return;
+      // 已經換過就不再換（面板條件也是同一條；這裡擋的是重複點擊）
+      if (gameState.nightActions.magicianSwap !== undefined) return;
+
+      const swap: [number, number] = [firstSeat, secondSeat];
+      if (!isValidSwap(gameState, swap)) {
+        // 不合法就明講，不要靜默吞掉——面板照理不會送出這種組合
+        console.warn("[wolfcha] 真人魔術師的換位組合不合法，忽略", swap);
+        return;
+      }
+
+      const token = getToken();
+      const nameOf = (seat: number) =>
+        gameState.players.find((player) => player.seat === seat)?.displayName ?? "";
+      const currentState: GameState = {
+        ...gameState,
+        nightActions: { ...gameState.nightActions, magicianSwap: swap },
+      };
+      setGameState(currentState);
+      setDialogue(
+        speakerHost,
+        t("gameLogicMessages.magicianSwapText", {
+          firstSeat: firstSeat + 1,
+          firstName: nameOf(firstSeat),
+          secondSeat: secondSeat + 1,
+          secondName: nameOf(secondSeat),
+        }),
+        false
+      );
+
+      await delay(800);
+      await waitForUnpause();
+      await continueNightAfterHumanAction(currentState, "NIGHT_MAGICIAN_ACTION", token);
+    },
+    [gameState, humanPlayer, setGameState, setDialogue, speakerHost, t, getToken, waitForUnpause, continueNightAfterHumanAction]
+  );
+
   /** 真人騎士翻牌決鬥（切到 KNIGHT_DUEL 選目標） */
   const handleKnightDuel = useCallback(async () => {
     const currentState = gameStateRef.current;
@@ -2786,6 +2833,7 @@ export function useGameLogic() {
     handleBadgeSignup: badgePhase.handleBadgeSignup,
     handleHumanVote,
     handleNightAction,
+    handleMagicianSwap,
     handleHumanBadgeTransfer,
     handleSelfDestruct,
     handleKnightDuel,

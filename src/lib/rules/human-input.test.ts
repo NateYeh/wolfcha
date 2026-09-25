@@ -6,8 +6,11 @@ import { ALL_ROLE_KEYS } from "@/lib/rules/boards";
 import {
   NIGHT_SEAT_ACTION_PHASES,
   SEAT_ACTION_CONFIRM_PHASES,
+  TWO_SEAT_ACTION_PHASES,
   canHumanConfirmSeatAction,
   isSeatActionConfirmPhase,
+  requiresTwoSeats,
+  seatActionPickCount,
   seatActionRole,
 } from "@/lib/rules/human-input";
 import { PHASE_SEQUENCE } from "@/lib/rules/phases";
@@ -79,7 +82,8 @@ test("路由清單與夜間清單的關係（夜間是路由的子集）", () =>
     assert.ok(SEAT_ACTION_CONFIRM_PHASES.includes(phase), `${phase} 應在路由清單內`);
     assert.ok(phase.startsWith("NIGHT_"), `${phase} 命名為夜間階段`);
   }
-  assert.equal(NIGHT_SEAT_ACTION_PHASES.length, 6);
+  // 魔術師補上之後是 7 個（守衛、禁言、攝夢、魔術師、狼人、狼美人、預言家）
+  assert.equal(NIGHT_SEAT_ACTION_PHASES.length, 7);
 });
 
 test("真人狼美人：面板會出現，魅惑過就不再出現（回歸：以前完全不會出現）", () => {
@@ -129,4 +133,37 @@ test("每個夜間階段都對應到一個行動角色，且該角色真的能�
     }
   }
   assert.deepEqual(missing, []);
+});
+
+test("真人魔術師：面板與路由都在，換過就不再出現（兩張卡的階段）", () => {
+  const state = freshState();
+  const magician = humanWith(state, "Magician");
+  assert.equal(isSeatActionConfirmPhase("NIGHT_MAGICIAN_ACTION"), true, "路由要接得住");
+  assert.equal(canHumanConfirmSeatAction("NIGHT_MAGICIAN_ACTION", magician, state), true);
+  assert.equal(
+    canHumanConfirmSeatAction("NIGHT_MAGICIAN_ACTION", magician, {
+      ...state,
+      nightActions: { ...state.nightActions, magicianSwap: [0, 1] },
+    }),
+    false,
+    "已寫入換位組合後不該再要求確認"
+  );
+  assert.equal(canHumanConfirmSeatAction("NIGHT_MAGICIAN_ACTION", { ...magician, alive: false }, state), false);
+  assert.equal(canHumanConfirmSeatAction("NIGHT_MAGICIAN_ACTION", humanWith(state, "Seer"), state), false, "不是魔術師就不該出現");
+});
+
+test("需要兩張卡的階段：一定同時在路由清單與兩段式清單裡（少一邊＝按了沒反應）", () => {
+  const broken: string[] = [];
+  for (const phase of TWO_SEAT_ACTION_PHASES) {
+    if (seatActionPickCount(phase) !== 2) broken.push(`${phase}：pickCount 不是 2`);
+    if (!requiresTwoSeats(phase)) broken.push(`${phase}：requiresTwoSeats 說不用兩張`);
+    if (!SEAT_ACTION_CONFIRM_PHASES.includes(phase)) broken.push(`${phase}：路由漏了`);
+    if (!phase.startsWith("NIGHT_")) broken.push(`${phase}：兩段式選取目前只用在夜間`);
+    if (!seatActionRole(phase)) broken.push(`${phase}：沒有對應角色`);
+  }
+  assert.deepEqual(broken, []);
+  // 其餘階段一律是單座位——避免有人把 TWO_SEAT 清單越加越大卻沒接 UI
+  for (const phase of SEAT_ACTION_CONFIRM_PHASES) {
+    assert.equal(seatActionPickCount(phase), TWO_SEAT_ACTION_PHASES.includes(phase) ? 2 : 1, `${phase} 的張數`);
+  }
 });

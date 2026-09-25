@@ -536,10 +536,11 @@ export const PHASE_CONFIGS: Record<Phase, PhaseConfig> = {
       const { t } = getI18n();
       return t("phase.nightMagician.human");
     },
-    // 真人魔術師要**選兩個**座位：面板與路由的兩段式選取還沒接上（§6.1 步驟 6），
-    // 所以先不宣告 requiresHumanInput——宣告了就會被 human-input.test.ts 的狀態機守衛抓到
-    // （那正是它存在的目的）。在那之前，真人魔術師的換位會由 AI 代決。
-    requiresHumanInput: () => false,
+    // 真人魔術師要選**兩張卡**（交換是兩人一組的決定）。面板與路由都讀
+    // rules/human-input.ts 的 TWO_SEAT_ACTION_PHASES——那份清單是單一真相，
+    // human-input.test.ts 會反過來檢查這裡宣告的階段一定接得住。
+    requiresHumanInput: (hp, state) =>
+      hp?.role === "Magician" && hp.alive && state.nightActions.magicianSwap === undefined,
     canSelectPlayer: (hp, target, gs) => {
       if (!hp || hp.role !== "Magician") return false;
       return getSwapEligibleSeats(gs).includes(target.seat);

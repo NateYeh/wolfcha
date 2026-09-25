@@ -33,7 +33,7 @@ import { ABSTAIN_SEAT } from "@/lib/rules/actions";
 import { canDuel } from "@/lib/rules/knight-duel";
 import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { getRoleCapabilities } from "@/lib/rules/roles";
-import { canHumanConfirmSeatAction } from "@/lib/rules/human-input";
+import { canHumanConfirmSeatAction, requiresTwoSeats } from "@/lib/rules/human-input";
 import { canSelfDestruct, hasAlreadyBoomed } from "@/lib/rules/self-destruct";
 
 const HISTORY_BOTTOM_THRESHOLD = 24;
@@ -334,6 +334,8 @@ interface DialogAreaProps {
   isDraftingSpeech?: boolean;
   // 操作相关 (从 BottomActionPanel 合并)
   selectedSeat?: number | null;
+  // 兩段式選取的**第二張卡**（目前只有魔術師的交換）；判定讀 rules/human-input 的單一真相
+  secondSelectedSeat?: number | null;
   isWaitingForAI?: boolean;
   onConfirmAction?: () => void;
   onCancelSelection?: () => void;
@@ -495,6 +497,7 @@ export function DialogArea({
   isDraftingSpeech = false,
   // 操作相关
   selectedSeat = null,
+  secondSelectedSeat = null,
   isWaitingForAI = false,
   onConfirmAction,
   onCancelSelection,
@@ -1126,6 +1129,7 @@ export function DialogArea({
     return Boolean(
       isCorrectRoleForPhase
         && selectedSeat !== null
+        && (requiresTwoSeats(phase) ? secondSelectedSeat !== null : true)
         && (phase === "DAY_VOTE" || phase === "DAY_BADGE_ELECTION" || phase === "BADGE_TRANSFER" || !isWaitingForAI)
     );
   })();
@@ -1581,6 +1585,12 @@ export function DialogArea({
 
                 const targetPlayer = gameState.players.find(p => p.seat === selectedSeat);
                 const targetName = targetPlayer ? t("ui.seatWithName", { seat: selectedSeat + 1, name: targetPlayer.displayName }) : t("ui.seatOnly", { seat: selectedSeat + 1 });
+                const secondTargetPlayer = secondSelectedSeat === null ? undefined : gameState.players.find(p => p.seat === secondSelectedSeat);
+                const secondTargetName = secondSelectedSeat === null
+                  ? null
+                  : secondTargetPlayer
+                    ? t("ui.seatWithName", { seat: secondSelectedSeat + 1, name: secondTargetPlayer.displayName })
+                    : t("ui.seatOnly", { seat: secondSelectedSeat + 1 });
 
                 const actionTextMap: Record<string, string> = {
                   DAY_VOTE: t("dialog.action.vote"),
@@ -1624,7 +1634,14 @@ export function DialogArea({
                     exit={{ opacity: 0, y: -10 }}
                   >
                     <div className="text-lg leading-relaxed text-[var(--text-primary)]">
-                      {t("dialog.actionConfirmQuestion", { action: actionText })} <span className={`font-semibold ${actionColor}`}>{targetName}</span>
+                      {requiresTwoSeats(phase) && secondTargetName ? (
+                        <>{t("dialog.magicianSwapQuestion", { action: actionText, first: targetName, second: secondTargetName })}</>
+                      ) : (
+                        <>
+                          {t("dialog.actionConfirmQuestion", { action: actionText })}{" "}
+                          <span className={`font-semibold ${actionColor}`}>{targetName}</span>
+                        </>
+                      )}
                     </div>
                     <div className={`flex items-center justify-end gap-3 mt-4 pt-3 border-t ${isNight ? "border-white/10" : "border-black/5"}`}>
                       <button

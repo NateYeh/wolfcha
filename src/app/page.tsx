@@ -37,7 +37,7 @@ import { isWolfRole } from "@/types/game";
 import { PHASE_CONFIGS, isGameInProgress } from "@/store/game-machine";
 import { getI18n } from "@/i18n/translator";
 import { getDeathShotKind } from "@/lib/rules/death-skills";
-import { isSeatActionConfirmPhase } from "@/lib/rules/human-input";
+import { isSeatActionConfirmPhase, requiresTwoSeats } from "@/lib/rules/human-input";
 import { getHunterShots, lastHunterShot } from "@/lib/rules/hunter-shots";
 import { getSystemMessages, getSystemPatterns } from "@/lib/game-texts";
 import { useTranslations } from "next-intl";
@@ -166,6 +166,7 @@ export default function Home() {
     handleBadgeSignup,
     handleHumanVote,
     handleNightAction,
+    handleMagicianSwap,
     handleHumanBadgeTransfer,
     handleSelfDestruct,
     handleKnightDuel,
@@ -541,6 +542,8 @@ export default function Home() {
 
   // UI 状态
   const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
+  // 兩段式選取（魔術師的交換）：第一個座位在 selectedSeat，第二個在這裡
+  const [secondSeatPick, setSecondSeatPick] = useState<number | null>(null);
   const [isNotebookOpen, setIsNotebookOpen] = useState(false);
   const [isEventLogOpen, setIsEventLogOpen] = useState(false);
   const [isDevConsoleOpen, setIsDevConsoleOpen] = useState(false);
@@ -575,6 +578,7 @@ export default function Home() {
   useEffect(() => {
     const t = window.setTimeout(() => {
       setSelectedSeat(null);
+      setSecondSeatPick(null);
     }, 0);
     return () => window.clearTimeout(t);
   }, [gameState.phase]);
@@ -1169,8 +1173,33 @@ export default function Home() {
       return;
     }
     if (!canClickSeat(player)) return;
+
+    // 魔術師的交換要**兩張卡**：先填第一個空位、再填第二個；兩個都滿了就以新的取代第一個
+    // （要換掉哪一張都很容易：再點那張卡就是取消它）。判定讀 rules/human-input 的單一真相。
+    if (requiresTwoSeats(gameState.phase)) {
+      if (selectedSeat === player.seat) {
+        setSelectedSeat(null);
+        return;
+      }
+      if (secondSeatPick === player.seat) {
+        setSecondSeatPick(null);
+        return;
+      }
+      if (selectedSeat === null) {
+        setSelectedSeat(player.seat);
+        return;
+      }
+      if (secondSeatPick === null) {
+        setSecondSeatPick(player.seat);
+        return;
+      }
+      setSelectedSeat(secondSeatPick);
+      setSecondSeatPick(player.seat);
+      return;
+    }
+
     setSelectedSeat(prev => prev === player.seat ? null : player.seat);
-  }, [canClickSeat, isRoleRevealOpen, humanPlayer, gameState.phase, gameState.roleAbilities.witchPoisonUsed]);
+  }, [canClickSeat, isRoleRevealOpen, humanPlayer, gameState.phase, gameState.roleAbilities.witchPoisonUsed, selectedSeat, secondSeatPick]);
 
   const confirmSelectedSeat = useCallback(async () => {
     if (isRoleRevealOpen) return;
@@ -1189,6 +1218,16 @@ export default function Home() {
       return;
     }
     
+    // 兩段式（魔術師）：兩張卡都選好才送出去；送的是**一對**座位
+    if (requiresTwoSeats(phase)) {
+      if (selectedSeat === null || secondSeatPick === null) return;
+      const [firstSeat, secondSeat] = [selectedSeat, secondSeatPick];
+      setSelectedSeat(null);
+      setSecondSeatPick(null);
+      await handleMagicianSwap(firstSeat, secondSeat);
+      return;
+    }
+
     if (selectedSeat === null) return;
     
     // 保存选中的座位号，然后立即清除选择状态，避免确认对话框重新渲染
@@ -1203,7 +1242,7 @@ export default function Home() {
       // 夜間行動（含攝夢、狼美人魅惑）與獵人開槍／自爆／騎士決鬥都走這裡
       await handleNightAction(targetSeat);
     }
-  }, [selectedSeat, gameState.phase, handleHumanVote, handleHumanBadgeTransfer, handleNightAction, isRoleRevealOpen, humanPlayer, gameState.badge.holderSeat]);
+  }, [selectedSeat, secondSeatPick, gameState.phase, handleHumanVote, handleHumanBadgeTransfer, handleNightAction, handleMagicianSwap, isRoleRevealOpen, humanPlayer, gameState.badge.holderSeat]);
 
   const handleNightActionConfirm = useCallback(async (targetSeat: number, actionType?: "save" | "poison" | "pass") => {
     if (isRoleRevealOpen) return;
@@ -1631,9 +1670,10 @@ export default function Home() {
                       isDraftingSpeech={isDraftingSpeech}
                       onFinishSpeaking={handleFinishSpeaking}
                       selectedSeat={selectedSeat}
+                      secondSelectedSeat={secondSeatPick}
                       isWaitingForAI={isWaitingForAI}
                       onConfirmAction={confirmSelectedSeat}
-                      onCancelSelection={() => setSelectedSeat(null)}
+                      onCancelSelection={() => { setSelectedSeat(null); setSecondSeatPick(null); }}
                       onNightAction={handleNightActionConfirm}
                       onBadgeSignup={handleBadgeSignup}
                       onRestart={restartGame}

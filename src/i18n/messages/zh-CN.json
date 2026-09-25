@@ -1609,7 +1609,8 @@
       "p4": "今天投 X号，不要跳车",
       "p5": "我站 X号这条线，X号是我认的狼位",
       "p6": "我是好人，先听完再投"
-    }
+    },
+    "magicianSwapQuestion": "确定要{action} {first} 与 {second} 吗？"
   },
   "tutorialOverlay": {
     "guideLabel": "指南",
@@ -2642,7 +2643,8 @@
     "witchNoSelfSave": "女巫全程不能自救",
     "youMuted": "已禁言 {seat}号 {name}，他明天白天不能发言",
     "youDreamed": "已摄梦 {seat}号 {name}，他今晚免疫夜间伤害",
-    "youCharmed": "你魅惑了{seat}号「{name}」"
+    "youCharmed": "你魅惑了{seat}号「{name}」",
+    "magicianSwapText": "你交换了 {firstSeat}号 {firstName} 与 {secondSeat}号 {secondName}（今晚指向他们的技能会改结算到另一人身上）"
   },
   "customKey": {
     "title": "用我自己的 key 玩",

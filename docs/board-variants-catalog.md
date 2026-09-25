@@ -229,7 +229,7 @@
 | 2 階段 `NIGHT_MAGICIAN_ACTION` | ✅ 完成（17 處 `Record<Phase,…>` ＋ 12 條釘子測試同步，`tsc` 逼出來的） |
 | 4 `night-resolution` 的換位套用 | ✅ 完成（夜間指向全過 `redirectSeat`；預言家查驗在 AI／真人兩條路徑各改判一次；槍口刻意不碰） |
 | 5 AI 決策 `runMagicianAction`／`generateMagicianSwap` | ✅ 完成（回應格式 `{"seats":[a,b],"reason":…}`；不合法就 `pickRandomSwap`，不靜默少做） |
-| 6 真人兩段式選取（面板與路由） | ⬜ 待做（**下一步**：`requiresHumanInput` 目前仍是 `() => false`） |
+| 6 真人兩段式選取（面板與路由） | ✅ 完成（`TWO_SEAT_ACTION_PHASES` 是單一真相；面板與路由各讀同一份，狀態機守衛涵蓋） |
 | 7 `prompts.magician.*` 與玩法指引 | ✅ 完成（三語系 `prompts.magician`＋`strategyGuide.magician`＋`ui/system` 文案＋旁白鍵） |
 | 8 夜史、DevConsole、跳轉補全、賽後分析 | ⬜ 待做 |
 | 9 版型 `official-12-wolf-king-magician` | ⬜ 待做 |

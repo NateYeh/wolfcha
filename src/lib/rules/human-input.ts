@@ -28,6 +28,7 @@ export const SEAT_ACTION_CONFIRM_PHASES: readonly Phase[] = [
   "NIGHT_GUARD_ACTION",
   "NIGHT_MUTE_ACTION",
   "NIGHT_DREAM_ACTION",
+  "NIGHT_MAGICIAN_ACTION",
   "NIGHT_WOLF_ACTION",
   "NIGHT_WOLF_BEAUTY_ACTION",
   "NIGHT_SEER_ACTION",
@@ -35,6 +36,21 @@ export const SEAT_ACTION_CONFIRM_PHASES: readonly Phase[] = [
   "SELF_DESTRUCT",
   "KNIGHT_DUEL",
 ];
+
+/**
+ * 需要**點兩張卡**的階段（目前只有魔術師的交換）。
+ *
+ * 這是「兩段式選取」的單一真相：面板要收兩張卡、路由要送兩個座位，兩邊都讀這裡。
+ * 少寫任一邊的症狀與單座位那批一模一樣（按了沒反應／面板不出現），所以
+ * `human-input.test.ts` 會反過來檢查「需要兩張卡的階段一定同時在兩個清單裡」。
+ */
+export const TWO_SEAT_ACTION_PHASES: readonly Phase[] = ["NIGHT_MAGICIAN_ACTION"];
+
+/** 這個階段要點幾張卡（1 = 舊的單座位行為）。 */
+export const seatActionPickCount = (phase: Phase): 1 | 2 => (TWO_SEAT_ACTION_PHASES.includes(phase) ? 2 : 1);
+
+/** 這個階段是否要點兩張卡。 */
+export const requiresTwoSeats = (phase: Phase): boolean => seatActionPickCount(phase) === 2;
 
 /** 這個階段的行動是否由「點座位 → 確認」面板送出。 */
 export const isSeatActionConfirmPhase = (phase: Phase): boolean => SEAT_ACTION_CONFIRM_PHASES.includes(phase);
@@ -83,6 +99,9 @@ export const canHumanConfirmSeatAction = (
       return Boolean(
         human?.role === "WolfBeauty" && human.alive && state.nightActions.wolfBeautyTarget === undefined
       );
+    case "NIGHT_MAGICIAN_ACTION":
+      // 交換是「兩人一組」的決定：寫入 magicianSwap 之後就不再要求輸入
+      return Boolean(human?.role === "Magician" && human.alive && state.nightActions.magicianSwap === undefined);
     case "HUNTER_SHOOT":
       return getDeathShotKind(role) !== "none";
     case "BADGE_TRANSFER":
@@ -119,6 +138,8 @@ export const seatActionRole = (phase: Phase): Role | undefined => {
       return "Dreamweaver";
     case "NIGHT_WOLF_BEAUTY_ACTION":
       return "WolfBeauty";
+    case "NIGHT_MAGICIAN_ACTION":
+      return "Magician";
     default:
       return undefined;
   }
