@@ -807,6 +807,8 @@
     "statGamesLabel": "參賽",
     "statWinRateLabel": "勝率",
     "statMvpLabel": "MVP",
+    "campWinRate": "{camp} {rate}%（{games} 場）",
+    "campWinRateEmpty": "{camp} 無紀錄",
     "statSvpLabel": "SVP"
   },
   "tutorialModal": {

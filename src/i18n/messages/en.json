@@ -807,6 +807,8 @@
     "statGamesLabel": "Games",
     "statWinRateLabel": "Win rate",
     "statMvpLabel": "MVP",
+    "campWinRate": "{camp} {rate}% ({games} games)",
+    "campWinRateEmpty": "{camp} — no record",
     "statSvpLabel": "SVP"
   },
   "tutorialModal": {

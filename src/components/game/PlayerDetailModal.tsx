@@ -19,6 +19,7 @@ import {
 import { buildSimpleAvatarUrl, getModelLogoUrl } from "@/lib/avatar-config";
 import { useCareerStats } from "@/hooks/useCareerStats";
 import { useTranslations } from "next-intl";
+import { CareerStatsGrid } from "@/components/ui/career-stats";
 
 interface PlayerDetailModalProps {
   player: Player | null;
@@ -195,43 +196,8 @@ export function PlayerDetailModal({ player, isOpen, onClose, humanPlayer, isGens
 
               {/* 内容区 - 背景信息 */}
               <div className="px-6 pb-6 space-y-4">
-                {/* 生涯战绩：按角色名累计（无记录则不显示） */}
-                {careerStats && (
-                  <div className="grid grid-cols-4 rounded-lg bg-black/5 dark:bg-white/10 px-2 py-2">
-                    <div className="min-w-0">
-                      <div className="text-sm font-bold text-[var(--text-primary)] whitespace-nowrap">
-                        {t("playerDetail.statGamesValue", { games: careerStats.games })}
-                      </div>
-                      <div className="mt-0.5 text-[11px] leading-tight text-[var(--text-muted)] whitespace-nowrap">
-                        {t("playerDetail.statGamesLabel")}
-                      </div>
-                    </div>
-                    <div className="min-w-0 border-l border-black/5 dark:border-white/10">
-                      <div className="text-sm font-bold text-[var(--text-primary)] whitespace-nowrap">
-                        {careerStats.games > 0 ? Math.round((careerStats.wins / careerStats.games) * 100) : 0}%
-                      </div>
-                      <div className="mt-0.5 text-[11px] leading-tight text-[var(--text-muted)] whitespace-nowrap">
-                        {t("playerDetail.statWinRateLabel")}
-                      </div>
-                    </div>
-                    <div className="min-w-0 border-l border-black/5 dark:border-white/10">
-                      <div className="text-sm font-bold text-[var(--text-primary)] whitespace-nowrap">
-                        {t("playerDetail.statCountValue", { count: careerStats.mvps })}
-                      </div>
-                      <div className="mt-0.5 text-[11px] leading-tight text-[var(--text-muted)] whitespace-nowrap">
-                        {t("playerDetail.statMvpLabel")}
-                      </div>
-                    </div>
-                    <div className="min-w-0 border-l border-black/5 dark:border-white/10">
-                      <div className="text-sm font-bold text-[var(--text-primary)] whitespace-nowrap">
-                        {t("playerDetail.statCountValue", { count: careerStats.svps ?? 0 })}
-                      </div>
-                      <div className="mt-0.5 text-[11px] leading-tight text-[var(--text-muted)] whitespace-nowrap">
-                        {t("playerDetail.statSvpLabel")}
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {/* 生涯战绩：按角色名累计 ＋ 陣營勝率（共用元件，與賽後分析同一份） */}
+                {careerStats && <CareerStatsGrid stats={careerStats} />}
                 {showPersona && (
                   <>
                     {/* 性格标签 */}

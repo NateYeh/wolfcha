@@ -7,6 +7,7 @@ import type { DeathCause, PlayerSnapshot } from "@/types/analysis";
 import { ROLE_ICONS, ROLE_NAMES } from "./constants";
 import { buildSimpleAvatarUrl } from "@/lib/avatar-config";
 import { useTranslations } from "next-intl";
+import { CareerStatsGrid } from "@/components/ui/career-stats";
 import { useCareerStats } from "@/hooks/useCareerStats";
 
 interface PlayerDetailModalProps {
@@ -109,43 +110,10 @@ export function PlayerDetailModal({ player, isOpen, onClose }: PlayerDetailModal
 
                 <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">{player.name}</h2>
 
-                {/* 生涯战绩：按角色名累计（无记录则不显示） */}
+                {/* 生涯战绩：按角色名累计 ＋ 陣營勝率（共用元件，與遊戲中同一份） */}
                 {careerStats && (
                   <div className="mb-2">
-                    <div className="grid grid-cols-4 rounded-lg bg-black/5 dark:bg-white/10 px-2 py-2">
-                      <div className="min-w-0">
-                        <div className="text-sm font-bold text-[var(--text-primary)] whitespace-nowrap">
-                          {t("playerDetail.statGamesValue", { games: careerStats.games })}
-                        </div>
-                        <div className="mt-0.5 text-[11px] leading-tight text-[var(--text-muted)] whitespace-nowrap">
-                          {t("playerDetail.statGamesLabel")}
-                        </div>
-                      </div>
-                      <div className="min-w-0 border-l border-black/5 dark:border-white/10">
-                        <div className="text-sm font-bold text-[var(--text-primary)] whitespace-nowrap">
-                          {careerStats.games > 0 ? Math.round((careerStats.wins / careerStats.games) * 100) : 0}%
-                        </div>
-                        <div className="mt-0.5 text-[11px] leading-tight text-[var(--text-muted)] whitespace-nowrap">
-                          {t("playerDetail.statWinRateLabel")}
-                        </div>
-                      </div>
-                      <div className="min-w-0 border-l border-black/5 dark:border-white/10">
-                        <div className="text-sm font-bold text-[var(--text-primary)] whitespace-nowrap">
-                          {t("playerDetail.statCountValue", { count: careerStats.mvps })}
-                        </div>
-                        <div className="mt-0.5 text-[11px] leading-tight text-[var(--text-muted)] whitespace-nowrap">
-                          {t("playerDetail.statMvpLabel")}
-                        </div>
-                      </div>
-                      <div className="min-w-0 border-l border-black/5 dark:border-white/10">
-                        <div className="text-sm font-bold text-[var(--text-primary)] whitespace-nowrap">
-                          {t("playerDetail.statCountValue", { count: careerStats.svps ?? 0 })}
-                        </div>
-                        <div className="mt-0.5 text-[11px] leading-tight text-[var(--text-muted)] whitespace-nowrap">
-                          {t("playerDetail.statSvpLabel")}
-                        </div>
-                      </div>
-                    </div>
+                    <CareerStatsGrid stats={careerStats} />
                   </div>
                 )}
 

@@ -147,6 +147,12 @@ export interface CharacterStat {
   wins: number;
   mvps: number;
   svps: number;
+  /** 好人陣營場次／勝場（勝率＝villageWins / villageGames） */
+  villageGames: number;
+  villageWins: number;
+  /** 狼人陣營場次／勝場 */
+  wolfGames: number;
+  wolfWins: number;
 }
 
 export interface PlayerMind {

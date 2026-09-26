@@ -56,8 +56,27 @@ test("统计行：合法记录解析、坏行跳过、聚合按角色 id 累计 
     { name: "韦小宝", name2: undefined, alignment: "village", won: true, mvp: false, svp: true } as never,
     { characterId: "ling-hu-chong", name: "令狐沖", alignment: "village", won: true, mvp: true, svp: false },
   ]);
-  assert.deepEqual(stats["wei-xiao-bao"], { games: 3, wins: 2, mvps: 1, svps: 2 });
-  assert.deepEqual(stats["ling-hu-chong"], { games: 1, wins: 1, mvps: 1, svps: 0 });
+  assert.deepEqual(stats["wei-xiao-bao"], {
+    games: 3,
+    wins: 2,
+    mvps: 1,
+    svps: 2,
+    // 陣營分開算：狼人 2 場 1 勝、好人 1 場 1 勝
+    villageGames: 1,
+    villageWins: 1,
+    wolfGames: 2,
+    wolfWins: 1,
+  });
+  assert.deepEqual(stats["ling-hu-chong"], {
+    games: 1,
+    wins: 1,
+    mvps: 1,
+    svps: 0,
+    villageGames: 1,
+    villageWins: 1,
+    wolfGames: 0,
+    wolfWins: 0,
+  });
   assert.equal(Object.keys(stats).length, 2);
 });
 

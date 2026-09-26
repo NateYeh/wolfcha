@@ -6,7 +6,16 @@ import { fetchCharacterStats, resolveCharacterKey } from "@/lib/character-stats"
 import type { CharacterStat } from "@/types/game";
 
 /** 無紀錄時顯示的零值戰績：角色卡一律顯示戰績區塊（含 0 參賽）。 */
-const EMPTY_CAREER_STAT: CharacterStat = { games: 0, wins: 0, mvps: 0, svps: 0 };
+const EMPTY_CAREER_STAT: CharacterStat = {
+  games: 0,
+  wins: 0,
+  mvps: 0,
+  svps: 0,
+  villageGames: 0,
+  villageWins: 0,
+  wolfGames: 0,
+  wolfWins: 0,
+};
 
 /**
  * 生涯戰績（參賽數／勝率／MVP／SVP）讀取 hook。

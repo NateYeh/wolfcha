@@ -77,11 +77,28 @@ export function aggregateCharacterStats(records: CharacterStatRecord[]): Record<
   const stats: Record<string, CharacterStat> = {};
   for (const rec of records) {
     const key = resolveCharacterKey(rec);
-    const entry = stats[key] ?? { games: 0, wins: 0, mvps: 0, svps: 0 };
+    const entry = stats[key] ?? {
+      games: 0,
+      wins: 0,
+      mvps: 0,
+      svps: 0,
+      villageGames: 0,
+      villageWins: 0,
+      wolfGames: 0,
+      wolfWins: 0,
+    };
     entry.games += 1;
     if (rec.won) entry.wins += 1;
     if (rec.mvp) entry.mvps += 1;
     if (rec.svp) entry.svps += 1;
+    // 陣營分開累計：同一個人在好人與狼人時的勝率常常差很多
+    if (rec.alignment === "wolf") {
+      entry.wolfGames += 1;
+      if (rec.won) entry.wolfWins += 1;
+    } else {
+      entry.villageGames += 1;
+      if (rec.won) entry.villageWins += 1;
+    }
     stats[key] = entry;
   }
   return stats;

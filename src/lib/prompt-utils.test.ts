@@ -657,7 +657,7 @@ test("熟人局：注入全桌每个人的印象与交手记录（含自己，�
   // 有印象+有交手记录：真人标真人＋交手记录；AI 标底层模型＋印象；本人不列
   const state: GameState = { ...dayState, isAcquaintanceGame: true };
   // 真人（players[0] isHuman=true，无 agentProfile）：只有真人标记＋交手记录
-  state.characterStats = { [state.players[0].displayName]: { games: 12, wins: 7, mvps: 2, svps: 1 } };
+  state.characterStats = { [state.players[0].displayName]: { games: 12, wins: 7, mvps: 2, svps: 1, villageGames: 0, villageWins: 0, wolfGames: 0, wolfWins: 0 } };
   // AI（players[1]）：persona＋playerMind＋底层模型
   state.players[1] = {
     ...state.players[1],
@@ -685,7 +685,7 @@ test("熟人局：注入全桌每个人的印象与交手记录（含自己，�
   // 本人（players[2]）也給一份交手記錄：證明自己那一行同樣會列
   state.characterStats = {
     ...state.characterStats,
-    [state.players[2].displayName]: { games: 4, wins: 1, mvps: 0, svps: 1 },
+    [state.players[2].displayName]: { games: 4, wins: 1, mvps: 0, svps: 1, villageGames: 0, villageWins: 0, wolfGames: 0, wolfWins: 0 },
   };
 
   const ctx = buildGameContext(state, actor);
@@ -720,7 +720,7 @@ const acquaintanceTextOf = (state: GameState): string =>
 test("開局建構點：LOBBY 與 NIGHT_START 都要帶上熟人局旗標（漏一個就會靜默掉）", async () => {
   const { buildGameStartState } = await import("./game-master");
   const base = makeState();
-  const characterStats = { [base.players[0].displayName]: { games: 5, wins: 3, mvps: 1, svps: 0 } };
+  const characterStats = { [base.players[0].displayName]: { games: 5, wins: 3, mvps: 1, svps: 0, villageGames: 0, villageWins: 0, wolfGames: 0, wolfWins: 0 } };
 
   // 實際對局那份（NIGHT_START）過去漏帶這兩個欄位，導致第一次 AI 呼叫前就掉了。
   const nightState = buildGameStartState({
