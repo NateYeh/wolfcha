@@ -14,7 +14,7 @@ export default function AnalysisPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+      <div className="analysis-page min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin w-12 h-12 border-4 border-[var(--color-gold)]/30 border-t-[var(--color-gold)] rounded-full mx-auto mb-4" />
           <p className="text-[var(--text-secondary)]">正在生成复盘分析...</p>
@@ -25,7 +25,7 @@ export default function AnalysisPage() {
 
   if (error && !analysisData) {
     return (
-      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+      <div className="analysis-page min-h-screen flex items-center justify-center">
         <div className="text-center max-w-sm mx-auto px-4">
           <p className="text-red-400 text-sm mb-4">分析生成失败: {error}</p>
           <div className="flex gap-3 justify-center">
@@ -49,7 +49,7 @@ export default function AnalysisPage() {
 
   if (!analysisData) {
     return (
-      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+      <div className="analysis-page min-h-screen flex items-center justify-center">
         <div className="text-center max-w-sm mx-auto px-4">
           <p className="text-[var(--text-secondary)] text-sm mb-4">暂无分析数据，请先完成一局游戏</p>
           <button
