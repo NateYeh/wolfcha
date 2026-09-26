@@ -208,6 +208,35 @@ export const actorsForNightStep = (state: GameState, phase: Phase): Player[] => 
   return state.players.filter((p) => p.role === role && p.alive);
 };
 
+/** 這一步的演員是否**在場**（不看死活；狼隊＝隊上有狼就算）。
+ *
+ * 與 `actorsForNightStep` 的差別：那個回的是「還活著、真的能行動的人」，這個只問
+ * 「這個身分在不在這一局裡」——夜間播報要看的正是後者（見 `shouldPlayNightStep`）。
+ */
+export const hasActorForNightStep = (state: GameState, phase: Phase): boolean => {
+  const step = nightStepFor(phase);
+  if (!step) return false;
+  if (step.actor.kind === "wolfTeam") return state.players.some((p) => isWolfRole(p.role));
+  const { role } = step.actor;
+  return state.players.some((p) => p.role === role);
+};
+
+/**
+ * 這一步今晚還要不要「跑」（包括只播報的 announce-only 分支）。
+ *
+ * 規則：**不能因為該角色死亡就跳過播報** —— 夜裡少了某個身分的步驟，等於向全場宣告
+ * 「那個身分已經死了」。所以只要演員在場就播報；只有「已決定 **且** 演員還活著」
+ * （＝AI／真人已經做完事，也沒有身分可洩漏）才整步跳過。
+ *
+ * 演員已死時 `run*Action` 會走 announce-only 分支：只播報、不問 AI、不寫決定，
+ * 因此 `decided` 仍為真，`isNightComplete` 與存檔續跑的不變式不受影響。
+ */
+export const shouldPlayNightStep = (state: GameState, phase: Phase): boolean => {
+  if (!hasActorForNightStep(state, phase)) return false;
+  if (!NIGHT_STEP[phase as NightActionPhase].decided(state)) return true;
+  return actorsForNightStep(state, phase).length === 0;
+};
+
 /**
  * 這一步是不是「正在等真人決定」：決定者裡有真人，而且這一步還沒完成。
  *

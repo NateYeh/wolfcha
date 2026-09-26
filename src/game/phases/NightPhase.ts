@@ -27,7 +27,7 @@ import {
   isValidWolfBeautyTarget,
   pickRandomWolfBeautyTarget,
 } from "@/lib/rules/charm";
-import { humanActorPending, NIGHT_STEP } from "@/lib/rules/night-progress";
+import { humanActorPending, shouldPlayNightStep } from "@/lib/rules/night-progress";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { DELAY_CONFIG } from "@/lib/game-constants";
@@ -798,9 +798,9 @@ export class NightPhase extends GamePhase {
   private async runNightPhase(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
     let currentState = state;
 
-    const hasGuard = currentState.players.some((p) => p.role === "Guard");
-    // 守衛已經決定過就不要再問一次（存檔恢復／Dev 重跑都會從這裡進來）
-    if (hasGuard && !NIGHT_STEP.NIGHT_GUARD_ACTION.decided(currentState)) {
+    // 守衛已經決定過就不要再問一次（存檔恢復／Dev 重跑都會從這裡進來）。
+    // 「這個角色已死」不是跳過的理由——那等於向全場宣告他的身分（見 shouldPlayNightStep）。
+    if (shouldPlayNightStep(currentState, "NIGHT_GUARD_ACTION")) {
       currentState = await this.runGuardAction(currentState, runtime);
       if (!runtime.isTokenValid(runtime.token)) return;
 
@@ -830,19 +830,16 @@ export class NightPhase extends GamePhase {
 
     // 禁言長老已經決定過就不重跑（存檔恢復時狀態已停在 NIGHT_MUTE_ACTION，
     // 但「停在這一階段」與「決定已經落盤」是兩件事——只有後者才該跳過）
-    if (!NIGHT_STEP.NIGHT_MUTE_ACTION.decided(currentState)) {
-      const hasMuteElder = currentState.players.some((p) => p.role === "MuteElder");
-      if (hasMuteElder) {
-        currentState = await this.runMuteAction(currentState, runtime);
-        if (!runtime.isTokenValid(runtime.token)) return;
+    if (shouldPlayNightStep(currentState, "NIGHT_MUTE_ACTION")) {
+      currentState = await this.runMuteAction(currentState, runtime);
+      if (!runtime.isTokenValid(runtime.token)) return;
 
-        // 真人禁言長老還沒選 → 停在這裡等前端寫入
-        if (humanActorPending(currentState, "NIGHT_MUTE_ACTION")) return;
+      // 真人禁言長老還沒選 → 停在這裡等前端寫入
+      if (humanActorPending(currentState, "NIGHT_MUTE_ACTION")) return;
 
-        await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
-        await runtime.waitForUnpause();
-        if (!runtime.isTokenValid(runtime.token)) return;
-      }
+      await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
+      await runtime.waitForUnpause();
+      if (!runtime.isTokenValid(runtime.token)) return;
     }
 
     await this.continueNightAfterDream(currentState, runtime);
@@ -919,19 +916,16 @@ export class NightPhase extends GamePhase {
     let currentState = state;
 
     // 攝夢人已經決定過就不重跑（同上：看決定，不看 phase）
-    if (!NIGHT_STEP.NIGHT_DREAM_ACTION.decided(currentState)) {
-      const hasDreamweaver = currentState.players.some((p) => p.role === "Dreamweaver");
-      if (hasDreamweaver) {
-        currentState = await this.runDreamAction(currentState, runtime);
-        if (!runtime.isTokenValid(runtime.token)) return;
+    if (shouldPlayNightStep(currentState, "NIGHT_DREAM_ACTION")) {
+      currentState = await this.runDreamAction(currentState, runtime);
+      if (!runtime.isTokenValid(runtime.token)) return;
 
-        // 真人攝夢人還沒選 → 停在這裡等前端寫入
-        if (humanActorPending(currentState, "NIGHT_DREAM_ACTION")) return;
+      // 真人攝夢人還沒選 → 停在這裡等前端寫入
+      if (humanActorPending(currentState, "NIGHT_DREAM_ACTION")) return;
 
-        await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
-        await runtime.waitForUnpause();
-        if (!runtime.isTokenValid(runtime.token)) return;
-      }
+      await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
+      await runtime.waitForUnpause();
+      if (!runtime.isTokenValid(runtime.token)) return;
     }
 
     await this.continueNightAfterMagician(currentState, runtime);
@@ -942,19 +936,16 @@ export class NightPhase extends GamePhase {
     let currentState = state;
 
     // 魔術師已經決定過就不重跑（同上：看決定，不看 phase）
-    if (!NIGHT_STEP.NIGHT_MAGICIAN_ACTION.decided(currentState)) {
-      const hasMagician = currentState.players.some((p) => p.role === "Magician");
-      if (hasMagician) {
-        currentState = await this.runMagicianAction(currentState, runtime);
-        if (!runtime.isTokenValid(runtime.token)) return;
+    if (shouldPlayNightStep(currentState, "NIGHT_MAGICIAN_ACTION")) {
+      currentState = await this.runMagicianAction(currentState, runtime);
+      if (!runtime.isTokenValid(runtime.token)) return;
 
-        // 真人魔術師還沒選 → 停在這裡等前端寫入（§6.1 步驟 6）
-        if (humanActorPending(currentState, "NIGHT_MAGICIAN_ACTION")) return;
+      // 真人魔術師還沒選 → 停在這裡等前端寫入（§6.1 步驟 6）
+      if (humanActorPending(currentState, "NIGHT_MAGICIAN_ACTION")) return;
 
-        await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
-        await runtime.waitForUnpause();
-        if (!runtime.isTokenValid(runtime.token)) return;
-      }
+      await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
+      await runtime.waitForUnpause();
+      if (!runtime.isTokenValid(runtime.token)) return;
     }
 
     await this.continueNightAfterWolfBeauty(currentState, runtime);
@@ -968,12 +959,9 @@ export class NightPhase extends GamePhase {
    */
   private async continueNightAfterWolfBeauty(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
     let currentState = state;
-    const hasWolfBeauty = currentState.players.some((player) => player.role === "WolfBeauty");
-    if (hasWolfBeauty) {
-      // 狼美人已經決定過（或有真人正在選）就不重跑：存檔恢復時這裡是「決定已落盤」
-      currentState = NIGHT_STEP.NIGHT_WOLF_BEAUTY_ACTION.decided(currentState)
-        ? currentState
-        : await this.runWolfBeautyAction(currentState, runtime);
+    // 狼美人已經決定過（或有真人正在選）就不重跑；已死的狼美人仍要播報（不能洩漏身分）。
+    if (shouldPlayNightStep(currentState, "NIGHT_WOLF_BEAUTY_ACTION")) {
+      currentState = await this.runWolfBeautyAction(currentState, runtime);
       if (!runtime.isTokenValid(runtime.token)) return;
 
       // 真人狼美人還沒選 → 停在這裡等前端寫入
@@ -993,9 +981,10 @@ export class NightPhase extends GamePhase {
     // 等前端對話框寫入計畫（寫入後由 handleWolfTeamPlanSubmit 推下去）。
     if (humanWolfNeedsNightInput(state)) return;
 
-    const afterWolf = NIGHT_STEP.NIGHT_WOLF_ACTION.decided(state)
-      ? state
-      : await this.runWolfAction(state, runtime);
+    // 狼隊全滅也要播報（夜裡少一步等於洩漏狼隊狀態），所以看 shouldPlayNightStep。
+    const afterWolf = shouldPlayNightStep(state, "NIGHT_WOLF_ACTION")
+      ? await this.runWolfAction(state, runtime)
+      : state;
     if (!runtime.isTokenValid(runtime.token)) return;
 
     if (humanWolfNeedsNightInput(afterWolf)) {
@@ -1007,9 +996,9 @@ export class NightPhase extends GamePhase {
     if (!runtime.isTokenValid(runtime.token)) return;
 
     // 女巫已經決定過就不重跑（看決定，不看 phase）
-    const currentState = NIGHT_STEP.NIGHT_WITCH_ACTION.decided(afterWolf)
-      ? afterWolf
-      : await this.runWitchAction(afterWolf, runtime);
+    const currentState = shouldPlayNightStep(afterWolf, "NIGHT_WITCH_ACTION")
+      ? await this.runWitchAction(afterWolf, runtime)
+      : afterWolf;
     if (!runtime.isTokenValid(runtime.token)) return;
 
     // 真人女巫還沒決定（藥還在，且沒明確選救人／毒人／不救）→ 停在這裡等前端寫入
@@ -1024,9 +1013,9 @@ export class NightPhase extends GamePhase {
 
   private async continueNightAfterWitch(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
     // 預言家已經查驗過就不重跑（看決定，不看 phase）
-    const currentState = NIGHT_STEP.NIGHT_SEER_ACTION.decided(state)
-      ? state
-      : await this.runSeerAction(state, runtime);
+    const currentState = shouldPlayNightStep(state, "NIGHT_SEER_ACTION")
+      ? await this.runSeerAction(state, runtime)
+      : state;
     if (!runtime.isTokenValid(runtime.token)) return;
 
     // 真人預言家還沒查驗 → 停在這裡等前端寫入

@@ -2,13 +2,56 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createSinglePlayerContextAuditState } from "../../../scripts/single-player-context-audit";
 import { NIGHT_ACTION_ORDER, type NightActionPhase } from "@/lib/rules/phases";
-import { guardDecided, NIGHT_STEP, actorsForNightStep, dreamDecided, humanActorPending, isNightActionPhase, isNightComplete, muteDecided, nextPendingNightAction, nightStepFor, pendingNightActions} from "@/lib/rules/night-progress";
+import { guardDecided, NIGHT_STEP, actorsForNightStep, dreamDecided, humanActorPending, isNightActionPhase, isNightComplete, muteDecided, nextPendingNightAction, nightStepFor, pendingNightActions, shouldPlayNightStep } from "@/lib/rules/night-progress";
 import { isWolfRole } from "@/types/game";
 import type { GameState, Phase, Player, Role } from "@/types/game";
 
 // 交叉檢查會讀到 store 的轉移表（那條 import 鏈需要這兩個環境變數才不會在載入時拋錯）
 process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "night-progress-test";
+
+/** 造一個「守衛在場、其餘村民」的第二晚狀態，再依測試需要動它。 */
+const guardState = (mutate: (state: GameState) => void): GameState => {
+  const state = structuredClone(createSinglePlayerContextAuditState() as unknown as GameState);
+  state.phase = "NIGHT_START";
+  state.day = 2;
+  state.nightActions = {};
+  state.players = state.players.map((player, index) => ({
+    ...player,
+    role: index === 0 ? ("Guard" as Role) : ("Villager" as Role),
+    alive: true,
+  }));
+  mutate(state);
+  return state;
+};
+
+/**
+ * 「角色死了就不播報」是情報洩漏：夜裡少了某個身分的步驟，等於向全場宣告那個身分已死。
+ * 所以跳過的條件只有一個 —— 已決定 **且** 演員還活著。
+ */
+test("夜間播報不能因為角色死亡而跳過", () => {
+  assert.equal(shouldPlayNightStep(guardState(() => {}), "NIGHT_GUARD_ACTION"), true, "還活著且未決定 → 要跑");
+  assert.equal(
+    shouldPlayNightStep(guardState((s) => { s.players[0].alive = false; }), "NIGHT_GUARD_ACTION"),
+    true,
+    "守衛已死但仍在場 → 仍要播報（否則洩漏身分）"
+  );
+  assert.equal(
+    shouldPlayNightStep(guardState((s) => { s.players[0].alive = false; s.nightActions.guardTarget = 3; }), "NIGHT_GUARD_ACTION"),
+    true,
+    "守衛已死且決定已落盤 → 仍要走 announce-only（決定的完成判定不受影響）"
+  );
+  assert.equal(
+    shouldPlayNightStep(guardState((s) => { s.nightActions.guardTarget = 3; }), "NIGHT_GUARD_ACTION"),
+    false,
+    "還活著且已決定 → 整步跳過（不重問 AI）"
+  );
+  assert.equal(
+    shouldPlayNightStep(guardState((s) => { s.players[0].role = "Villager" as Role; }), "NIGHT_GUARD_ACTION"),
+    false,
+    "這一局根本沒有守衛 → 不播報"
+  );
+});
 
 /**
  * 一夜推進的守衛。

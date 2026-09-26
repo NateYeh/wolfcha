@@ -1,6 +1,7 @@
 process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "night-resume-flow-key";
 import assert from "node:assert/strict";
+import { getSystemMessages } from "@/lib/game-texts";
 import test from "node:test";
 import { setLocale } from "@/i18n/locale-store";
 import { NIGHT_ACTION_ORDER, type NightActionPhase } from "@/lib/rules/phases";
@@ -78,7 +79,9 @@ type NightRunResult = {
 async function runReplayCommand(
   phase: NightActionPhase,
   witchAnswer: Record<string, unknown> = { action: "poison", seat: 11, reason: "測試" },
+  options: { deadRoles?: Role[] } = {},
 ): Promise<NightRunResult> {
+  const deadRoles = options.deadRoles ?? [];
   await import("@/lib/game-master");
   const [{ NightPhase }, { createSinglePlayerContextAuditState }] = await Promise.all([
     import("@/game/phases/NightPhase"),
@@ -90,12 +93,10 @@ async function runReplayCommand(
     ...base,
     phase,
     day: 2, // 第二晚：不必處理第一夜狼隊分工
-    players: base.players.map((player, index) => ({
-      ...player,
-      role: ROLES[index] ?? "Villager",
-      isHuman: false,
-      alive: true,
-    })),
+    players: base.players.map((player, index) => {
+      const role = ROLES[index] ?? "Villager";
+      return { ...player, role, isHuman: false, alive: !deadRoles.includes(role) };
+    }),
     messages: [],
     nightHistory: {},
     dayHistory: {},
@@ -246,4 +247,22 @@ test("重跑指令的字串本身必須是 NightPhase 認得的指令", async ()
     const command = replayCommandFor(phase as Phase as NightActionPhase);
     assert.ok(command.length > 0, `${phase}：重跑指令不得為空`);
   }
+});
+
+/**
+ * 角色死亡不能跳過播報：夜裡少一個身分的步驟，等於向全場宣告那個身分已死。
+ * 這裡讓守衛開局就死，仍必須看到守衛的夜間播報。
+ */
+test("死掉的角色仍要播報（否則等於宣告他的身分）", async () => {
+  const { completed } = await runReplayCommand(
+    "NIGHT_WITCH_ACTION",
+    { action: "poison", seat: 11, reason: "測試" },
+    { deadRoles: ["Guard"] },
+  );
+  const state = completed as GameState;
+  const guardStart = getSystemMessages().guardActionStart;
+  assert.ok(
+    JSON.stringify(state.messages).includes(guardStart),
+    `死掉的守衛仍要出現在夜間播報裡（找不到「${guardStart}」）`,
+  );
 });
