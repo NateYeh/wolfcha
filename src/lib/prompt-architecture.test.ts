@@ -3,6 +3,7 @@ process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "prompt-architectur
 import assert from "node:assert/strict";
 import test from "node:test";
 import { setLocale } from "@/i18n/locale-store";
+import { withOutputLanguageRuleText } from "@/lib/prompt-language";
 import type { GameState, Player } from "@/types/game";
 import type { LLMMessage } from "@/lib/llm";
 
@@ -69,8 +70,10 @@ test("提示詞架構：記錄員的 system 只放公開知識，角色與任務
   assert.ok(body, "必須送過一次請求");
   const messages = (body as unknown as { messages: LLMMessage[] }).messages;
   assert.deepEqual(messages.map((m) => m.role), ["system", "user", "user"]);
-  // system＝與玩家階段逐字相同的公開知識（第一段），且不含攻略、不含任務指令
-  assert.equal(systemText(messages), buildPublicRoleConfiguration(state));
+  // system＝與玩家階段逐字相同的公開知識（第一段）＋全場共用的輸出語言規則，
+  // 且不含攻略、不含任務指令。語言規則由 `withOutputLanguageRuleText` 接在組裝層，
+  // 所以這裡直接用它組期望值——規則改了測試跟著改，逐字比對仍然有效。
+  assert.equal(systemText(messages), withOutputLanguageRuleText(buildPublicRoleConfiguration(state)));
   assert.doesNotMatch(systemText(messages), /【狼人杀攻略】/);
   assert.doesNotMatch(systemText(messages), /你是狼人杀客观记录员/);
 

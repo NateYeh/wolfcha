@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { setLocale } from "@/i18n/locale-store";
+import { hasOutputLanguageRule, withOutputLanguageRule } from "@/lib/prompt-language";
 import type { LLMMessage } from "@/lib/llm";
 
 // llm.ts 會經過 auth-headers → supabase，所以環境變數要在**動態 import 之前**補上
@@ -11,11 +12,7 @@ process.env.NEXT_PUBLIC_SUPABASE_URL ||= "http://127.0.0.1:54321";
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||= "llm-output-language-key";
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "llm-output-language-key";
 
-type LlmModule = typeof import("@/lib/llm");
-let withOutputLanguageRule: LlmModule["withOutputLanguageRule"];
-test.before(async () => {
-  ({ withOutputLanguageRule } = await import("@/lib/llm"));
-});
+
 
 /**
  * 「AI 輸出語言」的守門測試。
@@ -84,11 +81,41 @@ test("三語系的規則文字都不一樣（不會漏翻）", () => {
   setLocale("zh-CN");
 });
 
-test("llm.ts 不得再有「直接把 messages 送出去」的請求（新增入口要一起接規則）", () => {
-  const leaks = [...llmSource.matchAll(/messages:\s*(options|request)\.messages/g)].map((m) => m[0]);
+test("傳送層（llm.ts）不得引入 i18n／React 依賴（server 測試在 Node 載入 next-intl 會爆）", () => {
+  const imported = [...llmSource.matchAll(/from "(@\/i18n\/[^"]+|next-intl)"/g)].map((m) => m[1]);
   assert.deepEqual(
-    leaks,
+    imported,
     [],
-    `以下地方把 messages 原封不動送出去，會漏掉語言規則：${leaks.join(", ")}`
+    `llm.ts 不可依賴 i18n／next-intl（語言規則請接在組裝層）：${imported.join(", ")}`
   );
+  assert.equal(
+    /withOutputLanguageRule\(/.test(llmSource),
+    false,
+    "語言規則不該在傳送層套用：AI 日誌記的必須與實際送出逐字相同"
+  );
+});
+
+test("組裝層：階段提示詞的 system 一定含語言規則（字串與 content parts 兩種形態）", async () => {
+  setLocale("zh-TW");
+  const { buildSystemTextFromParts, buildCachedSystemMessageFromParts } = await import("@/lib/prompt-utils");
+  const text = buildSystemTextFromParts([{ text: "公開知識" }]);
+  assert.ok(hasOutputLanguageRule(text), "字串形態的 system 必須含語言規則");
+  const message = buildCachedSystemMessageFromParts([{ text: "公開知識", cacheable: true }], "fallback");
+  const parts = message.content;
+  assert.ok(Array.isArray(parts));
+  const rulepart = parts.find((part) => part.type === "text" && hasOutputLanguageRule(part.text));
+  assert.ok(rulepart, "content parts 形態的 system 必須含語言規則");
+  assert.equal(
+    "cache_control" in rulepart && Boolean(rulepart.cache_control),
+    false,
+    "語言規則的零件不可帶 cache_control，否則會搬動既有快取斷點"
+  );
+});
+
+test("組裝層：角色生成（非階段路徑）也接上語言規則", () => {
+  const generator = fs.readFileSync(path.join(process.cwd(), "src/lib/character-generator.ts"), "utf8");
+  const uses = [...generator.matchAll(/messages: (BASE_PROMPT_MESSAGES|FULL_PROMPT_MESSAGES)/g)].length;
+  assert.ok(uses >= 2, "角色生成的基本檔案與 persona 兩條路徑都要用接過規則的 messages");
+  assert.match(generator, /withOutputLanguageRule\(\[{ role: "user", content: basePrompt }\]\)/);
+  assert.match(generator, /withOutputLanguageRule\(\[{ role: "user", content: fullPrompt }\]\)/);
 });

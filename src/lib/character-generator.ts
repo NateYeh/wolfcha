@@ -4,6 +4,7 @@ import {
   stripMarkdownCodeFences,
   type ResponseFormat,
 } from "./llm";
+import { withOutputLanguageRule } from "@/lib/prompt-language";
 import {
   ALL_MODELS,
   GENERATOR_MODEL,
@@ -629,6 +630,9 @@ export async function generateCharacters(
   // 基础档案阶段同样套重试：glm 不吃 response_format，坏样本是随机现象。
   // TokenPay 付费路径不重试，避免重复计费。
   const baseMaxAttempts = isTokenPayActive() ? 1 : CHARACTER_BATCH_MAX_ATTEMPTS;
+  // 語言規則在此接上：request 與 log 共用同一份陣列，兩者才逐字相同
+  const BASE_PROMPT_MESSAGES = withOutputLanguageRule([{ role: "user", content: basePrompt }]);
+
   let baseProfiles: BaseProfile[] = [];
   let baseLastRaw: unknown;
   let baseLastError: unknown = null;
@@ -636,7 +640,7 @@ export async function generateCharacters(
     try {
       const baseResult = await generateJSON<unknown>({
         model: baseModel,
-        messages: [{ role: "user", content: basePrompt }],
+        messages: BASE_PROMPT_MESSAGES,
         temperature: GAME_TEMPERATURE.CHARACTER_GENERATION,
         max_tokens: Math.max(2400, count * 350 + 600),
         reasoning: CHARACTER_GENERATOR_REASONING,
@@ -650,7 +654,7 @@ export async function generateCharacters(
       }
       await aiLogger.log({
         type: "character_generation",
-        request: { model: baseModel, messages: [{ role: "user", content: basePrompt }] },
+        request: { model: baseModel, messages: BASE_PROMPT_MESSAGES },
         response: {
           content: JSON.stringify(baseProfiles),
           rawResponse: withLogSource({ stage: "base_profiles", attempt }, options?.logSource),
@@ -666,7 +670,7 @@ export async function generateCharacters(
       );
       await aiLogger.log({
         type: "character_generation",
-        request: { model: baseModel, messages: [{ role: "user", content: basePrompt }] },
+        request: { model: baseModel, messages: BASE_PROMPT_MESSAGES },
         response: {
           content: "",
           raw: baseLastRaw === undefined ? "" : JSON.stringify(baseLastRaw),
@@ -703,6 +707,7 @@ export async function generateCharacters(
       baseProfiles,
       batchProfiles,
     );
+    const FULL_PROMPT_MESSAGES = withOutputLanguageRule([{ role: "user", content: fullPrompt }]);
     const batchCharacters: GeneratedCharacter[] = [];
     const emittedLocalIndices = new Set<number>();
     let accumulatedContent = "";
@@ -711,7 +716,7 @@ export async function generateCharacters(
       // 三人一批并行生成，避免九人长输出达到 token 上限；每批只调用一次。
       const stream = generateCompletionStream({
         model: batchModel,
-        messages: [{ role: "user", content: fullPrompt }],
+        messages: FULL_PROMPT_MESSAGES,
         temperature: GAME_TEMPERATURE.CHARACTER_PERSONA,
         max_tokens: CHARACTER_PERSONA_BATCH_MAX_TOKENS,
         reasoning: CHARACTER_GENERATOR_REASONING,
@@ -805,7 +810,7 @@ export async function generateCharacters(
         type: "character_generation",
         request: {
           model: batchModel,
-          messages: [{ role: "user", content: fullPrompt }],
+          messages: FULL_PROMPT_MESSAGES,
         },
         response: {
           content: JSON.stringify(batchCharacters.map((c) => ({
@@ -832,7 +837,7 @@ export async function generateCharacters(
         type: "character_generation",
         request: {
           model: batchModel,
-          messages: [{ role: "user", content: fullPrompt }],
+          messages: FULL_PROMPT_MESSAGES,
         },
         response: {
           content: accumulatedContent,

@@ -13,7 +13,6 @@ import { ALL_MODELS, AVAILABLE_MODELS, PROJECT_MODELS, type ModelRef } from "@/t
 import { gameStatsTracker } from "@/hooks/useGameStats";
 import { gameSessionTracker } from "@/lib/game-session-tracker";
 import { getAuthHeaders } from "@/lib/auth-headers";
-import { getI18n } from "@/i18n/translator";
 import {
   getTokenPayTopUpRetryIndexes,
   requestTokenPayTopUp,
@@ -727,31 +726,15 @@ function attachGameSessionHeader(headers: Record<string, string>) {
 }
 
 /**
- * 把「輸出語言」規則接進系統訊息。
+ * 注意：這一層**不**改寫 prompt 內容（含「輸出語言」規則）。
  *
- * 起因：AI 玩家的發言、投票理由、警長競選、狼隊計畫、角色設定與賽後總結，過去**沒有任何
- * 語言指示**——只有「AI 幫我擬台詞」那條提示詞有寫。結果同一個模型一下繁體一下簡體
- * （多數中文模型預設簡體），同桌玩家字體不一致。
- *
- * 放在 LLM 這一層而不是逐條提示詞：這是唯一一個「每個 AI 呼叫都會經過」的地方，
- * 以後新增提示詞不必記得補。系統訊息是字串就直接接在後面；是 content parts 陣列就多推一個
- * 沒有 `cache_control` 的文字零件，這樣既有的快取斷點不會被動到。
+ * 語言規則屬於提示詞內容，接在組裝層（`prompt-utils` 的 buildSystemTextFromParts／
+ * buildCachedSystemMessageFromParts、`character-generator` 的兩組 prompt）。理由：
+ * 1. AI 日誌記的必須與實際送出逐字相同——稽核測試「每條 AI 日誌都可回溯到真實傳輸訊息」
+ *    就是靠這一點；在這一層才接規則會讓兩者對不上。
+ * 2. 這一層要保持與 i18n／React 無關：server 測試在 Node 載入 next-intl 會直接
+ *    `createContext is not a function` 爆掉（實際發生過）。
  */
-export function withOutputLanguageRule(messages: LLMMessage[]): LLMMessage[] {
-  const { t } = getI18n();
-  const rule = t("promptUtils.outputLanguageRule");
-  const systemIndex = messages.findIndex((message) => message.role === "system");
-  if (systemIndex === -1) {
-    return [{ role: "system", content: rule }, ...messages];
-  }
-  return messages.map((message, index) => {
-    if (index !== systemIndex) return message;
-    if (typeof message.content === "string") {
-      return { ...message, content: `${message.content}\n\n${rule}` };
-    }
-    return { ...message, content: [...message.content, { type: "text" as const, text: rule }] };
-  });
-}
 
 export async function generateCompletion(
   options: GenerateOptions
@@ -800,7 +783,7 @@ export async function generateCompletion(
         provider: resolvedModel.provider,
         prompt_scope: options.promptScope ?? "utility",
         request_id: logicalRequestId,
-        messages: withOutputLanguageRule(options.messages),
+        messages: options.messages,
         temperature: options.temperature ?? 0.7,
         max_tokens: maxTokens,
         ...(options.reasoning ? { reasoning: options.reasoning } : {}),
@@ -875,7 +858,7 @@ async function generateCompletionBatchInternal(
   const effectiveSource = customEnabled ? modelSource : modelSource === "custom" ? "project" : modelSource;
   const resolvedRequests = requests.map((request) => ({
     ...request,
-    messages: withOutputLanguageRule(request.messages),
+    messages: request.messages,
     prompt_scope: request.promptScope ?? "utility",
     ...resolveRequestModelForSource(
       effectiveSource,
@@ -1027,7 +1010,7 @@ export async function* generateCompletionStream(
         provider: resolvedModel.provider,
         prompt_scope: options.promptScope ?? "utility",
         request_id: logicalRequestId,
-        messages: withOutputLanguageRule(options.messages),
+        messages: options.messages,
         temperature: options.temperature ?? 0.7,
         max_tokens: maxTokens,
         stream: true,

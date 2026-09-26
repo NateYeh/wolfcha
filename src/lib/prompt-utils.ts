@@ -5,6 +5,12 @@ import type { SystemPromptPart } from "@/game/core/types";
 import type { LLMMessage } from "./llm";
 import { getSystemMessages, getSystemPatterns } from "./game-texts";
 import { getI18n } from "@/i18n/translator";
+import {
+  hasOutputLanguageRule,
+  outputLanguageRule,
+  withOutputLanguageRule,
+  withOutputLanguageRuleText,
+} from "@/lib/prompt-language";
 import { getRoleName } from "./game-constants";
 import { getMutedSeat, isMutePublic } from "./rules/mute";
 import { getRoleConfiguration } from "./role-configuration";
@@ -1610,11 +1616,14 @@ export const buildGameContext = (
  * @returns LLMMessage with cache_control breakpoints
  */
 export function buildSystemTextFromParts(parts: SystemPromptPart[]): string {
-  return parts
+  const text = parts
     .map((part) => part.text)
     .map((text) => text.trim())
     .filter(Boolean)
     .join("\n\n");
+  // 語言規則在組裝層就接上，AI 日誌記的與實際送出的才是同一份
+  // （稽核測試「每條 AI 日誌都可回溯到真實傳輸訊息」靠這個）。
+  return withOutputLanguageRuleText(text);
 }
 
 export function buildCachedSystemMessageFromParts(
@@ -1623,7 +1632,7 @@ export function buildCachedSystemMessageFromParts(
   useCache: boolean = true
 ): LLMMessage {
   if (!parts || parts.length === 0 || !useCache) {
-    return { role: "system", content: fallbackSystem };
+    return { role: "system", content: withOutputLanguageRuleText(fallbackSystem) };
   }
 
   let cacheCount = 0;
@@ -1655,7 +1664,13 @@ export function buildCachedSystemMessageFromParts(
   });
 
   if (contentParts.length === 0) {
-    return { role: "system", content: fallbackSystem };
+    return { role: "system", content: withOutputLanguageRuleText(fallbackSystem) };
+  }
+
+  // 語言規則以「不帶 cache_control 的額外零件」接在最後：
+  // 既有的快取斷點不動，而 AI 日誌記的與實際送出的仍是同一份。
+  if (!contentParts.some((part) => hasOutputLanguageRule(part.text))) {
+    contentParts.push({ type: "text", text: outputLanguageRule() });
   }
 
   return {
