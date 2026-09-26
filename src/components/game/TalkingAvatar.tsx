@@ -81,7 +81,6 @@ function TalkingAvatarAnimated({
   const IDLE_LIPS = useMemo(() => getIdleLipsForSeed(seed), [seed]);
   
   const [currentLips, setCurrentLips] = useState(IDLE_LIPS);
-  const [preloadedUrls, setPreloadedUrls] = useState<string[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lipIndexRef = useRef(0);
 
@@ -97,33 +96,25 @@ function TalkingAvatarAnimated({
     return urls;
   }, [seed, gender, style, scale, translateY, IDLE_LIPS, TALKING_LIPS]);
 
-  // 预加载图片
+  // 预加载图片：让浏览器先抓好所有嘴型变体，说话时才不会顿。
+  // 这里只做暖机，不保存任何状态（原本收集的 preloadedUrls 从未被读取，已移除）。
   useEffect(() => {
-    const loaded: string[] = [];
     let mounted = true;
 
     const preload = async () => {
       for (const url of allLipsUrls) {
         if (!mounted) break;
-        try {
-          // 使用 Image 对象预加载
-          const img = new Image();
-          img.src = url;
-          await new Promise<void>((resolve) => {
-            img.onload = () => resolve();
-            img.onerror = () => resolve(); // 即使失败也继续
-          });
-          loaded.push(url);
-        } catch {
-          // 忽略错误
-        }
-      }
-      if (mounted) {
-        setPreloadedUrls(loaded);
+        // new Image() + 等 onload/onerror 不会抛错，不需要 try/catch
+        const img = new Image();
+        img.src = url;
+        await new Promise<void>((resolve) => {
+          img.onload = () => resolve();
+          img.onerror = () => resolve(); // 即使失败也继续
+        });
       }
     };
 
-    preload();
+    void preload();
 
     return () => {
       mounted = false;
@@ -179,114 +170,5 @@ function TalkingAvatarAnimated({
         className={className}
       />
     </>
-  );
-}
-
-// 小头像版本（用于聊天记录等）
-interface TalkingAvatarSmallProps {
-  seed: string;
-  gender?: Gender;
-  style?: AvatarStyle;
-  modelRef?: ModelRef;
-  useModelLogo?: boolean;
-  isTalking?: boolean;
-  className?: string;
-  alt?: string;
-}
-
-export function TalkingAvatarSmall({ 
-  seed, 
-  gender,
-  style,
-  modelRef,
-  useModelLogo = false,
-  isTalking = false, 
-  className = "w-8 h-8 rounded-full",
-  alt = "Avatar",
-}: TalkingAvatarSmallProps) {
-  // 同 TalkingAvatar：先分派元件，再讓子元件無條件呼叫 Hook。
-  if (useModelLogo) {
-    return <ModelLogoAvatar modelRef={modelRef} alt={alt} className={className} />;
-  }
-
-  return (
-    <TalkingAvatarSmallAnimated
-      seed={seed}
-      gender={gender}
-      style={style}
-      isTalking={isTalking}
-      className={className}
-      alt={alt}
-    />
-  );
-}
-
-function TalkingAvatarSmallAnimated({ 
-  seed, 
-  gender,
-  style,
-  isTalking = false, 
-  className = "w-8 h-8 rounded-full",
-  alt = "Avatar",
-}: Omit<TalkingAvatarSmallProps, "modelRef" | "useModelLogo">) {
-  const TALKING_LIPS = useMemo(() => getTalkingLips(), []);
-  const IDLE_LIPS = useMemo(() => getIdleLipsForSeed(seed), [seed]);
-  
-  const [currentLips, setCurrentLips] = useState(IDLE_LIPS);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lipIndexRef = useRef(0);
-
-  // 预加载 URL（透明背景）
-  const preloadUrls = useMemo(() => {
-    const urls: string[] = [];
-    urls.push(buildAvatarUrl({ seed, gender, style, lips: IDLE_LIPS, backgroundColor: "transparent" }));
-    for (const lips of TALKING_LIPS) {
-      urls.push(buildAvatarUrl({ seed, gender, style, lips, backgroundColor: "transparent" }));
-    }
-    return urls;
-  }, [seed, gender, style, IDLE_LIPS, TALKING_LIPS]);
-
-  // 预加载
-  useEffect(() => {
-    for (const url of preloadUrls) {
-      const img = new Image();
-      img.src = url;
-    }
-  }, [preloadUrls]);
-
-  // 说话动画
-  useEffect(() => {
-    if (isTalking) {
-      lipIndexRef.current = 0;
-      setCurrentLips(TALKING_LIPS[0]);
-      
-      intervalRef.current = setInterval(() => {
-        lipIndexRef.current = (lipIndexRef.current + 1) % TALKING_LIPS.length;
-        setCurrentLips(TALKING_LIPS[lipIndexRef.current]);
-      }, 120);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      setCurrentLips(IDLE_LIPS);
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [isTalking]);
-
-  const currentUrl = buildAvatarUrl({ seed, gender, style, lips: currentLips, backgroundColor: "transparent" });
-
-  return (
-    <img
-      src={currentUrl}
-      alt={alt}
-      className={className}
-    />
   );
 }
