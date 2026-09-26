@@ -822,7 +822,8 @@ export function useGameLogic() {
 
       // 帶走獵人：獵人仍可開槍（與「槍打槍」共用同一條判定）
       const victim = applied.victimSeat !== undefined
-        ? getChainedShooter(afterState, applied.victimSeat)
+        // 自爆帶走：依 2026-09-26 校訂，被自爆帶走的人不得開槍（含獵人）。
+        ? getChainedShooter(afterState, applied.victimSeat, "carried")
         : null;
       if (victim) {
         await delay(1200);
@@ -2487,7 +2488,8 @@ export function useGameLogic() {
         setGameState(currentState);
 
         // 槍打槍：被槍打死的人自己也有槍時，接著讓他開（真人這條也一樣）
-        const chained = getChainedShooter(currentState, targetSeat);
+        // 槍打死人＝死因 "shot"：獵人與狼王互打時兩邊都能開（見 rules/death-skills）。
+        const chained = getChainedShooter(currentState, targetSeat, "shot");
         if (chained) {
           await delay(1200);
           const chainFn = hunterDeathRef.current;

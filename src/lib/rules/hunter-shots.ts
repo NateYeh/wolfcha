@@ -38,6 +38,20 @@ export const findHunterShotByShooter = (
   hunterSeat: number,
 ): HunterShot | undefined => getHunterShots(record).find((shot) => shot.hunterSeat === hunterSeat);
 
+/**
+ * 這個座位整局開過槍沒（跨夜史與日史）。
+ *
+ * 槍鏈的防迴圈用：每人只有一把槍，所以「獵人打死狼王、狼王反擊打死獵人」之後必須停住，
+ * 不能再讓已經開過槍的人開第二次。狀態直接由開槍紀錄推導，不必另外維護旗標。
+ */
+export function hasSeatShot(state: GameState, seat: number): boolean {
+  const records: HunterShotsCarrier[] = [
+    ...Object.values(state.nightHistory ?? {}),
+    ...Object.values(state.dayHistory ?? {}),
+  ];
+  return records.some((record) => findHunterShotByShooter(record, seat) !== undefined);
+}
+
 /** 打在這個座位上的槍（死因與跳轉回放用） */
 export const findHunterShotByTarget = (
   record: HunterShotsCarrier,

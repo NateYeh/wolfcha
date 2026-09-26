@@ -213,7 +213,8 @@ export function useSpecialEvents(
 
       // 槍打槍：被槍打死的人自己也有槍時，接著讓他開（不吞槍）。
       // 鏈會遞迴下去直到沒人能開；每開一槍就少一個活人，所以一定會收斂。
-      const chained = getChainedShooter(currentState, targetSeat);
+      // 這裡是真槍之後的槍鏈（自爆帶走走的是 useGameLogic 的自爆流程，cause 為 "carried"）。
+      const chained = getChainedShooter(currentState, targetSeat, "shot");
       if (chained) {
         await delay(DELAY_CONFIG.LONG);
         await waitForUnpause();

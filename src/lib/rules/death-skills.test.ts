@@ -34,18 +34,24 @@ function stateWith(roles: Array<[number, Player["role"]]>): GameState {
 // 身分與本輪任務已移到 user：斷言 prompt 內容時一律看 system＋user 全文。
 const promptText = (p: { system: string; user: string }): string => `${p.system}\n\n${p.user}`;
 
-test("槍打槍：獵人打死獵人，被帶走的那個還能開槍（八獵四狼的基礎）", () => {
+test("槍打槍：獵人打死獵人，被槍打死的還能開槍（八獵四狼的基礎）", () => {
   const state = stateWith([[0, "Hunter"], [1, "Hunter"], [2, "WolfKing"]]);
-  const chained = getChainedShooter(state, 1);
+  const chained = getChainedShooter(state, 1, "shot");
   assert.equal(chained?.seat, 1, "被打死的獵人自己要接著開");
-  assert.equal(getChainedShooter(state, 0)?.seat, 0, "打到自己以外的獵人一樣成立");
+  assert.equal(getChainedShooter(state, 0, "shot")?.seat, 0, "打到自己以外的獵人一樣成立");
+  assert.equal(getChainedShooter(state, 1, "carried"), null, "被自爆帶走的獵人不開槍（2026-09-26 校訂）");
 });
 
-test("槍打槍：狼王被技能帶走不能接著開（被打死屬於「技能帶走」）；平民沒有槍", () => {
+test("槍打槍：被自爆帶走的不開、被槍打死的狼王要反擊；平民沒有槍", () => {
   const state = stateWith([[0, "Hunter"], [2, "WolfKing"]]);
-  assert.equal(getChainedShooter(state, 2), null, "狼王被技能帶走不開槍");
-  assert.equal(getChainedShooter(state, 3), null, "平民沒有死亡技能");
-  assert.equal(getChainedShooter(state, 99), null, "不存在的座位回 null");
+  assert.equal(getChainedShooter(state, 2, "carried"), null, "狼王被自爆帶走不開槍");
+  assert.equal(
+    getChainedShooter(state, 2, "shot")?.seat,
+    2,
+    "狼王被獵人槍打死要反擊（2026-09-26：獵人與狼王互打，兩邊都開）",
+  );
+  assert.equal(getChainedShooter(state, 3, "shot"), null, "平民沒有死亡技能");
+  assert.equal(getChainedShooter(state, 99, "shot"), null, "不存在的座位回 null");
 });
 
 test("槍打槍：被毒死的獵人不能接著開，全域開關關掉時也不能", () => {
@@ -57,13 +63,20 @@ test("槍打槍：被毒死的獵人不能接著開，全域開關關掉時也�
       },
     },
   } as unknown as GameState;
-  assert.equal(getChainedShooter(poisoned, 1), null, "毒史封槍");
+  assert.equal(getChainedShooter(poisoned, 1, "shot"), null, "毒史封槍");
+
+  // 每人只有一把槍：已經開過槍的人不能再開（防「獵人↔狼王」互打無限往復）
+  const alreadyShot = {
+    ...stateWith([[0, "Hunter"], [1, "Hunter"]]),
+    nightHistory: { 1: { hunterShots: [{ hunterSeat: 1, targetSeat: 0 }] } },
+  } as unknown as GameState;
+  assert.equal(getChainedShooter(alreadyShot, 1, "shot"), null, "開過槍的不再開第二次");
 
   const switchedOff = {
     ...stateWith([[1, "Hunter"]]),
     roleAbilities: { ...createSinglePlayerContextAuditState().roleAbilities, hunterCanShoot: false },
   } as GameState;
-  assert.equal(getChainedShooter(switchedOff, 1), null, "總開關關掉就不開槍");
+  assert.equal(getChainedShooter(switchedOff, 1, "shot"), null, "總開關關掉就不開槍");
 });
 
 test("死亡技能歸屬：只有獵人與狼王有槍", () => {
@@ -74,25 +87,27 @@ test("死亡技能歸屬：只有獵人與狼王有槍", () => {
   }
 });
 
-test("獵人槍：放逐／夜刀／被自爆帶走都能開；被毒死不能開", () => {
+test("獵人槍：放逐／夜刀／槍打槍都能開；被毒死與被自爆帶走不能開", () => {
   const state = stateWith([[0, "Hunter"]]);
-  for (const cause of ["exile", "night_kill", "carried"] as const) {
+  for (const cause of ["exile", "night_kill", "shot"] as const) {
     assert.equal(canUseDeathShot({ state, role: "Hunter", seat: 0, cause }), true, `獵人 ${cause} 應能開槍`);
   }
+  assert.equal(canUseDeathShot({ state, role: "Hunter", seat: 0, cause: "carried" }), false, "被自爆帶走不能開槍");
   assert.equal(canUseDeathShot({ state, role: "Hunter", seat: 0, cause: "poison" }), false);
   assert.equal(canUseDeathShot({ state, role: "Hunter", seat: 0, cause: "duel" }), false, "決鬥出局一律不能開槍");
 });
 
-test("狼王槍：被放逐與夜裡被狼刀都能開；被毒／被帶走／自爆／被決鬥都不行", () => {
+test("狼王槍：被放逐／被狼刀／被槍打死都能開；被毒／被自爆帶走／自爆／被決鬥都不行", () => {
   const state = stateWith([[0, "WolfKing"]]);
   assert.equal(canUseDeathShot({ state, role: "WolfKing", seat: 0, cause: "exile" }), true, "被放逐能開槍");
   assert.equal(canUseDeathShot({ state, role: "WolfKing", seat: 0, cause: "night_kill" }), true, "夜裡被狼刀能開槍");
+  assert.equal(canUseDeathShot({ state, role: "WolfKing", seat: 0, cause: "shot" }), true, "被獵人槍打死能反擊");
   for (const cause of ["poison", "carried", "self_destruct", "duel"] as const) {
     assert.equal(canUseDeathShot({ state, role: "WolfKing", seat: 0, cause }), false, `狼王 ${cause} 不該能開槍`);
   }
 });
 
-test("使用者校訂的四條槍規則（2026-09-25）", () => {
+test("使用者校訂的槍規則（2026-09-25、2026-09-26）", () => {
   const state = stateWith([[0, "Hunter"], [1, "WolfKing"]]);
 
   // ① 夜晚被狼刀死：兩把槍都能開
@@ -110,6 +125,20 @@ test("使用者校訂的四條槍規則（2026-09-25）", () => {
       canUseDeathShot({ state, role, seat, cause: "poison" }),
       false,
       `${role} 被毒死不能開槍`
+    );
+  }
+
+  // ④ 槍打槍：被別的槍打死時兩把槍都能開；被自爆帶走則兩把都不能（2026-09-26 校訂）
+  for (const [seat, role] of [[0, "Hunter"], [1, "WolfKing"]] as const) {
+    assert.equal(
+      canUseDeathShot({ state, role, seat, cause: "shot" }),
+      true,
+      `${role} 被槍打死應該能開槍`
+    );
+    assert.equal(
+      canUseDeathShot({ state, role, seat, cause: "carried" }),
+      false,
+      `${role} 被自爆帶走不能開槍`
     );
   }
 
