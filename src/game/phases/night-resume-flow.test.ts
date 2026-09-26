@@ -46,8 +46,9 @@ const BEFORE: Record<NightActionPhase, GameState["nightActions"]> = {
   NIGHT_MUTE_ACTION: { guardTarget: 5 },
   NIGHT_DREAM_ACTION: { guardTarget: 5, mutedTarget: 6 },
   NIGHT_MAGICIAN_ACTION: { guardTarget: 5, mutedTarget: 6 },
-  NIGHT_WOLF_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7, magicianSwap: [0, 1] },
-  NIGHT_WOLF_BEAUTY_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7, magicianSwap: [0, 1], wolfTarget: 0 },
+  // 順序以 `NIGHT_ACTION_ORDER` 為權威：魅惑在狼刀**之前**，所以「狼刀之前」已含魅惑、反之則否。
+  NIGHT_WOLF_BEAUTY_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7, magicianSwap: [0, 1] },
+  NIGHT_WOLF_ACTION: { guardTarget: 5, mutedTarget: 6, dreamTarget: 7, magicianSwap: [0, 1], wolfBeautyTarget: 0 },
   NIGHT_WITCH_ACTION: {
     guardTarget: 5,
     mutedTarget: 6,
@@ -213,8 +214,8 @@ test("重跑指令不會覆蓋前面已決定的步驟（AI 不再被重問一�
     ["NIGHT_MUTE_ACTION", ["guardTarget"]],
     ["NIGHT_DREAM_ACTION", ["guardTarget", "mutedTarget"]],
     ["NIGHT_MAGICIAN_ACTION", ["guardTarget", "mutedTarget"]],
-    ["NIGHT_WOLF_ACTION", ["guardTarget", "mutedTarget", "dreamTarget", "magicianSwap"]],
-    ["NIGHT_WOLF_BEAUTY_ACTION", ["guardTarget", "mutedTarget", "dreamTarget", "magicianSwap", "wolfTarget"]],
+    ["NIGHT_WOLF_BEAUTY_ACTION", ["guardTarget", "mutedTarget", "dreamTarget", "magicianSwap"]],
+    ["NIGHT_WOLF_ACTION", ["guardTarget", "mutedTarget", "dreamTarget", "magicianSwap", "wolfBeautyTarget"]],
     [
       "NIGHT_WITCH_ACTION",
       ["guardTarget", "mutedTarget", "dreamTarget", "magicianSwap", "wolfTarget", "wolfBeautyTarget"],

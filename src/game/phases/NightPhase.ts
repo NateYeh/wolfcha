@@ -814,7 +814,7 @@ export class NightPhase extends GamePhase {
       if (!runtime.isTokenValid(runtime.token)) return;
     }
 
-    // 禁言長老 → 狼人 → 女巫 → 預言家（與真人的續跑鏈共用同一個方法，避免分歧）
+    // 禁言長老 → 攝夢人 → 魔術師 → 魅惑 → 狼刀 → 女巫 → 預言家（與真人的續跑鏈共用同一個方法，避免分歧）
     await this.continueNightAfterMute(currentState, runtime);
     return;
 
@@ -824,7 +824,7 @@ export class NightPhase extends GamePhase {
     await this.continueNightAfterMute(state, runtime);
   }
 
-  /** 禁言長老 → 攝夢人 → 狼人 → 女巫 → 預言家（AI 與真人共用同一條續跑鏈） */
+  /** 禁言長老 → 攝夢人 → 魔術師 → 魅惑 → 狼刀 → 女巫 → 預言家（AI 與真人共用同一條續跑鏈） */
   private async continueNightAfterMute(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
     let currentState = state;
 
@@ -937,7 +937,7 @@ export class NightPhase extends GamePhase {
     await this.continueNightAfterMagician(currentState, runtime);
   }
 
-  /** 魔術師 → 狼人 → 女巫 → 預言家（AI 與真人共用同一條續跑鏈）。 */
+  /** 魔術師 → 魅惑 → 狼刀 → 女巫 → 預言家（AI 與真人共用同一條續跑鏈）。 */
   private async continueNightAfterMagician(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
     let currentState = state;
 
@@ -957,9 +957,45 @@ export class NightPhase extends GamePhase {
       }
     }
 
-    const afterWolf = NIGHT_STEP.NIGHT_WOLF_ACTION.decided(currentState)
-      ? currentState
-      : await this.runWolfAction(currentState, runtime);
+    await this.continueNightAfterWolfBeauty(currentState, runtime);
+  }
+
+  /**
+   * 魅惑之後接狼刀（順序以 `src/lib/rules/phases.ts` 的 `NIGHT_ACTION_ORDER` 為權威）。
+   *
+   * 魅惑的合法目標只取決於狼美人自己是否在場，不看當晚刀口，所以排在狼刀之前或之後
+   * 結算等價——順序只影響玩家看到的行動先後，不影響任何結算結果。
+   */
+  private async continueNightAfterWolfBeauty(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
+    let currentState = state;
+    const hasWolfBeauty = currentState.players.some((player) => player.role === "WolfBeauty");
+    if (hasWolfBeauty) {
+      // 狼美人已經決定過（或有真人正在選）就不重跑：存檔恢復時這裡是「決定已落盤」
+      currentState = NIGHT_STEP.NIGHT_WOLF_BEAUTY_ACTION.decided(currentState)
+        ? currentState
+        : await this.runWolfBeautyAction(currentState, runtime);
+      if (!runtime.isTokenValid(runtime.token)) return;
+
+      // 真人狼美人還沒選 → 停在這裡等前端寫入
+      if (humanActorPending(currentState, "NIGHT_WOLF_BEAUTY_ACTION")) return;
+
+      await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
+      await runtime.waitForUnpause();
+      if (!runtime.isTokenValid(runtime.token)) return;
+    }
+
+    await this.continueNightAfterWolf(currentState, runtime);
+  }
+
+  /** 狼刀之後接女巫（真人狼還欠第一夜分工時不能往下走）。 */
+  private async continueNightAfterWolf(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
+    // 真人狼還欠第一夜分工時不能往下走：夜間流程要停在狼人階段，
+    // 等前端對話框寫入計畫（寫入後由 handleWolfTeamPlanSubmit 推下去）。
+    if (humanWolfNeedsNightInput(state)) return;
+
+    const afterWolf = NIGHT_STEP.NIGHT_WOLF_ACTION.decided(state)
+      ? state
+      : await this.runWolfAction(state, runtime);
     if (!runtime.isTokenValid(runtime.token)) return;
 
     if (humanWolfNeedsNightInput(afterWolf)) {
@@ -970,42 +1006,10 @@ export class NightPhase extends GamePhase {
     await runtime.waitForUnpause();
     if (!runtime.isTokenValid(runtime.token)) return;
 
-    await this.continueNightAfterWolf(afterWolf, runtime);
-  }
-
-  private async continueNightAfterWolf(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
-    // 真人狼還欠第一夜分工時不能往下走：夜間流程要停在狼人階段，
-    // 等前端對話框寫入計畫（寫入後由 handleWolfTeamPlanSubmit 推下去）。
-    if (humanWolfNeedsNightInput(state)) return;
-
-    const hasWolfBeauty = state.players.some((player) => player.role === "WolfBeauty");
-    if (hasWolfBeauty) {
-      // 狼美人已經決定過（或有真人正在選）就不重跑：存檔恢復時這裡是「決定已落盤」
-      const afterCharm = NIGHT_STEP.NIGHT_WOLF_BEAUTY_ACTION.decided(state)
-        ? state
-        : await this.runWolfBeautyAction(state, runtime);
-      if (!runtime.isTokenValid(runtime.token)) return;
-
-      // 真人狼美人還沒選 → 停在這裡等前端寫入
-      if (humanActorPending(afterCharm, "NIGHT_WOLF_BEAUTY_ACTION")) return;
-
-      await delay(DELAY_CONFIG.NIGHT_PHASE_GAP);
-      await runtime.waitForUnpause();
-      if (!runtime.isTokenValid(runtime.token)) return;
-
-      await this.continueNightAfterWolfBeauty(afterCharm, runtime);
-      return;
-    }
-
-    await this.continueNightAfterWolfBeauty(state, runtime);
-  }
-
-  /** 魅惑之後接女巫（與 continueNightAfterWolf 對女巫的處理相同）。 */
-  private async continueNightAfterWolfBeauty(state: GameState, runtime: NightPhaseRuntime): Promise<void> {
     // 女巫已經決定過就不重跑（看決定，不看 phase）
-    const currentState = NIGHT_STEP.NIGHT_WITCH_ACTION.decided(state)
-      ? state
-      : await this.runWitchAction(state, runtime);
+    const currentState = NIGHT_STEP.NIGHT_WITCH_ACTION.decided(afterWolf)
+      ? afterWolf
+      : await this.runWitchAction(afterWolf, runtime);
     if (!runtime.isTokenValid(runtime.token)) return;
 
     // 真人女巫還沒決定（藥還在，且沒明確選救人／毒人／不救）→ 停在這裡等前端寫入
