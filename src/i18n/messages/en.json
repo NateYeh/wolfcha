@@ -1157,7 +1157,7 @@
     "muteActionStart": "Mute Elder, open your eyes.",
     "playerMuted": "{seat} {name} is silenced and cannot speak today (can still vote and give last words)",
     "dreamActionStart": "Dreamweaver, open your eyes.",
-    "wolfBeautyActionStart": "Wolf Beauty is acting",
+    "wolfBeautyActionStart": "Wolf Beauty, open your eyes.",
     "charmRevenge": "Seat {seat} ({name}) died with the Wolf Beauty",
     "magicianActionStart": "Magician, open your eyes."
   },

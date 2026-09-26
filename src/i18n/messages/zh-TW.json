@@ -1157,7 +1157,7 @@
     "muteActionStart": "禁言長老請睜眼",
     "playerMuted": "{seat}號 {name} 被禁言，今天不能發言（仍可投票、可留遺言）",
     "dreamActionStart": "攝夢人請睜眼",
-    "wolfBeautyActionStart": "狼美人行動中",
+    "wolfBeautyActionStart": "狼美人請睜眼",
     "charmRevenge": "{seat}號「{name}」隨狼美人殉情出局",
     "magicianActionStart": "魔術師請睜眼"
   },
