@@ -64,7 +64,8 @@ export interface AILogEntry {
    | "guard_action" 
    | "witch_action" 
    | "hunter_shoot" | "wwk_boom_decision" | "character_generation" | "daily_summary" | "daily_summary_retry" | "wolf_chat"
-  | "game_end_remark" | "self_destruct_decision" | "knight_duel_decision" | "mute_action" | "dream_action" | "wolf_beauty_action" | "magician_swap" | "analysis";
+  | "game_end_remark" | "self_destruct_decision" | "knight_duel_decision" | "mute_action" | "dream_action" | "wolf_beauty_action" | "magician_swap" | "analysis"
+  | "speech_draft";
   request: {
     model: string;
     messages: LLMMessage[];
@@ -299,6 +300,7 @@ class AILogger {
       character_generation: "#FF9800",
       daily_summary: "#795548",
       analysis: "#009688",
+      speech_draft: "#8BC34A",
     };
 
     const color = typeColors[entry.type] || "#666";

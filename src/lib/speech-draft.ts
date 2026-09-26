@@ -15,6 +15,7 @@
  */
 
 import { GAME_TEMPERATURE } from "@/lib/ai-config";
+import { aiLogger } from "@/lib/ai-logger";
 import { getGeneratorModel } from "@/lib/api-keys";
 import { buildMessagesForPrompt } from "@/lib/game-master";
 import { generateCompletion, stripMarkdownCodeFences, stripReasoningArtifacts } from "@/lib/llm";
@@ -187,7 +188,7 @@ export function buildSpeechDraftPrompt(state: GameState, player: Player): Prompt
     systemParts,
     historyUser: buildPastDaysTranscript(state),
     user: [identity, context].filter(Boolean).join("\n\n"),
-    finalUser: [phaseHint, situationNote, t("prompts.speechDraft.task", {
+    finalUser: [phaseHint, situationNote, t("prompts.speechDraft.beforeConceding"), t("prompts.speechDraft.task", {
       seat: player.seat + 1,
       name: player.displayName,
       maxChars: speechDraftTargetChars(),
@@ -313,6 +314,7 @@ export async function generateSpeechDraft(
   const prompt = buildSpeechDraftPrompt(state, player);
   const { messages } = buildMessagesForPrompt(prompt);
 
+  const startedAt = Date.now();
   const result = await generateCompletion({
     model,
     messages,
@@ -326,5 +328,26 @@ export async function generateSpeechDraft(
   if (!draft) {
     throw new Error(t("prompts.speechDraft.emptyResponse"));
   }
+
+  // 這一發原本不留任何紀錄：`aiLogger.log` 只被 game-master／character-generator／game-analysis
+  // 呼叫，代寫是唯一漏掉的真 AI 呼叫。後果是復盤時分不出「這句話是人打的還是 AI 擬的」
+  // （2026-09-26 個案：玩家被草稿寫成「認錯」，賽後無法舉證是誰寫的）。型別獨立成
+  // `speech_draft`，與 AI 玩家的 `speech` 區分開，才看得出代寫佔了多少。
+  await aiLogger.log({
+    type: "speech_draft",
+    request: {
+      model,
+      messages,
+      temperature: GAME_TEMPERATURE.SPEECH,
+      player: { playerId: player.playerId, displayName: player.displayName, seat: player.seat, role: player.role },
+    },
+    response: {
+      content: draft,
+      raw: result.content,
+      rawResponse: JSON.stringify(result.raw, null, 2),
+      duration: Date.now() - startedAt,
+    },
+  });
+
   return draft;
 }

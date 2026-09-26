@@ -269,3 +269,49 @@ test("生成失敗：模型回空內容要拋錯，不靜默回空字串", async
     await assert.rejects(() => generateSpeechDraft(state, human), /沒有回傳|没有返回|returned no speech/);
   });
 });
+
+/**
+ * 2026-09-26 個案：真人玩家的台詞是 AI 代寫的，草稿把他寫成「我警上投阿紫是我看走眼了」——
+ * 但他那一票投的是**真預言家**、放逐票投的是後來自爆坐實的狼，兩票都沒投錯。而且那筆代寫
+ * **完全沒有紀錄**（`aiLogger.log` 原本只被 game-master／character-generator／game-analysis 呼叫），
+ * 賽後查不出「這句話是誰寫的」，第一時間還被誤判成玩家自己打的。
+ * 兩條守衛各擋一半：提示詞要求先對帳，呼叫要落 `speech_draft` 紀錄。
+ */
+test("擬稿提示詞要求『先對帳再認錯』（不得無故認『看走眼』）", async () => {
+  const { state, human } = await speechState();
+  const { generateSpeechDraft } = await import("@/lib/speech-draft");
+  await withLocale("zh-CN", async () => {
+    await withStubbedChat("我這一票投 3 號。", async (calls) => {
+      await generateSpeechDraft(state, human);
+      const chat = calls.find((call) => call.url.includes("/api/chat"));
+      const text = JSON.stringify(chat?.body?.messages ?? []);
+      assert.ok(text.includes("认错前先对账"), `擬稿提示詞必須帶對帳規則，實際送出：${text.slice(0, 300)}`);
+      assert.ok(text.includes("不准说自己"), "必須明講「票投對了就不准認錯」");
+    });
+  });
+});
+
+test("代寫要落 AI 紀錄（type=speech_draft、記到該玩家座位）", async () => {
+  const { state, human } = await speechState();
+  const { aiLogger } = await import("@/lib/ai-logger");
+  const { generateSpeechDraft } = await import("@/lib/speech-draft");
+  const logged: Array<Record<string, unknown>> = [];
+  const original = aiLogger.log;
+  aiLogger.log = (async (entry: unknown) => {
+    logged.push(entry as Record<string, unknown>);
+    return entry as never;
+  }) as typeof aiLogger.log;
+  try {
+    await withStubbedChat("我這一票投 3 號。", async () => {
+      const draft = await generateSpeechDraft(state, human);
+      assert.equal(draft, "我這一票投 3 號。");
+    });
+  } finally {
+    aiLogger.log = original;
+  }
+  assert.equal(logged.length, 1, "代寫是一次真的 AI 呼叫，必須留下恰好一筆紀錄");
+  assert.equal(logged[0]?.type, "speech_draft");
+  const request = logged[0]?.request as { player?: { seat?: number }; model?: string } | undefined;
+  assert.equal(request?.player?.seat, human.seat, "紀錄要認得出是哪個座位的代寫");
+  assert.ok(request?.model, "紀錄要帶模型");
+});
