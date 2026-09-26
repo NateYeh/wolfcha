@@ -524,7 +524,7 @@ export function parseDeathCause(reason: string): DeathCause {
   }
 }
 
-function buildPlayerSnapshots(state: GameState): PlayerSnapshot[] {
+export function buildPlayerSnapshots(state: GameState): PlayerSnapshot[] {
   return state.players.map(player => {
     let deathDay: number | undefined;
     let deathCause: DeathCause | undefined;
@@ -584,6 +584,13 @@ function buildPlayerSnapshots(state: GameState): PlayerSnapshot[] {
         if (dayData.selfDestruct?.targetSeat === player.seat || dayData.selfDestruct?.boomSeat === player.seat) {
           deathDay = parseInt(dayStr, 10);
           deathCause = "boom";
+          break;
+        }
+        // 白天殉情（狼美人被放逐／被槍打死／被自爆帶走時，被魅惑者連帶出局）：
+        // 這一筆由 rules/charm 的 applyCharmRevenge 落盤，沒讀它就會變成「死因不明」。
+        if (dayData.charmDeaths?.includes(player.seat)) {
+          deathDay = parseInt(dayStr, 10);
+          deathCause = "charmed";
           break;
         }
       }

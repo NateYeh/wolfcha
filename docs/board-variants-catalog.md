@@ -121,7 +121,7 @@
 | 新階段 | `NIGHT_WOLF_BEAUTY_ACTION`，順序：守衛 → 禁言 → 攝夢 → **魅惑 → 狼人** → 女巫 → 預言家（2026-09-26 照來源站法官順序） |
 | 規則模組 | `src/lib/rules/charm.ts`（合法座位、隨機指定、`getCharmedSeat`、`getCharmRevengeSeat`、`applyCharmRevenge`、`getWolfKnifeEligibleSeats`） |
 | 夜間結算 | `rules/night-resolution` 的步驟 4：狼美人當晚出局 → 被魅惑者一并出局，死因 `charm` |
-| 白天連帶 | 放逐（`useGameLogic.handleVoteComplete`）、自爆帶走（`useGameLogic`）、獵人槍（`useSpecialEvents`）三條路都會帶走被魅惑者 |
+| 白天連帶 | 放逐（`useGameLogic.handleVoteComplete`）、自爆帶走（`useGameLogic.applySelfDestruct`）、獵人槍（`useSpecialEvents`）三條路都會帶走被魅惑者；殉情公告一律排在死因公告之後，殉情者記進 `dayHistory[day].charmDeaths` |
 | 提示詞 | `prompts.wolfBeauty.{base,task,user}` ×3 語系＋玩法指引 `promptUtils.strategyGuide.wolfBeauty` |
 | 真人操作 | `NIGHT_WOLF_BEAUTY_ACTION` 的可選目標、`gameLogicMessages.youCharmed` 對話、存檔／續跑／Dev 跳轉全部接上（跳轉補全的魅惑目標一開始被靜默丟掉，已修，見下）；狼美人是狼陣營，首夜與出刀同樣會走到狼隊分工與出刀確認 |
 | 版型 | `official-12-wolf-beauty-knight`＝狼人×3＋狼美人＋預女守騎＋4 民（12 人、4 狼） |

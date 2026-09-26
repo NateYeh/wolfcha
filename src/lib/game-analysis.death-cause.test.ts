@@ -51,3 +51,22 @@ test("每個分類都有非空且彼此不同的文案", async () => {
   }
   assert.match(formatDeathCauseText("charmed"), /殉情/, "殉情的文案要講清楚是殉情");
 });
+
+/**
+ * 白天殉情（2026-09-26 個案：12號 葉小雷 隨狼美人殉情出局）：分析要認得
+ * `dayHistory.charmDeaths`。這一筆由 `rules/charm` 的 `applyCharmRevenge` 落盤，
+ * 讀不到就會讓殉情者在紀錄上「沒有死因、沒有死亡日」。
+ */
+test("白天殉情：分析從 dayHistory.charmDeaths 取得死因 charmed", async () => {
+  const { buildPlayerSnapshots } = await import("@/lib/game-analysis");
+  const { createSinglePlayerContextAuditState } = await import("../../scripts/single-player-context-audit");
+  const base = createSinglePlayerContextAuditState();
+  const state = {
+    ...base,
+    day: 2,
+    dayHistory: { 2: { charmDeaths: [5] } },
+  } as typeof base;
+  const snapshot = buildPlayerSnapshots(state).find((player) => player.seat === 5);
+  assert.equal(snapshot?.deathDay, 2, "殉情要記得出局的那一天");
+  assert.equal(snapshot?.deathCause, "charmed", "殉情不得掉成別的（或沒有）死因");
+});

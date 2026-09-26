@@ -178,18 +178,6 @@ export function useSpecialEvents(
 
     if (targetSeat !== null) {
       currentState = killPlayer(currentState, targetSeat);
-      // 槍口打到狼美人時，被魅惑者一并殉情（騎士決鬥以外的出局都要發動）。
-      const revenge = applyCharmRevenge(currentState, targetSeat, "carried");
-      if (revenge.victimSeat !== null) {
-        currentState = revenge.state;
-        currentState = addSystemMessage(
-          currentState,
-          texts.systemMessages.charmRevenge(
-            revenge.victimSeat + 1,
-            currentState.players.find((p) => p.seat === revenge.victimSeat)?.displayName ?? ""
-          )
-        );
-      }
       const target = currentState.players.find((p) => p.seat === targetSeat);
       if (target) {
         currentState = addSystemMessage(
@@ -200,6 +188,22 @@ export function useSpecialEvents(
           texts.speakerHost,
           texts.systemMessages.hunterShoot(hunter.seat + 1, hunter.displayName, targetSeat + 1, target.displayName),
           false
+        );
+      }
+      // 槍口打到狼美人時，被魅惑者一并殉情（騎士決鬥以外的出局都要發動）。
+      // 死因是「被槍打死」＝ `shot`（`carried` 專指自爆帶走）。
+      // 公告順序必須是「先開槍、後殉情」：殉情是槍打死狼美人的後果，先講殉情等於
+      // 「還沒開槍就有人跟著死」（2026-09-26 個案：11號蕭中慧出局、開槍帶走1號狼美人，
+      // 但畫面上殉情的 12號 比開槍早一步公告）。
+      const revenge = applyCharmRevenge(currentState, targetSeat, "shot");
+      if (revenge.victimSeat !== null) {
+        currentState = revenge.state;
+        currentState = addSystemMessage(
+          currentState,
+          texts.systemMessages.charmRevenge(
+            revenge.victimSeat + 1,
+            currentState.players.find((p) => p.seat === revenge.victimSeat)?.displayName ?? ""
+          )
         );
       }
 

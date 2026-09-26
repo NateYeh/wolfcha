@@ -795,6 +795,24 @@ export function useGameLogic() {
       );
     }
 
+    // 自爆帶走狼美人時，被魅惑者一并殉情——白天連帶三條路（放逐／自爆帶走／獵人槍）之一。
+    // `rules/charm` 的 `CharmRevengeCause` 一直有 `carried`、`docs/board-variants-catalog.md`
+    // 也一直寫著這條路，但**呼叫點從來不存在**：被自爆帶走的狼美人不會帶走被魅惑者。
+    // 公告順序：先「自爆帶走 X」上面已播、再「Y 隨狼美人殉情」——後者是被帶走者的後果。
+    if (applied.victimSeat !== undefined) {
+      const carriedRevenge = applyCharmRevenge(currentState, applied.victimSeat, "carried");
+      if (carriedRevenge.victimSeat !== null) {
+        currentState = carriedRevenge.state;
+        currentState = addSystemMessage(
+          currentState,
+          systemMessages.charmRevenge(
+            carriedRevenge.victimSeat + 1,
+            currentState.players.find((p) => p.seat === carriedRevenge.victimSeat)?.displayName ?? ""
+          )
+        );
+      }
+    }
+
     // 公告：補公布尚未公布的夜間死訊（第一夜死者）；奶穿（同刀同毒）不重複發第二次
     for (const death of applied.newlyAnnouncedDeaths) {
       if (death.reason === "milk") continue;
@@ -2454,19 +2472,6 @@ export function useGameLogic() {
       const diedAtNight = (currentState as GameState & { _hunterDiedAtNight?: boolean })._hunterDiedAtNight ?? true;
       if (targetSeat >= 0) {
         currentState = killPlayer(currentState, targetSeat);
-        // 自爆帶走狼美人時，被魅惑者一并殉情。
-        {
-          const carriedRevenge = applyCharmRevenge(currentState, targetSeat, "carried");
-          if (carriedRevenge.victimSeat !== null) {
-            currentState = addSystemMessage(
-              carriedRevenge.state,
-              systemMessages.charmRevenge(
-                carriedRevenge.victimSeat + 1,
-                currentState.players.find((p) => p.seat === carriedRevenge.victimSeat)?.displayName ?? ""
-              )
-            );
-          }
-        }
         const target = currentState.players.find((p) => p.seat === targetSeat);
         if (target) {
           currentState = addSystemMessage(
@@ -2477,6 +2482,20 @@ export function useGameLogic() {
             speakerHost,
             systemMessages.hunterShoot(humanPlayer.seat + 1, humanPlayer.displayName, targetSeat + 1, target.displayName),
             false
+          );
+        }
+        // 槍口打到狼美人時，被魅惑者一并殉情。死因是「被槍打死」＝ `shot`
+        // （`carried` 專指自爆帶走）。公告順序同 AI 路徑：先開槍、後殉情，
+        // 否則會出現「還沒開槍就有人跟著殉情」（見 useSpecialEvents 同名註解）。
+        const shotRevenge = applyCharmRevenge(currentState, targetSeat, "shot");
+        if (shotRevenge.victimSeat !== null) {
+          currentState = shotRevenge.state;
+          currentState = addSystemMessage(
+            currentState,
+            systemMessages.charmRevenge(
+              shotRevenge.victimSeat + 1,
+              currentState.players.find((p) => p.seat === shotRevenge.victimSeat)?.displayName ?? ""
+            )
           );
         }
 

@@ -20,7 +20,7 @@ import { getRoleCapabilities } from "./roles";
 export const CHARM_DEATH_REASON = "charm" as const;
 
 /** 會帶走狼美人的死因（騎士決鬥不觸發；其餘出局方式都算） */
-export type CharmRevengeCause = "exile" | "night_kill" | "poison" | "milk" | "dream" | "carried" | "duel";
+export type CharmRevengeCause = "exile" | "night_kill" | "poison" | "milk" | "dream" | "shot" | "carried" | "duel";
 
 /** 狼美人這個角色能不能魅惑自己（目前規則：不行） */
 export function canCharmSelf(): boolean {
@@ -124,9 +124,26 @@ export function applyCharmRevenge(
       players: state.players.map((player) =>
         player.seat === victimSeat ? { ...player, alive: false } : player,
       ),
+      dayHistory: recordDayCharmDeath(state, victimSeat),
     },
     victimSeat,
   };
+}
+
+/**
+ * 把「當日殉情」寫進 `dayHistory`。
+ *
+ * 賽後分析的死因與死亡日只從 `nightHistory` 與 `dayHistory` 推導（`game-analysis.ts` 的
+ * `buildPlayerSnapshots`）：夜間殉情由 `rules/night-resolution` 落盤，白天的殉情若不寫這一筆，
+ * 殉情者就會變成「沒有死因、沒有死亡日」（2026-09-26 個案：12號 葉小雷 隨狼美人殉情，
+ * 紀錄上卻查不出他怎麼死的）。
+ */
+function recordDayCharmDeath(state: GameState, seat: number): GameState["dayHistory"] {
+  const dayHistory = state.dayHistory ?? {};
+  const today = dayHistory[state.day] ?? {};
+  const charmDeaths = today.charmDeaths ?? [];
+  if (charmDeaths.includes(seat)) return dayHistory;
+  return { ...dayHistory, [state.day]: { ...today, charmDeaths: [...charmDeaths, seat] } };
 }
 
 /** 這個死因會不會觸發殉情 */

@@ -359,6 +359,8 @@ export interface GameState {
       idiotRevealed?: { seat: number };
       /** 當日禁言紀錄（禁言長老前一晚指定） */
       muted?: { seat: number };
+      /** 當日殉情紀錄（狼美人白天出局時，被魅惑者連帶出局；夜間殉情記在 nightHistory） */
+      charmDeaths?: number[];
       /** 騎士決鬥紀錄（一場一次；targetIsWolf 決定後續流程） */
       knightDuel?: {
         duelistSeat: number;

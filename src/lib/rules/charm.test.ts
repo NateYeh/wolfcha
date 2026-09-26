@@ -127,13 +127,13 @@ test("getCharmedSeat 的讀取順序：今晚 → 前一晚 → 夜史", () => {
 
 test("騎士決鬥不發動殉情，其餘死因都發動", () => {
   assert.equal(triggersCharmRevenge("duel"), false);
-  for (const cause of ["exile", "night_kill", "poison", "milk", "dream", "carried"] as const) {
+  for (const cause of ["exile", "night_kill", "poison", "milk", "dream", "shot", "carried"] as const) {
     assert.equal(triggersCharmRevenge(cause), true, `${cause} 應該發動殉情`);
   }
 });
 
 test("狼美人出局 → 被魅惑者一起走（放逐／夜死／毒／被帶走都算）", () => {
-  for (const cause of ["exile", "night_kill", "poison", "carried"] as const) {
+  for (const cause of ["exile", "night_kill", "poison", "shot", "carried"] as const) {
     const state = stateWith([], { nightActions: { ...stateBase(), wolfBeautyTarget: 5 } });
     assert.equal(getCharmRevengeSeat(state, 0, cause), 5, `${cause} 要帶走 5 號`);
   }
@@ -178,6 +178,21 @@ test("applyCharmRevenge 只改存活狀態，不動其他玩家", () => {
     1,
     "除了被魅惑者以外沒有人被動到"
   );
+});
+
+test("白天殉情要落 dayHistory，賽後分析才認得出死因", () => {
+  const state = stateWith([], { nightActions: { ...stateBase(), wolfBeautyTarget: 5 } });
+  const { state: next, victimSeat } = applyCharmRevenge(state, 0, "shot");
+  assert.equal(victimSeat, 5, "被槍打死的狼美人要帶走被魅惑者");
+  assert.deepEqual(
+    next.dayHistory?.[2]?.charmDeaths,
+    [5],
+    "殉情要寫進當日紀錄：分析的死因只從 nightHistory／dayHistory 推導，少這筆就變成死因不明"
+  );
+  // 不會重複記，也不會把已經出局的人再記一次
+  const again = applyCharmRevenge(next, 0, "shot");
+  assert.equal(again.victimSeat, null);
+  assert.deepEqual(again.state.dayHistory?.[2]?.charmDeaths, [5]);
 });
 
 test("applyCharmRevenge 不發動時原樣回傳", () => {
