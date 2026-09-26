@@ -856,6 +856,26 @@ export async function generateCompletionBatch(
   return generateCompletionBatchInternal(requests, true);
 }
 
+/**
+ * 前綴快取暖機：用同一份 prompt 送出一發 max_tokens=1 的請求。
+ *
+ * 實測（2026-09-22，真閘道器、deepseek-v4.1-flash:cloud、九席放逐投票 prompt）：
+ * 上游的前綴快取是粗粒度區塊，逐席單發時第一發寫入的區塊不足以讓後續席位命中
+ * （未暖機 0~52%）；補一發同前綴暖機（max_tokens=1，實測 0.7 秒）後，
+ * 後續九席分別命中 13,440/13,566、16,512/16,590…（約 99%）。
+ *
+ * 暖機失敗不影響主流程（只回 false），但要留 warn 痕跡，不靜默。
+ */
+export async function warmUpCompletion(options: GenerateOptions): Promise<boolean> {
+  try {
+    await generateCompletion({ ...options, max_tokens: 1 });
+    return true;
+  } catch (error) {
+    console.warn("[wolfcha] 前綴快取暖機失敗，後續請求可能吃不到快取:", error);
+    return false;
+  }
+}
+
 async function generateCompletionBatchInternal(
   requests: GenerateOptions[],
   allowTopUpRecovery: boolean,

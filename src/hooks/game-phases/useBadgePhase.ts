@@ -12,6 +12,7 @@ import {
   generateAIBadgeVote,
   generateAIBadgeSignupBatch,
   generateBadgeTransfer,
+  warmUpBadgeVotePrompt,
   BADGE_VOTE_ABSTAIN,
   BADGE_TRANSFER_TORN,
   excludePendingDeathPlayers,
@@ -616,8 +617,6 @@ export function useBadgePhase(
 
     try {
       setIsWaitingForAI(true);
-      // 警徽投票同放逐投票：第一席先算完，它的 prefill 把共用前綴寫進上游快取，
-      // 其餘席位併發直接命中（第一席本身就是暖機，不再另送 max_tokens=1 暖機）。
       // 第一席先算完（它的票進公共資訊，後面的人看得到），其餘併發送。
       const [firstVoter, ...laterVoters] = aiPlayers;
       if (firstVoter) {
@@ -627,6 +626,8 @@ export function useBadgePhase(
       }
 
       if (laterVoters.length > 0) {
+        // 同放逐投票：批次前綴多了第一席的票，先暖一發再併發。
+        if (laterVoters.length >= 2) await warmUpBadgeVotePrompt(currentState, laterVoters[0]);
         // 票一到就寫進 UI（不再等所有人回傳才一次顯示）；節奏器只保證相鄰兩票的最小間隔。
         const revealVote = createRevealPacer(BADGE_VOTE_BEAT_MS);
         await Promise.all(

@@ -19,6 +19,7 @@ import {
   generateAIVote,
   tallyVotes,
   transitionPhase,
+  warmUpVotePrompt,
 } from "@/lib/game-master";
 import { canUseDeathShot } from "@/lib/rules/death-skills";
 import { voteWeightByPlayerId } from "@/lib/rules/vote-weight";
@@ -106,8 +107,6 @@ export class VotePhase extends GamePhase {
     let tokenInvalidated = false;
     setIsWaitingForAI(true);
     try {
-      // 第一席本身就是暖機：它的 prefill 會把共用前綴（系統＋逐字發言紀錄）寫進上游快取，
-      // 等它算完，後面席位的併發請求直接命中（不必再送 max_tokens=1 暖機——那只是把同樣的計算提前付一次）。
       const writeVote = (aiPlayer: (typeof aiPlayers)[number], vote: { seat: number; reason: string }) => {
         setGameState((prevState) => ({
           ...prevState,
@@ -133,9 +132,11 @@ export class VotePhase extends GamePhase {
       }
 
       // 其餘席位**併發**送（逐席 await 會讓總時間＝各席加總）。
-      // 票是同一時間投的，彼此看不到對方；只有第一席的票在公共資訊裡，
-      // 共用前綴已被第一席的 prefill 寫進快取，併發批直接命中。
+      // 票是同一時間投的，彼此看不到對方；只有第一席的票在公共資訊裡。
       if (!tokenInvalidated && laterVoters.length > 0) {
+        // 批次前綴多了第一席的票 → 先暖一發，這批併發才會命中快取。
+        // 實測（2026-09-26 整局 74 筆）：不暖機時併發批只有 ~25% 命中，vote 佔全部 miss token 的 51%。
+        if (laterVoters.length >= 2) await warmUpVotePrompt(currentState, laterVoters[0]);
         // 票一到就寫進 UI（不再等所有人回傳才一次顯示）；節奏器只保證相鄰兩票的最小間隔。
         const revealVote = createRevealPacer(VOTE_REVEAL_BEAT_MS);
         await Promise.all(
