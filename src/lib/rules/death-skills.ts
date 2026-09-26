@@ -108,7 +108,10 @@ export function canUseDeathShot(input: {
     (record?.deaths ?? []).some(
       (death) =>
         death.seat === seat &&
-        (death.reason === "poison" || death.reason === "milk" || death.reason === "dream"),
+        (death.reason === "poison" ||
+          death.reason === "milk" ||
+          death.reason === "dream" ||
+          death.reason === "charm"),
     ),
   );
   if (diedByBlockedCause) return false;

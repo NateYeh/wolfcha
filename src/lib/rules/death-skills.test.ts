@@ -180,6 +180,16 @@ test("狼王槍：只剩他這一隻狼時不開窗（出局即終局）", () =>
   assert.equal(canUseDeathShot({ state: withCompany, role: "WolfKing", seat: 0, cause: "exile" }), true);
 });
 
+test("封槍：夜史記 charm（魅惑殉情）的座位不能開槍，其他人不受影響", () => {
+  const base = stateWith([[0, "Hunter"], [1, "Hunter"]]);
+  const charmed = {
+    ...base,
+    nightHistory: { 1: { deaths: [{ seat: 0, reason: "charm" as const }] } },
+  } as unknown as GameState;
+  assert.equal(canUseDeathShot({ state: charmed, role: "Hunter", seat: 0, cause: "shot" }), false, "被魅惑殉情的獵人不能開槍");
+  assert.equal(canUseDeathShot({ state: charmed, role: "Hunter", seat: 1, cause: "shot" }), true, "沒被殉情帶走的獵人照常能開");
+});
+
 test("毒史封槍：夜史有 poison/milk 紀錄的座位不能開槍，且不影響其他人", () => {
   const base = stateWith([[0, "WolfKing"], [1, "Hunter"]]);
   // 夜 1：狼王被毒奶（同刀同毒）→ 死因紀錄為 poison
