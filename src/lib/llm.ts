@@ -24,6 +24,7 @@ import { generateUUID } from "./utils";
 import { withTimeout } from "@/lib/request-timeout";
 import { UPSTREAM_TIMEOUT_HEADER, UpstreamTimeoutError } from "@/lib/upstream-timeout";
 import type { PromptScope } from "@/lib/deepseek-prompt-scope";
+import { buildCacheKeyInfo, type CacheKeyInfo } from "@/lib/cache-key";
 
 export type LLMContentPart =
   | { type: "text"; text: string; cache_control?: { type: "ephemeral"; ttl?: "1h" } }
@@ -802,6 +803,18 @@ export async function generateCompletion(
   }
 
   const result: ChatCompletionResponse = await response.json();
+  // 診斷用「快取鍵指紋」：不影響請求，只隨 rawResponse 一起落進 AI 紀錄，
+  // 供命中率分裂時比對「這次呼叫的請求參數和別人差在哪」（見 src/lib/cache-key.ts）。
+  (result as ChatCompletionResponse & { wolfchaCacheKey?: CacheKeyInfo }).wolfchaCacheKey = buildCacheKeyInfo({
+    model: resolvedModel.model,
+    provider: resolvedModel.provider,
+    promptScope: options.promptScope ?? "utility",
+    reasoningEffort: options.reasoning_effort,
+    responseFormat: options.response_format,
+    temperature: options.temperature ?? 0.7,
+    maxTokens: typeof options.max_tokens === "number" ? options.max_tokens : undefined,
+    hasRequestId: Boolean(logicalRequestId),
+  });
   options.signal?.throwIfAborted();
   const choice = result.choices?.[0];
   const assistantMessage = choice?.message;

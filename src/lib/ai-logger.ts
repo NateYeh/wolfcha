@@ -6,6 +6,7 @@
 import type { ApiKeySource, LLMMessage, PromptCacheUsage } from "./llm";
 import { extractPromptCacheUsage, resolveApiKeySource } from "./llm";
 import { generateUUID } from "./utils";
+import type { CacheKeyInfo } from "@/lib/cache-key";
 
 const LOCAL_LOGS_STORAGE_KEY = "wolfcha_ai_logs";
 
@@ -68,6 +69,11 @@ export interface AILogEntry {
     model: string;
     messages: LLMMessage[];
     apiKeySource?: ApiKeySource;
+    /**
+     * 診斷用「快取鍵指紋」：指紋相同＝上游看到的請求參數相同。
+     * 命中率分裂時用它比對呼叫類型之間的參數差異（見 `src/lib/cache-key.ts`）。
+     */
+    cacheKey?: CacheKeyInfo;
     temperature?: number;
     player?: {
       playerId: string;
@@ -102,6 +108,20 @@ function parseCacheUsageFromRawResponse(rawResponse: string | undefined): Prompt
     const parsed = JSON.parse(rawResponse) as { usage?: unknown };
     const usage = parsed && typeof parsed === "object" ? parsed.usage : undefined;
     return extractPromptCacheUsage(usage as Parameters<typeof extractPromptCacheUsage>[0]);
+  } catch {
+    return undefined;
+  }
+}
+
+/** 從上游回應裡撈出伺服器端算好的快取鍵指紋（`/api/chat` 注入的 `wolfchaCacheKey`）。 */
+function parseCacheKeyFromRawResponse(rawResponse: string | undefined): CacheKeyInfo | undefined {
+  if (!rawResponse) return undefined;
+  try {
+    const parsed = JSON.parse(rawResponse) as { wolfchaCacheKey?: unknown };
+    const info = parsed && typeof parsed === "object" ? parsed.wolfchaCacheKey : undefined;
+    if (!info || typeof info !== "object") return undefined;
+    const candidate = info as { fingerprint?: unknown };
+    return typeof candidate.fingerprint === "string" ? (info as CacheKeyInfo) : undefined;
   } catch {
     return undefined;
   }
@@ -178,6 +198,8 @@ class AILogger {
   }
 
   async log(entry: Omit<AILogEntry, "id" | "timestamp">) {
+    // 指紋只在拿得到時才寫，避免無謂的 undefined 欄位污染紀錄。
+    const cacheKey = entry.request.cacheKey ?? parseCacheKeyFromRawResponse(entry.response.rawResponse);
     const fullEntry: AILogEntry = {
       ...entry,
       request: {
@@ -187,6 +209,7 @@ class AILogger {
           (typeof entry.request.model === "string" && entry.request.model.trim()
             ? resolveApiKeySource(entry.request.model)
             : undefined),
+        ...(cacheKey ? { cacheKey } : {}),
       },
       response: {
         ...entry.response,
