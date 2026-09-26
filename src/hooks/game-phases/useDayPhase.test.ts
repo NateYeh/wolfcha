@@ -29,7 +29,7 @@ function harness(tts = false) {
   const flow = new AsyncFlowController();
   let serial = 0;
   let organizingTimeout: (() => void) | undefined;
-  // 發言等待上限（hook 內的 SPEECH_WAIT_TIMEOUT_MS，現為 120 秒）：
+  // 發言等待上限（hook 內的 SPEECH_WAIT_TIMEOUT_MS，現為 180 秒）：
   // 用「值夠大」而非綁死魔術數字，否則 hook 改值時這裡會靜默抓不到、測試直接卡住。
   const scheduleTimeout = (fn: () => void, ms: number) => {
     if (ms >= 60000) organizingTimeout = fn;

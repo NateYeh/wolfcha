@@ -27,9 +27,9 @@ import { withTimeout } from "@/lib/request-timeout";
 import { isGameSessionExpiredMessage } from "@/lib/llm";
 import type { SpeechSkillDecision } from "@/lib/speech-skill";
 
-// 發言等待上限：必須不早於伺服器端的 API_TIMEOUT_MS（現為 120 秒，
+// 發言等待上限：必須不早於伺服器端的 API_TIMEOUT_MS（現為 180 秒，
 // src/app/api/chat/route.ts），否則思考較久的模型還在跑就被前端提前放棄。
-const SPEECH_WAIT_TIMEOUT_MS = 120000;
+const SPEECH_WAIT_TIMEOUT_MS = 180000;
 
 export interface DayPhaseCallbacks {
   setDialogue: (speaker: string, text: string, isStreaming?: boolean) => void;

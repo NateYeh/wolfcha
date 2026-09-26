@@ -13,7 +13,7 @@
  * - `minimal`：三個模型都幾乎無效。
  *
  * 現行政策（使用者裁定）：**一律 `low`**——關思考雖然快，但 AI 的判斷力掉太多，
- * 寧可慢一點；配合 `API_TIMEOUT_MS` 放寬到 120 秒（src/app/api/chat/route.ts）。
+ * 寧可慢一點；配合 `API_TIMEOUT_MS` 放寬到 180 秒（src/app/api/chat/route.ts）。
  *
  * 優先序（高→低）：WOLFCHA_REASONING_EFFORT_MAP → WOLFCHA_REASONING_EFFORT → 內建 low。
  */

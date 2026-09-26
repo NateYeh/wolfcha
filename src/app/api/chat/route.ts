@@ -42,8 +42,10 @@ const ZENMUX_API_URL = "https://zenmux.ai/api/v1/chat/completions";
 const DASHSCOPE_API_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 const DASHSCOPE_CHAT_COMPLETIONS_URL = `${DASHSCOPE_API_BASE_URL}/chat/completions`;
 
-// API 调用超时时间（毫秒）；非流式请求要在这段时间内跑完，1 分钟足够正常模型响应，超时快速失败可触发重试。
-const API_TIMEOUT_MS = 120000;
+// API 调用超时时间（毫秒）；非流式请求要在这段时间内跑完。放寬到 3 分鐘是因為
+// reasoning_effort=low 的推理模型思考時間較長；超時快速失敗可觸發重試。
+// 前端等待發言的上限（useDayPhase.SPEECH_WAIT_TIMEOUT_MS）必須不早於這個值。
+const API_TIMEOUT_MS = 180000;
 // 逾時訊息要能直接看懂：過去只會留下 Chrome 的 "This operation was aborted"，事後查不出原因。
 const UPSTREAM_TIMEOUT_MESSAGE = `上游模型无响应（超时 ${API_TIMEOUT_MS / 1000}s）`;
 const MAX_BATCH_REQUESTS = 12;
