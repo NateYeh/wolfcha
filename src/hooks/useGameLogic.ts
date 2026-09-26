@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
 import { getGatewayModels } from "@/lib/api-keys";
-import { PLAYER_MODELS, isWolfRole, type GameState, type Player, type Phase, type Role, type DevPreset, type ModelRef, type StartGameOptions, type WolfTeamPlan } from "@/types/game";
+import { PLAYER_MODELS, isWolfRole, type GameState, type Player, type Phase, type Role, type ModelRef, type StartGameOptions, type WolfTeamPlan} from "@/types/game";
 import { gameStateAtom, isValidTransition, clearPersistedGameState, isRestorableGameState } from "@/store/game-machine";
 import { getGeneratorModel, getModelSource } from "@/lib/api-keys";
 import { isAbstainSeat } from "@/lib/rules/actions";
@@ -31,17 +31,14 @@ import { getRoleCapabilities } from "@/lib/rules/roles";
 import { canSelfDestruct, hasAlreadyBoomed, shouldResumeBadgeElection } from "@/lib/rules/self-destruct";
 import { applySelfDestructToState } from "@/lib/rules/self-destruct-apply";
 import { getBoardRuleFlags } from "@/lib/rules/boards";
-import { canDuel, hasAlreadyDueled } from "@/lib/rules/knight-duel";
+import { canDuel} from "@/lib/rules/knight-duel";
 import { canUseDeathShot, getChainedShooter, getDeathShotKind } from "@/lib/rules/death-skills";
 import { isValidMuteTarget } from "@/lib/rules/mute";
 import { isValidDreamTarget } from "@/lib/rules/dream";
 import { applyCharmRevenge, isValidWolfBeautyTarget } from "@/lib/rules/charm";
 import { appendDayHunterShot, appendNightHunterShot } from "@/lib/rules/hunter-shots";
 import { getPendingDeathSeats } from "@/lib/rules/night-deaths";
-import {
-  humanActorPending,
-  isNightActionPhase,
-} from "@/lib/rules/night-progress";
+import { isNightActionPhase} from "@/lib/rules/night-progress";
 import { nightResumePlan, replayCommandFor, type NightResumeCommand } from "@/game/phases/night-resume";
 import { applyKnightDuelToState } from "@/lib/rules/knight-duel-apply";
 import {
@@ -67,14 +64,9 @@ import { sampleRosterCharacters } from "@/lib/character-roster";
 import { fetchCharacterStats } from "@/lib/character-stats";
 import { getSystemMessages, getUiText } from "@/lib/game-texts";
 import { getRandomScenario } from "@/lib/scenarios";
-import { DELAY_CONFIG, getRoleName } from "@/lib/game-constants";
+import { DELAY_CONFIG} from "@/lib/game-constants";
 import { generateUUID } from "@/lib/utils";
-import {
-  AsyncFlowController,
-  delay,
-  randomDelay,
-  computeUniqueTopSeat,
-} from "@/lib/game-flow-controller";
+import { AsyncFlowController, delay} from "@/lib/game-flow-controller";
 import { playNarrator } from "@/lib/narrator-audio-player";
 import { PhaseManager } from "@/game/core/PhaseManager";
 import { supabase } from "@/lib/supabase";
@@ -558,7 +550,7 @@ export function useGameLogic() {
       .filter((m) => !m.isSystem && aliveIds.has(m.playerId))
       .map((m) => `${m.playerName}: ${m.content}`)
       .join("\n");
-  }, []);
+  }, [t]);
 
   // ============================================
   // 特殊事件处理
@@ -884,7 +876,7 @@ export function useGameLogic() {
     }
 
     await continueAfterBadge(currentState);
-  }, [addSystemMessage, checkWinCondition, setDialogue, setGameState, speakerHost, t]);
+  }, [setDialogue, setGameState, speakerHost, t]);
 
   /**
    * 執行騎士翻牌決鬥（AI 與真人共用）：狀態轉移交給純函式 `applyKnightDuelToState`，
@@ -1018,7 +1010,7 @@ export function useGameLogic() {
 
     const action = await finish(currentState);
     return { action, state: currentState };
-  }, [addSystemMessage, checkWinCondition, setDialogue, setGameState, speakerHost, t, transitionPhase]);
+  }, [setDialogue, setGameState, speakerHost, t, transitionPhase]);
 
   // AI 自爆決策（所有狼陣營角色，見 lib/rules/self-destruct.ts）
   selfDestructCheckRef.current = async (state: GameState, wolf: Player): Promise<boolean> => {
@@ -1128,7 +1120,7 @@ export function useGameLogic() {
     }
     // 非第一天：直接进入讨论
     await runDaySpeechAction(state, token, "START_DAY_SPEECH_AFTER_BADGE", options);
-  }, [badgePhase, runDaySpeechAction]);
+  }, [badgePhase, runDaySpeechAction, runDaySpeechActionCapturing]);
   startDayPhaseInternalRef.current = startDayPhaseInternal;
 
   const proceedToNight = useCallback(async (state: GameState, token: ReturnType<typeof getToken>) => {
@@ -1586,6 +1578,9 @@ export function useGameLogic() {
       const token = getToken();
       void resolveVotesSafely(gameState, token);
     }
+    // 這是投票的安全網 effect，依賴清單刻意精準（phase/votes/players）——
+    // 改成整個 gameState 會讓它在每次狀態變動都重跑。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState.phase, gameState.votes, gameState.players, getToken, resolveVotesSafely, isWaitingForAI]);
 
   // ============================================
@@ -2563,7 +2558,7 @@ export function useGameLogic() {
         await runDaySpeechAction(result.state ?? currentState, token, "ADVANCE_SPEAKER");
       }
     }
-  }, [gameState, humanPlayer, setGameState, setDialogue, setIsWaitingForAI, waitForUnpause, getToken, runNightPhaseAction, resolveNight, startDayPhaseInternal, proceedToNight, endGameSafely, transitionPhase, speakerHost, t, continueAfterHunterShot, applyKnightDuel, runDaySpeechAction]);
+  }, [gameState, humanPlayer, setGameState, setDialogue, waitForUnpause, getToken, runNightPhaseAction, startDayPhaseInternal, proceedToNight, endGameSafely, transitionPhase, speakerHost, t, continueAfterHunterShot, applyKnightDuel, runDaySpeechAction, applySelfDestruct, continueNightAfterHumanAction]);
 
   /**
    * 魔術師（真人）的夜間行動：選**兩名**玩家交換（`docs/board-variants-catalog.md` §6.1 步驟 6）。

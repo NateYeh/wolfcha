@@ -17,18 +17,7 @@ import {
   Ear,
   GearSix,
 } from "@phosphor-icons/react";
-import {
-  WerewolfIcon,
-  NightIcon,
-  DayIcon,
-  SpeechIcon,
-  TimerIcon,
-  SeerIcon,
-  WitchIcon,
-  HunterIcon,
-  GuardIcon,
-  VillagerIcon,
-} from "@/components/icons/FlatIcons";
+import { WerewolfIcon, NightIcon, DayIcon, SpeechIcon} from "@/components/icons/FlatIcons";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import { useGameLogic } from "@/hooks/useGameLogic";
 import { useSpeechDrafter } from "@/hooks/useSpeechDrafter";
@@ -38,10 +27,9 @@ import { PHASE_CONFIGS, isGameInProgress } from "@/store/game-machine";
 import { getI18n } from "@/i18n/translator";
 import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { isSeatActionConfirmPhase, requiresTwoSeats } from "@/lib/rules/human-input";
-import { getHunterShots, lastHunterShot } from "@/lib/rules/hunter-shots";
+import { getHunterShots} from "@/lib/rules/hunter-shots";
 import { getSystemMessages, getSystemPatterns } from "@/lib/game-texts";
 import { useTranslations } from "next-intl";
-import { useAtom } from "jotai";
 import { BADGE_TRANSFER_TORN } from "@/lib/game-master";
 
 // Components
@@ -50,7 +38,6 @@ import { PlayerCardCompact } from "@/components/game/PlayerCardCompact";
 import { getMutedSeat, isMutePublic } from "@/lib/rules/mute";
 import { getAutoAdvanceRoundSignature, getAutoAdvanceSignature } from "@/lib/auto-advance";
 import { DialogArea } from "@/components/game/DialogArea";
-import { BottomActionPanel } from "@/components/game/BottomActionPanel";
 import { Notebook } from "@/components/game/Notebook";
 import { GameBackground } from "@/components/game/GameBackground";
 import { PlayerDetailModal } from "@/components/game/PlayerDetailModal";
@@ -174,7 +161,6 @@ export default function Home() {
     waitingForNextRound,
     advanceSpeech,
     markCurrentSegmentCompleted,
-    shouldAutoAdvanceToNextAI,
     awaitingWolfTeamPlan,
     handleWolfTeamPlanSubmit,
     handleWolfTeamPlanDelegate,
@@ -569,11 +555,6 @@ export default function Home() {
     hunterShotKey?: string | null;
   }>({});
   
-  // 检查玩家是否准备就绪（用于召集阶段显示加载状态）
-  const isReady = useMemo(() => {
-    return gameState.players.every((p) => p.displayName?.trim());
-  }, [gameState.players]);
-
   // 阶段切换时清理选择状态
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -701,7 +682,7 @@ export default function Home() {
 
     const raw = durationMs / Math.max(1, text.length);
     return Math.min(60, Math.max(10, Math.round(raw)));
-  }, [currentDialogue, gameState.players]);
+  }, [currentDialogue, gameState.players, t]);
 
   const { displayedText, isTyping, completedText } = useTypewriter({
     text: currentDialogue?.text || "",
@@ -951,7 +932,7 @@ export default function Home() {
       default:
         return null;
     }
-  }, [gameState.phase]);
+  }, [gameState.phase, humanPlayer]);
 
   const isRoleActionForHuman = useMemo(() => {
     if (!humanPlayer || !activeRoleForPhase) return false;
@@ -1002,6 +983,7 @@ export default function Home() {
     tutorialState.seenNightIntro,
     tutorialState.seenRoles,
     visualIsNight,
+    hasShownRoleReveal,
   ]);
 
   const tutorialHelpLabel = useMemo(() => {
@@ -1068,7 +1050,7 @@ export default function Home() {
     nightActionOverlayTimerRef.current = window.setTimeout(() => {
       setNightActionOverlay(null);
     }, 1500);
-  }, [gameState.players, isRoleRevealOpen, showTable]);
+  }, [gameState.players, isRoleRevealOpen, showTable, gameState.isGenshinMode]);
 
   useEffect(() => {
     if (!showTable) {
@@ -1199,7 +1181,7 @@ export default function Home() {
     }
 
     setSelectedSeat(prev => prev === player.seat ? null : player.seat);
-  }, [canClickSeat, isRoleRevealOpen, humanPlayer, gameState.phase, gameState.roleAbilities.witchPoisonUsed, selectedSeat, secondSeatPick]);
+  }, [canClickSeat, isRoleRevealOpen, humanPlayer, gameState.phase, gameState.roleAbilities.witchPoisonUsed, selectedSeat, secondSeatPick, t]);
 
   const confirmSelectedSeat = useCallback(async () => {
     if (isRoleRevealOpen) return;
@@ -1269,7 +1251,7 @@ export default function Home() {
 
   const needsHumanAction = useMemo(() => {
     return PHASE_CONFIGS[gameState.phase].requiresHumanInput(humanPlayer, gameState);
-  }, [gameState.phase, humanPlayer, gameState]);
+  }, [humanPlayer, gameState]);
 
   const showWaitingIndicator = isWaitingForAI && !needsHumanAction;
 
@@ -1283,7 +1265,7 @@ export default function Home() {
     if (actionType === "vote" || actionType === "night_action") return needsHumanActionNow;
     if (actionType === "special") return needsHumanActionNow && hasSelectableTargets;
     return false;
-  }, [gameState, gameState.phase, hasSelectableTargets, humanPlayer]);
+  }, [gameState, hasSelectableTargets, humanPlayer]);
 
   /**
    * 階段 → 狀態列圖示。用 `Record<Phase, …>` 強制補齊：新增階段時 tsc 會逼你決定顯示什麼，
@@ -1629,7 +1611,6 @@ export default function Home() {
                             onClick={() => handleSeatClick(player)}
                             onDetailClick={isSelectionPhase ? undefined : () => setDetailPlayer(player)}
                             animationDelay={index * 0.05}
-                            isNight={visualIsNight}
                             isGenshinMode={gameState?.isGenshinMode ?? isGenshinMode}
                             humanPlayer={humanPlayer}
                             seerCheckResult={seerResult}
@@ -1652,8 +1633,6 @@ export default function Home() {
                       gameState={gameState}
                       humanPlayer={humanPlayer}
                       isNight={visualIsNight}
-                      isSoundEnabled={isSoundEnabled}
-                      isAiVoiceEnabled={shouldUseAiVoice}
                       currentDialogue={currentDialogue}
                       displayedText={displayedText}
                       isTyping={isTyping}
@@ -1710,7 +1689,6 @@ export default function Home() {
                               onClick={() => handleSeatClick(player)}
                               onDetailClick={isSelectionPhase ? undefined : () => setDetailPlayer(player)}
                               animationDelay={index * 0.02}
-                              isNight={visualIsNight}
                               isGenshinMode={gameState?.isGenshinMode ?? isGenshinMode}
                               humanPlayer={humanPlayer}
                               seerCheckResult={seerResult}
@@ -1750,7 +1728,6 @@ export default function Home() {
                             onClick={() => handleSeatClick(player)}
                             onDetailClick={isSelectionPhase ? undefined : () => setDetailPlayer(player)}
                             animationDelay={index * 0.05}
-                            isNight={visualIsNight}
                             isGenshinMode={gameState?.isGenshinMode ?? isGenshinMode}
                             humanPlayer={humanPlayer}
                             seerCheckResult={seerResult}

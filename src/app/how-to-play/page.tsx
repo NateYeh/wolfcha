@@ -273,7 +273,7 @@ export default function HowToPlayPage() {
         subtitle="A typical Werewolf game follows this pattern. Each phase matters."
       >
         <div className="grid gap-4">
-          {gameFlow.map((phase, idx) => (
+          {gameFlow.map((phase) => (
             <div
               key={phase.step}
               className="grid items-center gap-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 md:grid-cols-12"
@@ -363,7 +363,7 @@ export default function HowToPlayPage() {
             <div className="text-lg font-bold text-[var(--text-primary)]">AI tracks consistency</div>
             <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
               AI opponents remember what you said. Contradictions will be called out. Keep your story straight,
-              especially if you're a wolf.
+              especially if you&apos;re a wolf.
             </p>
           </div>
           <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6">
@@ -376,8 +376,8 @@ export default function HowToPlayPage() {
           <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6">
             <div className="text-lg font-bold text-[var(--text-primary)]">Vote structure matters</div>
             <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
-              AI responds well to clear voting plans. If you're village, propose a vote structure.
-              If you're wolf, create confusion about who should be voted.
+              AI responds well to clear voting plans. If you&apos;re village, propose a vote structure.
+              If you&apos;re wolf, create confusion about who should be voted.
             </p>
           </div>
           <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6">

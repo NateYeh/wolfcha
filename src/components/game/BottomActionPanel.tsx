@@ -16,7 +16,7 @@ import {
   VillagerIcon,
   VoteIcon,
 } from "@/components/icons/FlatIcons";
-import type { GameState, Player, Phase } from "@/types/game";
+import type { GameState, Player} from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { ABSTAIN_SEAT } from "@/lib/rules/actions";
 import { getBoardRuleFlags } from "@/lib/rules/boards";

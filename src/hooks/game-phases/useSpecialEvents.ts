@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { getRoleName } from "@/lib/game-constants";
 import { useAtom } from "jotai";
 import type { GameState, Player, Alignment } from "@/types/game";
 import { gameStateAtom } from "@/store/game-machine";

@@ -78,7 +78,7 @@ export function ResetPasswordModal({ open, onOpenChange, onSuccess }: ResetPassw
         onOpenChange(false);
         onSuccess?.();
       }
-    } catch (err) {
+    } catch {
       toast.error(t("resetPassword.toasts.resetFail.title"), {
         description: t("resetPassword.toasts.resetFail.description"),
       });

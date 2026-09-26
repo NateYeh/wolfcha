@@ -59,10 +59,6 @@ export function WolfPlanningPanel({ gameState, humanPlayer }: WolfPlanningPanelP
         <div className="flex flex-col sm:flex-row gap-2">
           {wolves.map(wolf => {
           const hasVoted = wolfVotes[wolf.playerId] !== undefined;
-          const votedTarget = hasVoted 
-            ? gameState.players.find(p => p.seat === wolfVotes[wolf.playerId])
-            : null;
-          
           return (
             <motion.div
               key={wolf.playerId}

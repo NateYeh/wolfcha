@@ -1,33 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect} from "react";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  GameController,
-  BookOpen,
-  Users,
-  Robot,
-  Microphone,
-  MaskHappy,
-  Sparkle,
-  Lightning,
-  GithubLogo,
-  Globe,
-  ArrowRight,
-  X,
-  SpeakerHigh,
-  Gear,
-  UserCircle,
-  Shuffle,
-  Moon,
-  Sun,
-  Eye,
-  Flask,
-  Crosshair,
-  Shield,
-  Skull,
-} from "@phosphor-icons/react";
+import { GameController, BookOpen, Users, Robot, Microphone, MaskHappy, Sparkle, Lightning, GithubLogo, Globe, ArrowRight, X, Shuffle, Moon, Sun, Eye, Flask, Crosshair, Shield, Skull} from "@phosphor-icons/react";
 import { useAppLocale } from "@/i18n/useAppLocale";
 import { getMessages } from "@/i18n/messages";
 import { buildSimpleAvatarUrl, AvatarConfig } from "@/lib/avatar-config";
@@ -358,6 +334,8 @@ function AvatarShowcase({ isZh }: { isZh: boolean }) {
   };
 
   useEffect(() => {
+      // 若改成 render 期初始化，SSR 與 CSR 會產生不同頭像，導致 hydration mismatch。
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 亂數頭像必須在 effect 內產生：
     setAvatars(generateAvatars());
   }, []);
 

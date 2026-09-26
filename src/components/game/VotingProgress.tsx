@@ -8,10 +8,9 @@ import { voteWeightByPlayerId } from "@/lib/rules/vote-weight";
 
 interface VotingProgressProps {
   gameState: GameState;
-  humanPlayer: Player | null;
 }
 
-export function VotingProgress({ gameState, humanPlayer }: VotingProgressProps) {
+export function VotingProgress({ gameState }: VotingProgressProps) {
   const t = useTranslations();
   const alivePlayers = gameState.players.filter(p => p.alive);
   const aliveById = new Set(alivePlayers.map((p) => p.playerId));

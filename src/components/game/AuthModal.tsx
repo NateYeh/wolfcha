@@ -39,16 +39,14 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<ReactNode | null>(null);
   const [emailCooldownUntilMs, setEmailCooldownUntilMs] = useState<number | null>(null);
-
-  const emailCooldownSecondsLeft = useMemo(() => {
-    if (!emailCooldownUntilMs) return 0;
-    const seconds = Math.ceil((emailCooldownUntilMs - Date.now()) / 1000);
-    return Math.max(0, seconds);
-  }, [emailCooldownUntilMs]);
+  // 倒數秒數自己存：原本用 useMemo 在 render 期呼叫 Date.now()（render 必須是純的），
+  // 而且下面的 interval 只重設同一個值，不會觸發 render，畫面其實不會跳動。
+  const [emailCooldownSecondsLeft, setEmailCooldownSecondsLeft] = useState(0);
 
   const startEmailCooldown = (seconds = EMAIL_SEND_COOLDOWN_SECONDS) => {
     const until = Date.now() + seconds * 1000;
     setEmailCooldownUntilMs(until);
+    setEmailCooldownSecondsLeft(seconds);
     try {
       localStorage.setItem(EMAIL_SEND_COOLDOWN_STORAGE_KEY, String(until));
     } catch {
@@ -63,8 +61,13 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       if (!raw) return;
       const until = Number(raw);
       if (!Number.isFinite(until)) return;
-      if (until > Date.now()) setEmailCooldownUntilMs(until);
-      else localStorage.removeItem(EMAIL_SEND_COOLDOWN_STORAGE_KEY);
+      if (until > Date.now()) {
+        // 從 localStorage 還原冷卻：屬於「掛載時讀外部狀態」，在 effect 內同步寫回是刻意的
+        // （不是能由 props/state 推導的純值）。
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setEmailCooldownUntilMs(until);
+        setEmailCooldownSecondsLeft(Math.max(0, Math.ceil((until - Date.now()) / 1000)));
+      } else localStorage.removeItem(EMAIL_SEND_COOLDOWN_STORAGE_KEY);
     } catch {
       // Ignore storage errors
     }
@@ -72,23 +75,22 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
   useEffect(() => {
     if (!emailCooldownUntilMs) return;
-    if (emailCooldownUntilMs <= Date.now()) {
-      setEmailCooldownUntilMs(null);
-      try {
-        localStorage.removeItem(EMAIL_SEND_COOLDOWN_STORAGE_KEY);
-      } catch {
-        // Ignore storage errors
-      }
-      return;
-    }
 
-    const timer = window.setInterval(() => {
-      setEmailCooldownUntilMs((prev) => {
-        if (!prev) return prev;
-        if (prev <= Date.now()) return null;
-        return prev;
-      });
-    }, 1000);
+    // 每秒重新算剩餘秒數：這樣畫面才會真的倒數（先前只重設同一個值，不會 re-render）。
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((emailCooldownUntilMs - Date.now()) / 1000));
+      setEmailCooldownSecondsLeft(left);
+      if (left <= 0) {
+        setEmailCooldownUntilMs(null);
+        try {
+          localStorage.removeItem(EMAIL_SEND_COOLDOWN_STORAGE_KEY);
+        } catch {
+          // Ignore storage errors
+        }
+      }
+    };
+
+    const timer = window.setInterval(tick, 1000);
 
     return () => window.clearInterval(timer);
   }, [emailCooldownUntilMs]);

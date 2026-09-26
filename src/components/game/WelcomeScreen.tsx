@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { FingerprintSimple, PawPrint, Sparkle, Wrench, GearSix, ClockCounterClockwise, UserCircle, GithubLogo, Star, EnvelopeSimple, Handshake, DotsThreeOutlineVertical, Users } from "@phosphor-icons/react";
+import { FingerprintSimple, Sparkle, Wrench, GearSix, ClockCounterClockwise, UserCircle, GithubLogo, Star, EnvelopeSimple, Handshake, DotsThreeOutlineVertical, Users} from "@phosphor-icons/react";
 import { WerewolfIcon } from "@/components/icons/FlatIcons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,7 +10,7 @@ import { useAtom } from "jotai";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import type { DevPreset, DifficultyLevel, Role, StartGameOptions } from "@/types/game";
+import type { DevPreset, Role, StartGameOptions} from "@/types/game";
 import { DevModeButton } from "@/components/DevTools";
 import { GameSetupModal } from "@/components/game/GameSetupModal";
 import { AuthModal } from "@/components/game/AuthModal";
@@ -257,7 +257,7 @@ export function WelcomeScreen({
   } | null>(null);
   const tokenPayQueryHandledRef = useRef(false);
 
-  const [difficulty, setDifficulty] = useAtom(difficultyAtom);
+  const [difficulty] = useAtom(difficultyAtom);
   const [playerCount, setPlayerCount] = useAtom(playerCountAtom);
   const [preferredRole, setPreferredRole] = useAtom(preferredRoleAtom);
   const [boardId, setBoardId] = useAtom(boardIdAtom);
@@ -414,7 +414,7 @@ export function WelcomeScreen({
     setMounted(true);
   }, []);
 
-  const [isDevModeEnabled, setIsDevModeEnabled] = useState(false);
+  const [, setIsDevModeEnabled] = useState(false);
   const [isDevConsoleOpen, setIsDevConsoleOpen] = useState(false);
   const [devTab, setDevTab] = useState<"preset" | "roles">("preset");
   const [devPreset, setDevPreset] = useState<DevPreset | "">("");

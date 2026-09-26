@@ -11,17 +11,16 @@ import { getHunterShots } from "@/lib/rules/hunter-shots";
 import { PHASE_SEQUENCE } from "@/lib/rules/phases";
 import { getRoleName as getRoleConstantName } from "@/lib/game-constants";
 import { isWolfRole } from "@/types/game";
-import { X, Wrench, Play, Pause, SkipForward, Eye, Users, Crosshair, Code, ChatDots, Warning, ArrowRight, ArrowLeft, Lightning, SpeakerHigh, ChartBar } from "@phosphor-icons/react";
+import { X, Wrench, Play, Pause, Users, Crosshair, Code, ChatDots, Warning, ArrowRight, ArrowLeft, Lightning, SpeakerHigh, ChartBar} from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
-import {
-  applySmartJump,
-  applySmartJumpWithFilledData,
-  analyzeJump,
-  type JumpTarget,
-  type JumpAnalysis,
-  type MissingTask,
-  type SmartJumpResult,
-} from "@/lib/SmartJumpManager";
+import { applySmartJump, applySmartJumpWithFilledData, analyzeJump, type JumpTarget, type JumpAnalysis, type MissingTask} from "@/lib/SmartJumpManager";
+
+/** 任務選項的值（與 SmartJumpManager.MissingTask.options 同一份型別）。 */
+type TaskOption = { value: number | string; label: string };
+/** 夜史單筆的型別，取自 GameState；原本這裡用 any。 */
+type NightRecordEntry = NonNullable<GameState["nightHistory"]>[number];
+/** 夜間行動各欄位的值（守衛目標、女巫用藥…）。 */
+type NightActionValue = GameState["nightActions"][keyof GameState["nightActions"]];
 import { PhaseManager } from "@/game/core/PhaseManager";
 import { DEFAULT_VOICE_ID, resolveVoiceId, VOICE_PRESETS, ENGLISH_VOICE_PRESETS, type AppLocale } from "@/lib/voice-constants";
 import { getLocale } from "@/i18n/locale-store";
@@ -74,11 +73,11 @@ const usePhaseNames = () => {
 
 // Helper to get role name with i18n
 const useRoleNames = () => {
-  const t = useTranslations();
+  // 角色名稱走單一真相的常數對照表（getRoleConstantName），不需要 t。
   // 用單一真相組出「角色 → 名稱」，不再手寫對照表（漏一個就會顯示成下一個角色）
   return useMemo(
     () => Object.fromEntries(ALL_ROLE_KEYS.map((role) => [role, getRoleConstantName(role)])) as Record<Role, string>,
-    [t]
+    []
   );
 };
 
@@ -455,7 +454,7 @@ export function DevConsole({ isOpen, onClose }: DevConsoleProps) {
   const isTaskOptionDisabled = useCallback(
     (
       task: MissingTask,
-      opt: { value: any; label: string },
+      opt: TaskOption,
       ctx: ReturnType<typeof deriveFillContext>
     ): boolean => {
       const day = getTaskDay(task);
@@ -465,11 +464,11 @@ export function DevConsole({ isOpen, onClose }: DevConsoleProps) {
       if (task.field.includes("WitchPoison")) {
         const usedBottle = ctx.dayUsedBottle.get(day);
         const isNone = opt.value === "none";
-        const isSeat = typeof opt.value === "number";
 
         if (usedBottle === "save" && !isNone) return true;
         if (ctx.anyPoisonDay !== null && ctx.anyPoisonDay !== day && !isNone) return true;
-        if (isSeat && !aliveSet.has(opt.value)) return true;
+        // 型別縮窄必須寫在同一行：opt.value 是屬性存取，就算先存成 const isSeat 也縮窄不了。
+        if (typeof opt.value === "number" && !aliveSet.has(opt.value)) return true;
         return false;
       }
 
@@ -506,7 +505,7 @@ export function DevConsole({ isOpen, onClose }: DevConsoleProps) {
 
       return false;
     },
-    [deriveFillContext, getTaskDay, gameState.players]
+    [getTaskDay, gameState.players]
   );
 
   // 智能跳转到指定阶段
@@ -590,7 +589,7 @@ export function DevConsole({ isOpen, onClose }: DevConsoleProps) {
         if (!task.options || task.options.length === 0) continue;
 
         const ctx = deriveFillContext(next);
-        const valid = task.options.filter((opt) => !isTaskOptionDisabled(task, opt as any, ctx));
+        const valid = task.options.filter((opt) => !isTaskOptionDisabled(task, opt, ctx));
         if (valid.length === 0) continue;
         const chosen = valid[Math.floor(Math.random() * valid.length)];
         next[task.field] = chosen.value;
@@ -658,7 +657,7 @@ export function DevConsole({ isOpen, onClose }: DevConsoleProps) {
 
       // 同步覆盖当轮 nightHistory（便于 DevTools 展示与后续回滚判定）
       const prevNightRecord = (prev.nightHistory || {})[day] || {};
-      const nextNightRecord: any = { ...prevNightRecord };
+      const nextNightRecord: NightRecordEntry = { ...prevNightRecord };
       if (Object.prototype.hasOwnProperty.call(patch, "guardTarget")) nextNightRecord.guardTarget = nextNightActions.guardTarget;
       if (Object.prototype.hasOwnProperty.call(patch, "wolfTarget")) nextNightRecord.wolfTarget = nextNightActions.wolfTarget;
       if (Object.prototype.hasOwnProperty.call(patch, "witchSave")) nextNightRecord.witchSave = nextNightActions.witchSave;
@@ -691,13 +690,8 @@ export function DevConsole({ isOpen, onClose }: DevConsoleProps) {
   }, [setGameState]);
 
   // 设置夜间行动（兼容旧接口）
-  const setNightAction = (key: string, value: any) => {
+  const setNightAction = (key: string, value: NightActionValue) => {
     patchNightActions({ [key]: value } as Partial<GameState["nightActions"]>);
-  };
-
-  // 设置当前发言者
-  const setCurrentSpeaker = (seat: number | null) => {
-    setGameState((prev) => ({ ...prev, currentSpeakerSeat: seat, devMutationId: bumpDevMutation(prev) }));
   };
 
   // 设置下一位发言者（覆盖一次）
@@ -714,7 +708,7 @@ export function DevConsole({ isOpen, onClose }: DevConsoleProps) {
       // 清空当日结算结果，避免“投票已结算但 votes 被清空”导致状态不一致
       const nextDayHistory = { ...(prev.dayHistory || {}) };
       if (nextDayHistory[day]) {
-        const { executed, voteTie, ...rest } = nextDayHistory[day] as any;
+        const { executed, voteTie, ...rest } = nextDayHistory[day];
         nextDayHistory[day] = rest;
       }
 
@@ -752,7 +746,7 @@ export function DevConsole({ isOpen, onClose }: DevConsoleProps) {
       // 修改 votes 视为“覆盖当轮投票信息”，因此清除当日结算字段，并同步 voteHistory
       const nextDayHistory = { ...(prev.dayHistory || {}) };
       if (nextDayHistory[day]) {
-        const { executed, voteTie, ...rest } = nextDayHistory[day] as any;
+        const { executed, voteTie, ...rest } = nextDayHistory[day];
         nextDayHistory[day] = rest;
       }
 
@@ -997,7 +991,7 @@ export function DevConsole({ isOpen, onClose }: DevConsoleProps) {
                             <option
                               key={i}
                               value={opt.value}
-                              disabled={isTaskOptionDisabled(task, opt as any, fillCtx)}
+                              disabled={isTaskOptionDisabled(task, opt, fillCtx)}
                             >
                               {opt.label}
                             </option>
@@ -1402,7 +1396,6 @@ function PlayersTab({
 }) {
   const t = useTranslations();
   const roleNames = useRoleNames();
-  const formatPlayerLabel = useFormatPlayerLabel();
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [isPromptDialogOpen, setIsPromptDialogOpen] = useState(false);
   const [promptActiveTab, setPromptActiveTab] = useState<"prompt" | "speech">("prompt");
@@ -1684,7 +1677,7 @@ function ActionsTab({
   setSheriff,
 }: {
   gameState: GameState;
-  setNightAction: (key: string, value: any) => void;
+  setNightAction: (key: string, value: NightActionValue) => void;
   patchNightActions: (patch: Partial<GameState["nightActions"]>) => void;
   setNextSpeaker: (seat: number | null) => void;
   clearVotes: () => void;
@@ -1932,20 +1925,6 @@ function ActionsTab({
 // ============ 状态检视 Tab ============
 function InspectorTab({ gameState }: { gameState: GameState }) {
   const t = useTranslations();
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set(["root"]));
-
-  const toggleExpand = (key: string) => {
-    setExpandedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  };
-
   // 简化的 JSON 显示
   const stateForDisplay = useMemo(() => {
     return {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Microphone, Sparkle } from "@phosphor-icons/react";
+import { Sparkle} from "@phosphor-icons/react";
 import type { Player, Role } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { cn } from "@/lib/utils";
@@ -14,12 +14,10 @@ interface PlayerCardCompactProps {
   isSpeaking: boolean;
   canClick: boolean;
   isSelected: boolean;
-  isNight?: boolean;
   isGenshinMode?: boolean;
   onClick: () => void;
   onDetailClick?: () => void;
   animationDelay?: number;
-  showWolfBadge?: boolean;
   showRoleBadge?: boolean;
   showModel?: boolean;
   selectionTone?: "wolf" | "seer" | "guard" | "witch" | "hunter" | "badge" | "vote";
@@ -38,12 +36,10 @@ export function PlayerCardCompact({
   isSpeaking,
   canClick,
   isSelected,
-  isNight = false,
   isGenshinMode = false,
   onClick,
   onDetailClick,
   animationDelay = 0,
-  showWolfBadge = false,
   showRoleBadge = true,
   showModel = false,
   selectionTone,
@@ -72,7 +68,8 @@ export function PlayerCardCompact({
     
     // 当从 loading 变为 ready 时触发动画（首次渲染时 wasReady 为 null，不触发）
     if (isReady && wasReady === false) {
-      setRevealPop(true);
+      // 與下方死亡 pulse 同一種寫法：延後一個 microtask，避免 effect 內同步 setState 觸發連鎖 render。
+      queueMicrotask(() => setRevealPop(true));
       const timer = window.setTimeout(() => setRevealPop(false), 600);
       return () => window.clearTimeout(timer);
     }
@@ -149,7 +146,7 @@ export function PlayerCardCompact({
     isSpeaking && "border-[var(--color-gold)]"
   );
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = () => {
     if (!isReady) return; // Prevent clicking when not ready
     if (canClick) {
       onClick();

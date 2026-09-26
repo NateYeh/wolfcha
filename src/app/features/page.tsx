@@ -339,9 +339,9 @@ export default function FeaturesPage() {
               dramatic moments. Sets the atmosphere and keeps the pace.
             </p>
             <ul className="mt-4 space-y-2 text-sm text-[var(--text-secondary)]">
-              <li>• "Night falls on the village..."</li>
-              <li>• "The village has voted. [Player] has been eliminated."</li>
-              <li>• "Dawn breaks. A body was found..."</li>
+              <li>• &quot;Night falls on the village...&quot;</li>
+              <li>• &quot;The village has voted. [Player] has been eliminated.&quot;</li>
+              <li>• &quot;Dawn breaks. A body was found...&quot;</li>
             </ul>
           </div>
           <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6">

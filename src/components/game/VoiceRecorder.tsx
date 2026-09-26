@@ -133,7 +133,9 @@ function audioBufferToWav(buffer: AudioBuffer): ArrayBuffer {
 
 async function decodeToWav(blob: Blob): Promise<Uint8Array> {
   const ab = await blob.arrayBuffer();
-  const AudioContextCtor = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext | undefined;
+  // Safari 只有 webkit 前綴版本：明確補上型別，不用 any。
+  const AudioContextCtor =
+    window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AudioContextCtor) {
     throw new Error("AudioContext is not supported in this browser");
   }
@@ -441,7 +443,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
             throw new Error(text || `HTTP ${resp.status}`);
           }
 
-          const json = (await resp.json()) as any;
+          const json = (await resp.json()) as { text?: unknown };
           const transcript = typeof json?.text === "string" ? json.text.trim() : "";
           if (!transcript) {
             setError(t("voiceRecorder.errors.noTranscript"));

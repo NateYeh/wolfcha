@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "@phosphor-icons/react";
 import type { Player } from "@/types/game";
@@ -64,11 +64,11 @@ export function PlayerDetailModal({ player, isOpen, onClose, humanPlayer, isGens
   const [renderPlayer, setRenderPlayer] = useState<Player | null>(player);
   const careerStats = useCareerStats(renderPlayer?.characterId, renderPlayer?.displayName);
 
-  useEffect(() => {
-    if (player) {
-      setRenderPlayer(player);
-    }
-  }, [player]);
+  // 關閉動畫期間要保留最後一位玩家，所以不能直接用 prop；用 render 期的條件式
+  // state 更新（React 官方「依前一次 render 調整 state」寫法），避免多的 render 週期。
+  if (player && player.playerId !== renderPlayer?.playerId) {
+    setRenderPlayer(player);
+  }
 
   const persona = renderPlayer?.agentProfile?.persona;
   const modelLabel = renderPlayer?.agentProfile?.modelRef?.model;
@@ -78,6 +78,8 @@ export function PlayerDetailModal({ player, isOpen, onClose, humanPlayer, isGens
   const canSeeRole = isMe || !!isWolfTeammate || !renderPlayer?.alive || isSpectatorMode;
   const isIdentityReady = isMe ? !!renderPlayer?.displayName?.trim() : !!persona;
   const avatarSrc = renderPlayer ? getPlayerAvatarUrl(renderPlayer, isGenshinMode) : "";
+  // React Compiler 因此跳過這個元件，屬已知取捨（compiler 的等價化無法保證保留它）。
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- 這裡的手動 memo 是有意的；
   const voiceRules = useMemo(() => {
     if (!persona?.voiceRules || persona.voiceRules.length === 0) return [];
     const seen = new Set<string>();
@@ -90,18 +92,9 @@ export function PlayerDetailModal({ player, isOpen, onClose, humanPlayer, isGens
         return true;
       });
   }, [persona?.voiceRules]);
-  const strategyLabels = useMemo<Record<string, string>>(() => ({
-    aggressive: t("persona.strategy.aggressive"),
-    safe: t("persona.strategy.safe"),
-    balanced: t("persona.strategy.balanced"),
-  }), [t]);
   // 角色名稱走單一真相（lib/game-constants.getRoleName）：自己維護一份 Record<string,string>
   // 的話，新增角色（騎士／禁言長老／狼王）會被 ?? 村民 吃掉，顯示成村民。
   const getRoleName = (role: string) => getRoleConstantName(role);
-  const getStrategyLabel = (strategy?: string) => {
-    if (!strategy) return strategyLabels.balanced;
-    return strategyLabels[strategy] ?? strategyLabels.balanced;
-  };
   const showModelTag = !!modelLabel && isGenshinMode && !renderPlayer?.isHuman;
 
   if (!renderPlayer) return null;

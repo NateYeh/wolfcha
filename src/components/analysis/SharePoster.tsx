@@ -18,15 +18,6 @@ interface SharePosterProps {
 const SITE_URL = "wolf-cha.com";
 const SITE_FULL_URL = "https://wolf-cha.com";
 
-const ROLE_PORTRAITS: Record<string, string> = {
-  Werewolf: "/lihui/wolf.png",
-  Seer: "/lihui/seer_dx.png",
-  Witch: "/lihui/witch.png",
-  Hunter: "/lihui/hunter.png",
-  Guard: "/lihui/guard.png",
-  Villager: "/lihui/villager.png",
-};
-
 const ROLE_CN_NAMES: Record<string, string> = {
   Werewolf: "狼人",
   Seer: "预言家",
@@ -139,10 +130,11 @@ export const SharePoster = forwardRef<HTMLDivElement, SharePosterProps>(
     const primaryTag = overrideTag || personalStats.tags[0] || "待评估";
     const avatarUrl = buildSimpleAvatarUrl(personalStats.avatar);
     const { radarStats } = personalStats;
-    const portraitUrl = ROLE_PORTRAITS[personalStats.role] || ROLE_PORTRAITS.Villager;
     const [tagPhotoSrc, setTagPhotoSrc] = useState(() => getTagPhotoUrl(personalStats.role, primaryTag));
     
     useEffect(() => {
+      // 的狀態：tagPhotoSrc 會被 onError 改成預設圖，所以不能單純由 prop 衍生。
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 這是「prop 同步 + 載入失敗覆寫」
       setTagPhotoSrc(getTagPhotoUrl(personalStats.role, primaryTag));
     }, [personalStats.role, primaryTag]);
     

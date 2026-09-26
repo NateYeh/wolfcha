@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   DayIcon,
@@ -20,7 +20,7 @@ import {
 } from "@/components/icons/FlatIcons";
 import type { Phase, Role } from "@/types/game";
 import { Switch } from "@/components/ui/switch";
-import { useTranslations } from "next-intl";
+import { useMessages, useTranslations } from "next-intl";
 
 export type TutorialKind = "night_intro" | "day_intro" | "role";
 
@@ -63,13 +63,13 @@ export function TutorialOverlay({
   onAutoPromptChange,
 }: TutorialOverlayProps) {
   const t = useTranslations();
+  const messages = useMessages();
   const [renderTutorial, setRenderTutorial] = useState<TutorialPayload | null>(tutorial);
 
-  useEffect(() => {
-    if (tutorial) {
-      setRenderTutorial(tutorial);
-    }
-  }, [tutorial]);
+  // 關閉動畫期間要保留上一份教學內容；用 render 期的條件式 state 更新。
+  if (tutorial && tutorial !== renderTutorial) {
+    setRenderTutorial(tutorial);
+  }
 
   const content = useMemo(() => {
     if (!renderTutorial) return null;
@@ -132,13 +132,10 @@ export function TutorialOverlay({
       Magician: t("roles.magician"),
       Villager: t("roles.villager"),
     };
-    const roleDataMap = t.raw("tutorialOverlay.roles" as any) as Record<Role, {
-      desc: string;
-      points: string[];
-      action: string;
-      tips: string[];
-    }>;
-    const roleData = roleDataMap[roleKey];
+    // 角色教學是「物件型」訊息（一個 namespace 底下多個角色），而 t.raw 的型別只接受
+    // 葉節點 key，所以改用 useMessages() 取得已型別化的訊息樹——不需要 any，
+    // 日後改了訊息結構也會在編譯期就發現。
+    const roleData = messages.tutorialOverlay.roles[roleKey];
     const roleMeta = ROLE_META[roleKey];
     return {
       icon: roleMeta.Icon,
@@ -173,7 +170,7 @@ export function TutorialOverlay({
       accent: roleMeta.accent,
       bg: roleMeta.bg,
     };
-  }, [renderTutorial, t]);
+  }, [renderTutorial, t, messages]);
 
   if (!renderTutorial || !content) return null;
 

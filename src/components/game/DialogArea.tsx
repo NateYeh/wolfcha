@@ -4,8 +4,8 @@ import React, { useRef, useEffect, useMemo, useState, useCallback } from "react"
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ChatCircleDots, PaperPlaneTilt, CheckCircle, MoonStars, Eye, Drop, Crosshair, Skull, Sword, X, ArrowClockwise, CaretRight, UserCircle, Prohibit, ClipboardText, Shield, MagicWand, SpinnerGap } from "@phosphor-icons/react";
-import { WerewolfIcon, VillagerIcon, VoteIcon } from "@/components/icons/FlatIcons";
+import { ChatCircleDots, PaperPlaneTilt, CheckCircle, MoonStars, Eye, Drop, Crosshair, Skull, Sword, X, ArrowClockwise, CaretRight, Prohibit, ClipboardText, Shield, MagicWand, SpinnerGap} from "@phosphor-icons/react";
+import { WerewolfIcon} from "@/components/icons/FlatIcons";
 import { VoteResultCard } from "./VoteResultCard";
 import { VotingProgress } from "./VotingProgress";
 import { WolfPlanningPanel } from "./WolfPlanningPanel";
@@ -252,8 +252,6 @@ interface DialogAreaProps {
   gameState: GameState;
   humanPlayer: Player | null;
   isNight?: boolean;
-  isSoundEnabled?: boolean;
-  isAiVoiceEnabled?: boolean;
   currentDialogue: DialogueState | null;
   displayedText: string;
   isTyping: boolean;
@@ -418,8 +416,6 @@ export function DialogArea({
   gameState,
   humanPlayer,
   isNight = false,
-  isSoundEnabled = true,
-  isAiVoiceEnabled = false,
   currentDialogue,
   displayedText,
   isTyping,
@@ -458,8 +454,6 @@ export function DialogArea({
   const t = useTranslations();
   const isGenshinMode = !!gameState.isGenshinMode;
   const phase = gameState.phase;
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   const historyContentRef = useRef<HTMLDivElement>(null);
   const [lastPortraitPlayer, setLastPortraitPlayer] = useState<Player | null>(null);
@@ -549,7 +543,7 @@ export function DialogArea({
       return true;
     }
     return false;
-  }, [phase, waitingForNextRound, humanPlayer?.role, gameState.nightActions.seerTarget, currentDialogue?.text]);
+  }, [phase, waitingForNextRound, humanPlayer?.role, gameState.nightActions.seerTarget, currentDialogue?.text, t]);
 
   const visibleMessages = useMemo(() => {
     return gameState.messages.filter(
@@ -593,7 +587,7 @@ export function DialogArea({
       return gameState.players.find((p) => p.seat === gameState.currentSpeakerSeat) || null;
     }
     return currentSpeaker?.player || null;
-  }, [isHumanTurn, humanPlayer, gameState.currentSpeakerSeat, gameState.players, currentSpeaker?.player?.playerId]);
+  }, [isHumanTurn, humanPlayer, gameState.currentSpeakerSeat, gameState.players, currentSpeaker?.player]);
 
   // 立繪「黏著」上一位發言者：階段切換時 portraitPlayer 會短暫變 null，靠上一筆避免頭像閃爍。
   // 用 render 期的條件式 state 更新（React 官方「依前一次 render 調整 state」寫法），
@@ -911,6 +905,8 @@ export function DialogArea({
 
       if (shouldAutoFollow) {
         manualScrollLockRef.current = false;
+        // （isAtBottom 等 ref 條件）推導後同步寫回，語意上不適合搬到事件處理器。
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- 捲動跟隨狀態：由捲動位置
         setIsManualScrollLocked(false);
         setUnreadCount(0);
         // 未锁定，自动滚动到底部
@@ -1059,8 +1055,6 @@ export function DialogArea({
     && selectedSeat === null
     && getBoardRuleFlags(gameState.players.length).guardCanAbstain;
   const showActionConfirm = (() => {
-    const badgeCandidates = gameState.badge.candidates || [];
-    const humanIsCandidate = humanPlayer && badgeCandidates.includes(humanPlayer.seat);
 
     // 逐階段的角色／狀態條件集中在 rules/human-input（與 page.tsx 的路由同一份真相）
     const isCorrectRoleForPhase = canHumanConfirmSeatAction(phase, humanPlayer, gameState);
@@ -1240,7 +1234,7 @@ export function DialogArea({
               <span className="w-2 h-2 bg-[var(--color-accent)] rounded-full animate-pulse" />
               {gameState.phase === "DAY_BADGE_ELECTION" ? t("dialog.badgeElectionInProgress") : t("dialog.voteInProgress")}
             </div>
-            <VotingProgress gameState={gameState} humanPlayer={humanPlayer} />
+            <VotingProgress gameState={gameState} />
           </div>
         )}
 
@@ -1932,7 +1926,7 @@ export function DialogArea({
                           className="wc-action-btn wc-action-btn--danger text-sm h-9 px-4"
                           type="button"
                         >
-                          {t("dialog.hunter.skipShoot" as any)}
+                          {t("dialog.hunter.skipShoot")}
                           <CaretRight size={14} weight="bold" />
                         </button>
                       )}
@@ -2033,6 +2027,8 @@ function ChatMessageItem({
                 modelRef: p.agentProfile?.modelRef,
               }));
         return (
+          // 但 JSX 一起寫在裡面；把 JSX 移出 try 需要重寫整段解析（另案處理）。
+          // eslint-disable-next-line react-hooks/error-boundaries -- try/catch 只包住訊息解析，
           <RoleRevealHistoryCard
             title={revealData.title || t("specialEvents.roleRevealTitle")}
             entries={entries}
@@ -2060,6 +2056,7 @@ function ChatMessageItem({
         };
         if (voteData.results && voteData.results.length > 0) {
           return (
+            // eslint-disable-next-line react-hooks/error-boundaries -- 同上（投票結果解析）。
             <VoteResultCard
               title={voteData.title || t("votePhase.voteDetailTitle")}
               results={voteData.results}

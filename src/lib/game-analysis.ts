@@ -4,7 +4,7 @@
  */
 
 import { ALL_ROLE_KEYS } from "@/lib/rules/boards";
-import { findHunterShotByShooter, findHunterShotByTarget, getHunterShots, lastHunterShot } from "@/lib/rules/hunter-shots";
+import { findHunterShotByShooter, findHunterShotByTarget, getHunterShots} from "@/lib/rules/hunter-shots";
 import type { GameState, Player, Role, Alignment, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { getSummaryModel } from "@/lib/api-keys";

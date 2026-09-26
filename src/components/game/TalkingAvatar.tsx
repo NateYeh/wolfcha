@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   buildAvatarUrl,
   getIdleLipsForSeed,
@@ -80,9 +80,10 @@ function TalkingAvatarAnimated({
   const TALKING_LIPS = useMemo(() => getTalkingLips(), []);
   const IDLE_LIPS = useMemo(() => getIdleLipsForSeed(seed), [seed]);
   
-  const [currentLips, setCurrentLips] = useState(IDLE_LIPS);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lipIndexRef = useRef(0);
+  // 嘴型是衍生值：不說話時就是靜止嘴型，說話時由 interval 推進索引。
+  // 這樣 effect 裡不需要「同步 setState」，元件也不會多一次 render。
+  const [lipIndex, setLipIndex] = useState(0);
+  const currentLips = isTalking ? TALKING_LIPS[lipIndex % TALKING_LIPS.length] : IDLE_LIPS;
 
   // 预加载所有嘴型图片
   const allLipsUrls = useMemo(() => {
@@ -121,36 +122,14 @@ function TalkingAvatarAnimated({
     };
   }, [allLipsUrls]);
 
-  // 说话动画
+  // 说话动画：只负责推进索引，停止时由 currentLips 自动回到静止嘴型
   useEffect(() => {
-    if (isTalking) {
-      // 开始说话动画
-      lipIndexRef.current = 0;
-      
-      // 立即切换到第一个说话嘴型
-      setCurrentLips(TALKING_LIPS[0]);
-      
-      // 定时切换嘴型（模拟说话）
-      intervalRef.current = setInterval(() => {
-        lipIndexRef.current = (lipIndexRef.current + 1) % TALKING_LIPS.length;
-        setCurrentLips(TALKING_LIPS[lipIndexRef.current]);
-      }, 120); // 每 120ms 切换一次，模拟说话节奏
-    } else {
-      // 停止说话，恢复静止状态
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      setCurrentLips(IDLE_LIPS);
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [isTalking]);
+    if (!isTalking) return;
+    const timer = window.setInterval(() => {
+      setLipIndex((prev) => (prev + 1) % TALKING_LIPS.length);
+    }, 120); // 每 120ms 切换一次，模拟说话节奏
+    return () => window.clearInterval(timer);
+  }, [isTalking, TALKING_LIPS]);
 
   const currentUrl = buildAvatarUrl({ seed, gender, style, lips: currentLips, scale, translateY, backgroundColor: "transparent" });
 

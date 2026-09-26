@@ -67,7 +67,7 @@ export default function HunterStrategyPage() {
             <ul className="text-sm text-[var(--text-secondary)] space-y-2">
               <li>• Eliminated by village vote during the day</li>
               <li>• Killed by werewolves during the night</li>
-              <li>• In any situation where you die "normally"</li>
+              <li>• In any situation where you die &quot;normally&quot;</li>
             </ul>
           </div>
           <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-5">
@@ -86,7 +86,7 @@ export default function HunterStrategyPage() {
             <span className="font-bold text-red-400">Priority 1:</span> <span className="text-[var(--text-primary)]">Confirmed wolf</span> - If Seer verified someone as wolf, shoot them
           </div>
           <div className="p-4 rounded-lg bg-orange-950/30 border border-orange-500/20">
-            <span className="font-bold text-orange-400">Priority 2:</span> <span className="text-[var(--text-primary)]">Strong suspicion</span> - Your best behavioral read on who's a wolf
+            <span className="font-bold text-orange-400">Priority 2:</span> <span className="text-[var(--text-primary)]">Strong suspicion</span> - Your best behavioral read on who&apos;s a wolf
           </div>
           <div className="p-4 rounded-lg bg-yellow-950/30 border border-yellow-500/20">
             <span className="font-bold text-yellow-400">Priority 3:</span> <span className="text-[var(--text-primary)]">Your accuser</span> - If voted out unfairly, the person who led the charge may be a wolf
@@ -104,7 +104,7 @@ export default function HunterStrategyPage() {
             <ul className="text-sm text-[var(--text-secondary)] space-y-2">
               <li>• Wolves may avoid killing you (fear your shot)</li>
               <li>• Can save yourself from misdirected vote</li>
-              <li>• Allows coordination ("tell me who to shoot")</li>
+              <li>• Allows coordination (&quot;tell me who to shoot&quot;)</li>
             </ul>
           </div>
           <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5">
@@ -112,7 +112,7 @@ export default function HunterStrategyPage() {
             <ul className="text-sm text-[var(--text-secondary)] space-y-2">
               <li>• Witch may poison you (wasting her poison)</li>
               <li>• Surprise factor if wolves do target you</li>
-              <li>• Can't be used by wolves to verify claims</li>
+              <li>• Can&apos;t be used by wolves to verify claims</li>
             </ul>
           </div>
         </div>

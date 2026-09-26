@@ -75,7 +75,6 @@ export function useBadgePhase(
     clearDialogue,
     setIsWaitingForAI,
     waitForUnpause,
-    isTokenValid,
     onBadgeElectionComplete,
     onBadgeTransferComplete,
     runAISpeech,

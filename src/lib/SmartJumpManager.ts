@@ -5,7 +5,7 @@
  * 确保游戏状态在任意跳转后保持逻辑一致性。
  */
 
-import type { GameState, Phase, Player, Role } from "@/types/game";
+import type { GameState, Phase} from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { getI18n } from "@/i18n/translator";
 import { addSystemMessage, checkWinCondition } from "@/lib/game-master";
@@ -876,15 +876,6 @@ export function applyBackwardJump(
 
   newState = recomputeRoleAbilities(newState);
   return newState;
-}
-
-/** 估算目标时间点的时间戳（用于消息过滤） */
-function estimateTimestamp(target: JumpTarget): number {
-  // 简化处理：基于天数和阶段生成一个虚拟时间戳
-  const baseTime = Date.now() - 24 * 60 * 60 * 1000 * 10; // 10天前作为基准
-  const dayOffset = target.day * 24 * 60 * 60 * 1000;
-  const phaseOffset = getPhaseIndex(target.phase) * 60 * 1000; // 每阶段1分钟
-  return baseTime + dayOffset + phaseOffset;
 }
 
 function ensureRoleRevealForGameEnd(state: GameState): GameState {

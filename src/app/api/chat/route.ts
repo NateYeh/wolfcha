@@ -405,7 +405,6 @@ function stripCacheControl(messages: unknown[]): unknown[] {
     if (Array.isArray(m.content)) {
       const strippedContent = m.content.map((part) => {
         if (part && typeof part === "object" && "cache_control" in part) {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { cache_control, ...rest } = part as Record<string, unknown>;
           return rest;
         }

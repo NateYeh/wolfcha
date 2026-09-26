@@ -161,7 +161,7 @@ import type { SpringCampaignSnapshot } from "@/lib/spring-campaign";
    const displayCredits = useMemo(() => {
     if (credits === null || credits === undefined) return t("userProfile.empty");
      return `${credits}`;
-   }, [credits]);
+   }, [credits, t]);
  
   useEffect(() => {
     if (!open) return;
@@ -265,7 +265,7 @@ import type { SpringCampaignSnapshot } from "@/lib/spring-campaign";
     const preview = selectedModels.slice(0, 2).join(t("customKey.modelJoiner"));
     if (selectedModels.length <= 2) return preview;
     return t("customKey.modelCount", { preview, count: selectedModels.length });
-  }, [selectedModels]);
+  }, [selectedModels, t]);
 
   // Close model selector when modal closes
   useEffect(() => {
@@ -412,7 +412,7 @@ import type { SpringCampaignSnapshot } from "@/lib/spring-campaign";
       });
       setValidatedKeys((prev) => ({ ...prev, zenmux: zenmuxKey.trim() }));
       setValidatedZenmuxKey(zenmuxKey.trim());
-    } catch (error) {
+    } catch {
       setValidatedKeys((prev) => ({ ...prev, zenmux: "" }));
       if (zenmuxKey.trim() === getValidatedZenmuxKey()) setValidatedZenmuxKey("");
       toast(t("customKey.toasts.validateFailed"), {
@@ -434,7 +434,7 @@ import type { SpringCampaignSnapshot } from "@/lib/spring-campaign";
       });
       setValidatedKeys((prev) => ({ ...prev, dashscope: dashscopeKey.trim() }));
       setValidatedDashscopeKey(dashscopeKey.trim());
-    } catch (error) {
+    } catch {
       setValidatedKeys((prev) => ({ ...prev, dashscope: "" }));
       if (dashscopeKey.trim() === getValidatedDashscopeKey()) setValidatedDashscopeKey("");
       toast(t("customKey.toasts.validateFailed"), {

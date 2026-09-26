@@ -330,11 +330,9 @@ const PHASE_LABELS: Record<string, { label: string; icon: typeof Crown }> = {
 
 function DayPhaseCard({ 
   phase, 
-  day,
   onShowVotes 
 }: { 
   phase: DayPhase; 
-  day: number;
   onShowVotes: (votes: VoteRecord[], title: string, isBadgeVote?: boolean) => void;
 }) {
   const phaseInfo = PHASE_LABELS[phase.type];
@@ -453,7 +451,6 @@ export function TimelineReview({ timeline, selectedDay, sheriffSeat }: TimelineR
                   <DayPhaseCard 
                     key={phaseIdx} 
                     phase={phase} 
-                    day={entry.day}
                     onShowVotes={handleShowVotes}
                   />
                 ))}

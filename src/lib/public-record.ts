@@ -1,6 +1,5 @@
 import type { GameState } from "@/types/game";
 import { getI18n } from "@/i18n/translator";
-import { getDeathShotKind } from "@/lib/rules/death-skills";
 import { getHunterShots } from "@/lib/rules/hunter-shots";
 
 /**

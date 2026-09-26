@@ -1,6 +1,6 @@
 "use client";
 
-import { Crown, Scroll } from "lucide-react";
+import { Crown} from "lucide-react";
 import type { GameAnalysisData } from "@/types/analysis";
 import type { Persona } from "@/types/game";
 import { ROLE_SHORT } from "./constants";

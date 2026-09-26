@@ -24,7 +24,6 @@ interface AccountModalProps {
 
 export function AccountModal({ open, onOpenChange }: AccountModalProps) {
   const t = useTranslations();
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -63,12 +62,11 @@ export function AccountModal({ open, onOpenChange }: AccountModalProps) {
       } else {
         toast.success(t("accountModal.toasts.updateSuccess"));
         // Reset form
-        setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
         onOpenChange(false);
       }
-    } catch (err) {
+    } catch {
       toast.error(t("accountModal.toasts.updateFail.title"), {
         description: t("accountModal.toasts.updateFail.description"),
       });

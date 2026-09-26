@@ -5,17 +5,11 @@ import type { SystemPromptPart } from "@/game/core/types";
 import type { LLMMessage } from "./llm";
 import { getSystemMessages, getSystemPatterns } from "./game-texts";
 import { getI18n } from "@/i18n/translator";
-import {
-  hasOutputLanguageRule,
-  outputLanguageRule,
-  withOutputLanguageRule,
-  withOutputLanguageRuleText,
-} from "@/lib/prompt-language";
+import { hasOutputLanguageRule, outputLanguageRule, withOutputLanguageRuleText} from "@/lib/prompt-language";
 import { getRoleName } from "./game-constants";
 import { getMutedSeat, isMutePublic } from "./rules/mute";
 import { getRoleConfiguration } from "./role-configuration";
 import { ALL_ROLE_KEYS } from "./rules/boards";
-import { getDeathShotKind } from "./rules/death-skills";
 import { findHunterShotByTarget, getHunterShots } from "./rules/hunter-shots";
 import { voteWeightByPlayerId } from "./rules/vote-weight";
 import {

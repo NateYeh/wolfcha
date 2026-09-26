@@ -114,13 +114,11 @@ async function main() {
   try {
     await executeSql(supabaseUrl, serviceRoleKey, migrationSql);
     console.log("✅ Tables created successfully via SQL RPC.");
-  } catch (rpcError) {
+  } catch {
     console.log("SQL RPC not available. Trying Supabase Management API...\n");
 
     // Extract project ref from URL
     const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
-
-    const sqlApiUrl = `https://${projectRef}.supabase.co/rest/v1/`;
 
     // Try the Supabase SQL endpoint
     const sqlRes = await fetch(`${supabaseUrl}/pg/query`, {

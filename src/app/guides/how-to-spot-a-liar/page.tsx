@@ -35,7 +35,7 @@ export default function HowToSpotALiarPage() {
             <h4 className="font-bold text-red-400 mb-2">Speech Patterns</h4>
             <ul className="text-sm text-[var(--text-secondary)] space-y-1">
               <li>• Over-explaining simple things</li>
-              <li>• Hedging language ("I think", "maybe")</li>
+              <li>• Hedging language (&quot;I think&quot;, &quot;maybe&quot;)</li>
               <li>• Avoiding direct answers</li>
               <li>• Too-perfect alibis</li>
             </ul>

@@ -3,7 +3,7 @@ import type { GameState, Player, Phase } from "@/types/game";
 import { isWolfRole } from "@/types/game";
 import { GamePhase } from "../core/GamePhase";
 import type { GameAction, GameContext, PromptResult, SystemPromptPart } from "../core/types";
-import { bindIdentityAndRoleSetting, buildDecisionContext, buildGameContext, buildTodayTranscript, buildPlayerTodaySpeech, getRoleText, buildSharedSystemParts, buildSystemTextFromParts } from "@/lib/prompt-utils";
+import { bindIdentityAndRoleSetting, buildDecisionContext, buildGameContext, buildTodayTranscript, getRoleText, buildSharedSystemParts, buildSystemTextFromParts} from "@/lib/prompt-utils";
 import {
   addSystemMessage,
   generateDreamAction,
@@ -1037,8 +1037,7 @@ export class NightPhase extends GamePhase {
     await runtime.onNightComplete(currentState);
   }
 
-  private buildNightEnhancements(state: GameContext["state"], player: Player) {
-    const { t } = getI18n();
+  private buildNightEnhancements(state: GameContext["state"], _player: Player) {
     const todayTranscript = buildTodayTranscript(state);
     // 自己的發言已在本日討論記錄裡，不再另拼一段重述。
     return { todayTranscript };

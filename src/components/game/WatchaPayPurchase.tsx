@@ -72,7 +72,6 @@ export function WatchaPayPurchase({ onCreditsChange }: { onCreditsChange?: () =>
           <div className="rounded-lg bg-white p-3">
             {purchase.qrCodeUrl && !qrFailed ? (
               // 平台动态生成的二维码不可经过图片优化服务或缓存。
-              // eslint-disable-next-line @next/next/no-img-element
               <img src={purchase.qrCodeUrl} alt={t("watchaPayScan")} width={208} height={208}
                 referrerPolicy="no-referrer" onError={() => setQrFailed(true)} />
             ) : <QRCodeSVG value={qrValue} size={208} marginSize={1} />}

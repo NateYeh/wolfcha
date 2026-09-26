@@ -6,7 +6,6 @@ import Image from "next/image";
 import type { DeathCause, PlayerSnapshot } from "@/types/analysis";
 import { ROLE_ICONS, ROLE_NAMES } from "./constants";
 import { buildSimpleAvatarUrl } from "@/lib/avatar-config";
-import { useTranslations } from "next-intl";
 import { CareerStatsGrid } from "@/components/ui/career-stats";
 import { useCareerStats } from "@/hooks/useCareerStats";
 
@@ -34,7 +33,6 @@ const ALIGNMENT_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export function PlayerDetailModal({ player, isOpen, onClose }: PlayerDetailModalProps) {
-  const t = useTranslations();
   const careerStats = useCareerStats(player?.characterId, player?.name);
   if (!player) return null;
 

@@ -39,8 +39,8 @@ export default function WerewolfVsMafiaPage() {
             <p className="text-sm text-[var(--text-secondary)] mb-3">Created by Dmitry Davidoff at Moscow State University. The original game pitted Mafia members against innocent townspeople.</p>
             <ul className="text-sm text-[var(--text-secondary)] space-y-1">
               <li>• Urban crime theme</li>
-              <li>• "Mafia" kills at night</li>
-              <li>• "Citizens" vote by day</li>
+              <li>• &quot;Mafia&quot; kills at night</li>
+              <li>• &quot;Citizens&quot; vote by day</li>
             </ul>
           </div>
           <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6">

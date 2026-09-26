@@ -10,16 +10,8 @@ import { LandingDialogueExamples } from "@/components/seo/landing/LandingDialogu
 import { LandingFaq } from "@/components/seo/landing/LandingFaq";
 import { LandingRelatedLinks } from "@/components/seo/landing/LandingRelatedLinks";
 import { LandingCta } from "@/components/seo/landing/LandingCta";
-import {
-  getModelLandingData,
-  modelLandingKeys,
-  type ModelLandingKey,
-} from "@/components/seo/landing/modelLandingData";
-import {
-  getModelComparisonData,
-  modelComparisonKeys,
-  type ModelComparisonKey,
-} from "@/components/seo/landing/modelComparisonData";
+import { getModelLandingData, modelLandingKeys} from "@/components/seo/landing/modelLandingData";
+import { getModelComparisonData, modelComparisonKeys} from "@/components/seo/landing/modelComparisonData";
 
 export const dynamicParams = false;
 

@@ -2,20 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createSinglePlayerContextAuditState } from "../../../scripts/single-player-context-audit";
 import { NIGHT_ACTION_ORDER, type NightActionPhase } from "@/lib/rules/phases";
-import {
-  guardDecided,
-  NIGHT_STEP,
-  actorsForNightStep,
-  dreamDecided,
-  humanActorPending,
-  wolfBeautyDecided,
-  isNightActionPhase,
-  isNightComplete,
-  muteDecided,
-  nextPendingNightAction,
-  nightStepFor,
-  pendingNightActions,
-} from "@/lib/rules/night-progress";
+import { guardDecided, NIGHT_STEP, actorsForNightStep, dreamDecided, humanActorPending, isNightActionPhase, isNightComplete, muteDecided, nextPendingNightAction, nightStepFor, pendingNightActions} from "@/lib/rules/night-progress";
 import { isWolfRole } from "@/types/game";
 import type { GameState, Phase, Player, Role } from "@/types/game";
 

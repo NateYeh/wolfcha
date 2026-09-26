@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { useCallback, useState, useEffect, useMemo } from "react";
+import { useCallback, useState, useEffect } from "react";
 import type { GameState } from "@/types/game";
-import { aiLogger, type AILogEntry } from "@/lib/ai-logger";
+import { aiLogger } from "@/lib/ai-logger";
 import { useTranslations } from "next-intl";
 import { useAppLocale } from "@/i18n/useAppLocale";
 
@@ -123,7 +123,6 @@ export function SettingsModal({
   const discordInviteUrl = "https://discord.gg/ETkdZWgy";
   const [view, setView] = useState<"settings" | "about" | "exitConfirm">("settings");
   const [groupImgOk, setGroupImgOk] = useState<boolean | null>(null);
-  const [aiLogs, setAiLogs] = useState<AILogEntry[]>([]);
 
   // Handle exit game confirmation
   const handleExitConfirm = useCallback(() => {
@@ -146,28 +145,6 @@ export function SettingsModal({
       return () => window.clearTimeout(timer);
     }
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const logs = await aiLogger.getLogs();
-        if (!cancelled) setAiLogs(Array.isArray(logs) ? (logs as AILogEntry[]) : []);
-      } catch {
-        if (!cancelled) setAiLogs([]);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
-
-  const logJsonText = useMemo(() => {
-    return JSON.stringify(aiLogs, null, 2);
-  }, [aiLogs]);
 
   const handleCopyLog = useCallback(async () => {
     try {

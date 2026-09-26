@@ -20,12 +20,6 @@ process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||= "mute-rule-key";
 
 setLocale("zh-CN");
 
-function seatOf(state: GameState, role: string): number {
-  const player = state.players.find((p) => p.role === role);
-  assert.ok(player, `找不到角色 ${role}`);
-  return player.seat;
-}
-
 /** 12 人經典盤把白痴換成禁言長老（人數、狼數、警徽都不變） */
 function stateWithElder(mutedSeat: number | null = null): { state: GameState; elderSeat: number } {
   const base = createSinglePlayerContextAuditState();

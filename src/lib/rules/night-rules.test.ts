@@ -148,7 +148,7 @@ test("女巫 prompt：預設規則下明說不可自救，且刀口是自己時�
 
 test("女巫 prompt：版型開放自救時恢復「包括自救」說明", async () => {
   await import("@/lib/game-master");
-  const { PhaseManager } = await import("@/game/core/PhaseManager");
+  await import("@/game/core/PhaseManager");
   // 目前官方版型沒有覆寫，這裡直接驗證 i18n 兩條文案都存在且語意相反（旗標接線已於純函式測試覆蓋）
   const { getI18n } = await import("@/i18n/translator");
   setLocale("zh-CN");

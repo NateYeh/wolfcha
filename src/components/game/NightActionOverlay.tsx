@@ -82,7 +82,7 @@ export type NightActionOverlayType = "wolf" | "witch-save" | "witch-poison" | "h
                    <span
                      key={rot}
                      className="wc-night-hunter-line"
-                     style={{ ["--wc-rot" as any]: rot }}
+                     style={{ "--wc-rot": rot } as React.CSSProperties}
                    />
                  ))}
                </div>
