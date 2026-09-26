@@ -202,6 +202,20 @@ function stateBase(): GameState["nightActions"] {
 // 夜間結算：狼美人夜死 → 被魅惑者殉情
 // ─────────────────────────────────────────────────────────────
 
+test("狼美人被女巫毒死：被魅惑者一并殉情（死因記 charm）", () => {
+  // 實戰中狼美人不會被自家狼刀（不能自刀），夜間出局最常見的就是被女巫毒死；
+  // 使用者 2026-09-26 裁定：這種夜間出局一樣要發動魅惑。
+  const result = resolveNightDeaths({
+    wolfTarget: 3,
+    witchPoison: 0,
+    wolfBeautySeat: 0,
+    wolfBeautyTarget: 5,
+  });
+  assert.equal(result.charmVictimSeat, 5);
+  assert.ok(result.deaths.some((death) => death.seat === 0 && death.reason === "poison"));
+  assert.ok(result.deaths.some((death) => death.seat === 5 && death.reason === "charm"));
+});
+
 test("狼美人夜間出局：被魅惑者一并殉情（死因記 charm）", () => {
   const result = resolveNightDeaths({
     wolfTarget: 0,
@@ -268,16 +282,16 @@ test("回放時狼美人當時不在場：不發動殉情", () => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// 階段機：魅惑排在狼人之後、女巫之前
+// 階段機：魅惑排在魔術師之後、狼人之前
 // ─────────────────────────────────────────────────────────────
 
-test("階段機：魅惑排在狼人之後、女巫之前；只有真人狼美人需要輸入", async () => {
+test("階段機：魅惑排在魔術師之後、狼人之前；只有真人狼美人需要輸入", async () => {
   const { PHASE_CONFIGS, VALID_TRANSITIONS } = await import("@/store/game-machine");
-  assert.deepEqual(VALID_TRANSITIONS.NIGHT_WOLF_ACTION, [
-    "NIGHT_WOLF_BEAUTY_ACTION",
+  assert.deepEqual(VALID_TRANSITIONS.NIGHT_WOLF_BEAUTY_ACTION, [
+    "NIGHT_WOLF_ACTION",
     "NIGHT_WITCH_ACTION",
   ]);
-  assert.deepEqual(VALID_TRANSITIONS.NIGHT_WOLF_BEAUTY_ACTION, ["NIGHT_WITCH_ACTION"]);
+  assert.deepEqual(VALID_TRANSITIONS.NIGHT_WOLF_ACTION, ["NIGHT_WITCH_ACTION"]);
 
   const state = stateWith([]);
   const config = PHASE_CONFIGS.NIGHT_WOLF_BEAUTY_ACTION;

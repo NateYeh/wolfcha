@@ -110,11 +110,10 @@ export const RESTORE_FALLBACK: Record<Phase, (state: GameState) => Phase> = {
   },
   NIGHT_WOLF_ACTION: (state) => (guardDecided(state) ? "NIGHT_GUARD_ACTION" : "NIGHT_START"),
   // 魅惑沒決定時，退回上一個「決定了就穩定」的夜間階段
-  NIGHT_WOLF_BEAUTY_ACTION: (state) => {
-    if (wolfDecided(state)) return "NIGHT_WOLF_ACTION";
-    if (dreamDecided(state)) return "NIGHT_DREAM_ACTION";
-    return guardDecided(state) ? "NIGHT_GUARD_ACTION" : "NIGHT_START";
-  },
+  // 魅惑排在狼刀之前，所以不能退回狼刀（那會往前跳）；回退到最後一個共同穩定點，
+  // 中間已決定的階段在重新走流程時不會再問一次。
+  NIGHT_WOLF_BEAUTY_ACTION: (state) =>
+    guardDecided(state) ? "NIGHT_GUARD_ACTION" : "NIGHT_START",
   NIGHT_WITCH_ACTION: (state) =>
     // 這裡刻意直接看欄位（不用 wolfDecided）：沒有存活狼人時 wolfTarget 仍是 undefined，
     // 回退到 NIGHT_START 與原本行為一致，而該階段的續跑會自行判斷狼人是否存在。

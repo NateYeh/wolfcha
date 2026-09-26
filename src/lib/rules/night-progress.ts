@@ -140,15 +140,15 @@ export const NIGHT_STEP: Record<NightActionPhase, NightStep> = {
     actor: { kind: "role", role: "Magician" },
     decided: magicianDecided,
   },
-  NIGHT_WOLF_ACTION: {
-    phase: "NIGHT_WOLF_ACTION",
-    actor: { kind: "wolfTeam" },
-    decided: wolfDecided,
-  },
   NIGHT_WOLF_BEAUTY_ACTION: {
     phase: "NIGHT_WOLF_BEAUTY_ACTION",
     actor: { kind: "role", role: "WolfBeauty" },
     decided: wolfBeautyDecided,
+  },
+  NIGHT_WOLF_ACTION: {
+    phase: "NIGHT_WOLF_ACTION",
+    actor: { kind: "wolfTeam" },
+    decided: wolfDecided,
   },
   NIGHT_WITCH_ACTION: {
     phase: "NIGHT_WITCH_ACTION",

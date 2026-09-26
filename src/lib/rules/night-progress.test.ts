@@ -71,7 +71,7 @@ const allDecided = (patch: Partial<GameState> = {}): GameState =>
   fullBoard({ nightActions: { guardTarget: 1, mutedTarget: 1, dreamTarget: 1, magicianSwap: [0, 1], wolfTarget: 1, wolfBeautyTarget: 1, witchPoison: 1, seerTarget: 1 }, ...patch });
 
 test("步驟表正好覆蓋權威順序（多一個或少一個都會紅）", () => {
-  assert.deepEqual([...NIGHT_ACTION_ORDER], ["NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "NIGHT_MAGICIAN_ACTION", "NIGHT_WOLF_ACTION", "NIGHT_WOLF_BEAUTY_ACTION", "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION"]);
+  assert.deepEqual([...NIGHT_ACTION_ORDER], ["NIGHT_GUARD_ACTION", "NIGHT_MUTE_ACTION", "NIGHT_DREAM_ACTION", "NIGHT_MAGICIAN_ACTION", "NIGHT_WOLF_BEAUTY_ACTION", "NIGHT_WOLF_ACTION", "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION"]);
   const steps = Object.keys(NIGHT_STEP).sort();
   assert.deepEqual(steps, [...NIGHT_ACTION_ORDER].sort(), "NIGHT_STEP 的鍵必須正好是夜間行動階段");
   for (const phase of NIGHT_ACTION_ORDER) {
@@ -147,7 +147,7 @@ test("補齊查詢：after 只看它之後的步驟（跳階時補齊用）", ()
   const state = fullBoard();
   assert.deepEqual(
     pendingNightActions(state, { after: "NIGHT_DREAM_ACTION" }).map((s) => s.phase),
-    ["NIGHT_MAGICIAN_ACTION", "NIGHT_WOLF_ACTION", "NIGHT_WOLF_BEAUTY_ACTION", "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION"]
+    ["NIGHT_MAGICIAN_ACTION", "NIGHT_WOLF_BEAUTY_ACTION", "NIGHT_WOLF_ACTION", "NIGHT_WITCH_ACTION", "NIGHT_SEER_ACTION"]
   );
   assert.deepEqual(
     pendingNightActions(state, { after: "NIGHT_SEER_ACTION" }).map((s) => s.phase),

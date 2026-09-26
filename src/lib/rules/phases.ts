@@ -63,8 +63,10 @@ export const PHASE_SEQUENCE: readonly Phase[] = [
   "NIGHT_MUTE_ACTION",
   "NIGHT_DREAM_ACTION",
   "NIGHT_MAGICIAN_ACTION",
-  "NIGHT_WOLF_ACTION",
+  // 狼美人魅惑排在狼刀之前（照來源站的法官順序）。魅惑只取決於狼美人自己是否出局，
+  // 與當晚刀口無關，因此這個調序不影響結算，只影響玩家看到的行動順序。
   "NIGHT_WOLF_BEAUTY_ACTION",
+  "NIGHT_WOLF_ACTION",
   "NIGHT_WITCH_ACTION",
   "NIGHT_SEER_ACTION",
   "NIGHT_RESOLVE",
@@ -84,14 +86,14 @@ export const PHASE_SEQUENCE: readonly Phase[] = [
   "GAME_END",
 ];
 
-/** 夜晚角色行動的權威順序（天黑 → 守衛 → 禁言長老 → 攝夢人 → 狼人 → 女巫 → 預言家 → 結算）。 */
+/** 夜晚角色行動的權威順序（天黑 → 守衛 → 禁言長老 → 攝夢人 → 狼美人魅惑 → 狼人 → 女巫 → 預言家 → 結算）。 */
 export const NIGHT_ACTION_ORDER = [
   "NIGHT_GUARD_ACTION",
   "NIGHT_MUTE_ACTION",
   "NIGHT_DREAM_ACTION",
   "NIGHT_MAGICIAN_ACTION",
-  "NIGHT_WOLF_ACTION",
   "NIGHT_WOLF_BEAUTY_ACTION",
+  "NIGHT_WOLF_ACTION",
   "NIGHT_WITCH_ACTION",
   "NIGHT_SEER_ACTION",
 ] as const satisfies readonly Phase[];
@@ -116,8 +118,8 @@ export const ACTION_PHASES: readonly Phase[] = [
   "NIGHT_MUTE_ACTION",
   "NIGHT_DREAM_ACTION",
   "NIGHT_MAGICIAN_ACTION",
-  "NIGHT_WOLF_ACTION",
   "NIGHT_WOLF_BEAUTY_ACTION",
+  "NIGHT_WOLF_ACTION",
   "NIGHT_WITCH_ACTION",
   "NIGHT_SEER_ACTION",
   "DAY_VOTE",
