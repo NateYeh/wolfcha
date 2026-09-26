@@ -23,6 +23,17 @@ interface TalkingAvatarProps {
   translateY?: number;
 }
 
+interface ModelLogoAvatarProps {
+  modelRef?: ModelRef;
+  alt: string;
+  className: string;
+}
+
+/** 模型 logo 頭像：刻意零 Hook，讓呼叫端能在呼叫任何 Hook 之前安全分派。 */
+function ModelLogoAvatar({ modelRef, alt, className }: ModelLogoAvatarProps) {
+  return <img src={getModelLogoUrl(modelRef)} alt={alt} className={className} />;
+}
+
 export function TalkingAvatar({ 
   seed, 
   gender,
@@ -35,10 +46,37 @@ export function TalkingAvatar({
   scale = 120,
   translateY = -5,
 }: TalkingAvatarProps) {
+  // 在呼叫任何 Hook 之前就決定要用哪個元件，讓每個元件的 Hook 數量固定。
+  // 原本寫法是「提早 return 之後才呼叫 Hook」：useModelLogo 一旦變動，
+  // React 就會因 Hook 數量改變而拋錯（React Compiler 也無法編譯該元件）。
   if (useModelLogo) {
-    return <img src={getModelLogoUrl(modelRef)} alt={alt} className={className} />;
+    return <ModelLogoAvatar modelRef={modelRef} alt={alt} className={className} />;
   }
 
+  return (
+    <TalkingAvatarAnimated
+      seed={seed}
+      gender={gender}
+      style={style}
+      isTalking={isTalking}
+      className={className}
+      alt={alt}
+      scale={scale}
+      translateY={translateY}
+    />
+  );
+}
+
+function TalkingAvatarAnimated({ 
+  seed, 
+  gender,
+  style,
+  isTalking = false, 
+  className = "",
+  alt = "Avatar",
+  scale = 120,
+  translateY = -5,
+}: Omit<TalkingAvatarProps, "modelRef" | "useModelLogo">) {
   const TALKING_LIPS = useMemo(() => getTalkingLips(), []);
   const IDLE_LIPS = useMemo(() => getIdleLipsForSeed(seed), [seed]);
   
@@ -166,10 +204,31 @@ export function TalkingAvatarSmall({
   className = "w-8 h-8 rounded-full",
   alt = "Avatar",
 }: TalkingAvatarSmallProps) {
+  // 同 TalkingAvatar：先分派元件，再讓子元件無條件呼叫 Hook。
   if (useModelLogo) {
-    return <img src={getModelLogoUrl(modelRef)} alt={alt} className={className} />;
+    return <ModelLogoAvatar modelRef={modelRef} alt={alt} className={className} />;
   }
 
+  return (
+    <TalkingAvatarSmallAnimated
+      seed={seed}
+      gender={gender}
+      style={style}
+      isTalking={isTalking}
+      className={className}
+      alt={alt}
+    />
+  );
+}
+
+function TalkingAvatarSmallAnimated({ 
+  seed, 
+  gender,
+  style,
+  isTalking = false, 
+  className = "w-8 h-8 rounded-full",
+  alt = "Avatar",
+}: Omit<TalkingAvatarSmallProps, "modelRef" | "useModelLogo">) {
   const TALKING_LIPS = useMemo(() => getTalkingLips(), []);
   const IDLE_LIPS = useMemo(() => getIdleLipsForSeed(seed), [seed]);
   

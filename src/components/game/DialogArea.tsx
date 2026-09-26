@@ -462,7 +462,7 @@ export function DialogArea({
   const bottomRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   const historyContentRef = useRef<HTMLDivElement>(null);
-  const lastPortraitPlayerRef = useRef<Player | null>(null);
+  const [lastPortraitPlayer, setLastPortraitPlayer] = useState<Player | null>(null);
   const voiceRecorderRef = useRef<VoiceRecorderHandle | null>(null);
 
   const [talkingPlayerId, setTalkingPlayerId] = useState<string | null>(null);
@@ -595,11 +595,14 @@ export function DialogArea({
     return currentSpeaker?.player || null;
   }, [isHumanTurn, humanPlayer, gameState.currentSpeakerSeat, gameState.players, currentSpeaker?.player?.playerId]);
 
-  useEffect(() => {
-    if (portraitPlayer) lastPortraitPlayerRef.current = portraitPlayer;
-  }, [portraitPlayer?.playerId]);
+  // 立繪「黏著」上一位發言者：階段切換時 portraitPlayer 會短暫變 null，靠上一筆避免頭像閃爍。
+  // 用 render 期的條件式 state 更新（React 官方「依前一次 render 調整 state」寫法），
+  // 而不在 render 期間讀 ref——並發渲染下讀 ref 會拿到不穩定的值，React Compiler 也直接報錯。
+  if (portraitPlayer && portraitPlayer.playerId !== lastPortraitPlayer?.playerId) {
+    setLastPortraitPlayer(portraitPlayer);
+  }
 
-  const stablePortraitPlayer = portraitPlayer || lastPortraitPlayerRef.current;
+  const stablePortraitPlayer = portraitPlayer || lastPortraitPlayer;
 
   const portraitNode = (
     <AnimatePresence mode="wait" initial={false}>
