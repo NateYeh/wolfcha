@@ -805,15 +805,11 @@ export async function generateCompletion(
   const result: ChatCompletionResponse = await response.json();
   // 診斷用「快取鍵指紋」：不影響請求，只隨 rawResponse 一起落進 AI 紀錄，
   // 供命中率分裂時比對「這次呼叫的請求參數和別人差在哪」（見 src/lib/cache-key.ts）。
+  // 只納入實測會影響上游快取鍵的欄位（見 src/lib/cache-key.ts 的實測清單）。
   (result as ChatCompletionResponse & { wolfchaCacheKey?: CacheKeyInfo }).wolfchaCacheKey = buildCacheKeyInfo({
     model: resolvedModel.model,
     provider: resolvedModel.provider,
-    promptScope: options.promptScope ?? "utility",
     reasoningEffort: options.reasoning_effort,
-    responseFormat: options.response_format,
-    temperature: options.temperature ?? 0.7,
-    maxTokens: typeof options.max_tokens === "number" ? options.max_tokens : undefined,
-    hasRequestId: Boolean(logicalRequestId),
   });
   options.signal?.throwIfAborted();
   const choice = result.choices?.[0];
