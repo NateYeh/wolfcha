@@ -207,7 +207,28 @@
         "boardLabel": "套用官方版型",
         "boardPlaceholder": "選擇版型…"
       }
-    }
+    },
+    "records": "遊玩紀錄"
+  },
+  "records": {
+    "title": "遊玩紀錄",
+    "subtitle": "已完賽的對局",
+    "empty": "還沒有完賽紀錄",
+    "emptyHint": "完成一局之後，這裡會出現整局對話、夜晚行動與每個角色的身分。",
+    "loading": "載入中…",
+    "error": "讀取紀錄失敗",
+    "retry": "重試",
+    "back": "返回",
+    "notFound": "找不到這筆紀錄",
+    "villageWin": "好人陣營勝利",
+    "wolfWin": "狼人陣營勝利",
+    "myRole": "我的角色",
+    "players": "{count} 人局",
+    "days": "{count} 天",
+    "durationMinutes": "{count} 分",
+    "survived": "存活",
+    "died": "出局",
+    "mvp": "MVP"
   },
   "authErrors": {
     "invalidLogin": "郵箱或密碼錯誤",

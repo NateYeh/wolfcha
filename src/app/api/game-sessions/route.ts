@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { isDemoModeActiveServer } from "@/lib/demo-config-server";
+import { isLocalDemoMode, resolveRequestOwnerId } from "@/lib/server-auth";
 import { isGuestUser } from "@/lib/demo-mode";
 import {
   type GameSessionLifecycleStatus,
@@ -54,14 +54,6 @@ function canTransitionLifecycle(
   return false;
 }
 
-/**
- * [LOCAL DEV PATCH] 本機開發環境是否強制開啟 Demo Mode。
- * 開啟時不連 Supabase，改由本機產生會話 ID。
- */
-function isLocalDemoMode(): boolean {
-  return process.env.WOLFCHA_LOCAL_DEMO_MODE === "1";
-}
-
 function isGuestUserIdSchemaError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
 
@@ -73,19 +65,6 @@ function isGuestUserIdSchemaError(error: unknown): boolean {
     message.includes("invalid input syntax for type uuid")
     || message.includes("uuid")
   );
-}
-
-async function authenticateUser(request: Request, bodyToken?: string) {
-  const authHeader = request.headers.get("Authorization");
-  const token = authHeader ? authHeader.replace("Bearer ", "") : bodyToken;
-  if (!token) return null;
-
-  const {
-    data: { user },
-    error,
-  } = await supabaseAdmin.auth.getUser(token);
-  if (error || !user) return null;
-  return user;
 }
 
 export async function POST(request: Request) {
@@ -122,18 +101,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }
 
+  // 身分規則（Supabase 帳號優先，其次本機／自架的 guest id）與遊玩紀錄共用同一份，
+  // 見 `src/lib/server-auth.ts`；兩邊各抄一份遲早會漂移。
   const bodyToken = payload.action === "update" ? payload.accessToken : undefined;
-  const user = await authenticateUser(request, bodyToken);
-
-  const guestId = request.headers.get("x-guest-id") || request.headers.get("X-Guest-Id");
-  const demoActive = await isDemoModeActiveServer();
-  const isValidGuest = demoActive && guestId && isGuestUser(guestId);
-
-  if (!user && !isValidGuest) {
+  const effectiveUserId = await resolveRequestOwnerId(request, { bodyToken });
+  if (!effectiveUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const effectiveUserId = user?.id ?? guestId!;
 
   if (payload.action === "create") {
     const nowIso = new Date().toISOString();
@@ -160,7 +134,7 @@ export async function POST(request: Request) {
 
     if (insertError || !data) {
       console.error("[game-sessions] Insert error:", insertError);
-      if (!user && isGuestUserIdSchemaError(insertError)) {
+      if (isGuestUser(effectiveUserId) && isGuestUserIdSchemaError(insertError)) {
         return NextResponse.json(
           {
             error: "Guest session tracking is unavailable",

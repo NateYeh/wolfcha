@@ -207,7 +207,28 @@
         "boardLabel": "套用官方版型",
         "boardPlaceholder": "选择版型…"
       }
-    }
+    },
+    "records": "游戏记录"
+  },
+  "records": {
+    "title": "游戏记录",
+    "subtitle": "已完成的对局",
+    "empty": "还没有完成对局",
+    "emptyHint": "完成一局之后，这里会显示整局对话、夜晚行动和每个角色的身份。",
+    "loading": "加载中…",
+    "error": "读取记录失败",
+    "retry": "重试",
+    "back": "返回",
+    "notFound": "找不到这条记录",
+    "villageWin": "好人阵营胜利",
+    "wolfWin": "狼人阵营胜利",
+    "myRole": "我的角色",
+    "players": "{count} 人局",
+    "days": "{count} 天",
+    "durationMinutes": "{count} 分",
+    "survived": "存活",
+    "died": "出局",
+    "mvp": "MVP"
   },
   "authErrors": {
     "invalidLogin": "邮箱或密码错误",

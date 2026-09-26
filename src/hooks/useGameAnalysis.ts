@@ -20,6 +20,7 @@ import { isCurrentAnalysis } from "@/lib/analysis-cache";
 import { gameStatsTracker } from "@/hooks/useGameStats";
 import { getReviewModel } from "@/lib/api-keys";
 import { recordCharacterStats, type CharacterStatRecord } from "@/lib/character-stats";
+import { saveGameRecord } from "@/lib/game-record-client";
 
 export function useGameAnalysis() {
   const gameState = useAtomValue(gameStateAtom);
@@ -64,6 +65,10 @@ export function useGameAnalysis() {
         svp: data.awards.svp.some((award) => award.playerId === p.playerId),
       }));
       void recordCharacterStats(gameState.gameId, statRecords);
+
+      // 遊玩紀錄：把剛產生的賽後分析落地（整局對話、夜晚行動、角色身分都在裡面）。
+      // 不多花模型呼叫；同一個 gameId 重複觸發只會覆蓋同一筆。
+      void saveGameRecord(data, { difficulty: gameState.difficulty });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "分析生成失败";
       setError(errorMessage);

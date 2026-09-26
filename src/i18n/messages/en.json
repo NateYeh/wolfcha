@@ -207,7 +207,28 @@
         "boardLabel": "Apply official board",
         "boardPlaceholder": "Choose a board…"
       }
-    }
+    },
+    "records": "Match History"
+  },
+  "records": {
+    "title": "Match History",
+    "subtitle": "Completed games",
+    "empty": "No completed games yet",
+    "emptyHint": "Finish a game and its full dialogue, night actions, and every player's role will appear here.",
+    "loading": "Loading…",
+    "error": "Failed to load records",
+    "retry": "Retry",
+    "back": "Back",
+    "notFound": "Record not found",
+    "villageWin": "Village victory",
+    "wolfWin": "Werewolf victory",
+    "myRole": "My role",
+    "players": "{count} players",
+    "days": "{count} days",
+    "durationMinutes": "{count} min",
+    "survived": "Survived",
+    "died": "Eliminated",
+    "mvp": "MVP"
   },
   "authErrors": {
     "invalidLogin": "Invalid email or password.",

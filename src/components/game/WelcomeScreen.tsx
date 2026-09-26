@@ -1,13 +1,14 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { FingerprintSimple, PawPrint, Sparkle, Wrench, GearSix, UserCircle, GithubLogo, Star, EnvelopeSimple, Handshake, DotsThreeOutlineVertical, Users } from "@phosphor-icons/react";
+import { FingerprintSimple, PawPrint, Sparkle, Wrench, GearSix, ClockCounterClockwise, UserCircle, GithubLogo, Star, EnvelopeSimple, Handshake, DotsThreeOutlineVertical, Users } from "@phosphor-icons/react";
 import { WerewolfIcon } from "@/components/icons/FlatIcons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAtom } from "jotai";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { DevPreset, DifficultyLevel, Role, StartGameOptions } from "@/types/game";
 import { DevModeButton } from "@/components/DevTools";
@@ -204,6 +205,7 @@ export function WelcomeScreen({
   onAutoAdvanceDialogueEnabledChange,
 }: WelcomeScreenProps) {
   const t = useTranslations();
+  const router = useRouter();
   const { locale } = useAppLocale();
   const discordInviteUrl = "https://discord.gg/ETkdZWgy";
   const sponsorEmail = "zhihuang.oiloil@gmail.com";
@@ -1084,6 +1086,18 @@ export function WelcomeScreen({
                 className="justify-start"
                 onClick={() => {
                   setIsMobileMenuOpen(false);
+                  router.push("/records");
+                }}
+              >
+                <ClockCounterClockwise size={16} />
+                {t("welcome.records")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="justify-start"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
                   setIsSetupOpen(true);
                 }}
               >
@@ -1266,6 +1280,15 @@ export function WelcomeScreen({
               </Button>
             )}
 
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/records")}
+              className="h-8 text-xs gap-2"
+            >
+              <ClockCounterClockwise size={16} />
+              {t("welcome.records")}
+            </Button>
             <Button
               type="button"
               variant="outline"
