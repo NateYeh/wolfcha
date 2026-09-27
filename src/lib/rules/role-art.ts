@@ -7,22 +7,22 @@ import type { Phase, Role } from "@/types/game";
  * 兩邊都得記得改，而漏改不會有任何錯誤訊息——只是同一個角色在對話框與賽後顯示不同的圖。
  * 現在只留這一份，兩邊都 import 它。
  *
- * 還沒有專屬立繪的角色是**明確沿用**最接近的一張，不是缺圖：
- * 狼美人沿用白狼王，魔術師／村民沿用守衛。
+ * 目前**每個角色都有專屬立繪**（`ROLES_REUSING_PORTRAIT` 清空）；之後新增角色若還沒附圖，
+ * 就在那份清單裡明寫「沿用最接近的一張」，不是缺圖。
  * `role-art.test.ts` 會逐一檢查這裡的檔案真的存在（先前 `Villager` 指向不存在的
  * `villager.png`，圖 404 沒有任何提示），也會要求「沿用的角色」與下面這份清單一致——
  * 新增角色若忘了附圖，測試會直接點出來。
  */
 
-/** 目前沒有專屬立繪、明確沿用他人立繪的角色（新增角色時請一併更新）。 */
-export const ROLES_REUSING_PORTRAIT: Role[] = ["WolfBeauty", "Magician", "Villager"];
+/** 目前沒有專屬立繪、明確沿用他人立繪的角色（新增角色時請一併更新）。現況：無。 */
+export const ROLES_REUSING_PORTRAIT: Role[] = [];
 
 export const ROLE_PORTRAIT_MAP: Record<Role, string> = {
   Werewolf: "/roles/werewolf.png",
   WhiteWolfKing: "/roles/white-wolf-king.png",
   WolfKing: "/roles/wolf-king.png",
-  WolfBeauty: "/roles/white-wolf-king.png",
-  Magician: "/roles/guard.png",
+  WolfBeauty: "/roles/wolf-beauty.png",
+  Magician: "/roles/magician.png",
   Seer: "/roles/seer.png",
   Witch: "/roles/witch.png",
   Hunter: "/roles/hunter.png",
@@ -31,7 +31,7 @@ export const ROLE_PORTRAIT_MAP: Record<Role, string> = {
   MuteElder: "/roles/mute-elder.png",
   Dreamweaver: "/roles/dreamweaver.png",
   Idiot: "/roles/idiot.png",
-  Villager: "/roles/guard.png",
+  Villager: "/roles/villager.png",
 };
 
 /** 賽後分析沿用的名稱（同一個真相，保留舊名以免動到既有 import）。 */

@@ -1,19 +1,20 @@
-# 角色立繪：生圖提示詞（待補的 3 張）
+# 角色立繪：生圖提示詞（7 張已全部補齊）
 
-`public/roles/` 目前有 11 張圖：最初的 7 張（`werewolf`／`white-wolf-king`／`seer`／`witch`／`hunter`／`guard`／`idiot`）
-＋後補的 4 張（`knight`／`mute-elder`／`wolf-king`／`dreamweaver`）。
-其餘角色在 `src/lib/rules/role-art.ts`（對話框與賽後分析共用的單一真相）裡**沿用最接近的一張**
-（型別是 `Record<Role, string>`，所以不會靜默缺圖，但看起來就是同一張臉）。
+`public/roles/` 共 14 張圖，**每個角色都有自己的立繪**（`ROLES_REUSING_PORTRAIT` 已清空）：
+最初的 7 張（`werewolf`／`white-wolf-king`／`seer`／`witch`／`hunter`／`guard`／`idiot`）
+＋ §7 提示詞補的 7 張（`knight`／`mute-elder`／`wolf-king`／`dreamweaver`／`villager`／`magician`／`wolf-beauty`）。
+對應表在 `src/lib/rules/role-art.ts`（對話框與賽後分析共用的單一真相）；
+型別是 `Record<Role, string>`，新增角色沒附圖會編譯失敗或測試紅。
 
-| 角色 | 狀態 | 目前沿用 | 檔名 |
+| 角色 | 狀態 | 檔名 | 產圖工具 |
 | --- | --- | --- | --- |
-| 騎士 Knight | ✅ | — | `public/roles/knight.png` |
-| 禁言長老 MuteElder | ✅ | — | `public/roles/mute-elder.png` |
-| 狼王 WolfKing | ✅ | — | `public/roles/wolf-king.png` |
-| 攝夢人 Dreamweaver | ✅ | — | `public/roles/dreamweaver.png` |
-| 村民 Villager | ⬜ 待補 | `guard.png` | `public/roles/villager.png` |
-| 魔術師 Magician | ⬜ 待補 | `guard.png` | `public/roles/magician.png` |
-| 狼美人 WolfBeauty | ⬜ 待補 | `white-wolf-king.png`（白狼王） | `public/roles/wolf-beauty.png` |
+| 騎士 Knight | ✅ | `public/roles/knight.png` | chatgpt.com（附 guard+werewolf 參考圖） |
+| 禁言長老 MuteElder | ✅ | `public/roles/mute-elder.png` | 同上 |
+| 狼王 WolfKing | ✅ | `public/roles/wolf-king.png` | chatgpt.com（§7.4） |
+| 攝夢人 Dreamweaver | ✅ | `public/roles/dreamweaver.png` | chatgpt.com（§7.5） |
+| 村民 Villager | ✅ | `public/roles/villager.png` | LobeHub `GPT Image 2.5 Sunburst`（§7.1） |
+| 魔術師 Magician | ✅ | `public/roles/magician.png` | 同上（§7.6） |
+| 狼美人 WolfBeauty | ✅ | `public/roles/wolf-beauty.png` | 同上（§7.7） |
 
 ## 1. 規格（硬要求）
 
@@ -389,3 +390,24 @@ Matching a cast of anthropomorphic animals in plaid shirts, denim vests, hooded 
   抓到上一張圖（曾把狼王／攝夢人存成禁言長老的副本）。
 - 存證檔名不可含 `/`（`5/7 magician.png` 會讓寫檔失敗，蓋掉真正的錯誤）。
 
+
+## 9. LobeHub 產圖（2026-09-27，實際用來生村民／魔術師／狼美人）
+
+帳號在 `app.lobehub.com`，Image app 可選 **GPT Image 2.5 Flare／Sunburst**；
+實測用 Sunburst + §7 提示詞（**不附參考圖**）生的 7 張裡有 3 張一次到位，
+風格與既有 cast 同級（線條略偏鉛筆排線，剛好貼近最初的守衛／狼人那批）。
+
+- **額度**：Free plan，Credits 每次生圖約 2 張一輪，96,940 / 500,000 起跳。
+- **一次生 2 張**：`Number of Images` 預設 2，等於「一輪兩個變體」，先挑再入庫。
+- ⚠️ **不要附參考圖**：一上傳，composer 會切成「調整圖片」模式
+  （placeholder 從 `Describe what you want to generate` 變成 `Describe how you want to adjust the image`），
+  參考圖變成要被編輯的底圖，角色會被原圖綁死。要純風格參考請走 §5.C 的 chatgpt.com 那條。
+- 抓原檔：頁內 `fetch('/f/file_…')` 會被 CSP 擋（`TypeError: Failed to fetch`），
+  改用 `bs.get_cookies()` 的 cookie 在 Python 端 `requests.get` 抓（實測 1254×1254 PNG，約 1.6–2 MB）。
+- **UI 自動化的坑**：
+  - 模型下拉是 base-ui，`element.click()` 無效，要用真滑鼠事件
+    （`client._helpers.click_at_xy`）；選項文字「GPT Image 2.5 Sunburst」在外層 wrapper 也有，
+    要比對 innerText 後**取面積最小的那個**才是可點選項。
+  - 送出後圖片是延遲載入：先出現 loading 骨架，要輪詢 `img[src*="/f/file_"]` 才是真圖；
+    用 `img[src*=...png]` 這種寬鬆條件會抓到 `avatars/lobe-ai.png`（實測誤存過一次）。
+  - 每個角色用一個**全新的臨時分頁**；沿用同一個命名分頁時，殘留的彈窗會吃掉下一次點擊。
