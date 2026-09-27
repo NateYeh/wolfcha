@@ -8,19 +8,19 @@ import type { Phase, Role } from "@/types/game";
  * 現在只留這一份，兩邊都 import 它。
  *
  * 還沒有專屬立繪的角色是**明確沿用**最接近的一張，不是缺圖：
- * 狼王／狼美人沿用白狼王，魔術師／攝夢人／村民沿用守衛。
+ * 狼美人沿用白狼王，魔術師／村民沿用守衛。
  * `role-art.test.ts` 會逐一檢查這裡的檔案真的存在（先前 `Villager` 指向不存在的
  * `villager.png`，圖 404 沒有任何提示），也會要求「沿用的角色」與下面這份清單一致——
  * 新增角色若忘了附圖，測試會直接點出來。
  */
 
 /** 目前沒有專屬立繪、明確沿用他人立繪的角色（新增角色時請一併更新）。 */
-export const ROLES_REUSING_PORTRAIT: Role[] = ["WolfKing", "WolfBeauty", "Magician", "Dreamweaver", "Villager"];
+export const ROLES_REUSING_PORTRAIT: Role[] = ["WolfBeauty", "Magician", "Villager"];
 
 export const ROLE_PORTRAIT_MAP: Record<Role, string> = {
   Werewolf: "/roles/werewolf.png",
   WhiteWolfKing: "/roles/white-wolf-king.png",
-  WolfKing: "/roles/white-wolf-king.png",
+  WolfKing: "/roles/wolf-king.png",
   WolfBeauty: "/roles/white-wolf-king.png",
   Magician: "/roles/guard.png",
   Seer: "/roles/seer.png",
@@ -29,7 +29,7 @@ export const ROLE_PORTRAIT_MAP: Record<Role, string> = {
   Guard: "/roles/guard.png",
   Knight: "/roles/knight.png",
   MuteElder: "/roles/mute-elder.png",
-  Dreamweaver: "/roles/guard.png",
+  Dreamweaver: "/roles/dreamweaver.png",
   Idiot: "/roles/idiot.png",
   Villager: "/roles/guard.png",
 };
@@ -47,6 +47,7 @@ export const ROLE_ICONS: Record<Role, string> = ROLE_PORTRAIT_MAP;
 export const ROLE_PORTRAIT_GLOW: Partial<Record<Role, string>> = {
   Werewolf: "bg-gradient-radial from-red-500/30 via-transparent to-transparent",
   WhiteWolfKing: "bg-gradient-radial from-red-400/30 via-transparent to-transparent",
+  WolfKing: "bg-gradient-radial from-red-600/30 via-transparent to-transparent",
   WolfBeauty: "bg-gradient-radial from-pink-500/30 via-transparent to-transparent",
   Seer: "bg-gradient-radial from-blue-500/30 via-transparent to-transparent",
   Witch: "bg-gradient-radial from-purple-500/30 via-transparent to-transparent",
@@ -67,6 +68,16 @@ export const ROLE_PORTRAIT_GLOW: Partial<Record<Role, string>> = {
  * （兩個角色從來沒被列進去），不是刻意設計——它們的夜間面板其實跟守衛／魔術師一樣會出現。
  * 另外注意 `NIGHT_WOLF_ACTION`／`SELF_DESTRUCT` 要看**行動者**角色（一般狼顯示狼人立繪）。
  */
+
+/** 狼刀／自爆要看行動者是哪一種狼：白狼王與狼王各有立繪，其餘（含狼美人）沿用狼人。 */
+const WOLF_ACTOR_PORTRAIT: Partial<Record<Role, Role>> = {
+  WhiteWolfKing: "WhiteWolfKing",
+  WolfKing: "WolfKing",
+};
+
+const wolfActorPortrait = (humanRole?: string): Role =>
+  WOLF_ACTOR_PORTRAIT[humanRole as Role] ?? "Werewolf";
+
 export const PHASE_ROLE_PORTRAIT: Record<Phase, (humanRole?: string) => Role | null> = {
   LOBBY: () => null,
   SETUP: () => null,
@@ -76,7 +87,7 @@ export const PHASE_ROLE_PORTRAIT: Record<Phase, (humanRole?: string) => Role | n
   NIGHT_DREAM_ACTION: () => "Dreamweaver",
   NIGHT_MAGICIAN_ACTION: () => "Magician",
   NIGHT_WOLF_BEAUTY_ACTION: () => "WolfBeauty",
-  NIGHT_WOLF_ACTION: (humanRole) => (humanRole === "WhiteWolfKing" ? "WhiteWolfKing" : "Werewolf"),
+  NIGHT_WOLF_ACTION: wolfActorPortrait,
   NIGHT_WITCH_ACTION: () => "Witch",
   NIGHT_SEER_ACTION: () => "Seer",
   NIGHT_RESOLVE: () => null,
@@ -91,7 +102,7 @@ export const PHASE_ROLE_PORTRAIT: Record<Phase, (humanRole?: string) => Role | n
   DAY_RESOLVE: () => null,
   BADGE_TRANSFER: () => null,
   HUNTER_SHOOT: () => "Hunter",
-  SELF_DESTRUCT: (humanRole) => (humanRole === "WhiteWolfKing" ? "WhiteWolfKing" : "Werewolf"),
+  SELF_DESTRUCT: wolfActorPortrait,
   KNIGHT_DUEL: () => "Knight",
   GAME_END: () => null,
 };

@@ -1,18 +1,19 @@
-# 角色立繪：生圖提示詞（待補的 7 張）
+# 角色立繪：生圖提示詞（待補的 3 張）
 
-`public/roles/` 目前只有 7 張圖（`werewolf`／`white-wolf-king`／`seer`／`witch`／`hunter`／`guard`／`idiot`），
-其餘角色在 `DialogArea.ROLE_PORTRAIT_MAP` 與 `analysis/constants.ROLE_ICONS` 裡**沿用最接近的一張**
+`public/roles/` 目前有 11 張圖：最初的 7 張（`werewolf`／`white-wolf-king`／`seer`／`witch`／`hunter`／`guard`／`idiot`）
+＋後補的 4 張（`knight`／`mute-elder`／`wolf-king`／`dreamweaver`）。
+其餘角色在 `src/lib/rules/role-art.ts`（對話框與賽後分析共用的單一真相）裡**沿用最接近的一張**
 （型別是 `Record<Role, string>`，所以不會靜默缺圖，但看起來就是同一張臉）。
 
-| 角色 | 目前沿用 | 應補檔名 |
-| --- | --- | --- |
-| 村民 Villager | `guard.png` | `public/roles/villager.png` |
-| 騎士 Knight | `guard.png` | `public/roles/knight.png` |
-| 禁言長老 MuteElder | `guard.png` | `public/roles/mute-elder.png` |
-| 狼王 WolfKing | `white-wolf-king.png`（白狼王） | `public/roles/wolf-king.png` |
-| 攝夢人 Dreamweaver | `guard.png` | `public/roles/dreamweaver.png` |
-| 魔術師 Magician | `guard.png` | `public/roles/magician.png` |
-| 狼美人 WolfBeauty | `white-wolf-king.png`（白狼王） | `public/roles/wolf-beauty.png` |
+| 角色 | 狀態 | 目前沿用 | 檔名 |
+| --- | --- | --- | --- |
+| 騎士 Knight | ✅ | — | `public/roles/knight.png` |
+| 禁言長老 MuteElder | ✅ | — | `public/roles/mute-elder.png` |
+| 狼王 WolfKing | ✅ | — | `public/roles/wolf-king.png` |
+| 攝夢人 Dreamweaver | ✅ | — | `public/roles/dreamweaver.png` |
+| 村民 Villager | ⬜ 待補 | `guard.png` | `public/roles/villager.png` |
+| 魔術師 Magician | ⬜ 待補 | `guard.png` | `public/roles/magician.png` |
+| 狼美人 WolfBeauty | ⬜ 待補 | `white-wolf-king.png`（白狼王） | `public/roles/wolf-beauty.png` |
 
 ## 1. 規格（硬要求）
 
@@ -198,8 +199,13 @@ style (style reference only, do not copy the character). Draw a completely diffe
 
 1. **後處理**（腳本：`/tmp/role_art_fill.py`，步驟如下）：
    - 原圖是「白底黑線」→ **RGB 完全不動**（黑線仍黑、紙面仍白），只做去背：以亮度 >200
-     取紙面遮罩，再用 `cv2.connectedComponents` 找出「與畫布邊界相連的紙面」＝外部背景，
+     取紙面遮罩，再用 `cv2.connectedComponents` 找出「與**四個角落**相連的紙面」＝外部背景，
      **只把外部背景設為透明**。人物內部與所有線條保持不透明 → 白色實心人體＋黑線。
+   - ⚠️ 種子**不能用整條畫布邊界**：半身立繪的白色內部（毛披風、長袍、上衣）常被畫布下緣
+     裁切，白色區域因此直接連到邊界 → 整片被判成背景挖空。實測 `wolf-king`／`dreamweaver`
+     用整條邊界時不透明只剩 36.6%／44.6%（正確是 54.6%／60.3%），披風與長袍在暗色 UI 上
+     看起來是黑的（同一類「圖沒載入」壞圖）。人物永遠不會佔到畫布角落，所以用四角當種子
+     就不會誤判；`knight`／`mute-elder` 當年沒踩到，只是因為它們的下緣剛好被深色線條蓋住。
    - **不要**用「alpha＝255−亮度」把整張變線稿：那會讓人體內部也透明，暗色底會從身體透出來
      （實測 `mute-elder`／`knight` 一開始就是這樣，看起來像空心線稿，使用者回報「圖沒正確載入」）。
    - 依人物外框（alpha>0）縮放並置中：**高度 0.905×畫布、頂端 0.092×畫布**，輸出 1024×1024 RGBA。
