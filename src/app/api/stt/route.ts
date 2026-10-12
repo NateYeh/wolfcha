@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
  * 本機語音轉文字服務（apps/stt：sherpa-onnx Paraformer + 狼人殺術語校正）。
  * 前端契約維持不變：POST {audio:<base64 wav>, format:"wav"} → {text}。
  */
-const DEFAULT_STT_URL = "http://127.0.0.1:31091";
+const DEFAULT_STT_URL = "http://127.0.0.1:30095";
 
 function sttBaseUrl(): string {
   return (process.env.WOLFCHA_STT_URL ?? DEFAULT_STT_URL).replace(/\/+$/, "");
